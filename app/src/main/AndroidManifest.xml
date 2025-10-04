@@ -11,7 +11,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <application
-    android:name=".P2PApp"
+    android:name="com.example.threevchat.P2PApp"
     android:allowBackup="true"
     android:label="P2P Video"
     android:icon="@android:drawable/sym_def_app_icon"
@@ -21,7 +21,7 @@
     tools:replace="android:label">
 
         <activity
-            android:name=".MainActivity"
+            android:name="com.example.threevchat.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

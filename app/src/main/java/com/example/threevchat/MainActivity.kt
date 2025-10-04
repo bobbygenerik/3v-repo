@@ -8,11 +8,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.Modifier
+import androidx.core.view.WindowCompat
 import com.example.threevchat.ui.screens.AppNav
 import com.example.threevchat.viewmodel.MainViewModel
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.example.threevchat.ui.theme.P2PTheme
 
 class MainActivity : ComponentActivity() {
@@ -27,15 +30,16 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.RECORD_AUDIO
         ), 100)
 
+        // Enable edge-to-edge content
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         setContent {
             P2PTheme {
-                val systemUi = rememberSystemUiController()
-                val bg = MaterialTheme.colorScheme.background
-                LaunchedEffect(bg) {
-                    systemUi.setSystemBarsColor(bg, darkIcons = true)
-                }
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    AppNav(vm = vm)
+                    androidx.compose.material3.Text("")
+                    androidx.compose.material3.Surface(modifier = Modifier.padding(WindowInsets.safeDrawing.asPaddingValues())) {
+                        AppNav(vm = vm)
+                    }
                 }
             }
         }
