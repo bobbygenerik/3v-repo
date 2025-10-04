@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.p2pvideojitsi.app-mergeDebugResources-92:/values-ja/values-ja.xml",
+            "outputFile": "com.example.threevchat.app-mergeDebugResources-89:/values-ja/values-ja.xml",
             "map": [
                 {
                     "source": "/home/codespace/.gradle/caches/transforms-4/8b3af559b3d9436900a578d2ec134ec7/transformed/jetified-ui-release/res/values-ja/values-ja.xml",

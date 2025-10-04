@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.p2pvideojitsi.app-mergeDebugResources-92:/values-bs/values-bs.xml",
+            "outputFile": "com.example.threevchat.app-mergeDebugResources-89:/values-bs/values-bs.xml",
             "map": [
                 {
                     "source": "/home/codespace/.gradle/caches/transforms-4/9aed3f7c42900eaf50a13010d5092245/transformed/jetified-play-services-base-18.5.0/res/values-bs/values.xml",

@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.p2pvideojitsi.app-mergeDebugResources-92:/values-fa/values-fa.xml",
+            "outputFile": "com.example.threevchat.app-mergeDebugResources-89:/values-fa/values-fa.xml",
             "map": [
                 {
                     "source": "/home/codespace/.gradle/caches/transforms-4/aadb9225396e430781ec27b615097db7/transformed/jetified-exoplayer-core-2.18.1/res/values-fa/values-fa.xml",

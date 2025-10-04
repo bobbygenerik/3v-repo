@@ -1,4 +1,3 @@
-yes | sdkmanager --licenses > /dev/null || true
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -34,6 +33,20 @@ if [ "$JAVA_OK" = false ]; then
   echo "JDK 17 not found; installing OpenJDK 17..."
   ensure_pkg openjdk-17-jdk
 fi
+
+# Ensure JAVA_HOME and PATH point to JDK 17 to avoid class version mismatches
+if [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+  export JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+elif [ -d "/usr/lib/jvm/java-17-openjdk" ]; then
+  export JAVA_HOME="/usr/lib/jvm/java-17-openjdk"
+else
+  # Best-effort: derive from java binary
+  JAVA_BIN_PATH="$(command -v java || true)"
+  if [[ -n "$JAVA_BIN_PATH" ]]; then
+    export JAVA_HOME="$(readlink -f "$JAVA_BIN_PATH" | sed -E 's#/bin/java$##')"
+  fi
+fi
+export PATH="$JAVA_HOME/bin:$PATH"
 
 SDK_ROOT="$HOME/android-sdk"
 CMDLINE_TOOLS_VERSION="11076708_latest" # as of 2025-10

@@ -78,7 +78,9 @@ dependencies {
     implementation 'com.google.firebase:firebase-firestore-ktx'
     implementation 'com.google.firebase:firebase-database-ktx'
     implementation 'com.google.firebase:firebase-messaging-ktx'
-    implementation 'com.google.firebase:firebase-crashlytics-ktx'
+    // Crashlytics removed for now to avoid runtime crash (missing Crashlytics Gradle plugin/build ID)
+    // If you want Crashlytics, re-add the dependency below AND apply the plugin in the root and app modules:
+    // implementation 'com.google.firebase:firebase-crashlytics-ktx'
     implementation 'com.google.firebase:firebase-config-ktx'
     implementation 'com.google.firebase:firebase-storage-ktx'
 

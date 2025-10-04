@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.p2pvideojitsi.app-mergeDebugResources-92:/values-v26/values-v26.xml",
+            "outputFile": "com.example.threevchat.app-mergeDebugResources-89:/values-v26/values-v26.xml",
             "map": [
                 {
                     "source": "/home/codespace/.gradle/caches/transforms-4/eaa87c146454385a25386cfbf74c609a/transformed/appcompat-1.4.2/res/values-v26/values-v26.xml",

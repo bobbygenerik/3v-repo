@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.p2pvideojitsi.app-mergeDebugResources-92:/values-en-rCA/values-en-rCA.xml",
+            "outputFile": "com.example.threevchat.app-mergeDebugResources-89:/values-en-rCA/values-en-rCA.xml",
             "map": [
                 {
                     "source": "/home/codespace/.gradle/caches/transforms-4/fda8d9c42d4581087c68386d2b30412f/transformed/core-1.13.1/res/values-en-rCA/values-en-rCA.xml",

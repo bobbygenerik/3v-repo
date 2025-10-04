@@ -1,4 +1,4 @@
-com.example.p2pvideojitsi
+com.example.threevchat
 anim abc_fade_in
 anim abc_fade_out
 anim abc_grow_fade_in_from_bottom
@@ -3946,7 +3946,6 @@ plurals exo_controls_fastforward_by_amount_description
 plurals exo_controls_rewind_by_amount_description
 plurals mtrl_badge_content_description
 raw firebase_common_keep
-raw firebase_crashlytics_keep
 string abc_action_bar_home_description
 string abc_action_bar_up_description
 string abc_action_menu_overflow_description
