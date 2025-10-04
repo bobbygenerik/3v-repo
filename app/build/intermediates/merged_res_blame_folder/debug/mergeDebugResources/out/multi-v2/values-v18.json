@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.example.p2pvideojitsi.app-mergeDebugResources-92:/values-v18/values-v18.xml",
+            "map": [
+                {
+                    "source": "/home/codespace/.gradle/caches/transforms-4/eaa87c146454385a25386cfbf74c609a/transformed/appcompat-1.4.2/res/values-v18/values-v18.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "48",
+                        "endOffsets": "99"
+                    }
+                }
+            ]
+        }
+    ]
+}

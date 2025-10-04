@@ -1,0 +1,5 @@
+-keep class org.jitsi.** { *; }
+-keep class com.facebook.** { *; }
+-keep class com.** { *; }
+-dontwarn org.apache.http.**
+-dontwarn com.facebook.**
