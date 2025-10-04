@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Block committing APK/AAB and files > 50MB
+echo "pre-commit: scanning staged files for large artifacts..."
+
+# List staged files (added/modified/copied/renamed) excluding deletions
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+
+if echo "$STAGED" | grep -Ei '\.(apk|aab)$' >/dev/null; then
+  echo "Error: APK/AAB files detected in staged changes. Add them to .gitignore and remove from staging."
+  exit 1
+fi
+
+# Check file sizes for staged files
+while IFS= read -r f; do
+  [ -f "$f" ] || continue
+  size=$(wc -c < "$f")
+  if [ "$size" -gt 52428800 ]; then # 50MB
+    echo "Error: $f is ${size} bytes (>50MB)."
+    exit 1
+  fi
+done <<< "$STAGED"
+
+echo "pre-commit: OK"
