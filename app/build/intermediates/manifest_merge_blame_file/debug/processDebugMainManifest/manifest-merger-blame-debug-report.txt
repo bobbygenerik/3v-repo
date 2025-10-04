@@ -9,26 +9,26 @@
 9        android:targetSdkVersion="35" />
 10
 11    <uses-permission android:name="android.permission.INTERNET" />
-11-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:5:5-67
-11-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:5:22-64
+11-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:5:5-67
+11-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:5:22-64
 12    <uses-permission android:name="android.permission.CAMERA" />
-12-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:6:5-65
-12-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:6:22-62
+12-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:6:5-65
+12-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:6:22-62
 13    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-13-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:7:5-71
-13-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:7:22-68
+13-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:7:5-71
+13-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:7:22-68
 14    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-14-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:8:5-80
-14-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:8:22-77
+14-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:8:5-80
+14-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:8:22-77
 15    <uses-permission android:name="android.permission.BLUETOOTH" />
-15-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:9:5-68
-15-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:9:22-65
+15-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:9:5-68
+15-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:9:22-65
 16    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-16-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:10:5-74
-16-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:10:22-71
+16-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:10:5-74
+16-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:10:22-71
 17    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-17-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:11:5-76
-17-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:11:22-73
+17-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:11:5-76
+17-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:11:22-73
 18
 19    <!-- XXX ACCESS_NETWORK_STATE is required by WebRTC. -->
 20    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -106,105 +106,105 @@
 50-->[androidx.core:core:1.13.1] /home/codespace/.gradle/caches/transforms-4/fda8d9c42d4581087c68386d2b30412f/transformed/core-1.13.1/AndroidManifest.xml:26:22-94
 51
 52    <application
-52-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:13:5-59:19
+52-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:13:5-59:19
 53        android:name="com.example.p2pvideojitsi.P2PApp"
-53-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:14:5-27
+53-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:14:5-27
 54        android:allowBackup="true"
-54-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:15:5-31
+54-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:15:5-31
 55        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
 55-->[androidx.core:core:1.13.1] /home/codespace/.gradle/caches/transforms-4/fda8d9c42d4581087c68386d2b30412f/transformed/core-1.13.1/AndroidManifest.xml:28:18-86
 56        android:debuggable="true"
 57        android:extractNativeLibs="false"
 58        android:icon="@android:drawable/sym_def_app_icon"
-58-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:17:5-54
+58-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:17:5-54
 59        android:label="P2P Video"
-59-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:16:5-30
+59-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:16:5-30
 60        android:roundIcon="@android:drawable/sym_def_app_icon"
-60-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:18:5-59
+60-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:18:5-59
 61        android:supportsRtl="true"
-61-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:19:5-31
+61-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:19:5-31
 62        android:theme="@style/Theme.P2PVideo" >
-62-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:20:5-42
+62-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:20:5-42
 63        <activity
-63-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:23:9-58:20
+63-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:23:9-58:20
 64            android:name="com.example.p2pvideojitsi.MainActivity"
-64-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:24:13-41
+64-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:24:13-41
 65            android:exported="true" >
-65-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:25:13-36
+65-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:25:13-36
 66            <intent-filter>
-66-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:26:13-29:29
+66-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:26:13-29:29
 67                <action android:name="android.intent.action.MAIN" />
-67-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:27:17-69
-67-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:27:25-66
+67-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:27:17-69
+67-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:27:25-66
 68
 69                <category android:name="android.intent.category.LAUNCHER" />
-69-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:28:17-77
-69-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:28:27-74
+69-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:28:17-77
+69-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:28:27-74
 70            </intent-filter>
 71
 72            <!-- Deep link / external call initiation -->
 73            <intent-filter>
-73-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:32:13-38:29
+73-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:32:13-38:29
 74                <action android:name="android.intent.action.VIEW" />
-74-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:33:17-69
-74-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:33:25-66
+74-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:33:17-69
+74-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:33:25-66
 75
 76                <category android:name="android.intent.category.DEFAULT" />
-76-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:34:17-76
-76-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:34:27-73
+76-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:34:17-76
+76-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:34:27-73
 77                <category android:name="android.intent.category.BROWSABLE" />
-77-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:35:17-78
-77-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:35:27-75
+77-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:35:17-78
+77-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:35:27-75
 78                <!-- Custom scheme, e.g., p2pvideo://call/{id} -->
 79                <data
-79-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:17-71
+79-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:17-71
 80                    android:host="call"
-80-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:49-68
+80-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:49-68
 81                    android:scheme="p2pvideo" />
-81-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:23-48
+81-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:23-48
 82            </intent-filter>
 83
 84            <!-- Content style that Google Messages could trigger: content://com.example.threevchat/call/{id} -->
 85            <intent-filter>
-85-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:41:13-49:29
+85-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:41:13-49:29
 86                <action android:name="android.intent.action.VIEW" />
-86-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:33:17-69
-86-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:33:25-66
+86-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:33:17-69
+86-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:33:25-66
 87
 88                <category android:name="android.intent.category.DEFAULT" />
-88-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:34:17-76
-88-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:34:27-73
+88-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:34:17-76
+88-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:34:27-73
 89                <category android:name="android.intent.category.BROWSABLE" />
-89-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:35:17-78
-89-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:35:27-75
+89-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:35:17-78
+89-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:35:27-75
 90
 91                <data
-91-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:17-71
+91-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:17-71
 92                    android:host="com.example.threevchat"
-92-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:49-68
+92-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:49-68
 93                    android:pathPattern="/call/.*"
-93-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:48:21-51
+93-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:48:21-51
 94                    android:scheme="content" />
-94-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:23-48
+94-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:23-48
 95            </intent-filter>
 96
 97            <!-- Tel scheme from Messages: tel:+15551234567 -->
 98            <intent-filter>
-98-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:52:13-57:29
+98-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:52:13-57:29
 99                <action android:name="android.intent.action.VIEW" />
-99-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:33:17-69
-99-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:33:25-66
+99-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:33:17-69
+99-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:33:25-66
 100
 101                <category android:name="android.intent.category.DEFAULT" />
-101-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:34:17-76
-101-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:34:27-73
+101-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:34:17-76
+101-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:34:27-73
 102                <category android:name="android.intent.category.BROWSABLE" />
-102-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:35:17-78
-102-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:35:27-75
+102-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:35:17-78
+102-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:35:27-75
 103
 104                <data android:scheme="tel" />
-104-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:17-71
-104-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:23-48
+104-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:17-71
+104-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:23-48
 105            </intent-filter>
 106        </activity>
 107        <activity
@@ -539,23 +539,23 @@
 276            <intent-filter>
 276-->[com.google.firebase:firebase-auth:23.0.0] /home/codespace/.gradle/caches/transforms-4/2d6d9dcb4cacca5ec7e54eae0d4a1b68/transformed/jetified-firebase-auth-23.0.0/AndroidManifest.xml:35:13-45:29
 277                <action android:name="android.intent.action.VIEW" />
-277-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:33:17-69
-277-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:33:25-66
+277-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:33:17-69
+277-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:33:25-66
 278
 279                <category android:name="android.intent.category.DEFAULT" />
-279-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:34:17-76
-279-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:34:27-73
+279-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:34:17-76
+279-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:34:27-73
 280                <category android:name="android.intent.category.BROWSABLE" />
-280-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:35:17-78
-280-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:35:27-75
+280-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:35:17-78
+280-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:35:27-75
 281
 282                <data
-282-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:17-71
+282-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:17-71
 283                    android:host="firebase.auth"
-283-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:49-68
+283-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:49-68
 284                    android:path="/"
 285                    android:scheme="genericidp" />
-285-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:23-48
+285-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:23-48
 286            </intent-filter>
 287        </activity>
 288        <activity
@@ -573,23 +573,23 @@
 294            <intent-filter>
 294-->[com.google.firebase:firebase-auth:23.0.0] /home/codespace/.gradle/caches/transforms-4/2d6d9dcb4cacca5ec7e54eae0d4a1b68/transformed/jetified-firebase-auth-23.0.0/AndroidManifest.xml:53:13-63:29
 295                <action android:name="android.intent.action.VIEW" />
-295-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:33:17-69
-295-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:33:25-66
+295-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:33:17-69
+295-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:33:25-66
 296
 297                <category android:name="android.intent.category.DEFAULT" />
-297-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:34:17-76
-297-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:34:27-73
+297-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:34:17-76
+297-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:34:27-73
 298                <category android:name="android.intent.category.BROWSABLE" />
-298-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:35:17-78
-298-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:35:27-75
+298-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:35:17-78
+298-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:35:27-75
 299
 300                <data
-300-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:17-71
+300-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:17-71
 301                    android:host="firebase.auth"
-301-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:49-68
+301-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:49-68
 302                    android:path="/"
 303                    android:scheme="recaptcha" />
-303-->/workspaces/codespaces-blank/app/src/main/AndroidManifest.xml:37:23-48
+303-->/workspaces/3v-repo/app/src/main/AndroidManifest.xml:37:23-48
 304            </intent-filter>
 305        </activity>
 306
