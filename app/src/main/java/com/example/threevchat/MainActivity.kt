@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.padding
@@ -36,8 +37,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             P2PTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    androidx.compose.material3.Text("")
-                    androidx.compose.material3.Surface(modifier = Modifier.padding(WindowInsets.safeDrawing.asPaddingValues())) {
+                    Box(modifier = Modifier.padding(WindowInsets.systemBars.asPaddingValues())) {
                         AppNav(vm = vm)
                     }
                 }
