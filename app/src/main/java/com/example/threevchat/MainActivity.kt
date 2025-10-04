@@ -6,13 +6,18 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.core.view.WindowCompat
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.Modifier
 import com.example.threevchat.ui.screens.AppNav
 import com.example.threevchat.viewmodel.MainViewModel
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.example.threevchat.ui.theme.P2PTheme
 
 class MainActivity : ComponentActivity() {
@@ -27,15 +32,14 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.RECORD_AUDIO
         ), 100)
 
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             P2PTheme {
-                val systemUi = rememberSystemUiController()
-                val bg = MaterialTheme.colorScheme.background
-                LaunchedEffect(bg) {
-                    systemUi.setSystemBarsColor(bg, darkIcons = true)
-                }
+                // Surface adopts theme background; system bars are edge-to-edge by default
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    AppNav(vm = vm)
+                    Box(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
+                        AppNav(vm = vm)
+                    }
                 }
             }
         }
