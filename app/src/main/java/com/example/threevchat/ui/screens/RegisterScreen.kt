@@ -10,7 +10,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.threevchat.viewmodel.MainViewModel
-import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardOptions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,7 +59,7 @@ fun RegisterScreen(vm: MainViewModel, onRegistered: () -> Unit) {
                 OutlinedButton(onClick = { vm.loginWithUsername(username, password) }) { Text("Login") }
             }
 
-            Divider()
+            HorizontalDivider()
 
             OutlinedTextField(
                 value = phone,
