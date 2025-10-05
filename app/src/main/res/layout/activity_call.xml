@@ -25,6 +25,6 @@
         android:layout_margin="16dp"
         android:alpha="0.85"
         android:contentDescription="@string/app_name"
-        android:src="@drawable/ic_launcher_foreground" />
+        android:src="@drawable/app_logo" />
 
 </FrameLayout>
