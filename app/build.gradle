@@ -9,6 +9,19 @@ android {
     namespace 'com.example.threevchat'
     compileSdk 35
 
+    // Load TURN configuration from local.properties (not committed to VCS)
+    def localProps = new Properties()
+    def lpFile = rootProject.file('local.properties')
+    if (lpFile.exists()) {
+        lpFile.withInputStream { localProps.load(it) }
+    }
+    def TURN_HOST = (localProps.getProperty('turn.host') ?: '')
+    def TURN_PORT = (localProps.getProperty('turn.port') ?: '3478')
+    def TURN_TRANSPORT = (localProps.getProperty('turn.transport') ?: 'udp')
+    def TURN_USERNAME_MODE = (localProps.getProperty('turn.username.mode') ?: 'STATIC') // STATIC or PHONE
+    def TURN_STATIC_USERNAME = (localProps.getProperty('turn.username') ?: '')
+    def TURN_PASSWORD = (localProps.getProperty('turn.password') ?: '')
+
     defaultConfig {
     applicationId 'com.example.threevchat'
         minSdk 24
@@ -19,6 +32,14 @@ android {
         vectorDrawables {
             useSupportLibrary true
         }
+
+        // Expose TURN config in BuildConfig for runtime ICE server setup
+        buildConfigField 'String', 'TURN_HOST', '"' + TURN_HOST + '"'
+        buildConfigField 'int', 'TURN_PORT', TURN_PORT
+        buildConfigField 'String', 'TURN_TRANSPORT', '"' + TURN_TRANSPORT + '"'
+        buildConfigField 'String', 'TURN_USERNAME_MODE', '"' + TURN_USERNAME_MODE + '"'
+        buildConfigField 'String', 'TURN_STATIC_USERNAME', '"' + TURN_STATIC_USERNAME + '"'
+        buildConfigField 'String', 'TURN_PASSWORD', '"' + TURN_PASSWORD + '"'
     }
 
     buildTypes {

@@ -34,7 +34,7 @@ class WebRtcRepository(
     }
 
     fun createPeerConnection(observer: PeerConnection.Observer): PeerConnection {
-        val rtcConfig = PeerConnection.RTCConfiguration(WebRtcConfig.iceServers).apply {
+        val rtcConfig = PeerConnection.RTCConfiguration(WebRtcConfig.iceServers()).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
             tcpCandidatePolicy = PeerConnection.TcpCandidatePolicy.ENABLED
             enableDtlsSrtp = true
