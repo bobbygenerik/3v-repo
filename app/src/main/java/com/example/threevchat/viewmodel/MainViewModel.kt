@@ -44,24 +44,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun registerWithUsername(username: String, password: String) {
-        viewModelScope.launch {
-            _ui.value = _ui.value.copy(loading = true, error = null)
-            val res = userRepo.registerWithUsername(username, password)
-            _ui.value = if (res.isSuccess) _ui.value.copy(loading = false, isLoggedIn = true) else _ui.value.copy(loading = false, error = res.exceptionOrNull()?.message)
-        }
-    }
-
-    fun loginWithUsername(username: String, password: String) {
-        viewModelScope.launch {
-            _ui.value = _ui.value.copy(loading = true, error = null)
-            val res = userRepo.loginWithUsername(username, password)
-            _ui.value = if (res.isSuccess) _ui.value.copy(loading = false, isLoggedIn = true) else _ui.value.copy(loading = false, error = res.exceptionOrNull()?.message)
-        }
-    }
+    // Username/password flows removed; phone-only auth
 
     fun startPhoneVerification(activity: Activity, phone: String) {
-        userRepo.startPhoneVerification(activity, phone)
+        _ui.value = _ui.value.copy(loading = true, error = null)
+        userRepo.startPhoneVerification(
+            activity,
+            phone,
+            onError = { msg ->
+                _ui.value = _ui.value.copy(loading = false, error = msg)
+            },
+            onCodeSent = {
+                _ui.value = _ui.value.copy(loading = false)
+            }
+        )
     }
 
     fun verifySmsCode(code: String) {

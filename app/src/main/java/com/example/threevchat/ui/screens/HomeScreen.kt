@@ -23,7 +23,7 @@ fun HomeScreen(vm: MainViewModel, onStartCall: () -> Unit, onViewCallLogs: () ->
             OutlinedTextField(
                 value = callee,
                 onValueChange = { callee = it },
-                label = { Text("Callee username or phone") },
+                label = { Text("Callee phone number") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
