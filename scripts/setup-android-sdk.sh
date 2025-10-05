@@ -5,7 +5,7 @@ set -euo pipefail
 # - Installs JDK 17 if missing
 # - Installs commandline-tools, platform-tools, platform 35, build-tools 35.0.0
 # - Configures ANDROID_SDK_ROOT and PATH in ~/.bashrc
-# - Writes/updates local.properties with correct sdk.dir
+# - Writes/updates local.properties with correct sdk.dir (without nuking existing keys)
 
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || return 1
@@ -70,6 +70,7 @@ if [ ! -d "$SDK_ROOT/cmdline-tools/latest" ]; then
 fi
 
 export ANDROID_SDK_ROOT="$SDK_ROOT"
+export ANDROID_HOME="$ANDROID_SDK_ROOT"
 export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
 
 yes | sdkmanager --licenses > /dev/null || true
@@ -93,13 +94,20 @@ if ! grep -q "ANDROID_SDK_ROOT" "$PROFILE"; then
     echo ''
     echo '# Android SDK (added by setup-android-sdk.sh)'
     echo "export ANDROID_SDK_ROOT=\"$SDK_ROOT\""
+    echo 'export ANDROID_HOME="$ANDROID_SDK_ROOT"'
     echo 'export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"'
   } >> "$PROFILE"
 fi
 
-# Write/update local.properties with the correct sdk.dir
+## Write/update local.properties with the correct sdk.dir without overwriting other keys
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-echo "sdk.dir=$ANDROID_SDK_ROOT" > "$REPO_ROOT/local.properties"
+LP="$REPO_ROOT/local.properties"
+touch "$LP"
+if grep -q '^sdk.dir=' "$LP"; then
+  sed -i "s#^sdk.dir=.*#sdk.dir=$ANDROID_SDK_ROOT#" "$LP"
+else
+  echo "sdk.dir=$ANDROID_SDK_ROOT" >> "$LP"
+fi
 
 printf "\nAndroid SDK installed at: %s\n" "$ANDROID_SDK_ROOT"
 sdkmanager --list | head -n 30 || true

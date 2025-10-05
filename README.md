@@ -1,12 +1,17 @@
-# P2P Video (Jitsi + Compose + Firebase)
+# P2P Video (Compose + Firebase + native WebRTC)
 
-A minimal, MVVM-structured Android app using Kotlin, Jetpack Compose (Material 3), Firebase Auth, and Jitsi Meet SDK for peer-to-peer video calls. Includes Intent integration for call initiation (e.g., from Google Messages) via custom deep links or content URIs.
+An MVVM-structured Android app using Kotlin, Jetpack Compose (Material 3), Firebase Auth, Firestore signaling, and native WebRTC for 1:1 video calls. Includes intent integration for call initiation (e.g., from Google Messages) via `tel:` and custom deep links.
 
 ## Features
-- Video calling via Jitsi Meet SDK
+- 1:1 video calling using native WebRTC (UNIFIED_PLAN)
+- 1080p target capture with relay-aware max bitrate adaptation
 - Compose M3 UI (minimal, dynamic color if available)
-- Firebase Auth for username (email+password) and phone sign-in
-- Intent filters for deep links and content URIs to start calls
+- Firebase Auth (phone-only sign-in)
+- Firestore-based signaling (offer/answer + ICE)
+- Intent filters for:
+	- tel: scheme (e.g., tel:+15551234567)
+	- custom deep link: `p2pvideo://call/<id or number>`
+	- content URI: `content://com.example.threevchat/call/<id or number>`
 - MVVM layering (ViewModel, Repository)
 
 ## Project setup (Codespaces/CLI)
@@ -67,16 +72,18 @@ You can use the helper script below to install and configure the Android SDK loc
 
 ## Dependencies (Gradle)
 - Compose BOM, Material3 1.3.0
-- Firebase BOM 33.3.0, Auth, Analytics
-- Jitsi Meet SDK 8.6.0
+- Firebase BOM 33.3.0, Auth, Analytics, Firestore
+- Native WebRTC: `io.github.webrtc-sdk:android:137.7151.04`
 - Play Services Auth, Auth API Phone
 
 ## Intent integration
-- Custom deep link: `p2pvideo://call/<username_or_phone>`
-- Content URI: `content://com.example.p2pvideojitsi/call/<username_or_phone>`
-- Both handled by `MainActivity` -> `MainViewModel.handleIncomingIntent` -> `JitsiRepository.parseCallIntent`.
+- tel: `tel:+15551234567` — parsed in `MainActivity` -> `MainViewModel.handleIncomingIntent`
+- Custom deep link: `p2pvideo://call/<id_or_number>`
+- Content URI: `content://com.example.threevchat/call/<id_or_number>`
+
+For now, initiating a call creates a Firestore session and launches a native `CallActivity` as the caller. Joining via a shared session link is planned and will pass `role=callee` with an existing `sessionId`.
 
 ## Notes
-- Jitsi P2P is automatically negotiated when 2 participants and supported.
 - For production, add proper permission flows, error handling, and DI.
+- To avoid reCAPTCHA Enterprise billing for phone auth in development, a debug-only bypass is enabled in `P2PApp`. Do not enable this in release builds.
 

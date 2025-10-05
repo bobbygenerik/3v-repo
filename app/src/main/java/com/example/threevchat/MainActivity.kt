@@ -45,6 +45,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Start listening for incoming calls once UI is ready
+        vm.startIncomingCallListener()
+
         handleIntent(intent)
     }
 

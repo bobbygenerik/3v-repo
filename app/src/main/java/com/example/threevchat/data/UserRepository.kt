@@ -18,6 +18,7 @@ class UserRepository(private val app: Application) {
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 
     private var verificationId: String? = null
+    private var resendingToken: PhoneAuthProvider.ForceResendingToken? = null
 
     /* Username/password registration removed (phone-only auth)
     suspend fun registerWithUsername(username: String, password: String): Result<Unit> {
@@ -75,30 +76,53 @@ class UserRepository(private val app: Application) {
         activity: Activity,
         phone: String,
         onError: (String) -> Unit = {},
-        onCodeSent: () -> Unit = {}
+        onCodeSent: () -> Unit = {},
+        forceResend: Boolean = false
     ) {
+        // During development, you can disable app verification to allow code sending without Play Integrity on emulators/devices.
+        // Make sure to NOT ship with this enabled.
+        try {
+            val disable = com.example.threevchat.BuildConfig.PHONE_AUTH_DISABLE_APP_VERIFICATION
+            if (disable) {
+                FirebaseAuth.getInstance().firebaseAuthSettings.forceRecaptchaFlowForTesting(false)
+                FirebaseAuth.getInstance().firebaseAuthSettings.setAppVerificationDisabledForTesting(true)
+                Log.w("Auth", "App verification DISABLED for testing (do not enable in production)")
+            }
+        } catch (t: Throwable) {
+            Log.w("Auth", "Unable to adjust FirebaseAuthSettings: ${t.message}")
+        }
         val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
             override fun onVerificationCompleted(credential: PhoneAuthCredential) {
                 Log.d("Auth", "Auto verification completed")
             }
             override fun onVerificationFailed(e: FirebaseException) {
                 Log.e("Auth", "Verification failed", e)
-                onError(e.localizedMessage ?: e.message ?: "Phone verification failed")
+                val detail = e.localizedMessage ?: e.message ?: "Phone verification failed"
+                onError("${e::class.java.simpleName}: $detail")
             }
             override fun onCodeSent(verificationId: String, token: PhoneAuthProvider.ForceResendingToken) {
                 this@UserRepository.verificationId = verificationId
+                this@UserRepository.resendingToken = token
                 Log.d("Auth", "Code sent: $verificationId")
                 onCodeSent()
             }
         }
-        val options = PhoneAuthOptions.newBuilder(auth)
+        val builder = PhoneAuthOptions.newBuilder(auth)
             .setPhoneNumber(phone)
             .setTimeout(60L, TimeUnit.SECONDS)
             .setActivity(activity)
             .setCallbacks(callbacks)
-            .build()
-        PhoneAuthProvider.verifyPhoneNumber(options)
+        if (forceResend) {
+            resendingToken?.let { builder.setForceResendingToken(it) }
+        }
+        try {
+            PhoneAuthProvider.verifyPhoneNumber(builder.build())
+        } catch (t: Throwable) {
+            onError("PhoneAuth start failed: ${t.message}")
+        }
     }
+
+    fun hasResendToken(): Boolean = resendingToken != null
 
     suspend fun verifySmsCode(code: String): Result<Unit> {
         val id = verificationId ?: return Result.failure(IllegalStateException("No verification id"))

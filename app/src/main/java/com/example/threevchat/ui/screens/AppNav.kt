@@ -17,7 +17,8 @@ sealed class Routes(val route: String) {
 @Composable
 fun AppNav(vm: MainViewModel) {
     val nav: NavHostController = rememberNavController()
-    NavHost(navController = nav, startDestination = Routes.Register.route) {
+    val isLoggedIn = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null
+    NavHost(navController = nav, startDestination = if (isLoggedIn) Routes.Home.route else Routes.Register.route) {
         composable(Routes.Register.route) {
             RegisterScreen(vm = vm, onRegistered = { nav.navigate(Routes.Home.route) })
         }

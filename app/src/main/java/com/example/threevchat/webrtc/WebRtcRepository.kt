@@ -12,6 +12,8 @@ class WebRtcRepository(
     private val eglBase = EglBase.create()
     private val pcFactory: PeerConnectionFactory
     private var peerConnection: PeerConnection? = null
+    private val peers = mutableMapOf<String, PeerConnection>() // remoteId -> PC
+    private val peerPendingCandidates = mutableMapOf<String, MutableList<IceCandidate>>()
     private var videoCapturer: VideoCapturer? = null
     private var videoSource: VideoSource? = null
     private var audioSource: AudioSource? = null
@@ -20,6 +22,7 @@ class WebRtcRepository(
     private var videoSender: RtpSender? = null
     private var statsJob: Job? = null
     private var isRelayed = false
+    private val pendingRemoteCandidates = mutableListOf<IceCandidate>()
 
     init {
         PeerConnectionFactory.initialize(
@@ -33,12 +36,16 @@ class WebRtcRepository(
             .createPeerConnectionFactory()
     }
 
+    fun eglContext(): EglBase.Context = eglBase.eglBaseContext
+
     fun createPeerConnection(observer: PeerConnection.Observer): PeerConnection {
         val rtcConfig = PeerConnection.RTCConfiguration(WebRtcConfig.iceServers()).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
             tcpCandidatePolicy = PeerConnection.TcpCandidatePolicy.ENABLED
-            enableDtlsSrtp = true
             continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
+            if (com.example.threevchat.BuildConfig.TURN_FORCE_RELAY) {
+                iceTransportsType = PeerConnection.IceTransportsType.RELAY
+            }
         }
         peerConnection = pcFactory.createPeerConnection(rtcConfig, observer)
         return requireNotNull(peerConnection)
@@ -70,42 +77,184 @@ class WebRtcRepository(
     }
 
     fun addIceCandidate(c: IceCandidate) {
-        requireNotNull(peerConnection).addIceCandidate(c)
+        val pc = requireNotNull(peerConnection)
+        if (pc.remoteDescription == null) {
+            // Queue until remote description is set to avoid "AddIceCandidate failed" issues
+            pendingRemoteCandidates += c
+            Log.d("ICE", "Queued remote ICE candidate (no remoteDescription yet)")
+        } else {
+            pc.addIceCandidate(c)
+        }
+    }
+
+    // ---- Multi-peer helpers ----
+    fun ensurePeer(remoteId: String, observer: PeerConnection.Observer): PeerConnection {
+        return peers.getOrPut(remoteId) {
+            val rtcConfig = PeerConnection.RTCConfiguration(WebRtcConfig.iceServers()).apply {
+                sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
+                tcpCandidatePolicy = PeerConnection.TcpCandidatePolicy.ENABLED
+                continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
+                if (com.example.threevchat.BuildConfig.TURN_FORCE_RELAY) {
+                    iceTransportsType = PeerConnection.IceTransportsType.RELAY
+                }
+            }
+            val pc = pcFactory.createPeerConnection(rtcConfig, observer)!!
+            videoTrack?.let { pc.addTrack(it) }
+            audioTrack?.let { pc.addTrack(it) }
+            peerPendingCandidates[remoteId] = mutableListOf()
+            pc
+        }
+    }
+
+    fun addIceCandidate(remoteId: String, c: IceCandidate) {
+        val pc = peers[remoteId] ?: run {
+            // If peer not created yet, save in list and return
+            val list = peerPendingCandidates.getOrPut(remoteId) { mutableListOf() }
+            list += c
+            Log.d("ICE", "Queued candidate for $remoteId (peer not ready)")
+            return
+        }
+        if (pc.remoteDescription == null) {
+            peerPendingCandidates.getOrPut(remoteId) { mutableListOf() }.add(c)
+            Log.d("ICE", "Queued candidate for $remoteId (no remoteDescription)")
+        } else {
+            pc.addIceCandidate(c)
+        }
+    }
+
+    private fun drainPeerCandidates(remoteId: String) {
+        val pc = peers[remoteId] ?: return
+        val list = peerPendingCandidates[remoteId] ?: return
+        list.forEach { pc.addIceCandidate(it) }
+        list.clear()
+        Log.d("ICE", "Drained candidates for $remoteId")
+    }
+
+    suspend fun createAndSetOffer(remoteId: String, observer: PeerConnection.Observer, onLocalSdp: (SessionDescription) -> Unit, iceRestart: Boolean = false) {
+        val pc = ensurePeer(remoteId, observer)
+        val offer = suspendCancellableCoroutine<SessionDescription> { cont ->
+            val constraints = MediaConstraints().apply {
+                if (iceRestart) {
+                    mandatory.add(MediaConstraints.KeyValuePair("IceRestart", "true"))
+                }
+            }
+            pc.createOffer(object : SdpObserver {
+                override fun onCreateSuccess(sdp: SessionDescription) { if (cont.isActive) cont.resume(sdp) {} }
+                override fun onCreateFailure(error: String) { cont.cancel(Throwable(error)) }
+                override fun onSetSuccess() {}
+                override fun onSetFailure(p0: String) {}
+            }, constraints)
+        }
+        pc.setLocalDescription(SdpObserverStub(), offer)
+        onLocalSdp(offer)
+    }
+
+    fun setRemoteOffer(remoteId: String, offer: SessionDescription, onAnswerReady: (SessionDescription) -> Unit, observer: PeerConnection.Observer) {
+        val pc = ensurePeer(remoteId, observer)
+        pc.setRemoteDescription(object : SdpObserver {
+            override fun onSetSuccess() {
+                drainPeerCandidates(remoteId)
+                pc.createAnswer(object : SdpObserver {
+                    override fun onCreateSuccess(sdp: SessionDescription) {
+                        pc.setLocalDescription(SdpObserverStub(), sdp)
+                        onAnswerReady(sdp)
+                    }
+                    override fun onCreateFailure(error: String) { Log.e("SDP", "createAnswer($remoteId) failed: $error") }
+                    override fun onSetSuccess() {}
+                    override fun onSetFailure(p0: String) {}
+                }, MediaConstraints())
+            }
+            override fun onSetFailure(error: String) { Log.e("SDP", "setRemoteOffer($remoteId) failed: $error") }
+            override fun onCreateSuccess(p0: SessionDescription) {}
+            override fun onCreateFailure(p0: String) {}
+        }, offer)
+    }
+
+    fun setRemoteAnswer(remoteId: String, answer: SessionDescription) {
+        val pc = peers[remoteId] ?: return
+        pc.setRemoteDescription(object : SdpObserver {
+            override fun onSetSuccess() { drainPeerCandidates(remoteId) }
+            override fun onSetFailure(error: String) { Log.e("SDP", "setRemoteAnswer($remoteId) failed: $error") }
+            override fun onCreateSuccess(p0: SessionDescription) {}
+            override fun onCreateFailure(p0: String) {}
+        }, answer)
     }
 
     fun setRemoteAnswer(answer: SessionDescription) {
-        requireNotNull(peerConnection).setRemoteDescription(SdpObserverStub(), answer)
-        startRelayMonitor()
+        val pc = requireNotNull(peerConnection)
+        pc.setRemoteDescription(object : SdpObserver {
+            override fun onSetSuccess() {
+                drainPendingCandidates()
+                startRelayMonitor()
+            }
+            override fun onSetFailure(p0: String) { Log.e("SDP", "setRemoteAnswer failed: $p0") }
+            override fun onCreateSuccess(p0: SessionDescription) {}
+            override fun onCreateFailure(p0: String) {}
+        }, answer)
     }
 
     fun setRemoteOffer(offer: SessionDescription, onAnswerReady: (SessionDescription) -> Unit) {
         val pc = requireNotNull(peerConnection)
-        pc.setRemoteDescription(SdpObserverStub(), offer)
-        pc.createAnswer(object : SdpObserver {
-            override fun onCreateSuccess(sdp: SessionDescription) {
-                pc.setLocalDescription(SdpObserverStub(), sdp)
-                onAnswerReady(sdp)
+        pc.setRemoteDescription(object : SdpObserver {
+            override fun onSetSuccess() {
+                drainPendingCandidates()
+                pc.createAnswer(object : SdpObserver {
+                    override fun onCreateSuccess(sdp: SessionDescription) {
+                        pc.setLocalDescription(SdpObserverStub(), sdp)
+                        onAnswerReady(sdp)
+                    }
+                    override fun onCreateFailure(error: String) { Log.e("SDP", "createAnswer failed: $error") }
+                    override fun onSetSuccess() {}
+                    override fun onSetFailure(p0: String) {}
+                }, MediaConstraints())
             }
-            override fun onCreateFailure(p0: String?) {}
-            override fun onSetSuccess() {}
-            override fun onSetFailure(p0: String?) {}
-        }, MediaConstraints())
+            override fun onSetFailure(error: String) { Log.e("SDP", "setRemoteOffer failed: $error") }
+            override fun onCreateSuccess(p0: SessionDescription) {}
+            override fun onCreateFailure(p0: String) {}
+        }, offer)
     }
 
-    suspend fun createAndSetOffer(onLocalSdp: (SessionDescription) -> Unit) {
+    suspend fun createAndSetOffer(onLocalSdp: (SessionDescription) -> Unit, iceRestart: Boolean = false) {
         val pc = requireNotNull(peerConnection)
         val offer = suspendCancellableCoroutine<SessionDescription> { cont ->
+            val constraints = MediaConstraints().apply {
+                if (iceRestart) {
+                    mandatory.add(MediaConstraints.KeyValuePair("IceRestart", "true"))
+                }
+            }
             pc.createOffer(object : SdpObserver {
                 override fun onCreateSuccess(sdp: SessionDescription) {
                     if (cont.isActive) cont.resume(sdp) {}
                 }
-                override fun onCreateFailure(error: String) = cont.cancel(Throwable(error))
+                override fun onCreateFailure(error: String) { cont.cancel(Throwable(error)) }
                 override fun onSetSuccess() {}
-                override fun onSetFailure(p0: String?) {}
-            }, MediaConstraints())
+                override fun onSetFailure(p0: String) {}
+            }, constraints)
         }
         pc.setLocalDescription(SdpObserverStub(), offer)
         onLocalSdp(offer)
+    }
+
+    fun restartIceFor(remoteId: String, observer: PeerConnection.Observer, onLocalSdp: (SessionDescription) -> Unit) {
+        scope.launch {
+            try {
+                createAndSetOffer(remoteId, observer, onLocalSdp, iceRestart = true)
+            } catch (t: Throwable) {
+                Log.e("ICE", "restartIceFor($remoteId) failed: ${t.message}")
+            }
+        }
+    }
+
+    fun restartIceForAll(observerProvider: (String) -> PeerConnection.Observer, onLocalSdp: (String, SessionDescription) -> Unit) {
+        peers.keys.forEach { id ->
+            scope.launch {
+                try {
+                    createAndSetOffer(id, observerProvider(id), { sdp -> onLocalSdp(id, sdp) }, iceRestart = true)
+                } catch (t: Throwable) {
+                    Log.e("ICE", "restartIceForAll($id) failed: ${t.message}")
+                }
+            }
+        }
     }
 
     private fun startRelayMonitor() {
@@ -138,9 +287,13 @@ class WebRtcRepository(
     private fun setMaxBitrate(bps: Int) {
         val sender = videoSender ?: return
         val params = sender.parameters
-        val encs = if (params.encodings.isNotEmpty()) params.encodings else listOf(RtpParameters.Encoding(null, true, null, null, null, null))
-        encs.forEach { it.maxBitrateBps = bps }
-        params.encodings = encs
+        if (params.encodings.isEmpty()) {
+            Log.w("BITRATE", "No encodings present; skipping maxBitrate update")
+            return
+        }
+        // Note: In newer WebRTC, RtpParameters.encodings may be immutable/final.
+        // Update entries in-place without reassigning the encodings list.
+        params.encodings.forEach { it.maxBitrateBps = bps }
         sender.parameters = params
         Log.i("BITRATE", "maxBitrate=${bps / 1000} kbps")
     }
@@ -152,7 +305,16 @@ class WebRtcRepository(
         videoSource?.dispose()
         audioSource?.dispose()
         peerConnection?.dispose()
+        peers.values.forEach { it.dispose() }
         eglBase.release()
+    }
+
+    private fun drainPendingCandidates() {
+        val pc = peerConnection ?: return
+        if (pendingRemoteCandidates.isEmpty()) return
+        pendingRemoteCandidates.forEach { pc.addIceCandidate(it) }
+        pendingRemoteCandidates.clear()
+        Log.d("ICE", "Drained queued remote ICE candidates")
     }
 
     private fun buildCameraCapturer(): VideoCapturer? {
@@ -164,10 +326,24 @@ class WebRtcRepository(
         return null
     }
 
+    // ---- Media controls ----
+    fun setMicEnabled(enabled: Boolean) {
+        audioTrack?.setEnabled(enabled)
+    }
+    fun setVideoEnabled(enabled: Boolean) {
+        videoTrack?.setEnabled(enabled)
+    }
+    fun switchCamera() {
+        val cap = videoCapturer
+        if (cap is CameraVideoCapturer) {
+            try { cap.switchCamera(null) } catch (_: Throwable) {}
+        }
+    }
+
     private class SdpObserverStub : SdpObserver {
-        override fun onCreateSuccess(p0: SessionDescription?) {}
+        override fun onCreateSuccess(p0: SessionDescription) {}
         override fun onSetSuccess() {}
-        override fun onCreateFailure(p0: String?) {}
-        override fun onSetFailure(p0: String?) {}
+        override fun onCreateFailure(p0: String) {}
+        override fun onSetFailure(p0: String) {}
     }
 }

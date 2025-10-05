@@ -16,15 +16,58 @@
         android:layout_gravity="top|end"
         android:layout_margin="12dp" />
 
-    <!-- App logo overlay (replace @drawable/app_logo with actual asset when provided) -->
-    <ImageView
-        android:id="@+id/logoView"
-        android:layout_width="72dp"
-        android:layout_height="72dp"
-        android:layout_gravity="bottom|start"
-        android:layout_margin="16dp"
-        android:alpha="0.85"
-        android:contentDescription="@string/app_name"
-        android:src="@drawable/app_logo" />
+    <!-- Lightweight debug overlay for connection/ICE status -->
+    <TextView
+        android:id="@+id/debugOverlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_margin="12dp"
+        android:padding="8dp"
+        android:background="#66000000"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:visibility="gone"
+        android:typeface="monospace"
+        android:maxLines="10" />
+
+    <!-- Call controls: end, add, menu -->
+    <LinearLayout
+        android:id="@+id/callControls"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:orientation="horizontal"
+        android:layout_marginBottom="32dp"
+        android:background="@android:color/transparent">
+        <ImageButton
+            android:id="@+id/btnReconnect"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:background="@android:color/transparent"
+            android:src="@android:drawable/ic_popup_sync"
+            android:contentDescription="Reconnect" />
+        <ImageButton
+            android:id="@+id/btnEndCall"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:background="@android:color/transparent"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:contentDescription="End Call" />
+        <ImageButton
+            android:id="@+id/btnAddPerson"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:background="@android:color/transparent"
+            android:src="@android:drawable/ic_menu_add"
+            android:contentDescription="Add Person" />
+        <ImageButton
+            android:id="@+id/btnMenu"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:background="@android:color/transparent"
+            android:src="@android:drawable/ic_menu_manage"
+            android:contentDescription="Menu" />
+    </LinearLayout>
 
 </FrameLayout>

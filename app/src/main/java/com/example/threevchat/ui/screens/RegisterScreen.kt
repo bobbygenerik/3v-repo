@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 fun RegisterScreen(vm: MainViewModel, onRegistered: () -> Unit) {
     val uiState by vm.uiState.collectAsState()
     val activity = LocalContext.current as android.app.Activity
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var phone by remember { mutableStateOf("") }
     var smsCode by remember { mutableStateOf("") }
@@ -27,7 +28,9 @@ fun RegisterScreen(vm: MainViewModel, onRegistered: () -> Unit) {
 
     LaunchedEffect(uiState.isLoggedIn) { proceedIfLoggedIn() }
 
-    Scaffold { padding ->
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -58,12 +61,32 @@ fun RegisterScreen(vm: MainViewModel, onRegistered: () -> Unit) {
                 Button(onClick = { vm.verifySmsCode(smsCode) }) { Text("Verify") }
             }
 
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val canResend = uiState.canResendInSec == 0
+                Button(onClick = { vm.resendCode(activity, phone) }, enabled = canResend) {
+                    val label = if (canResend) "Resend Code" else "Resend in ${uiState.canResendInSec}s"
+                    Text(label)
+                }
+            }
+
             if (uiState.error != null) {
+                // Also surface error in snackbar for visibility
+                LaunchedEffect(uiState.error) {
+                    snackbarHostState.showSnackbar(uiState.error!!)
+                }
                 Text(uiState.error!!, color = MaterialTheme.colorScheme.error)
             }
             if (uiState.loading) {
                 CircularProgressIndicator()
             }
+        }
+    }
+
+    // Show a one-time message when code is sent
+    if (uiState.codeSent) {
+        LaunchedEffect(uiState.codeSent) {
+            snackbarHostState.showSnackbar("Verification code sent")
+            vm.consumeCodeSent()
         }
     }
 }

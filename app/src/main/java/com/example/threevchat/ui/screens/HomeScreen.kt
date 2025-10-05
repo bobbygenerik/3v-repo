@@ -42,6 +42,11 @@ fun HomeScreen(vm: MainViewModel, onStartCall: () -> Unit, onViewCallLogs: () ->
             Button(onClick = { onViewCallLogs() }) {
                 Text("View Call Logs")
             }
+
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = { vm.signOut() }) {
+                Text("Sign out")
+            }
         }
     }
 }

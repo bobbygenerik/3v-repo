@@ -9,10 +9,8 @@ class P2PApp : Application() {
         super.onCreate()
         FirebaseApp.initializeApp(this)
 
-        // Debug-only: bypass app verification (reCAPTCHA/Play Integrity) for Phone Auth.
-        // This should NEVER be enabled in release builds.
-        // Use test phone numbers in Firebase Console to avoid sending real SMS during development.
-        if (BuildConfig.DEBUG) {
+        // Optional: bypass app verification for testing (controlled via local.properties)
+        if (BuildConfig.PHONE_AUTH_DISABLE_APP_VERIFICATION) {
             runCatching {
                 FirebaseAuth.getInstance().firebaseAuthSettings.setAppVerificationDisabledForTesting(true)
             }

@@ -21,6 +21,8 @@ android {
     def TURN_USERNAME_MODE = (localProps.getProperty('turn.username.mode') ?: 'STATIC') // STATIC or PHONE
     def TURN_STATIC_USERNAME = (localProps.getProperty('turn.username') ?: '')
     def TURN_PASSWORD = (localProps.getProperty('turn.password') ?: '')
+    def TURN_FORCE_RELAY = (localProps.getProperty('turn.forceRelay') ?: 'false')
+    def PHONE_AUTH_DISABLE_VERIFICATION = (localProps.getProperty('auth.disableVerification') ?: 'false')
 
     defaultConfig {
     applicationId 'com.example.threevchat'
@@ -40,6 +42,9 @@ android {
         buildConfigField 'String', 'TURN_USERNAME_MODE', '"' + TURN_USERNAME_MODE + '"'
         buildConfigField 'String', 'TURN_STATIC_USERNAME', '"' + TURN_STATIC_USERNAME + '"'
         buildConfigField 'String', 'TURN_PASSWORD', '"' + TURN_PASSWORD + '"'
+        buildConfigField 'boolean', 'TURN_FORCE_RELAY', TURN_FORCE_RELAY
+    // Controls Firebase phone auth verification bypass; default false to allow real SMS
+    buildConfigField 'boolean', 'PHONE_AUTH_DISABLE_APP_VERIFICATION', PHONE_AUTH_DISABLE_VERIFICATION
     }
 
     buildTypes {
@@ -49,6 +54,16 @@ android {
         }
         debug {
             minifyEnabled false
+        }
+    }
+
+    // Package only arm64-v8a for debug to keep APK small
+    splits {
+        abi {
+            enable true
+            reset()
+            include 'arm64-v8a'
+            universalApk false
         }
     }
 
@@ -83,6 +98,9 @@ dependencies {
     implementation 'androidx.activity:activity-compose:1.9.2'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.6'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6'
+
+    // AppCompat for Activity base class used by CallActivity
+    implementation 'androidx.appcompat:appcompat:1.7.0'
 
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.ui:ui-tooling-preview'
