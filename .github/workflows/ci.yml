@@ -77,7 +77,9 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-home-cache-cleanup: true
+          # Disable caching/cleanup to avoid post-step failures with older Gradle wrappers
+          cache-disabled: true
+          gradle-home-cache-cleanup: false
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
