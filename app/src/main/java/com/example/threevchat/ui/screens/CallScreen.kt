@@ -21,7 +21,7 @@ fun CallScreen(vm: MainViewModel) {
     LaunchedEffect(uiState.currentRoom) {
         val sessionId = uiState.currentRoom
         if (!sessionId.isNullOrBlank()) {
-            vm.launchCall(ctx, sessionId, role = "caller")
+            vm.launchCall(ctx, sessionId, role = uiState.currentRole)
         }
     }
 

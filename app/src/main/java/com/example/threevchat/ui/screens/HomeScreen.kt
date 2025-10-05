@@ -10,6 +10,7 @@ import com.example.threevchat.viewmodel.MainViewModel
 @Composable
 fun HomeScreen(vm: MainViewModel, onStartCall: () -> Unit, onViewCallLogs: () -> Unit) {
     var callee by remember { mutableStateOf("") }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold { padding ->
         Column(
@@ -31,6 +32,11 @@ fun HomeScreen(vm: MainViewModel, onStartCall: () -> Unit, onViewCallLogs: () ->
                 vm.startCallTo(callee)
                 onStartCall()
             }) { Text("Start Call") }
+
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = { vm.inviteViaMessages(ctx, callee.ifBlank { null }) }) {
+                Text("Invite via Messages")
+            }
 
             Spacer(Modifier.height(12.dp))
             Button(onClick = { onViewCallLogs() }) {

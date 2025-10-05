@@ -20,7 +20,8 @@ data class UiState(
     val isLoggedIn: Boolean = false,
     val loading: Boolean = false,
     val error: String? = null,
-    val currentRoom: String? = null
+    val currentRoom: String? = null,
+    val currentRole: String = "caller" // or "callee"
 )
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -77,7 +78,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
             ?: ""
         val sessionId = signaling.createSession(caller = caller, callee = callee)
-        _ui.value = _ui.value.copy(currentRoom = sessionId)
+        _ui.value = _ui.value.copy(currentRoom = sessionId, currentRole = "caller")
     }
 
     fun launchCall(context: Context, id: String, role: String) {
@@ -97,11 +98,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 startCallTo(number)
             }
         } else if (scheme == "p2pvideo" && data.host == "call") {
-            val callee = data.lastPathSegment ?: return
-            startCallTo(callee)
+            // Treat as a sessionId to join as callee
+            val sessionId = data.lastPathSegment ?: return
+            _ui.value = _ui.value.copy(currentRoom = sessionId, currentRole = "callee")
         } else if (scheme == "content" && data.host == "com.example.threevchat") {
             val callee = data.lastPathSegment ?: return
             startCallTo(callee)
         }
+    }
+
+    fun inviteViaMessages(context: Context, phone: String?) {
+        // Ensure a session exists
+        var sessionId = _ui.value.currentRoom
+        if (sessionId.isNullOrBlank()) {
+            val caller = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.phoneNumber
+                ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                ?: ""
+            // Create a placeholder session targeting provided phone (or empty)
+            sessionId = signaling.createSession(caller = caller, callee = phone ?: "")
+            _ui.value = _ui.value.copy(currentRoom = sessionId, currentRole = "caller")
+        }
+
+        val body = "Join my call: p2pvideo://call/$sessionId"
+        val uri = if (!phone.isNullOrBlank()) android.net.Uri.parse("smsto:$phone") else android.net.Uri.parse("smsto:")
+        val intent = Intent(Intent.ACTION_SENDTO, uri).apply {
+            putExtra("sms_body", body)
+        }
+        if (context is android.app.Activity) context.startActivity(intent) else intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).also { context.startActivity(intent) }
     }
 }

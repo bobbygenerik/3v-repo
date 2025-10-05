@@ -16,4 +16,15 @@
         android:layout_gravity="top|end"
         android:layout_margin="12dp" />
 
+    <!-- App logo overlay (replace @drawable/app_logo with actual asset when provided) -->
+    <ImageView
+        android:id="@+id/logoView"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="16dp"
+        android:alpha="0.85"
+        android:contentDescription="@string/app_name"
+        android:src="@drawable/ic_launcher_foreground" />
+
 </FrameLayout>
