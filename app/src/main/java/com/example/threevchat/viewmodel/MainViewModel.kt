@@ -7,6 +7,8 @@ import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.threevchat.data.UserRepository
+import com.example.threevchat.signaling.CallSignalingRepository
+import com.example.threevchat.ui.CallActivity
 // import com.example.threevchat.util.JitsiRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +26,7 @@ data class UiState(
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val userRepo = UserRepository(app)
     // private val jitsiRepo = JitsiRepository(app)
+    private val signaling = CallSignalingRepository()
 
     private val _ui = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _ui
@@ -69,18 +72,36 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun startCallTo(callee: String) {
-        // For now, just store the callee; WebRTC signaling will create a session/room later
-        _ui.value = _ui.value.copy(currentRoom = callee)
+        // Create a signaling session and store the sessionId in UI state
+        val caller = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.phoneNumber
+            ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+            ?: ""
+        val sessionId = signaling.createSession(caller = caller, callee = callee)
+        _ui.value = _ui.value.copy(currentRoom = sessionId)
     }
 
-    fun launchCall(context: Context, id: String) {
-        // TODO: launch CallActivity with role and sessionId once WebRTC is wired
+    fun launchCall(context: Context, id: String, role: String) {
+        val i = Intent(context, CallActivity::class.java)
+            .putExtra("sessionId", id)
+            .putExtra("role", role)
+        if (context is Activity) context.startActivity(i) else i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).also { context.startActivity(i) }
     }
 
     fun handleIncomingIntent(intent: Intent) {
-        // TODO: parse tel:/custom scheme and map to session creation
-        intent.data?.schemeSpecificPart?.let { number ->
-            _ui.value = _ui.value.copy(currentRoom = number)
+        // Parse tel:/custom scheme to create a session if a phone number or id is present
+        val data = intent.data ?: return
+        val scheme = data.scheme
+        if (scheme == "tel") {
+            val number = data.schemeSpecificPart
+            if (!number.isNullOrBlank()) {
+                startCallTo(number)
+            }
+        } else if (scheme == "p2pvideo" && data.host == "call") {
+            val callee = data.lastPathSegment ?: return
+            startCallTo(callee)
+        } else if (scheme == "content" && data.host == "com.example.threevchat") {
+            val callee = data.lastPathSegment ?: return
+            startCallTo(callee)
         }
     }
 }

@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.example.threevchat.viewmodel.MainViewModel
 import androidx.compose.ui.platform.LocalContext
+import com.example.threevchat.viewmodel.UiState
 
 @Composable
 fun CallScreen(vm: MainViewModel) {
@@ -18,7 +19,10 @@ fun CallScreen(vm: MainViewModel) {
     val ctx = LocalContext.current
 
     LaunchedEffect(uiState.currentRoom) {
-        // TODO: launch native WebRTC CallActivity once wired
+        val sessionId = uiState.currentRoom
+        if (!sessionId.isNullOrBlank()) {
+            vm.launchCall(ctx, sessionId, role = "caller")
+        }
     }
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

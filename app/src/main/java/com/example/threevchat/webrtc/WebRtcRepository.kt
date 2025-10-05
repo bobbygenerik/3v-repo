@@ -96,7 +96,9 @@ class WebRtcRepository(
         val pc = requireNotNull(peerConnection)
         val offer = suspendCancellableCoroutine<SessionDescription> { cont ->
             pc.createOffer(object : SdpObserver {
-                override fun onCreateSuccess(sdp: SessionDescription) = cont.resume(sdp, null)
+                override fun onCreateSuccess(sdp: SessionDescription) {
+                    if (cont.isActive) cont.resume(sdp) {}
+                }
                 override fun onCreateFailure(error: String) = cont.cancel(Throwable(error))
                 override fun onSetSuccess() {}
                 override fun onSetFailure(p0: String?) {}

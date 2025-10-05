@@ -85,7 +85,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-storage-ktx'
 
     // Native WebRTC for 1:1 calls (replace Jitsi)
-    implementation 'org.webrtc:google-webrtc:1.0.32006'
+    implementation 'io.github.webrtc-sdk:android:137.7151.04'
 
     // Play Services (for phone auth)
     implementation 'com.google.android.gms:play-services-auth:21.2.0'

@@ -2,7 +2,6 @@ pluginManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://github.com/jitsi/jitsi-maven-repository/raw/master/releases' }
     }
 }
 
@@ -11,9 +10,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://github.com/jitsi/jitsi-maven-repository/raw/master/releases' }
     }
 }
 
-rootProject.name = 'P2PVideoJitsi'
+rootProject.name = 'P2PVideo'
 include ':app'
