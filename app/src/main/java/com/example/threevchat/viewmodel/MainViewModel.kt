@@ -7,7 +7,7 @@ import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.threevchat.data.UserRepository
-import com.example.threevchat.util.JitsiRepository
+// import com.example.threevchat.util.JitsiRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -23,7 +23,7 @@ data class UiState(
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val userRepo = UserRepository(app)
-    private val jitsiRepo = JitsiRepository(app)
+    // private val jitsiRepo = JitsiRepository(app)
 
     private val _ui = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _ui
@@ -69,18 +69,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun startCallTo(callee: String) {
-        val room = jitsiRepo.buildRoomNameForCallee(callee)
-        _ui.value = _ui.value.copy(currentRoom = room)
+        // For now, just store the callee; WebRTC signaling will create a session/room later
+        _ui.value = _ui.value.copy(currentRoom = callee)
     }
 
-    fun launchJitsiCall(context: Context, room: String) {
-        jitsiRepo.launchJitsi(context, room)
+    fun launchCall(context: Context, id: String) {
+        // TODO: launch CallActivity with role and sessionId once WebRTC is wired
     }
 
     fun handleIncomingIntent(intent: Intent) {
-        val parsed = jitsiRepo.parseCallIntent(intent)
-        parsed?.let {
-            _ui.value = _ui.value.copy(currentRoom = it)
+        // TODO: parse tel:/custom scheme and map to session creation
+        intent.data?.schemeSpecificPart?.let { number ->
+            _ui.value = _ui.value.copy(currentRoom = number)
         }
     }
 }

@@ -18,12 +18,10 @@ fun CallScreen(vm: MainViewModel) {
     val ctx = LocalContext.current
 
     LaunchedEffect(uiState.currentRoom) {
-        uiState.currentRoom?.let { room ->
-            vm.launchJitsiCall(ctx, room)
-        }
+        // TODO: launch native WebRTC CallActivity once wired
     }
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Launching call...")
+        Text("Preparing call... (native WebRTC)")
     }
 }

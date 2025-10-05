@@ -84,10 +84,8 @@ dependencies {
     implementation 'com.google.firebase:firebase-config-ktx'
     implementation 'com.google.firebase:firebase-storage-ktx'
 
-    // Jitsi Meet SDK (8.6.0 available in Jitsi Maven repository)
-    implementation('org.jitsi.react:jitsi-meet-sdk:8.6.0') {
-        transitive = true
-    }
+    // Native WebRTC for 1:1 calls (replace Jitsi)
+    implementation 'org.webrtc:google-webrtc:1.0.32006'
 
     // Play Services (for phone auth)
     implementation 'com.google.android.gms:play-services-auth:21.2.0'
