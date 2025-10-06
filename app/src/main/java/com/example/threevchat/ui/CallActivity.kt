@@ -37,7 +37,7 @@ class CallActivity : ComponentActivity(), PeerConnection.Observer {
     private lateinit var role: String   // "caller" or "callee"
     private lateinit var sessionId: String
     private lateinit var selfId: String
-    private var useMesh = true
+    private var useMesh = com.example.threevchat.BuildConfig.CALL_USE_MESH
     private var speakerOn = false
     private var micOn = true
     private var camOn = true

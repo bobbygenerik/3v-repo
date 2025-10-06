@@ -45,6 +45,12 @@ android {
         buildConfigField 'boolean', 'TURN_FORCE_RELAY', TURN_FORCE_RELAY
     // Controls Firebase phone auth verification bypass; default false to allow real SMS
     buildConfigField 'boolean', 'PHONE_AUTH_DISABLE_APP_VERIFICATION', PHONE_AUTH_DISABLE_VERIFICATION
+
+        // Signaling/runtime feature flags
+        // Use new multi-party mesh signaling by default; set to false to force legacy 1:1 path
+        buildConfigField 'boolean', 'CALL_USE_MESH', 'true'
+        // Simple dedupe window for incoming Firestore signals (milliseconds)
+        buildConfigField 'int', 'SIGNAL_DEDUP_WINDOW_MS', '15000'
     }
 
     buildTypes {

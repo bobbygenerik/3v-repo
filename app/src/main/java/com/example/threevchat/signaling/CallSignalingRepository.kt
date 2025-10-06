@@ -12,6 +12,22 @@ import java.util.UUID
 class CallSignalingRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
+    // Feature flag: prefer mesh signaling when enabled
+    private val meshEnabled: Boolean = com.example.threevchat.BuildConfig.CALL_USE_MESH
+    // Simple in-memory dedupe for signals within a time window
+    private val processedQueue: ArrayDeque<Pair<String, Long>> = ArrayDeque()
+    private val seenIds: HashSet<String> = HashSet()
+    private fun remember(id: String) {
+        val now = System.currentTimeMillis()
+        processedQueue.addLast(id to now)
+        seenIds.add(id)
+        val cutoff = now - com.example.threevchat.BuildConfig.SIGNAL_DEDUP_WINDOW_MS
+        while (processedQueue.isNotEmpty() && processedQueue.first().second < cutoff) {
+            val old = processedQueue.removeFirst().first
+            seenIds.remove(old)
+        }
+    }
+    private fun isNew(id: String): Boolean = !seenIds.contains(id)
     fun createSession(caller: String, callee: String): String {
         val id = UUID.randomUUID().toString()
         val doc = db.collection("calls").document(id)
@@ -31,6 +47,11 @@ class CallSignalingRepository(
     }
 
     fun listenSession(id: String): Flow<CallSession> = callbackFlow {
+        if (meshEnabled) {
+            // Legacy doc-level session listener disabled in mesh mode
+            awaitClose { }
+            return@callbackFlow
+        }
         val reg = sessionRef(id).addSnapshotListener { snap, _ ->
             snap?.toObject(CallSession::class.java)?.let { trySend(it).isSuccess }
         }
@@ -42,6 +63,11 @@ class CallSignalingRepository(
     }
 
     fun listenCandidates(id: String, fromOtherSide: String): Flow<IceCandidateDTO> = callbackFlow {
+        if (meshEnabled) {
+            // Disabled in mesh mode to avoid double-processing
+            awaitClose { }
+            return@callbackFlow
+        }
         var reg: ListenerRegistration? = null
         reg = sessionRef(id).collection("candidates")
             .whereNotEqualTo("from", fromOtherSide)
@@ -125,6 +151,9 @@ class CallSignalingRepository(
             .addSnapshotListener { qs, _ ->
                 qs?.documentChanges?.forEach { dc ->
                     if (dc.type == com.google.firebase.firestore.DocumentChange.Type.ADDED) {
+                        val docId = dc.document.id
+                        if (!isNew(docId)) return@forEach
+                        remember(docId)
                         dc.document.toObject(SignalDTO::class.java).also { trySend(it).isSuccess }
                     }
                 }
