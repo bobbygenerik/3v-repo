@@ -44,13 +44,15 @@ jobs:
           if-no-files-found: error
 
       - name: Show debug keystore SHA-1/SHA-256 (for Firebase Phone Auth)
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           KS="$HOME/.android/debug.keystore"
-          if [ ! -f "$KS" ]; then
-            echo "debug.keystore not found at $KS. Gradle usually creates it on first build." >&2
-          fi
           echo "\nAndroid debug keystore fingerprints (CI runner):\n"
-          keytool -list -v -alias androiddebugkey -keystore "$KS" -storepass android -keypass android | sed -n 's/^\(SHA1:\|SHA256:\)/\1/p'
+          if [ -f "$KS" ]; then
+            keytool -list -v -alias androiddebugkey -keystore "$KS" -storepass android -keypass android | sed -n 's/^\(SHA1:\|SHA256:\)/\1/p'
+          else
+            echo "(debug.keystore not found at $KS — this is normal if assembleDebug failed earlier)" >&2
+          fi
           echo "\nAdd these (SHA-1 and SHA-256) to Firebase Console → Project settings → Your apps → Android app."
