@@ -49,6 +49,9 @@ fi
 export PATH="$JAVA_HOME/bin:$PATH"
 
 SDK_ROOT="$HOME/android-sdk"
+# Capture the repository root BEFORE any directory changes so we can write local.properties correctly
+# If not in a git repo, fall back to current working directory
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 CMDLINE_TOOLS_VERSION="11076708_latest" # as of 2025-10
 CMDLINE_ZIP="commandlinetools-linux-${CMDLINE_TOOLS_VERSION}.zip"
 CMDLINE_URL="https://dl.google.com/android/repository/${CMDLINE_ZIP}"
@@ -100,7 +103,6 @@ if ! grep -q "ANDROID_SDK_ROOT" "$PROFILE"; then
 fi
 
 ## Write/update local.properties with the correct sdk.dir without overwriting other keys
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 LP="$REPO_ROOT/local.properties"
 touch "$LP"
 if grep -q '^sdk.dir=' "$LP"; then

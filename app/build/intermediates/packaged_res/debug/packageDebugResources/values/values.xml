@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">P2P Video</string>
+    <color name="ic_launcher_background">#121212</color>
+    <string name="app_name">Três</string>
     <string name="gcm_defaultSenderId" translatable="false">1063504492653</string>
     <string name="google_api_key" translatable="false">AIzaSyAB0qDVOK_ZC6ptLwVB-QlfPhL90dAdpLI</string>
     <string name="google_app_id" translatable="false">1:1063504492653:android:aec908739ae747676be764</string>

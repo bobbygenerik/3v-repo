@@ -128,9 +128,9 @@ class CallActivity : ComponentActivity(), PeerConnection.Observer {
     private fun startAsCaller() {
         val r = repo ?: return
         scope.launch {
-            r.createAndSetOffer { offer ->
+            r.createAndSetOffer(onLocalSdp = { offer: SessionDescription ->
                 scope.launch { signaling.setOffer(sessionId, offer.description) }
-            }
+            })
             signaling.listenSession(sessionId).collectLatest { sess ->
                 val answer = sess.answerSdp ?: return@collectLatest
                 r.setRemoteAnswer(SessionDescription(SessionDescription.Type.ANSWER, answer))
@@ -148,7 +148,7 @@ class CallActivity : ComponentActivity(), PeerConnection.Observer {
         scope.launch {
             signaling.listenSession(sessionId).collectLatest { sess ->
                 val offer = sess.offerSdp ?: return@collectLatest
-                r.setRemoteOffer(SessionDescription(SessionDescription.Type.OFFER, offer)) { answer ->
+                r.setRemoteOffer(SessionDescription(SessionDescription.Type.OFFER, offer)) { answer: SessionDescription ->
                     scope.launch { signaling.setAnswer(sessionId, answer.description) }
                 }
             }
@@ -270,11 +270,11 @@ class CallActivity : ComponentActivity(), PeerConnection.Observer {
         val r = repo ?: return
         val renderer = getOrCreateRendererFor(remoteId)
         scope.launch {
-            r.createAndSetOffer(remoteId, observer = perPeerObserver(remoteId, renderer)) { offer ->
+            r.createAndSetOffer(remoteId, observer = perPeerObserver(remoteId, renderer), onLocalSdp = { offer: SessionDescription ->
                 scope.launch { signaling.sendSignal(sessionId, com.example.threevchat.signaling.SignalDTO(
                     type = "offer", from = selfId, to = remoteId, sdp = offer.description, sdpType = "OFFER"
                 )) }
-            }
+            })
         }
     }
 
@@ -296,6 +296,9 @@ class CallActivity : ComponentActivity(), PeerConnection.Observer {
         }
         override fun onAddStream(stream: MediaStream?) {
             stream?.videoTracks?.firstOrNull()?.addSink(renderer)
+        }
+        override fun onRemoveStream(stream: MediaStream?) {
+            // No-op for now; renderer will be reused or updated by future tracks
         }
         // Unused in per-peer observer
         override fun onSignalingChange(p0: PeerConnection.SignalingState) {}
@@ -429,7 +432,7 @@ class CallActivity : ComponentActivity(), PeerConnection.Observer {
         } else {
             scope.launch {
                 try {
-                    r.createAndSetOffer(onLocalSdp = { offer ->
+                    r.createAndSetOffer(onLocalSdp = { offer: SessionDescription ->
                         scope.launch { signaling.setOffer(sessionId, offer.description) }
                     }, iceRestart = true)
                 } catch (_: Throwable) {}
@@ -617,9 +620,4 @@ class CallActivity : ComponentActivity(), PeerConnection.Observer {
         listenerRegs.clear()
     }
 }
-        override fun onIceConnectionChange(state: PeerConnection.IceConnectionState) {
-            appendDebugLine("[$remoteId] ICE=" + state.name)
-        }
-        override fun onConnectionChange(state: PeerConnection.PeerConnectionState) {
-            appendDebugLine("[$remoteId] Conn=" + state.name)
-        }
+ 

@@ -1,29 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.threevchat.app-mergeDebugResources-89:/values-large-v4/values-large-v4.xml",
+            "outputFile": "com.example.threevchat.app-mergeDebugResources-65:/values-large-v4/values-large-v4.xml",
             "map": [
                 {
-                    "source": "/home/codespace/.gradle/caches/transforms-4/4e26d97de2868e6473516eb772f5067a/transformed/material-1.6.1/res/values-large-v4/values-large-v4.xml",
-                    "from": {
-                        "startLines": "2,3,4,10",
-                        "startColumns": "4,4,4,4",
-                        "startOffsets": "55,177,311,752",
-                        "endLines": "2,3,9,15",
-                        "endColumns": "121,133,10,10",
-                        "endOffsets": "172,306,747,1190"
-                    },
-                    "to": {
-                        "startLines": "11,12,13,19",
-                        "startColumns": "4,4,4,4",
-                        "startOffsets": "752,874,1008,1449",
-                        "endLines": "11,12,18,24",
-                        "endColumns": "121,133,10,10",
-                        "endOffsets": "869,1003,1444,1887"
-                    }
-                },
-                {
-                    "source": "/home/codespace/.gradle/caches/transforms-4/eaa87c146454385a25386cfbf74c609a/transformed/appcompat-1.4.2/res/values-large-v4/values-large-v4.xml",
+                    "source": "/home/vscode/.gradle/caches/transforms-4/e6651584b02f352caf042bf3905d32d7/transformed/appcompat-1.7.0/res/values-large-v4/values-large-v4.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10",
                         "startColumns": "4,4,4,4,4,4,4,4,4",
