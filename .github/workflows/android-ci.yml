@@ -33,8 +33,20 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
+      - name: Show Gradle and environment info
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ./gradlew -v || true
+          java -version || true
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "Listing build-tools..."
+          ls -la "$ANDROID_HOME/build-tools" || true
+          echo "sdkmanager list (first 200 lines)"
+          sdkmanager --list | head -n 200 || true
+
       - name: Assemble debug
-        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace --info
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
