@@ -13,3 +13,6 @@
 ## or strip members used by native code or reflection inside the library.
 -keep class org.webrtc.** { *; }
 -dontwarn org.webrtc.**
+
+# R8: suppress warnings for missing java.lang.reflect.AnnotatedType
+-dontwarn java.lang.reflect.AnnotatedType

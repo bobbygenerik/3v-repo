@@ -4,71 +4,180 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.threevchat.data.UserRepository
 import com.example.threevchat.signaling.CallSignalingRepository
-import com.example.threevchat.ui.CallActivity
-import com.example.threevchat.BuildConfig
-// import com.example.threevchat.util.JitsiRepository
+import com.example.threevchat.activities.CallActivity
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+// --- Data Classes and Enums ---
+
+enum class BannerKind { SUCCESS, ERROR, INFO }
+data class BannerMessage(val message: String, val kind: BannerKind)
 
 data class UiState(
-
     val isLoggedIn: Boolean = false,
     val loading: Boolean = false,
     val error: String? = null,
+    val banner: BannerMessage? = null,
     val currentRoom: String? = null,
-    val currentRole: String = "caller", // or "callee"
+    val currentRole: String = "caller",
+    val needsVerification: Boolean = false,
     val codeSent: Boolean = false,
-    val canResendInSec: Int = 0
+    val canResendInSec: Int = 0,
+    val phoneVerificationInProgress: Boolean = false
 )
+
+// --- ViewModel ---
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val userRepo = UserRepository(app)
-    // private val jitsiRepo = JitsiRepository(app)
     private val signaling = CallSignalingRepository()
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 
     private val _ui = MutableStateFlow(UiState())
-    val uiState: StateFlow<UiState> = _ui
+    val uiState: StateFlow<UiState> = _ui.asStateFlow()
 
-    // Call logs state
     private val _callLogs = MutableStateFlow<List<Map<String, Any>>>(emptyList())
-    val callLogs: StateFlow<List<Map<String, Any>>> = _callLogs
+    val callLogs: StateFlow<List<Map<String, Any>>> = _callLogs.asStateFlow()
 
-    // Incoming call listener job
-    private var incomingJob: kotlinx.coroutines.Job? = null
+    private var incomingJob: Job? = null
+    private var pendingUsername: String? = null
 
-    // Fetch call logs for a user
+    // --- Public Actions ---
+
+    fun queueUsernameClaim(username: String) {
+        val uname = username.trim().lowercase()
+        if (uname.isNotBlank()) pendingUsername = uname
+    }
+
+    fun consumeBanner() {
+        _ui.update { it.copy(banner = null) }
+    }
+
     fun fetchCallLogs(userId: String, limit: Long = 20, startAfter: Long? = null) {
         viewModelScope.launch {
             val result = userRepo.getCallLogsForUser(userId, limit, startAfter)
             if (result.isSuccess) {
                 _callLogs.value = result.getOrNull() ?: emptyList()
-            } else {
-                // Optionally handle error
             }
         }
     }
 
-    // Username/password flows removed; phone-only auth
+    fun signUpEmail(email: String, password: String) {
+        viewModelScope.launch {
+            _ui.update { it.copy(loading = true, error = null) }
+            val res = userRepo.registerWithEmail(email, password)
+            if (res.isSuccess) {
+                _ui.update { it.copy(loading = false, isLoggedIn = true) }
+                claimUsernameIfPending()
+            } else {
+                _ui.update { it.copy(loading = false, error = res.exceptionOrNull()?.message) }
+            }
+        }
+    }
+
+    fun signInEmail(email: String, password: String) {
+        viewModelScope.launch {
+            _ui.update { it.copy(loading = true, error = null) }
+            val res = userRepo.loginWithEmail(email, password)
+            if (res.isSuccess) {
+                // Only set isLoggedIn and clear currentRoom, do NOT navigate to call screen
+                _ui.update { it.copy(loading = false, isLoggedIn = true, needsVerification = false, currentRoom = null) }
+                claimUsernameIfPending()
+            } else {
+                val msg = res.exceptionOrNull()?.message ?: "Login failed"
+                val unverified = msg.contains("verify", ignoreCase = true)
+                _ui.update {
+                    it.copy(loading = false, error = msg, needsVerification = unverified, isLoggedIn = !unverified)
+                }
+            }
+        }
+    }
+
+    fun resendVerification() {
+        viewModelScope.launch {
+            _ui.update { it.copy(loading = true) }
+            val res = userRepo.resendVerificationEmail()
+            _ui.update {
+                if (res.isSuccess) {
+                    it.copy(loading = false, banner = BannerMessage("Verification email sent.", BannerKind.SUCCESS))
+                } else {
+                    val msg = res.exceptionOrNull()?.message ?: "Failed to resend verification email"
+                    it.copy(loading = false, error = msg, banner = BannerMessage(msg, BannerKind.ERROR))
+                }
+            }
+        }
+    }
+
+    fun signOut() {
+        auth.signOut()
+        _ui.value = UiState() // Reset to default state
+    }
+
+    fun signInSmart(emailOrUsername: String, password: String) {
+        val id = emailOrUsername.trim()
+        if (id.contains('@')) {
+            signInEmail(id, password)
+        } else {
+            val isPhoneNumber = id.startsWith("+") || id.count { it.isDigit() } >= 7
+            if (!isPhoneNumber) queueUsernameClaim(id)
+
+            viewModelScope.launch {
+                _ui.update { it.copy(loading = true, error = null) }
+                val res = userRepo.loginWithUsername(id, password)
+                if (res.isSuccess) {
+                    _ui.update { it.copy(loading = false, isLoggedIn = true, currentRoom = null) }
+                    claimUsernameIfPending()
+                    // Do NOT set currentRoom except when starting a call
+                } else {
+                    _ui.update { it.copy(loading = false, error = res.exceptionOrNull()?.message) }
+                }
+            }
+        }
+    }
+
+    fun forgotPassword(email: String) {
+        val e = email.trim()
+        if (e.isBlank() || !e.contains('@')) {
+            val errorMsg = "Enter a valid email to reset your password"
+            _ui.update { it.copy(error = errorMsg, banner = BannerMessage(errorMsg, BannerKind.ERROR)) }
+            return
+        }
+        viewModelScope.launch {
+            _ui.update { it.copy(loading = true, error = null) }
+            val res = userRepo.sendPasswordResetEmail(e)
+            _ui.update {
+                if (res.isSuccess) {
+                    it.copy(loading = false, banner = BannerMessage("Password reset email sent", BannerKind.SUCCESS))
+                } else {
+                    val msg = res.exceptionOrNull()?.message
+                    it.copy(loading = false, error = msg, banner = msg?.let { BannerMessage(it, BannerKind.ERROR) })
+                }
+            }
+        }
+    }
 
     fun startPhoneVerification(activity: Activity, phone: String) {
-        _ui.value = _ui.value.copy(loading = true, error = null)
+        _ui.update { it.copy(loading = true, error = null) }
         userRepo.startPhoneVerification(
             activity,
             phone,
             onError = { msg ->
-                val friendly = friendlyError(msg)
-                Log.e("PhoneAuth", "startPhoneVerification failed: $msg")
-                _ui.value = _ui.value.copy(loading = false, error = friendly)
+                _ui.update { it.copy(loading = false, error = msg, phoneVerificationInProgress = false) }
             },
             onCodeSent = {
-                _ui.value = _ui.value.copy(loading = false, codeSent = true)
+                _ui.update { it.copy(loading = false, codeSent = true, phoneVerificationInProgress = true) }
                 startResendCountdown()
             }
         )
@@ -76,79 +185,61 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun verifySmsCode(code: String) {
         viewModelScope.launch {
-            _ui.value = _ui.value.copy(loading = true, error = null)
+            _ui.update { it.copy(loading = true, error = null) }
             val res = userRepo.verifySmsCode(code)
-            _ui.value = if (res.isSuccess) _ui.value.copy(loading = false, isLoggedIn = true) else _ui.value.copy(loading = false, error = res.exceptionOrNull()?.message)
-        }
-    }
-
-    fun consumeCodeSent() {
-        _ui.value = _ui.value.copy(codeSent = false)
-    }
-
-    private fun startResendCountdown(seconds: Int = 30) {
-        viewModelScope.launch {
-            for (s in seconds downTo 0) {
-                _ui.value = _ui.value.copy(canResendInSec = s)
-                kotlinx.coroutines.delay(1000)
+            if (res.isSuccess) {
+                _ui.update { it.copy(loading = false, isLoggedIn = true, phoneVerificationInProgress = false) }
+                claimUsernameIfPending()
+            } else {
+                _ui.update { it.copy(loading = false, error = res.exceptionOrNull()?.message) }
             }
         }
     }
 
+    fun consumeCodeSent() {
+        _ui.update { it.copy(codeSent = false) }
+    }
+
+
     fun resendCode(activity: Activity, phone: String) {
         if (_ui.value.canResendInSec > 0) return
-        _ui.value = _ui.value.copy(loading = true, error = null)
+        _ui.update { it.copy(loading = true, error = null) }
         userRepo.startPhoneVerification(
             activity,
             phone,
             onError = { msg ->
-                val friendly = friendlyError(msg)
-                Log.e("PhoneAuth", "resendCode failed: $msg")
-                _ui.value = _ui.value.copy(loading = false, error = friendly)
+                _ui.update { it.copy(loading = false, error = msg) }
             },
             onCodeSent = {
-                _ui.value = _ui.value.copy(loading = false, codeSent = true)
+                _ui.update { it.copy(loading = false, codeSent = true) }
                 startResendCountdown()
             },
             forceResend = true
         )
     }
 
-    private fun friendlyError(msg: String): String {
-        val base = when {
-            msg.contains("quota", ignoreCase = true) -> "SMS quota exceeded. Try later or enable billing in Firebase."
-            msg.contains("app verification", ignoreCase = true) || msg.contains("recaptcha", ignoreCase = true) ->
-                "App verification blocked. Add SHA-256 in Firebase, ensure reCAPTCHA/Play Integrity is configured (or disabled during dev)."
-            msg.contains("network", ignoreCase = true) -> "Network error. Check your connection and try again."
-            msg.contains("invalid", ignoreCase = true) && msg.contains("phone", ignoreCase = true) -> "Invalid phone number. Use full E.164 format, e.g. +15551234567."
-            else -> msg
-        }
-        return if (BuildConfig.DEBUG) "$base (raw: $msg)" else base
-    }
-
-    fun signOut() {
-        com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
-        _ui.value = UiState() // reset to default
-    }
-
     fun startIncomingCallListener() {
         if (incomingJob != null) return
-        val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser ?: return
+        val user = auth.currentUser ?: return
         val calleePhone = user.phoneNumber
         val calleeUid = user.uid
+        val calleeEmail = user.email
+
         incomingJob = viewModelScope.launch {
+            // Listen for direct calls
             launch {
-                signaling.listenIncoming(calleePhone, calleeUid).collect { session ->
+                signaling.listenIncoming(calleePhone, calleeUid, calleeEmail).collect { session ->
                     if (_ui.value.currentRoom != session.id) {
-                        _ui.value = _ui.value.copy(currentRoom = session.id, currentRole = "callee")
+                        _ui.update { it.copy(currentRoom = session.id, currentRole = "callee") }
                     }
                 }
             }
-            launch {
-                if (!calleePhone.isNullOrBlank()) {
+            // Listen for invites via different identifiers
+            if (!calleePhone.isNullOrBlank()) {
+                launch {
                     signaling.listenIncomingParticipantInvites(calleePhone).collect { sid ->
                         if (_ui.value.currentRoom != sid) {
-                            _ui.value = _ui.value.copy(currentRoom = sid, currentRole = "callee")
+                            _ui.update { it.copy(currentRoom = sid, currentRole = "callee") }
                         }
                     }
                 }
@@ -156,7 +247,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             launch {
                 signaling.listenIncomingParticipantInvites(calleeUid).collect { sid ->
                     if (_ui.value.currentRoom != sid) {
-                        _ui.value = _ui.value.copy(currentRoom = sid, currentRole = "callee")
+                        _ui.update { it.copy(currentRoom = sid, currentRole = "callee") }
+                    }
+                }
+            }
+            if (!calleeEmail.isNullOrBlank()) {
+                launch {
+                    signaling.listenIncomingParticipantInvites(calleeEmail).collect { sid ->
+                        if (_ui.value.currentRoom != sid) {
+                            _ui.update { it.copy(currentRoom = sid, currentRole = "callee") }
+                        }
                     }
                 }
             }
@@ -164,57 +264,89 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun startCallTo(callee: String) {
-        // Create a signaling session and store the sessionId in UI state
-        val caller = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.phoneNumber
-            ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
-            ?: ""
+        if (callee.isBlank()) {
+            Log.w("StartCall", "Attempted to start call without recipient")
+            return
+        }
+        val caller = auth.currentUser?.phoneNumber ?: auth.currentUser?.uid ?: ""
         val sessionId = signaling.createSession(caller = caller, callee = callee)
-        _ui.value = _ui.value.copy(currentRoom = sessionId, currentRole = "caller")
+        _ui.update { it.copy(currentRoom = sessionId, currentRole = "caller") }
     }
 
     fun launchCall(context: Context, id: String, role: String) {
-        val i = Intent(context, CallActivity::class.java)
-            .putExtra("sessionId", id)
-            .putExtra("role", role)
-        if (context is Activity) context.startActivity(i) else i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).also { context.startActivity(i) }
+    val intent = Intent(context, CallActivity::class.java).apply {
+            putExtra("sessionId", id)
+            putExtra("role", role)
+        }
+        if (context !is Activity) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
     }
 
-    fun handleIncomingIntent(intent: Intent) {
-        // Parse tel:/custom scheme to create a session if a phone number or id is present
-        val data = intent.data ?: return
-        val scheme = data.scheme
-        if (scheme == "tel") {
-            val number = data.schemeSpecificPart
-            if (!number.isNullOrBlank()) {
-                startCallTo(number)
+    fun handleIncomingIntent(intent: Intent?) {
+        val data = intent?.data ?: return
+        when (data.scheme) {
+            "tel" -> {
+                val number = data.schemeSpecificPart
+                if (!number.isNullOrBlank()) startCallTo(number)
             }
-        } else if (scheme == "p2pvideo" && data.host == "call") {
-            // Treat as a sessionId to join as callee
-            val sessionId = data.lastPathSegment ?: return
-            _ui.value = _ui.value.copy(currentRoom = sessionId, currentRole = "callee")
-        } else if (scheme == "content" && data.host == "com.example.threevchat") {
-            val callee = data.lastPathSegment ?: return
-            startCallTo(callee)
+            "p2pvideo" -> if (data.host == "call") {
+                val sessionId = data.lastPathSegment ?: return
+                _ui.update { it.copy(currentRoom = sessionId, currentRole = "callee") }
+            }
+            "content" -> if (data.host == "com.example.threevchat") {
+                val callee = data.lastPathSegment ?: return
+                startCallTo(callee)
+            }
         }
     }
 
     fun inviteViaMessages(context: Context, phone: String?) {
-        // Ensure a session exists
         var sessionId = _ui.value.currentRoom
         if (sessionId.isNullOrBlank()) {
-            val caller = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.phoneNumber
-                ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
-                ?: ""
-            // Create a placeholder session targeting provided phone (or empty)
+            val caller = auth.currentUser?.phoneNumber ?: auth.currentUser?.uid ?: ""
             sessionId = signaling.createSession(caller = caller, callee = phone ?: "")
-            _ui.value = _ui.value.copy(currentRoom = sessionId, currentRole = "caller")
+            _ui.update { it.copy(currentRoom = sessionId, currentRole = "caller") }
         }
 
         val body = "Join my call: p2pvideo://call/$sessionId"
-        val uri = if (!phone.isNullOrBlank()) android.net.Uri.parse("smsto:$phone") else android.net.Uri.parse("smsto:")
-        val intent = Intent(Intent.ACTION_SENDTO, uri).apply {
-            putExtra("sms_body", body)
+        val uri = if (!phone.isNullOrBlank()) Uri.parse("smsto:$phone") else Uri.parse("smsto:")
+        val intent = Intent(Intent.ACTION_SENDTO, uri).apply { putExtra("sms_body", body) }
+
+        if (context !is Activity) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        if (context is android.app.Activity) context.startActivity(intent) else intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).also { context.startActivity(intent) }
+        context.startActivity(intent)
+    }
+
+    fun openSettings() {
+        // This is a no-op navigation hint for the UI layer.
+        // The actual navigation is handled by the UI controller (e.g., AppNav).
+    }
+
+    // --- Private Helpers ---
+
+    private suspend fun claimUsernameIfPending() {
+        val uname = pendingUsername ?: return
+        pendingUsername = null // Consume it immediately
+        val res = userRepo.claimUsernameForCurrentUser(uname)
+        _ui.update {
+            if (res.isSuccess) {
+                it.copy(banner = BannerMessage("Username '$uname' claimed", BannerKind.SUCCESS))
+            } else {
+                val msg = res.exceptionOrNull()?.message ?: "Failed to claim username '$uname'"
+                it.copy(error = msg, banner = BannerMessage(msg, BannerKind.ERROR))
+            }
+        }
+    }
+
+    private fun startResendCountdown(seconds: Int = 30) {
+        viewModelScope.launch {
+            for (s in seconds downTo 0) {
+                _ui.update { it.copy(canResendInSec = s) }
+                delay(1000)
+            }
+        }
     }
 }

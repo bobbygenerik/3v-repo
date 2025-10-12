@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.threevchat.app-mergeDebugResources-65:/values-is/values-is.xml",
+            "outputFile": "com.example.threevchat.app-mergeDebugResources-70:/values-is/values-is.xml",
             "map": [
                 {
                     "source": "/home/vscode/.gradle/caches/transforms-4/da645eb7669e60b091bbe84d56a0cb9e/transformed/jetified-play-services-basement-18.4.0/res/values-is/values.xml",

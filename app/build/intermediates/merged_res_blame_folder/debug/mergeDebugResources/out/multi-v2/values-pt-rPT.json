@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.threevchat.app-mergeDebugResources-65:/values-pt-rPT/values-pt-rPT.xml",
+            "outputFile": "com.example.threevchat.app-mergeDebugResources-70:/values-pt-rPT/values-pt-rPT.xml",
             "map": [
                 {
                     "source": "/home/vscode/.gradle/caches/transforms-4/c34c6760ff6d831115ffd7b8f33a5ed3/transformed/browser-1.4.0/res/values-pt-rPT/values-pt-rPT.xml",

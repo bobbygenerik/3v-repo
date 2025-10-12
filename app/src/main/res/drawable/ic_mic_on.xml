@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- Balanced mic glyph centered in 24x24 with even stroke weights -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M12,15c1.93,0 3.5,-1.57 3.5,-3.5v-5c0,-1.93 -1.57,-3.5 -3.5,-3.5S8.5,4.57 8.5,6.5v5C8.5,13.43 10.07,15 12,15zM18,11.5c0,3.31 -2.69,6 -6,6s-6,-2.69 -6,-6H4c0,4.28 3.22,7.79 7.25,8.41V23h1.5v-3.09C16.78,19.29 20,15.78 20,11.5h-2z"/>
+</vector>

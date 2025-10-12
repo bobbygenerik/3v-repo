@@ -82,10 +82,10 @@ class CallSignalingRepository(
     }
 
     suspend fun end(id: String) {
-        sessionRef(id).update("status", "ended")
+        sessionRef(id).delete()
     }
 
-    fun listenIncoming(calleePhone: String?, calleeUid: String?): Flow<CallSession> = callbackFlow {
+    fun listenIncoming(calleePhone: String?, calleeUid: String?, calleeEmail: String? = null): Flow<CallSession> = callbackFlow {
         val seen = mutableSetOf<String>()
         val regs = mutableListOf<ListenerRegistration>()
         fun listenFor(value: String) {
@@ -106,6 +106,7 @@ class CallSignalingRepository(
         }
         if (!calleePhone.isNullOrBlank()) listenFor(calleePhone)
         if (!calleeUid.isNullOrBlank() && calleeUid != calleePhone) listenFor(calleeUid)
+        if (!calleeEmail.isNullOrBlank() && calleeEmail != calleePhone && calleeEmail != calleeUid) listenFor(calleeEmail)
         awaitClose { regs.forEach { it.remove() } }
     }
 

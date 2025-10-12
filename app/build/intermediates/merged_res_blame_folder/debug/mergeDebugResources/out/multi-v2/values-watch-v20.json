@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.threevchat.app-mergeDebugResources-65:/values-watch-v20/values-watch-v20.xml",
+            "outputFile": "com.example.threevchat.app-mergeDebugResources-70:/values-watch-v20/values-watch-v20.xml",
             "map": [
                 {
                     "source": "/home/vscode/.gradle/caches/transforms-4/b14dc6fc08aeff3fe18a7aaf70a6a8a4/transformed/jetified-play-services-auth-21.2.0/res/values-watch-v20/values.xml",

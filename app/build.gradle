@@ -25,7 +25,7 @@ android {
     def PHONE_AUTH_DISABLE_VERIFICATION = (localProps.getProperty('auth.disableVerification') ?: 'false')
 
     defaultConfig {
-    applicationId 'com.example.threevchat'
+        applicationId 'com.example.threevchat'
         minSdk 24
         targetSdk 35
         versionCode 1
@@ -43,14 +43,16 @@ android {
         buildConfigField 'String', 'TURN_STATIC_USERNAME', '"' + TURN_STATIC_USERNAME + '"'
         buildConfigField 'String', 'TURN_PASSWORD', '"' + TURN_PASSWORD + '"'
         buildConfigField 'boolean', 'TURN_FORCE_RELAY', TURN_FORCE_RELAY
-    // Controls Firebase phone auth verification bypass; default false to allow real SMS
-    buildConfigField 'boolean', 'PHONE_AUTH_DISABLE_APP_VERIFICATION', PHONE_AUTH_DISABLE_VERIFICATION
+        // Controls Firebase phone auth verification bypass; default false to allow real SMS
+        buildConfigField 'boolean', 'PHONE_AUTH_DISABLE_APP_VERIFICATION', PHONE_AUTH_DISABLE_VERIFICATION
 
         // Signaling/runtime feature flags
         // Use new multi-party mesh signaling by default; set to false to force legacy 1:1 path
         buildConfigField 'boolean', 'CALL_USE_MESH', 'true'
         // Simple dedupe window for incoming Firestore signals (milliseconds)
         buildConfigField 'int', 'SIGNAL_DEDUP_WINDOW_MS', '15000'
+        // Feature flag: show native PIP instead of Compose self PIP (off by default)
+        buildConfigField 'boolean', 'PIP_NATIVE_ENABLED', 'false'
     }
 
     buildTypes {
@@ -63,13 +65,10 @@ android {
         }
     }
 
-    // Package only arm64-v8a for debug to keep APK small
+    // Disable ABI splits in debug to simplify packaging during CI
     splits {
         abi {
-            enable true
-            reset()
-            include 'arm64-v8a'
-            universalApk false
+            enable false
         }
     }
 
@@ -88,6 +87,10 @@ android {
     // Compose Compiler is configured via the Kotlin Compose plugin for Kotlin 2.0+
 
     packagingOptions {
+        // Avoid stripping native .so libraries in debug builds; WebRTC libs can cause strip crashes in constrained envs
+        jniLibs {
+            doNotStrip '**/*.so'
+        }
         resources {
             excludes += ['/META-INF/{AL2.0,LGPL2.1}']
         }
@@ -95,47 +98,73 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.compose.ui:ui-text:1.6.0'
+    // Compose BOM - manages all Compose library versions
     def composeBom = platform('androidx.compose:compose-bom:2024.09.02')
     implementation composeBom
     androidTestImplementation composeBom
 
+    // Core Android & Kotlin
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.activity:activity-compose:1.9.2'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.6'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.6'
 
     // AppCompat for Activity base class used by CallActivity
     implementation 'androidx.appcompat:appcompat:1.7.0'
 
+    // Compose UI libraries
     implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-text:1.6.0'
+    implementation 'androidx.compose.ui:ui-graphics'
     implementation 'androidx.compose.ui:ui-tooling-preview'
     debugImplementation 'androidx.compose.ui:ui-tooling'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
+    
+    // Material Design 3
     implementation 'androidx.compose.material3:material3:1.3.0'
+    
+    // Material Icons (filled + extended sets) for Compose
+    implementation 'androidx.compose.material:material-icons-extended'
+    
+    // Compose Foundation (REQUIRED for scrolling, focus, borders, etc.)
+    implementation 'androidx.compose.foundation:foundation'
+    
+    // Navigation
     implementation 'androidx.navigation:navigation-compose:2.8.0'
+    
+    // Compose Google Fonts (downloadable fonts provider)
+    implementation 'androidx.compose.ui:ui-text-google-fonts'
+    
+    // Play Services base (provider backend for downloadable fonts)
+    implementation 'com.google.android.gms:play-services-base:18.5.0'
 
     // Firebase BOM and dependencies
     implementation platform('com.google.firebase:firebase-bom:33.3.0')
     implementation 'com.google.firebase:firebase-auth-ktx'
     implementation 'com.google.firebase:firebase-analytics-ktx'
-
-    // Optional Firebase features
     implementation 'com.google.firebase:firebase-firestore-ktx'
     implementation 'com.google.firebase:firebase-database-ktx'
     implementation 'com.google.firebase:firebase-messaging-ktx'
-    // Crashlytics removed for now to avoid runtime crash (missing Crashlytics Gradle plugin/build ID)
-    // If you want Crashlytics, re-add the dependency below AND apply the plugin in the root and app modules:
-    // implementation 'com.google.firebase:firebase-crashlytics-ktx'
     implementation 'com.google.firebase:firebase-config-ktx'
     implementation 'com.google.firebase:firebase-storage-ktx'
 
-    // Native WebRTC for 1:1 calls (replace Jitsi)
+    // Image loading for profile pictures (Coil)
+    implementation 'io.coil-kt:coil-compose:2.6.0'
+
+    // Native WebRTC SDK
     implementation 'io.github.webrtc-sdk:android:137.7151.04'
 
     // Play Services (for phone auth)
     implementation 'com.google.android.gms:play-services-auth:21.2.0'
     implementation 'com.google.android.gms:play-services-auth-api-phone:18.1.0'
 
+    // CardView for rounded PIP
+    implementation 'androidx.cardview:cardview:1.0.0'
+
+    // Coroutines (ensure latest version for async operations)
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
 
     // Unit test dependencies
     testImplementation 'junit:junit:4.13.2'
@@ -144,6 +173,12 @@ dependencies {
     testImplementation 'androidx.test:core:1.5.0'
     testImplementation 'androidx.test.ext:junit:1.1.5'
     testImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    
+    // Android test dependencies
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
 }
+
 // Apply Google Services plugin for Firebase
 apply plugin: 'com.google.gms.google-services'

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -9,12 +10,23 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <org.webrtc.SurfaceViewRenderer
-        android:id="@+id/localView"
+    <!-- Top info removed; Compose overlay renders call info -->
+
+    <!-- Rounded PIP with true clipping at top-right -->
+    <FrameLayout
+        android:id="@+id/pipFrame"
         android:layout_width="120dp"
-        android:layout_height="200dp"
+        android:layout_height="234dp"
         android:layout_gravity="top|end"
-        android:layout_margin="12dp" />
+        android:layout_margin="16dp"
+        android:background="@drawable/bg_pip_rounded"
+        android:clipToOutline="true"
+        android:elevation="8dp">
+        <com.example.threevchat.webrtc.ui.LocalTextureRenderer
+            android:id="@+id/localView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </FrameLayout>
 
     <!-- Lightweight debug overlay for connection/ICE status -->
     <TextView
@@ -22,7 +34,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
-        android:layout_margin="12dp"
+        android:layout_margin="16dp"
         android:padding="8dp"
         android:background="#66000000"
         android:textColor="#FFFFFF"
@@ -31,43 +43,17 @@
         android:typeface="monospace"
         android:maxLines="10" />
 
-    <!-- Call controls: end, add, menu -->
-    <LinearLayout
-        android:id="@+id/callControls"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center"
-        android:orientation="horizontal"
-        android:layout_marginBottom="32dp"
-        android:background="@android:color/transparent">
-        <ImageButton
-            android:id="@+id/btnReconnect"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:background="@android:color/transparent"
-            android:src="@android:drawable/ic_popup_sync"
-            android:contentDescription="Reconnect" />
-        <ImageButton
-            android:id="@+id/btnEndCall"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:background="@android:color/transparent"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
-            android:contentDescription="End Call" />
-        <ImageButton
-            android:id="@+id/btnAddPerson"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:background="@android:color/transparent"
-            android:src="@android:drawable/ic_menu_add"
-            android:contentDescription="Add Person" />
-        <ImageButton
-            android:id="@+id/btnMenu"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:background="@android:color/transparent"
-            android:src="@android:drawable/ic_menu_manage"
-            android:contentDescription="Menu" />
-    </LinearLayout>
+    <!-- Bottom controls removed; Compose overlay renders controls -->
+
+    <!-- Edge buttons removed; Compose overlay renders actions -->
+
+	<!-- Compose overlay for in-call controls and header (Compose-based UI) -->
+	<androidx.compose.ui.platform.ComposeView
+		android:id="@+id/composeOverlay"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:layout_gravity="fill"
+		android:visibility="gone" />
+
 
 </FrameLayout>

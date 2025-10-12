@@ -16,61 +16,129 @@ import java.util.concurrent.TimeUnit
 class UserRepository(private val app: Application) {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val storage by lazy { com.google.firebase.storage.FirebaseStorage.getInstance() }
 
     private var verificationId: String? = null
     private var resendingToken: PhoneAuthProvider.ForceResendingToken? = null
 
-    /* Username/password registration removed (phone-only auth)
-    suspend fun registerWithUsername(username: String, password: String): Result<Unit> {
+    // Username/password (email) auth
+    suspend fun registerWithEmail(email: String, password: String): Result<Unit> {
         return try {
-            auth.createUserWithEmailAndPassword(username, password).await()
+            // Use device language for auth-related flows
+            try { auth.useAppLanguage() } catch (_: Throwable) {}
+            auth.createUserWithEmailAndPassword(email, password).await()
             val userId = auth.currentUser?.uid
-            val email = auth.currentUser?.email
-            val userProfile = mapOf(
-                "username" to username,
+            // Send verification email
+            try { auth.currentUser?.sendEmailVerification()?.await() } catch (_: Exception) {}
+            val profile = mapOf(
                 "email" to email,
-                "avatarUrl" to "" // or a default value
+                "createdAt" to com.google.firebase.Timestamp.now()
             )
             if (userId != null) {
-                db.collection("users").document(userId).set(userProfile)
+                db.collection("users").document(userId).set(profile)
             }
             Result.success(Unit)
         } catch (e: Exception) {
             val friendly = when ((e as? FirebaseAuthException)?.errorCode) {
-                // Common when Email/Password is disabled in Firebase Console
-                "ERROR_OPERATION_NOT_ALLOWED" -> "Email/Password sign-in is disabled. Enable it in Firebase Console → Authentication → Sign-in method."
+                "ERROR_OPERATION_NOT_ALLOWED" -> "Email/Password is disabled. Enable it in Firebase Console → Authentication → Sign-in method."
+                "ERROR_WEAK_PASSWORD" -> "Password is too weak. Use at least 6 characters."
+                "ERROR_EMAIL_ALREADY_IN_USE" -> "An account with this email already exists."
+                "ERROR_INVALID_EMAIL" -> "Invalid email address."
                 else -> e.message ?: "Registration failed"
             }
             Result.failure(Exception(friendly, e))
         }
     }
 
-    suspend fun loginWithUsername(username: String, password: String): Result<Unit> {
+    suspend fun loginWithEmail(email: String, password: String): Result<Unit> {
         return try {
-            auth.signInWithEmailAndPassword(username, password).await()
-            val userId = auth.currentUser?.uid
-            val email = auth.currentUser?.email
-            val userProfile = mapOf(
-                "username" to username,
-                "email" to email,
-                "avatarUrl" to "" // or a default value
-            )
-            if (userId != null) {
-                db.collection("users").document(userId).set(userProfile)
+            try { auth.useAppLanguage() } catch (_: Throwable) {}
+            auth.signInWithEmailAndPassword(email, password).await()
+            val user = auth.currentUser
+            if (user != null && !user.isEmailVerified) {
+                // Keep user signed in but report not-verified so UI can gate access
+                Result.failure(IllegalStateException("Please verify your email before signing in."))
+            } else {
+                Result.success(Unit)
             }
-            Result.success(Unit)
         } catch (e: Exception) {
             val friendly = when ((e as? FirebaseAuthException)?.errorCode) {
-                "ERROR_OPERATION_NOT_ALLOWED" -> "Email/Password sign-in is disabled. Enable it in Firebase Console → Authentication → Sign-in method."
+                "ERROR_OPERATION_NOT_ALLOWED" -> "Email/Password is disabled. Enable it in Firebase Console → Authentication → Sign-in method."
                 "ERROR_USER_DISABLED" -> "This account has been disabled."
-                "ERROR_USER_NOT_FOUND" -> "No account found for this username."
+                "ERROR_USER_NOT_FOUND" -> "No account found for this email."
                 "ERROR_WRONG_PASSWORD" -> "Incorrect password."
+                "ERROR_INVALID_EMAIL" -> "Invalid email address."
                 else -> e.message ?: "Login failed"
             }
             Result.failure(Exception(friendly, e))
         }
     }
-    */
+
+    suspend fun resendVerificationEmail(): Result<Unit> {
+        val user = auth.currentUser
+        return if (user != null && !user.isEmailVerified) {
+            try {
+                user.sendEmailVerification().await()
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        } else if (user == null) {
+            Result.failure(IllegalStateException("No user is signed in."))
+        } else {
+            Result.failure(IllegalStateException("Email is already verified."))
+        }
+    }
+
+    suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
+        return try {
+            try { auth.useAppLanguage() } catch (_: Throwable) {}
+            auth.sendPasswordResetEmail(email).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            val friendly = when ((e as? FirebaseAuthException)?.errorCode) {
+                "ERROR_INVALID_EMAIL" -> "Invalid email address."
+                "ERROR_USER_NOT_FOUND" -> "No account found for this email."
+                else -> e.message ?: "Failed to send reset email"
+            }
+            Result.failure(Exception(friendly, e))
+        }
+    }
+
+    // ---- Username support (Firestore mapping) ----
+    // usernames/{username} -> { uid, email }
+    suspend fun claimUsernameForCurrentUser(username: String): Result<Unit> {
+        val user = auth.currentUser ?: return Result.failure(IllegalStateException("Not signed in"))
+        val uname = username.trim().lowercase()
+        if (uname.isBlank()) return Result.failure(IllegalArgumentException("Username cannot be blank"))
+        return try {
+            db.runTransaction { tx ->
+                val ref = db.collection("usernames").document(uname)
+                val snap = tx.get(ref)
+                if (snap.exists()) throw IllegalStateException("Username is already taken")
+                val data = mapOf("uid" to user.uid, "email" to (user.email ?: ""))
+                tx.set(ref, data)
+                // Also store on user profile
+                tx.update(db.collection("users").document(user.uid), mapOf("username" to uname))
+            }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun loginWithUsername(username: String, password: String): Result<Unit> {
+        val uname = username.trim().lowercase()
+        if (uname.isBlank()) return Result.failure(IllegalArgumentException("Enter a username"))
+        return try {
+            val snap = db.collection("usernames").document(uname).get().await()
+            val email = (snap.data?.get("email") as? String)?.takeIf { it.isNotBlank() }
+            if (email == null) return Result.failure(IllegalStateException("Username not found"))
+            loginWithEmail(email, password)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     fun startPhoneVerification(
         activity: Activity,
@@ -177,5 +245,85 @@ class UserRepository(private val app: Application) {
         db.collection("rooms").document(roomId)
             .collection("messages")
             .add(message)
+    }
+
+    // ---- Profile management ----
+    data class UserProfile(
+        val uid: String,
+        val email: String?,
+        val username: String?,
+        val displayName: String?,
+        val bio: String?,
+        val photoUrl: String?
+    )
+
+    suspend fun getProfile(): Result<UserProfile> {
+        val user = auth.currentUser ?: return Result.failure(IllegalStateException("Not signed in"))
+        return try {
+            val snap = db.collection("users").document(user.uid).get().await()
+            val data = snap.data ?: emptyMap()
+            val profile = UserProfile(
+                uid = user.uid,
+                email = user.email,
+                username = data["username"] as? String,
+                displayName = data["displayName"] as? String,
+                bio = data["bio"] as? String,
+                photoUrl = data["photoUrl"] as? String
+            )
+            Result.success(profile)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateProfile(displayName: String?, bio: String?): Result<Unit> {
+        val user = auth.currentUser ?: return Result.failure(IllegalStateException("Not signed in"))
+        return try {
+            val update = mutableMapOf<String, Any>()
+            displayName?.let { update["displayName"] = it }
+            bio?.let { update["bio"] = it }
+            if (update.isNotEmpty()) {
+                db.collection("users").document(user.uid).set(update, com.google.firebase.firestore.SetOptions.merge()).await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadProfilePhoto(contentUri: android.net.Uri): Result<String> {
+        val user = auth.currentUser ?: return Result.failure(IllegalStateException("Not signed in"))
+        return try {
+            // Always write to a concrete path; Storage will create the object if it does not exist
+            val ref = storage.reference
+                .child("profile_photos")
+                .child("${user.uid}.jpg")
+
+            // Try to determine content type for better caching/preview in Storage console
+            val contentResolver = app.contentResolver
+            val mime = runCatching { contentResolver.getType(contentUri) }.getOrNull() ?: "image/jpeg"
+            val metadata = com.google.firebase.storage.StorageMetadata.Builder()
+                .setContentType(mime)
+                .build()
+
+            // Upload file with metadata. Do not pre-delete to avoid transient not-found errors.
+            ref.putFile(contentUri, metadata).await()
+            val url = ref.downloadUrl.await().toString()
+            db.collection("users").document(user.uid)
+                .set(mapOf("photoUrl" to url), com.google.firebase.firestore.SetOptions.merge())
+                .await()
+            Result.success(url)
+        } catch (e: Exception) {
+            // Provide clearer errors
+            val friendly = if (e is com.google.firebase.storage.StorageException) {
+                when (e.errorCode) {
+                    com.google.firebase.storage.StorageException.ERROR_OBJECT_NOT_FOUND -> "Storage path not found. Check Firebase Storage rules and bucket configuration."
+                    com.google.firebase.storage.StorageException.ERROR_NOT_AUTHORIZED -> "Not authorized to upload. Check Firebase Storage rules."
+                    com.google.firebase.storage.StorageException.ERROR_QUOTA_EXCEEDED -> "Storage quota exceeded."
+                    else -> e.message ?: "Upload failed"
+                }
+            } else e.message ?: "Upload failed"
+            Result.failure(Exception(friendly, e))
+        }
     }
 }

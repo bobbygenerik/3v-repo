@@ -1,16 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,12a42,42 0 1,0 0,84a42,42 0 1,0 0,-84z"/>
-    <path
-        android:fillColor="#1E88E5"
-        android:pathData="M34,38h40v8H34zM34,54h40v8H34z"/>
-    <path
-        android:fillColor="#1E88E5"
-        android:pathData="M26,46h8v8h-8zM74,46h8v8h-8z"/>
-</vector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Inset to keep content inside adaptive icon safe zone (108dp viewport -> 18dp margins -> 72dp content) -->
+    <item
+        android:insetLeft="18dp"
+        android:insetTop="18dp"
+        android:insetRight="18dp"
+        android:insetBottom="18dp">
+        <bitmap
+            android:src="@drawable/logo_adobe_express"
+            android:gravity="center"
+            android:filter="true" />
+    </item>
+</layer-list>

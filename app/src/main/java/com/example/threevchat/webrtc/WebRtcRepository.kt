@@ -3,6 +3,7 @@ package com.example.threevchat.webrtc
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.*
+import kotlin.coroutines.resume
 import org.webrtc.*
 
 class WebRtcRepository(
@@ -38,6 +39,8 @@ class WebRtcRepository(
 
     fun eglContext(): EglBase.Context = eglBase.eglBaseContext
 
+    fun localVideoTrack(): VideoTrack? = videoTrack
+
     fun createPeerConnection(observer: PeerConnection.Observer): PeerConnection {
         val rtcConfig = PeerConnection.RTCConfiguration(WebRtcConfig.iceServers()).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
@@ -64,6 +67,26 @@ class WebRtcRepository(
         audioSource = pcFactory.createAudioSource(MediaConstraints())
         audioTrack = pcFactory.createAudioTrack("a0", audioSource)
     }
+
+    fun startLocalMedia(localRenderer: com.example.threevchat.webrtc.ui.LocalTextureRenderer) {
+        // LocalTextureRenderer must be pre-initialized by caller with eglContext
+        localRenderer.setMirror(true)
+        val capturer = buildCameraCapturer() ?: error("No camera capturer")
+        videoCapturer = capturer
+        val helper = SurfaceTextureHelper.create("CaptureThread", eglBase.eglBaseContext)
+        videoSource = pcFactory.createVideoSource(false)
+        capturer.initialize(helper, context, videoSource!!.capturerObserver)
+        capturer.startCapture(WebRtcConfig.TARGET_WIDTH, WebRtcConfig.TARGET_HEIGHT, WebRtcConfig.TARGET_FPS)
+        videoTrack = pcFactory.createVideoTrack("v0", videoSource).apply { addSink(localRenderer) }
+        audioSource = pcFactory.createAudioSource(MediaConstraints())
+        audioTrack = pcFactory.createAudioTrack("a0", audioSource)
+    }
+
+    
+
+    
+
+    
 
     fun addLocalTracks() {
         val pc = requireNotNull(peerConnection)
@@ -132,14 +155,14 @@ class WebRtcRepository(
 
     suspend fun createAndSetOffer(remoteId: String, observer: PeerConnection.Observer, onLocalSdp: (SessionDescription) -> Unit, iceRestart: Boolean = false) {
         val pc = ensurePeer(remoteId, observer)
-        val offer = suspendCancellableCoroutine<SessionDescription> { cont ->
+    val offer = suspendCancellableCoroutine<SessionDescription> { cont ->
             val constraints = MediaConstraints().apply {
                 if (iceRestart) {
                     mandatory.add(MediaConstraints.KeyValuePair("IceRestart", "true"))
                 }
             }
             pc.createOffer(object : SdpObserver {
-                override fun onCreateSuccess(sdp: SessionDescription) { if (cont.isActive) cont.resume(sdp) {} }
+                override fun onCreateSuccess(sdp: SessionDescription) { if (cont.isActive) cont.resume(sdp) }
                 override fun onCreateFailure(error: String) { cont.cancel(Throwable(error)) }
                 override fun onSetSuccess() {}
                 override fun onSetFailure(p0: String) {}
@@ -216,7 +239,7 @@ class WebRtcRepository(
 
     suspend fun createAndSetOffer(onLocalSdp: (SessionDescription) -> Unit, iceRestart: Boolean = false) {
         val pc = requireNotNull(peerConnection)
-        val offer = suspendCancellableCoroutine<SessionDescription> { cont ->
+    val offer = suspendCancellableCoroutine<SessionDescription> { cont ->
             val constraints = MediaConstraints().apply {
                 if (iceRestart) {
                     mandatory.add(MediaConstraints.KeyValuePair("IceRestart", "true"))
@@ -224,7 +247,7 @@ class WebRtcRepository(
             }
             pc.createOffer(object : SdpObserver {
                 override fun onCreateSuccess(sdp: SessionDescription) {
-                    if (cont.isActive) cont.resume(sdp) {}
+                    if (cont.isActive) cont.resume(sdp)
                 }
                 override fun onCreateFailure(error: String) { cont.cancel(Throwable(error)) }
                 override fun onSetSuccess() {}

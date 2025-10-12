@@ -1,4 +1,5 @@
 <resources>
     <!-- Colors are provided by dynamic color when available -->
-    <color name="ic_launcher_background">#121212</color>
+    <!-- Base background gray used for splash and home background -->
+    <color name="ic_launcher_background">#2B2B2B</color>
 </resources>
