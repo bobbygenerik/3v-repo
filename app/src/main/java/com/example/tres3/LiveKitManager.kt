@@ -2,6 +2,7 @@ package com.example.tres3
 
 import android.content.Context
 import android.util.Log
+import com.example.tres3.video.VideoCodecManager
 import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
 import io.livekit.android.room.track.LocalVideoTrackOptions
@@ -28,6 +29,13 @@ object LiveKitManager {
     }
     
     private var currentQuality = VideoQuality.AUTO // Default to AUTO
+    
+    /**
+     * Preferred video codec for encoding
+     * Default: H.264 (universal compatibility)
+     * Advanced codecs (H.265, VP9, VP8) can be enabled via FeatureFlags
+     */
+    private var preferredCodec: VideoCodecManager.PreferredCodec = VideoCodecManager.PreferredCodec.H264
     
     // Video optimization settings - can be changed dynamically
     private fun getVideoSettings(quality: VideoQuality = currentQuality): LocalVideoTrackOptions {
@@ -85,10 +93,71 @@ object LiveKitManager {
         
         Log.d("LiveKitManager", "📹 Loaded video quality from settings: $currentQuality")
     }
+    
+    /**
+     * Load codec preference from settings
+     * Only loads if advanced codecs feature flag is enabled
+     */
+    fun loadCodecFromSettings(context: Context) {
+        // Check if advanced codecs are enabled
+        if (!FeatureFlags.isAdvancedCodecsEnabled()) {
+            preferredCodec = VideoCodecManager.PreferredCodec.H264
+            Log.d("LiveKitManager", "🎬 Advanced codecs disabled, using H.264")
+            return
+        }
+        
+        // Load user preference
+        val userCodec = VideoCodecManager.loadPreferredCodec(context)
+        
+        // Validate codec is supported on this device
+        if (VideoCodecManager.isCodecSupported(userCodec)) {
+            preferredCodec = userCodec
+            Log.d("LiveKitManager", "🎬 Loaded codec preference: ${userCodec.displayName}")
+        } else {
+            // Fall back to H.264 if unsupported
+            preferredCodec = VideoCodecManager.PreferredCodec.H264
+            Log.w("LiveKitManager", "⚠️ Preferred codec ${userCodec.displayName} not supported, falling back to H.264")
+        }
+    }
+    
+    /**
+     * Set preferred video codec
+     * @param codec The codec to use for video encoding
+     */
+    fun setPreferredCodec(codec: VideoCodecManager.PreferredCodec) {
+        if (VideoCodecManager.isCodecSupported(codec)) {
+            preferredCodec = codec
+            Log.d("LiveKitManager", "🎬 Codec preference changed to: ${codec.displayName}")
+        } else {
+            Log.w("LiveKitManager", "⚠️ Codec ${codec.displayName} not supported on this device")
+        }
+    }
+    
+    /**
+     * Get current preferred codec
+     */
+    fun getPreferredCodec(): VideoCodecManager.PreferredCodec = preferredCodec
+    
+    /**
+     * Get codec information for diagnostics
+     */
+    fun getCodecInfo(context: Context): String {
+        val info = VideoCodecManager.getCodecInfo(preferredCodec)
+        return buildString {
+            appendLine("Current Codec: ${preferredCodec.displayName}")
+            appendLine("Hardware Accelerated: ${info.hasHardwareEncoder}")
+            appendLine("Encoder: ${info.encoderName ?: "Unknown"}")
+            appendLine("Supported: ${info.isSupported}")
+            if (info.supportedResolutions.isNotEmpty()) {
+                appendLine("Resolutions: ${info.supportedResolutions.take(3).joinToString(", ")}")
+            }
+        }
+    }
 
     suspend fun connectToRoom(context: Context, url: String, token: String): Room {
-        // Load quality settings before connecting
+        // Load quality and codec settings before connecting
         loadQualityFromSettings(context)
+        loadCodecFromSettings(context)
         
         return roomMutex.withLock {
             try {

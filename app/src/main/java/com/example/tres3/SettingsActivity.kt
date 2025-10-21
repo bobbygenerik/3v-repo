@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.tres3.video.VideoCodecManager
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -36,6 +37,27 @@ fun SettingsScreen() {
     var notificationsEnabled by remember { mutableStateOf(sharedPrefs.getBoolean("notifications", true)) }
     var headsUpNotifications by remember { mutableStateOf(sharedPrefs.getBoolean("heads_up_notifications", false)) }
     var callQuality by remember { mutableStateOf(sharedPrefs.getString("call_quality", "Auto") ?: "Auto") }
+    
+    // Advanced codec settings
+    val advancedCodecsEnabled = remember { FeatureFlags.isAdvancedCodecsEnabled() }
+    var selectedCodec by remember { 
+        mutableStateOf(
+            if (advancedCodecsEnabled) {
+                VideoCodecManager.loadPreferredCodec(context).displayName
+            } else {
+                "H.264 (AVC)"
+            }
+        )
+    }
+    
+    // Get available codecs for this device
+    val availableCodecs = remember { 
+        if (advancedCodecsEnabled) {
+            VideoCodecManager.getAvailableCodecs(context).map { it.displayName }
+        } else {
+            listOf("H.264 (AVC)")
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -88,6 +110,27 @@ fun SettingsScreen() {
                 sharedPrefs.edit().putString("call_quality", newValue).apply()
             }
         )
+        
+        // Advanced Codec Selection (only if feature flag enabled)
+        if (advancedCodecsEnabled && availableCodecs.size > 1) {
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            SettingsDropdown(
+                title = "Video Codec",
+                subtitle = "Advanced: Select video encoder (${availableCodecs.size} supported)",
+                selectedValue = selectedCodec,
+                options = availableCodecs,
+                onValueChange = { newValue ->
+                    selectedCodec = newValue
+                    // Find the codec enum by display name
+                    val codec = VideoCodecManager.PreferredCodec.values()
+                        .find { it.displayName == newValue }
+                    if (codec != null) {
+                        VideoCodecManager.savePreferredCodec(context, codec)
+                    }
+                }
+            )
+        }
     }
 }
 
