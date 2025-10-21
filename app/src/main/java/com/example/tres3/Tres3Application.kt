@@ -13,6 +13,9 @@ class Tres3Application : Application() {
             Timber.plant(Timber.DebugTree())
         }
 
+        // Initialize feature flags system for enhancement management
+        FeatureFlags.init(this)
+
         // Global crash handler to capture uncaught exceptions when logs are hard to access
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
