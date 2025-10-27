@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1b1c1e">
+    <title>Sign In - 3V Call</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #1b1c1e;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .header {
+            padding: 20px;
+            text-align: center;
+            padding-top: 60px;
+        }
+        
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 20px;
+            object-fit: contain;
+        }
+        
+        .app-name {
+            font-size: 28px;
+            font-weight: 700;
+            color: #6B7FB8;
+            margin-bottom: 10px;
+        }
+        
+        .tagline {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .content {
+            flex: 1;
+            padding: 40px 20px;
+            max-width: 400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #6B7FB8;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn-primary {
+            background: #6B7FB8;
+            color: white;
+            margin-bottom: 15px;
+        }
+        
+        .btn-primary:hover {
+            background: #5A6EA7;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(107, 127, 184, 0.4);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .footer a {
+            color: #6B7FB8;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        .forgot-password {
+            text-align: right;
+            margin-top: 8px;
+        }
+        
+        .forgot-password a {
+            color: #6B7FB8;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .forgot-password a:hover {
+            text-decoration: underline;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="/splash-logo.png" alt="3V Logo" class="logo">
+        <h1 class="app-name">Welcome Back</h1>
+        <p class="tagline">Sign in to continue</p>
+    </div>
+
+    <div class="content">
+        <div id="error" class="error"></div>
+        
+        <form id="signinForm">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="your@email.com" required autocomplete="email">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+                <div class="forgot-password">
+                    <a href="#" id="forgotPasswordLink">Forgot password?</a>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" id="signinBtn">
+                <span>Sign In</span>
+            </button>
+        </form>
+    </div>
+
+    <div class="footer">
+        <p>Don't have an account? <a href="/signup.html">Sign Up</a></p>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB3nvi5P3PZYDfqJxaZjnD-TMTkEKNk7qc",
+            authDomain: "v-b93ec.firebaseapp.com",
+            projectId: "v-b93ec",
+            storageBucket: "v-b93ec.firebasestorage.app",
+            messagingSenderId: "685746265293",
+            appId: "1:685746265293:web:4982d354fd80be0d35eb9c",
+            measurementId: "G-6R4XTCCZK4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        const signinForm = document.getElementById('signinForm');
+        const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+        const errorDiv = document.getElementById('error');
+        const signinBtn = document.getElementById('signinBtn');
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => errorDiv.classList.remove('show'), 5000);
+        }
+
+        signinForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            signinBtn.disabled = true;
+            signinBtn.innerHTML = '<span>Signing in...</span>';
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                window.location.href = '/home.html';
+            } catch (error) {
+                console.error('Sign in error:', error);
+                let message = 'Failed to sign in. Please try again.';
+                if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                    message = 'Incorrect email or password. Please try again.';
+                } else if (error.code === 'auth/user-not-found') {
+                    message = 'No account found with this email.';
+                } else if (error.code === 'auth/invalid-email') {
+                    message = 'Invalid email address.';
+                } else if (error.code === 'auth/too-many-requests') {
+                    message = 'Too many failed attempts. Please try again later.';
+                }
+                showError(message);
+                signinBtn.disabled = false;
+                signinBtn.innerHTML = '<span>Sign In</span>';
+            }
+        });
+
+        forgotPasswordLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            if (!email) {
+                showError('Please enter your email address first.');
+                return;
+            }
+            try {
+                await sendPasswordResetEmail(auth, email);
+                showError('Password reset email sent! Check your inbox.');
+            } catch (error) {
+                console.error('Password reset error:', error);
+                showError('Failed to send reset email. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>

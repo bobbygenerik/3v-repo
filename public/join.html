@@ -1,0 +1,2919 @@
+<!DOCTYPE html>
+<html lang="en" style="background-color: #1b1c1e; margin: 0; padding: 0;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#1b1c1e">
+    <title>Très³ Video Call</title>
+    
+    <!-- Use ES module format with import map -->
+    <script type="importmap">
+    {
+        "imports": {
+            "livekit-client": "https://cdn.jsdelivr.net/npm/livekit-client@2.5.5/+esm"
+        }
+    }
+    </script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html {
+            background: #1b1c1e; /* BackgroundDark - app color */
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1b1c1e; /* BackgroundDark - app color */
+            color: #F4F4F5;
+            overflow: hidden;
+        }
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: #1b1c1e; /* BackgroundDark - app color */
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .logo-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            z-index: 2;
+        }
+        .spinner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 120px;
+            height: 120px;
+            border: 4px solid rgba(107, 127, 184, 0.2);
+            border-top: 4px solid #7589C4; /* AccentBlue */
+            border-radius: 50%;
+            animation: spin 1.5s linear infinite;
+            box-shadow: 0 4px 16px rgba(107, 127, 184, 0.3);
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: #F4F4F5; /* TextWhite - more visible */
+            font-size: 16px;
+            font-weight: 600;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        #video-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            position: relative;
+            background: #1b1c1e;
+        }
+        .video-track {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #2F3448;
+            overflow: hidden;
+        }
+        .video-track.main {
+            z-index: 1;
+            display: block;
+        }
+        .video-track.pip {
+            position: absolute;
+            border-radius: 16px;
+            border: 2px solid #515664;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            z-index: 300; /* Higher than everything else */
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            pointer-events: auto;
+            background: transparent;
+            overflow: hidden;
+        }
+        .video-track.pip:hover {
+            transform: scale(1.05);
+            border-color: #6B7FB8;
+        }
+        .video-track.pip:active {
+            transform: scale(0.95);
+        }
+        .video-track video {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: transparent;
+        }
+        
+        /* Desktop and Mobile: consistent object-fit for proper aspect ratio */
+        .video-track.main video {
+            object-fit: contain; /* Show full video without distortion */
+            object-position: center;
+            background: #1b1c1e; /* Fill letterbox bars with background color */
+        }
+        
+        .video-track.pip video {
+            object-fit: cover; /* Crop to fill small PIP window */
+            object-position: center;
+        }
+        
+        /* Desktop: PIP positioning */
+        @media (min-width: 769px) {
+            .video-track.pip {
+                width: 240px;
+                height: 320px;
+                top: 20px;
+                right: 20px;
+                cursor: move;
+            }
+            .video-track.pip:hover {
+                border-color: #7589C4;
+                box-shadow: 0 8px 32px rgba(107, 127, 184, 0.6);
+            }
+        }
+        
+        /* Mobile: cover for full-screen experience */
+        @media (max-width: 768px) {
+            .video-track.main video {
+                object-fit: contain; /* Prevent distortion in landscape */
+                background: #1b1c1e;
+            }
+            .video-track.pip {
+                width: 100px; /* Slightly larger for easier interaction */
+                height: 133px; /* Maintain 3:4 aspect ratio */
+                top: 20px; /* Top-right corner on mobile */
+                right: 10px;
+                bottom: auto; /* Override bottom positioning */
+                z-index: 300; /* Above everything */
+                pointer-events: auto;
+                touch-action: none; /* Prevent browser gestures */
+            }
+        }
+        
+        .participant-name {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: #F4F4F5;
+            font-size: 16px;
+            font-weight: 600;
+            z-index: 10;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+        
+        /* Hide name on local video (PIP) */
+        .video-track.pip .participant-name {
+            display: none;
+        }
+        
+        /* Consistent styling for both mobile and desktop */
+        @media (max-width: 768px) {
+            .video-track.main .participant-name {
+                font-size: 15px;
+                top: 15px;
+                left: 15px;
+            }
+        }
+        
+        /* Call timer */
+        .call-timer {
+            position: fixed;
+            top: 38px;
+            left: 15px;
+            color: #F4F4F5;
+            font-size: 12px;
+            font-weight: 500;
+            z-index: 100;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+            display: none;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+        
+        .call-timer.visible {
+            display: block;
+        }
+        .quality-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .quality-dot.excellent {
+            background: #22C55E;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+        }
+        .quality-dot.good {
+            background: #EAB308;
+            box-shadow: 0 0 8px rgba(234, 179, 8, 0.6);
+        }
+        .quality-dot.poor {
+            background: #EF4444;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+        }
+        
+        /* Call Quality Overlay */
+        .quality-overlay {
+            position: fixed;
+            top: 70px;
+            left: 15px;
+            background: rgba(27, 28, 30, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(107, 127, 184, 0.2);
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 180px;
+        }
+        .quality-overlay.visible {
+            opacity: 1;
+        }
+        .quality-overlay-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .quality-overlay-label {
+            color: #A0A2A6;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            min-width: 65px;
+        }
+        .quality-overlay-value {
+            color: #F4F4F5;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .quality-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid rgba(107, 127, 184, 0.2);
+            margin-bottom: 2px;
+        }
+        .quality-status-text {
+            color: #F4F4F5;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        /* Ultra Quality Toggle */
+        .ultra-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(47, 52, 72, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(107, 127, 184, 0.3);
+            z-index: 350;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .ultra-toggle:hover {
+            background: rgba(117, 137, 196, 0.6);
+            border-color: #7589C4;
+        }
+        .ultra-toggle.active {
+            background: rgba(34, 197, 94, 0.9);
+            border-color: #22c55e;
+            box-shadow: 0 0 16px rgba(34, 197, 94, 0.6);
+        }
+        .ultra-toggle.active:hover {
+            background: rgba(34, 197, 94, 1);
+            border-color: #16a34a;
+        }
+        .ultra-toggle-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #F4F4F5;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .ultra-toggle-icon {
+            width: 16px;
+            height: 16px;
+        }
+        @media (max-width: 768px) {
+            .ultra-toggle {
+                top: 20px;
+                right: 120px;
+                padding: 6px 12px;
+            }
+            .ultra-toggle-label {
+                font-size: 11px;
+            }
+        }
+        
+        .no-video-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #6B7FB8 0%, #7589C4 100%);
+            animation: gradientShift 10s ease infinite;
+        }
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        .no-video-placeholder .initial {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.25);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+                .controls {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            z-index: 100;
+            transition: opacity 0.3s ease;
+        }
+        .controls.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: rgba(81, 86, 100, 0.3); /* AppColors.Gray with alpha */
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+        }
+        .controls:not(.hidden) .control-btn:nth-child(1) {
+            animation: slideUp 0.3s ease forwards;
+        }
+        .controls:not(.hidden) .control-btn:nth-child(2) {
+            animation: slideUp 0.3s ease 0.05s forwards;
+        }
+        .controls:not(.hidden) .control-btn:nth-child(3) {
+            animation: slideUp 0.3s ease 0.1s forwards;
+        }
+        .controls:not(.hidden) .control-btn:nth-child(4) {
+            animation: slideUp 0.3s ease 0.15s forwards;
+        }
+        @keyframes slideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+        .control-btn svg {
+            width: 32px;
+            height: 32px;
+        }
+        .control-btn.end {
+            width: 88px;
+            height: 88px;
+            background: #E53935; /* Red for end call */
+        }
+        .control-btn.end svg {
+            width: 40px;
+            height: 40px;
+        }
+        .control-btn.muted {
+            background: #E53935; /* Red when muted */
+        }
+        
+        /* Desktop: app-sized buttons with hover effects */
+        @media (min-width: 769px) {
+            .controls {
+                bottom: 40px;
+            }
+            .control-btn {
+                width: 60px;
+                height: 60px;
+                background: rgba(107, 127, 184, 0.4); /* More visible app purple/blue */
+                backdrop-filter: blur(10px);
+            }
+            .control-btn:hover {
+                transform: scale(1.05);
+                background: rgba(117, 137, 196, 0.6); /* AccentBlue on hover */
+            }
+            .control-btn.end {
+                width: 75px;
+                height: 75px;
+                background: #E53935;
+            }
+            .control-btn.end:hover {
+                background: #C62828;
+            }
+            .control-btn.muted:hover {
+                background: #C62828;
+            }
+            .control-btn svg {
+                width: 28px;
+                height: 28px;
+            }
+            .control-btn.end svg {
+                width: 36px;
+                height: 36px;
+            }
+        }
+        
+        /* Mobile: app-sized buttons (matching InCallActivity) */
+        @media (max-width: 768px) {
+            .controls {
+                gap: 24px;
+                bottom: 40px;
+            }
+            .control-btn {
+                width: 70px;
+                height: 70px;
+                background: rgba(107, 127, 184, 0.5);
+                backdrop-filter: blur(10px);
+            }
+            .control-btn svg {
+                width: 32px;
+                height: 32px;
+            }
+            .control-btn.end {
+                width: 88px;
+                height: 88px;
+                background: #E53935;
+            }
+            .control-btn.end svg {
+                width: 40px;
+                height: 40px;
+            }
+            /* Hide PIP button on mobile */
+            #pip-btn {
+                display: none;
+            }
+        }
+        
+        /* Call Menu Popup */
+        .call-menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 400;
+            align-items: center;
+            justify-content: center;
+        }
+        .call-menu-overlay.active {
+            display: flex;
+        }
+        .call-menu {
+            background: rgba(47, 52, 72, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 24px;
+            min-width: 320px;
+            max-width: 90%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(107, 127, 184, 0.3);
+        }
+        .call-menu-header {
+            font-size: 18px;
+            font-weight: 600;
+            color: #F4F4F5;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(107, 127, 184, 0.3);
+        }
+        .call-menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 8px;
+        }
+        .call-menu-item:hover {
+            background: rgba(107, 127, 184, 0.3);
+        }
+        .call-menu-item-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #F4F4F5;
+            font-size: 15px;
+        }
+        .call-menu-item-label svg {
+            width: 24px;
+            height: 24px;
+            fill: #7589C4;
+        }
+        .toggle-switch {
+            width: 48px;
+            height: 28px;
+            background: rgba(107, 127, 184, 0.3);
+            border-radius: 14px;
+            position: relative;
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+        .toggle-switch.active {
+            background: #22c55e;
+        }
+        .toggle-switch-knob {
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 12px;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: left 0.3s;
+        }
+        .toggle-switch.active .toggle-switch-knob {
+            left: 22px;
+        }
+        .participant-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .participant-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: rgba(107, 127, 184, 0.2);
+        }
+        .participant-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #6B7FB8 0%, #7589C4 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .participant-name {
+            color: #F4F4F5;
+            font-size: 14px;
+            flex: 1;
+        }
+        .menu-close-btn {
+            width: 100%;
+            padding: 12px;
+            background: rgba(107, 127, 184, 0.3);
+            border: none;
+            border-radius: 8px;
+            color: #F4F4F5;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: background 0.2s;
+        }
+        .menu-close-btn:hover {
+            background: rgba(107, 127, 184, 0.5);
+        }
+        
+        .error-message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(239, 68, 68, 0.95);
+            backdrop-filter: blur(20px);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 12px;
+            border: 1px solid rgba(220, 38, 38, 0.5);
+            font-weight: 500;
+            z-index: 200;
+            animation: slideDown 0.3s ease;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+        }
+        @keyframes slideDown {
+            from { transform: translate(-50%, -100%); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        
+        /* Connection quality indicator - part of controls, bottom left */
+        .quality-indicator {
+            display: none; /* Hidden - now shown inline with name */
+        }
+        
+        /* Reconnection overlay */
+        .reconnecting-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        .reconnecting-content {
+            background: rgba(47, 52, 72, 0.95);
+            padding: 40px 50px;
+            border-radius: 20px;
+            text-align: center;
+            border: 2px solid rgba(107, 127, 184, 0.5);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+        .reconnecting-spinner {
+            border: 4px solid rgba(107, 127, 184, 0.3);
+            border-top: 4px solid #7589C4;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        .reconnecting-text {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .reconnecting-subtext {
+            font-size: 14px;
+            color: #A0A2A6;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body style="background-color: #1b1c1e; margin: 0; padding: 0; overflow: hidden;">
+    <div id="loading" style="background-color: #1b1c1e;">
+        <div class="logo-container">
+            <img src="/logo.png" alt="Très³" class="logo">
+            <div class="spinner"></div>
+        </div>
+        <p class="loading-text">Connecting to call...</p>
+    </div>
+
+    <!-- Connection quality indicator -->
+    <div class="quality-indicator" id="quality-indicator" style="display: none;">
+        <span id="quality-dots">🟢🟢🟢</span>
+        <span id="quality-text">Excellent</span>
+    </div>
+    
+    <!-- Call timer -->
+    <div class="call-timer" id="call-timer">00:00</div>
+    
+    <!-- Call Quality Overlay -->
+    <div class="quality-overlay" id="quality-overlay">
+        <div class="quality-status">
+            <div class="quality-dot excellent" id="quality-overlay-dot"></div>
+            <span class="quality-status-text" id="quality-overlay-status">Excellent</span>
+        </div>
+        <div class="quality-overlay-row">
+            <span class="quality-overlay-label">Resolution</span>
+            <span class="quality-overlay-value" id="quality-resolution">720p</span>
+        </div>
+        <div class="quality-overlay-row">
+            <span class="quality-overlay-label">Frame Rate</span>
+            <span class="quality-overlay-value" id="quality-fps">30 fps</span>
+        </div>
+        <div class="quality-overlay-row">
+            <span class="quality-overlay-label">Bitrate</span>
+            <span class="quality-overlay-value" id="quality-bitrate">1.5 Mbps</span>
+        </div>
+        <div class="quality-overlay-row">
+            <span class="quality-overlay-label">Latency</span>
+            <span class="quality-overlay-value" id="quality-latency">-- ms</span>
+        </div>
+    </div>
+    
+    <!-- Ultra Quality Toggle - REMOVED (now in menu) -->
+
+    <div id="video-container" style="display: none;"></div>
+    
+    <!-- Call Menu Overlay -->
+    <div class="call-menu-overlay" id="call-menu-overlay">
+        <div class="call-menu">
+            <div class="call-menu-header">Call Options</div>
+            
+            <!-- Participants Section -->
+            <div class="call-menu-item" style="cursor: default; margin-bottom: 4px;">
+                <div class="call-menu-item-label">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                    </svg>
+                    <span>Participants</span>
+                </div>
+            </div>
+            <div class="participant-list" id="participant-list">
+                <!-- Participants will be added here dynamically -->
+            </div>
+            
+            <!-- Call Health Overlay Toggle (All Users) -->
+            <div class="call-menu-item" id="quality-overlay-toggle-item">
+                <div class="call-menu-item-label">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    <span>Call Health Overlay</span>
+                </div>
+                <div class="toggle-switch" id="quality-overlay-toggle">
+                    <div class="toggle-switch-knob"></div>
+                </div>
+            </div>
+            
+            <!-- Ultra Quality Toggle (Android App Only) -->
+            <div class="call-menu-item" id="ultra-toggle-item" style="display: none;">
+                <div class="call-menu-item-label">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M9 11.75c-.69 0-1.25.56-1.25 1.25s.56 1.25 1.25 1.25 1.25-.56 1.25-1.25-.56-1.25-1.25-1.25zm6 0c-.69 0-1.25.56-1.25 1.25s.56 1.25 1.25 1.25 1.25-.56 1.25-1.25-.56-1.25-1.25-1.25zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8 0-.29.02-.58.05-.86 2.36-1.05 4.23-2.98 5.21-5.37C11.07 8.33 14.05 10 17.42 10c.78 0 1.53-.09 2.25-.26.21.71.33 1.47.33 2.26 0 4.41-3.59 8-8 8z"/>
+                    </svg>
+                    <span>Ultra Quality (4K)</span>
+                </div>
+                <div class="toggle-switch" id="ultra-toggle-switch">
+                    <div class="toggle-switch-knob"></div>
+                </div>
+            </div>
+            
+            <!-- Screen Share -->
+            <div class="call-menu-item" id="menu-screen-share-item">
+                <div class="call-menu-item-label">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.11-.9-2-2-2H4c-1.11 0-2 .89-2 2v10c0 1.1.89 2 2 2H0v2h24v-2h-4zm-7-3.53v-2.19c-2.78 0-4.61.85-6 2.72.56-2.67 2.11-5.33 6-5.87V7l4 3.73-4 3.74z"/>
+                    </svg>
+                    <span id="menu-screen-share-text">Share Screen</span>
+                </div>
+            </div>
+            
+            <button class="menu-close-btn" id="menu-close-btn">Close</button>
+        </div>
+    </div>
+    
+    <div class="controls hidden" id="controls">
+        <!-- Add Person Button (Browser users only) -->
+        <button class="control-btn" id="add-person-btn" title="Add Person" style="display: none;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+                <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+        </button>
+        <button class="control-btn" id="mic-btn" title="Mute/Unmute">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="white" id="mic-icon">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+        </button>
+        <button class="control-btn end" id="end-btn" title="End Call">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="white">
+                <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
+            </svg>
+        </button>
+        <!-- Desktop: Camera On/Off, Mobile: Switch Camera -->
+        <button class="control-btn" id="camera-toggle-btn" title="Toggle Camera">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="white" id="camera-icon">
+                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+            </svg>
+        </button>
+        <!-- Screen Share button -->
+        <button class="control-btn" id="screen-share-btn" title="Share Screen">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="white" id="screen-share-icon">
+                <path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.11-.9-2-2-2H4c-1.11 0-2 .89-2 2v10c0 1.1.89 2 2 2H0v2h24v-2h-4zm-7-3.53v-2.19c-2.78 0-4.61.85-6 2.72.56-2.67 2.11-5.33 6-5.87V7l4 3.73-4 3.74z"/>
+            </svg>
+        </button>
+        <!-- Picture-in-Picture button -->
+        <button class="control-btn" id="pip-btn" title="Picture-in-Picture">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="white" id="pip-icon">
+                <path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 1.98 2 1.98h18c1.1 0 2-.88 2-1.98V5c0-1.1-.9-2-2-2zm0 16.01H3V4.98h18v14.03z"/>
+            </svg>
+        </button>
+        <!-- Menu Button -->
+        <button class="control-btn" id="menu-btn" title="Call Options">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+            </svg>
+        </button>
+    </div>
+
+    <script type="module">
+        // Import LiveKit as ES module
+        import * as LiveKitSDK from 'livekit-client';
+        
+        console.log('✅ LiveKit ES module imported:', LiveKitSDK);
+        console.log('  Has Room:', !!LiveKitSDK.Room);
+        console.log('  Has RoomEvent:', !!LiveKitSDK.RoomEvent);
+        
+        let room;
+        let micEnabled = true;
+        let callStartTime = null;
+        let callTimerInterval = null;
+        let ultraQualityEnabled = false;
+        let screenShareTrack = null;
+        let isScreenSharing = false;
+        let statsUpdateInterval = null;
+        let maxCameraCapability = null; // Store detected max resolution
+        let qualityOverlayVisible = true; // Call health overlay visible by default
+        let isAndroidApp = false; // Detect if running in Android app
+        let currentStats = {
+            resolution: '1080p',
+            fps: 30,
+            bitrate: 0,
+            latency: 0
+        };
+        
+        // Detect if running in Android app (check for injected interface or specific user agent)
+        function detectAndroidApp() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            // Check for Android WebView or specific app identifier
+            isAndroidApp = (typeof Android !== 'undefined') || 
+                          userAgent.includes('wv') || 
+                          userAgent.includes('vchat-app');
+            console.log('🤖 Running in Android app:', isAndroidApp);
+            return isAndroidApp;
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            document.body.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.style.position = 'fixed';
+            toast.style.bottom = '140px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.background = 'rgba(47, 52, 72, 0.95)';
+            toast.style.backdropFilter = 'blur(20px)';
+            toast.style.color = '#F4F4F5';
+            toast.style.padding = '12px 24px';
+            toast.style.borderRadius = '12px';
+            toast.style.border = '1px solid rgba(107, 127, 184, 0.3)';
+            toast.style.fontSize = '14px';
+            toast.style.fontWeight = '600';
+            toast.style.zIndex = '9999';
+            toast.style.boxShadow = '0 4px 20px rgba(0,0,0,0.3)';
+            toast.style.animation = 'fadeIn 0.3s ease';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        function updateParticipantList() {
+            const listContainer = document.getElementById('participant-list');
+            listContainer.innerHTML = '';
+            
+            if (!room) return;
+            
+            // Add local participant
+            const localParticipant = room.localParticipant;
+            const localItem = document.createElement('div');
+            localItem.className = 'participant-item';
+            localItem.innerHTML = `
+                <div class="participant-avatar">${(localParticipant.name || 'You').charAt(0).toUpperCase()}</div>
+                <div class="participant-name">${localParticipant.name || 'You'} (You)</div>
+            `;
+            listContainer.appendChild(localItem);
+            
+            // Add remote participants
+            room.remoteParticipants.forEach((participant) => {
+                const item = document.createElement('div');
+                item.className = 'participant-item';
+                item.innerHTML = `
+                    <div class="participant-avatar">${(participant.name || participant.identity).charAt(0).toUpperCase()}</div>
+                    <div class="participant-name">${participant.name || participant.identity}</div>
+                `;
+                listContainer.appendChild(item);
+            });
+            
+            if (room.remoteParticipants.size === 0) {
+                const emptyItem = document.createElement('div');
+                emptyItem.style.padding = '12px';
+                emptyItem.style.color = 'rgba(244, 244, 245, 0.6)';
+                emptyItem.style.fontSize = '14px';
+                emptyItem.style.textAlign = 'center';
+                emptyItem.textContent = 'No other participants';
+                listContainer.appendChild(emptyItem);
+            }
+        }
+        
+        function startCallTimer() {
+            callStartTime = Date.now();
+            const timerElement = document.getElementById('call-timer');
+            if (timerElement) {
+                timerElement.classList.add('visible');
+            }
+            
+            // Update timer every second
+            callTimerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                const formatted = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (timerElement) {
+                    timerElement.textContent = formatted;
+                }
+            }, 1000);
+        }
+        
+        function stopCallTimer() {
+            if (callTimerInterval) {
+                clearInterval(callTimerInterval);
+                callTimerInterval = null;
+            }
+            if (statsUpdateInterval) {
+                clearInterval(statsUpdateInterval);
+                statsUpdateInterval = null;
+            }
+        }
+        
+        // Setup visibility handling to enable PIP when user leaves
+        function setupVisibilityHandling() {
+            console.log('🔍 Setting up visibility handling for PIP mode');
+            
+            // Handle visibility change (tab switch, minimize, etc.)
+            document.addEventListener('visibilitychange', async () => {
+                if (document.hidden) {
+                    console.log('📱 Page hidden - attempting to enter PIP mode');
+                    await enterPIPMode();
+                } else {
+                    console.log('👁️ Page visible - exiting PIP mode');
+                    await exitPIPMode();
+                }
+            });
+            
+            // Handle page unload/close - try to keep connection alive
+            window.addEventListener('beforeunload', (e) => {
+                if (room && room.state === 'connected') {
+                    console.log('⚠️ Page closing - attempting PIP mode');
+                    // Don't disconnect, try to enter PIP
+                    enterPIPMode();
+                }
+            });
+            
+            // Handle pagehide (mobile browsers)
+            window.addEventListener('pagehide', async (e) => {
+                if (room && room.state === 'connected') {
+                    console.log('📱 Page hiding (mobile) - entering PIP mode');
+                    await enterPIPMode();
+                }
+            });
+        }
+        
+        async function enterPIPMode() {
+            try {
+                // Get the main video element
+                const mainVideo = document.querySelector('.video-track.main video');
+                
+                if (!mainVideo) {
+                    console.log('❌ No video element found for PIP');
+                    return;
+                }
+                
+                // Check if PIP is supported
+                if (!document.pictureInPictureEnabled) {
+                    console.log('ℹ️ PIP not supported in this browser');
+                    // On mobile, just keep connection alive
+                    if (room && room.state === 'connected') {
+                        console.log('✅ Keeping connection alive in background');
+                    }
+                    return;
+                }
+                
+                // Enter PIP mode
+                if (mainVideo !== document.pictureInPictureElement) {
+                    await mainVideo.requestPictureInPicture();
+                    console.log('✅ Entered PIP mode successfully');
+                    showToast('📺 Picture-in-Picture mode active');
+                }
+            } catch (error) {
+                console.warn('⚠️ Failed to enter PIP mode:', error);
+                // Keep connection alive anyway
+                if (room && room.state === 'connected') {
+                    console.log('✅ Keeping connection alive without PIP');
+                }
+            }
+        }
+        
+        async function exitPIPMode() {
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                    console.log('✅ Exited PIP mode');
+                }
+            } catch (error) {
+                console.warn('⚠️ Failed to exit PIP mode:', error);
+            }
+        }
+
+        async function detectCameraCapabilities() {
+            console.log('📷 Detecting camera capabilities...');
+            try {
+                // Get available video devices
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                console.log('  - Found', videoDevices.length, 'camera(s)');
+                
+                // Test different resolutions to see what's supported
+                const resolutionsToTest = [
+                    { name: '4K', width: 3840, height: 2160 },
+                    { name: '1440p', width: 2560, height: 1440 },
+                    { name: '1080p', width: 1920, height: 1080 },
+                    { name: '720p', width: 1280, height: 720 },
+                    { name: '540p', width: 960, height: 540 },
+                    { name: '360p', width: 640, height: 360 }
+                ];
+                
+                const supportedResolutions = [];
+                
+                for (const res of resolutionsToTest) {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                width: { ideal: res.width },
+                                height: { ideal: res.height },
+                                frameRate: { ideal: 30 }
+                            }
+                        });
+                        
+                        const track = stream.getVideoTracks()[0];
+                        const settings = track.getSettings();
+                        const capabilities = track.getCapabilities ? track.getCapabilities() : null;
+                        
+                        supportedResolutions.push({
+                            name: res.name,
+                            width: settings.width,
+                            height: settings.height,
+                            maxFrameRate: capabilities?.frameRate?.max || 30
+                        });
+                        
+                        console.log(`  ✅ ${res.name}: ${settings.width}×${settings.height} @ ${capabilities?.frameRate?.max || 30}fps`);
+                        
+                        // Stop the test stream
+                        track.stop();
+                        
+                        // If we got the exact resolution we wanted, we can be confident it's supported
+                        if (settings.width === res.width && settings.height === res.height) {
+                            break; // Found max, no need to test lower
+                        }
+                    } catch (e) {
+                        console.log(`  ❌ ${res.name}: Not supported`);
+                    }
+                }
+                
+                if (supportedResolutions.length > 0) {
+                    const maxRes = supportedResolutions[0];
+                    console.log(`📷 Maximum supported resolution: ${maxRes.name} (${maxRes.width}×${maxRes.height}) @ ${maxRes.maxFrameRate}fps`);
+                    showToast(`📷 Camera: ${maxRes.name} @ ${maxRes.maxFrameRate}fps`);
+                    return maxRes;
+                } else {
+                    console.log('⚠️ Could not detect camera capabilities');
+                    return null;
+                }
+            } catch (error) {
+                console.error('❌ Error detecting camera capabilities:', error);
+                return null;
+            }
+        }
+
+        async function joinCall() {
+            console.log('🚀 Starting joinCall...');
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const wsUrl = urlParams.get('url');
+
+            console.log('Token present:', !!token, 'length:', token?.length);
+            console.log('WebSocket URL:', wsUrl);
+
+            if (!token || !wsUrl) {
+                const error = 'Invalid call link. Missing ' + (!token ? 'token' : 'URL');
+                console.error('❌', error);
+                showError(error);
+                document.getElementById('loading').innerHTML = '<p>❌ Invalid call link</p><p style="font-size:12px;margin-top:10px;">Please check the link and try again.</p>';
+                return;
+            }
+
+            try {
+                // Detect if running in Android app
+                detectAndroidApp();
+                
+                // Show Ultra toggle only for Android app users
+                if (isAndroidApp) {
+                    document.getElementById('ultra-toggle-item').style.display = 'flex';
+                } else {
+                    // Show Add Person button only for browser users
+                    document.getElementById('add-person-btn').style.display = 'flex';
+                }
+                
+                // Setup visibility change handler for PIP mode
+                setupVisibilityHandling();
+                
+                // Detect camera capabilities first
+                maxCameraCapability = await detectCameraCapabilities();
+                
+                // ES module is already loaded at this point
+                console.log('✅ Using LiveKit ES module');
+                console.log('🏗️ Creating room...');
+                
+                // Determine initial video settings with bandwidth optimization
+                let initialResolution, initialFrameRate, targetBitrate, videoCodec;
+                if (ultraQualityEnabled) {
+                    // Ultra mode: 4K @ 30fps (Android app only)
+                    initialResolution = { width: 3840, height: 2160 };
+                    initialFrameRate = 30;
+                    targetBitrate = 8000000; // 8 Mbps for 4K
+                    // Codec priority for Ultra: H.265 > VP9 > H.264 > VP8
+                    videoCodec = 'h265'; // Try H.265 first for best compression
+                    console.log(`📹 Ultra mode: Using 4K @ 30fps with H.265 (fallback chain)`);
+                } else {
+                    // Standard mode: 1080p @ 30fps (default for all - Apple limit)
+                    initialResolution = { width: 1920, height: 1080 };
+                    initialFrameRate = 30;
+                    targetBitrate = 3000000; // 3 Mbps for 1080p
+                    // Codec priority: H.265 > VP9 > H.264 > VP8
+                    videoCodec = 'h265'; // LiveKit will auto-fallback if not supported
+                    console.log(`📹 Standard mode: Using 1080p @ 30fps with H.265 (fallback chain)`);
+                }
+                
+                room = new LiveKitSDK.Room({
+                    adaptiveStream: true,
+                    dynacast: true,
+                    videoCaptureDefaults: {
+                        resolution: initialResolution,
+                        frameRate: initialFrameRate,
+                        // Option 4: Hardware acceleration hints
+                        contentHint: isAndroidApp ? 'motion' : undefined
+                    },
+                    publishDefaults: {
+                        simulcast: true,
+                        // Option 8: Chromium optimization for Android
+                        scalabilityMode: isAndroidApp ? 'L3T3_KEY' : 'L3T3',
+                        // Codec with fallback chain: h265 -> vp9 -> h264 -> vp8
+                        videoCodec: videoCodec,
+                        videoCodecPref: ['h265', 'vp9', 'h264', 'vp8'], // Fallback order
+                        // Option 2: Explicit bitrate targets
+                        videoBitrate: targetBitrate,
+                        // Option 6: Forward Error Correction for packet loss
+                        red: true,
+                        dtx: false
+                    },
+                    audioCaptureDefaults: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                        // Option 5: High quality audio
+                        sampleRate: 48000,
+                        channelCount: 2
+                    }
+                });
+
+                console.log('📡 Setting up event listeners...');
+                room.on(LiveKitSDK.RoomEvent.TrackSubscribed, handleTrackSubscribed);
+                room.on(LiveKitSDK.RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
+                room.on(LiveKitSDK.RoomEvent.Disconnected, handleDisconnect);
+                room.on(LiveKitSDK.RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+                room.on(LiveKitSDK.RoomEvent.ParticipantConnected, handleParticipantConnected);
+                
+                // Option 3: Dynamic bitrate adjustment based on connection quality
+                room.on(LiveKitSDK.RoomEvent.ConnectionQualityChanged, handleConnectionQualityWithAdjustment);
+                
+                // Reconnection logic
+                room.on(LiveKitSDK.RoomEvent.Reconnecting, handleReconnecting);
+                room.on(LiveKitSDK.RoomEvent.Reconnected, handleReconnected);
+                room.on(LiveKitSDK.RoomEvent.ConnectionStateChanged, handleConnectionStateChanged);
+
+                console.log('🔌 Connecting to room...');
+                console.log('  URL:', wsUrl);
+                console.log('  Token (first 20 chars):', token.substring(0, 20) + '...');
+                
+                await room.connect(wsUrl, token);
+                console.log('✅ Connected to room:', room.name);
+                console.log('  - Room SID:', room.sid);
+                console.log('  - Local participant:', room.localParticipant.identity);
+                console.log('  - Local participant SID:', room.localParticipant.sid);
+                console.log('  - Existing participants:', room.remoteParticipants.size);
+                
+                // Log existing participants
+                room.remoteParticipants.forEach((participant, sid) => {
+                    console.log('  - Remote participant:', participant.identity, 'SID:', sid);
+                    console.log('    - Video tracks:', participant.videoTrackPublications.size);
+                    console.log('    - Audio tracks:', participant.audioTrackPublications.size);
+                });
+
+                console.log('🎥 Enabling camera and microphone...');
+                try {
+                    // CRITICAL FIX: Enable camera and mic separately with proper error handling
+                    // and ensure both are published to the room
+                    console.log('  - Creating audio and video tracks...');
+                    
+                    // Use stable resolutions
+                    let videoResolution, videoFrameRate;
+                    if (ultraQualityEnabled) {
+                        videoResolution = { width: 3840, height: 2160 };
+                        videoFrameRate = 30;
+                        console.log('  - Ultra mode: Using 4K @ 30fps');
+                    } else {
+                        videoResolution = { width: 1920, height: 1080 };
+                        videoFrameRate = 30;
+                        console.log('  - Standard mode: Using 1080p @ 30fps');
+                    }
+                    
+                    const tracks = await room.localParticipant.createTracks({
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        },
+                        video: {
+                            resolution: videoResolution,
+                            frameRate: videoFrameRate
+                        }
+                    });
+                    
+                    console.log('  - Tracks created:', tracks.length);
+                    
+                    // Publish each track explicitly
+                    for (const track of tracks) {
+                        console.log('  - Publishing', track.kind, 'track...');
+                        const publication = await room.localParticipant.publishTrack(track, {
+                            simulcast: true,
+                            videoCodec: 'vp8'
+                        });
+                        console.log('    ✅ Published successfully');
+                        console.log('    - Publication sid:', publication.trackSid);
+                        console.log('    - Track sid:', track.sid);
+                        console.log('    - Source:', publication.source);
+                        console.log('    - Track enabled:', track.enabled);
+                    }
+                    
+                    console.log('✅ All tracks published successfully');
+                    
+                    // Verify tracks are enabled
+                    const videoTrack = Array.from(room.localParticipant.videoTrackPublications.values())
+                        .find(pub => pub.source === LiveKitSDK.Track.Source.Camera);
+                    const audioTrack = Array.from(room.localParticipant.audioTrackPublications.values())
+                        .find(pub => pub.source === LiveKitSDK.Track.Source.Microphone);
+                    
+                    console.log('  - Video track enabled:', videoTrack?.track?.enabled);
+                    console.log('  - Audio track enabled:', audioTrack?.track?.enabled);
+                    
+                } catch (mediaError) {
+                    console.warn('⚠️ Media error:', mediaError);
+                    // Try fallback: enable separately
+                    try {
+                        await room.localParticipant.setMicrophoneEnabled(true);
+                        console.log('✅ Mic enabled (fallback)');
+                    } catch (e) {
+                        console.error('Mic failed:', e);
+                    }
+                    try {
+                        await room.localParticipant.setCameraEnabled(true);
+                        console.log('✅ Camera enabled (fallback)');
+                    } catch (e) {
+                        console.error('Camera failed:', e);
+                    }
+                }
+
+                // Attempt to start audio playback (may require user gesture on some browsers)
+                try {
+                    await room.startAudio();
+                    console.log('🔊 Audio playback started automatically');
+                } catch (e) {
+                    console.warn('🔇 Autoplay blocked, attempting to start anyway:', e);
+                    // Try again after a short delay
+                    setTimeout(async () => {
+                        try {
+                            await room.startAudio();
+                            console.log('🔊 Audio started on retry');
+                        } catch (retryError) {
+                            console.warn('Audio autoplay still blocked:', retryError);
+                        }
+                    }, 500);
+                }
+                
+                // Show UI
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('video-container').style.display = 'flex';
+                // Ultra toggle removed from top-right, now in menu
+                const controls = document.getElementById('controls');
+                controls.classList.remove('hidden');
+                
+                // Set quality overlay toggle to active by default
+                document.getElementById('quality-overlay-toggle').classList.add('active');
+                
+                // Display local video
+                console.log('🖼️ UI displayed, showing local video...');
+                displayLocalVideo();
+                console.log('✅ Call setup complete!');
+                console.log('═══════════════════════════════════════');
+                
+                // Start auto-hide timer for controls
+                setTimeout(() => {
+                    resetControlsHideTimer();
+                }, 2000);
+                
+                // Start call timer
+                startCallTimer();
+                
+                // Start quality stats monitoring (update every 2 seconds)
+                statsUpdateInterval = setInterval(updateQualityStats, 2000);
+                // Initial update
+                setTimeout(updateQualityStats, 1000);
+                
+                // Request wake lock to keep connection alive
+                if ('wakeLock' in navigator) {
+                    setTimeout(requestWakeLock, 2000);
+                }
+                
+                // Subscribe to existing remote tracks (if participant joined first)
+                console.log('🔍 Checking for existing remote tracks...');
+                room.remoteParticipants.forEach((participant, sid) => {
+                    console.log('  - Checking participant:', participant.identity);
+                    participant.videoTrackPublications.forEach((publication, trackSid) => {
+                        console.log('    - Found video track:', trackSid);
+                        if (publication.track) {
+                            console.log('      → Track is already subscribed, handling...');
+                            handleTrackSubscribed(publication.track, publication, participant);
+                        } else {
+                            console.log('      → Track not yet subscribed, waiting for event...');
+                        }
+                    });
+                    participant.audioTrackPublications.forEach((publication, trackSid) => {
+                        console.log('    - Found audio track:', trackSid);
+                        if (publication.track) {
+                            console.log('      → Track is already subscribed, handling...');
+                            handleTrackSubscribed(publication.track, publication, participant);
+                        }
+                    });
+                });
+
+            } catch (error) {
+                console.error('❌ Connection failed:', error);
+                console.error('Error details:', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
+                
+                let userMessage = 'Failed to join call: ' + error.message;
+                
+                // Provide helpful error messages
+                if (error.message.includes('token')) {
+                    userMessage = 'Invalid or expired link. Please request a new link.';
+                } else if (error.message.includes('connect')) {
+                    userMessage = 'Connection failed. Please check your internet connection.';
+                } else if (error.message.includes('permission')) {
+                    userMessage = 'Camera/microphone access denied. Please allow access and refresh.';
+                }
+                
+                showError(userMessage);
+                document.getElementById('loading').innerHTML = 
+                    '<p>❌ Connection failed</p>' +
+                    '<p style="font-size:14px;margin-top:10px;">' + userMessage + '</p>' +
+                    '<p style="font-size:12px;margin-top:10px;color:#888;">Technical: ' + error.message + '</p>';
+            }
+        }
+
+        function displayLocalVideo() {
+            console.log('📹 Displaying local video...');
+            const localVideoTrack = Array.from(room.localParticipant.videoTrackPublications.values())
+                .find(pub => pub.source === LiveKitSDK.Track.Source.Camera)?.track;
+            
+            console.log('  - Local video track found:', !!localVideoTrack);
+            
+            // Start with local video in PiP (small), will swap to main if no remote
+            if (localVideoTrack) {
+                const videoElement = localVideoTrack.attach();
+                videoElement.style.transform = 'scaleX(-1)'; // Mirror local video
+                videoElement.autoplay = true;
+                videoElement.playsInline = true;
+                videoElement.muted = true; // Local video should be muted
+                videoElement.disablePictureInPicture = true; // Disable browser's native PIP
+                videoElement.setAttribute('disablePictureInPicture', 'true'); // For older browsers
+                console.log('  - Video element created and mirrored');
+                console.log('  - Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+                
+                const container = createVideoContainer('You (Guest)', videoElement, true, true); // isLocal=true, isPip=true
+                container.id = 'local-video';
+                document.getElementById('video-container').appendChild(container);
+                console.log('  - Local video container added to DOM');
+            } else {
+                console.log('  - No video track, showing placeholder');
+                // Show placeholder if no video
+                const container = createVideoContainer('You (Guest)', null, true, true);
+                container.id = 'local-video';
+                document.getElementById('video-container').appendChild(container);
+            }
+            updateVideoLayout();
+        }
+
+        async function handleTrackSubscribed(track, publication, participant) {
+            console.log('🎬 Track subscribed:', track.kind, 'from', participant.name || participant.identity);
+            console.log('  - Track source:', publication.source);
+            console.log('  - Track sid:', track.sid);
+            console.log('  - Participant sid:', participant.sid);
+            console.log('  - Participant identity:', participant.identity);
+            console.log('  - Participant metadata:', participant.metadata);
+            
+            if (track.kind === LiveKitSDK.Track.Kind.Video) {
+                console.log('📹 Creating video element for remote track...');
+                const videoElement = track.attach();
+                videoElement.autoplay = true;
+                videoElement.playsInline = true;
+                videoElement.muted = true; // Remote video should be muted
+                videoElement.disablePictureInPicture = true; // Disable browser's native PIP
+                videoElement.setAttribute('disablePictureInPicture', 'true'); // For older browsers
+                console.log('  - Video element created:', videoElement);
+                console.log('  - Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+                
+                // Get participant name from metadata or identity
+                let participantName = participant.name || participant.identity;
+                
+                // Try to parse metadata for display name
+                try {
+                    if (participant.metadata) {
+                        const metadata = JSON.parse(participant.metadata);
+                        if (metadata.displayName) {
+                            participantName = metadata.displayName;
+                            console.log('  - Using displayName from metadata:', participantName);
+                        }
+                    }
+                } catch (e) {
+                    console.log('  - No metadata or failed to parse, using identity:', participantName);
+                }
+                
+                // Remote video goes in main (large), local moves to PiP
+                const container = createVideoContainer(
+                    participantName,
+                    videoElement,
+                    false, // isLocal=false
+                    false  // isPip=false (main video)
+                );
+                container.id = `track-${participant.sid}`;
+                container.dataset.participantSid = participant.sid;
+                console.log('  - Container created with id:', container.id);
+                
+                const videoContainer = document.getElementById('video-container');
+                videoContainer.appendChild(container);
+                console.log('  - Container appended to DOM');
+                console.log('  - Total video containers now:', videoContainer.querySelectorAll('.video-track').length);
+                
+                updateVideoLayout();
+            } else if (track.kind === LiveKitSDK.Track.Kind.Audio) {
+                console.log('🔊 Attaching remote audio track...');
+                // Attach remote audio track to an <audio> element
+                const audioEl = track.attach();
+                audioEl.autoplay = true;
+                audioEl.playsInline = true;
+                audioEl.muted = false;
+                audioEl.controls = false;
+                audioEl.style.display = 'none';
+                document.body.appendChild(audioEl);
+                console.log('  - Audio element attached and playing');
+                
+                // Force audio to start
+                try {
+                    await room.startAudio();
+                    console.log('  - Audio context started for remote audio');
+                } catch (e) {
+                    console.warn('  - Audio start failed:', e);
+                }
+            }
+        }
+
+        function handleTrackUnsubscribed(track, publication, participant) {
+            if (track.kind === LiveKitSDK.Track.Kind.Video) {
+                const container = document.getElementById(`track-${participant.sid}`);
+                if (container) {
+                    container.remove();
+                    updateVideoLayout();
+                }
+            } else if (track.kind === LiveKitSDK.Track.Kind.Audio) {
+                try {
+                    track.detach().forEach(el => el.remove());
+                } catch (_) {}
+            }
+        }
+
+        function handleParticipantConnected(participant) {
+            console.log('👥 Participant connected:', participant.name || participant.identity);
+            
+            // Show welcome toast
+            const participantName = participant.name || participant.identity || 'Someone';
+            showToast(`👥 ${participantName} joined the call`);
+            
+            // Update participant list if menu is open
+            const menuOverlay = document.getElementById('call-menu-overlay');
+            if (menuOverlay && menuOverlay.classList.contains('active')) {
+                updateParticipantList();
+            }
+            
+            // Subscribe to their tracks
+            console.log('  - Waiting for participant tracks...');
+        }
+
+        function handleParticipantDisconnected(participant) {
+            console.log('👋 Participant disconnected:', participant.name || participant.identity);
+            
+            // Remove their video container
+            const container = document.getElementById(`track-${participant.sid}`);
+            if (container) {
+                container.remove();
+                console.log('  - Removed video container for', participant.name);
+            }
+            
+            // Update video layout
+            updateVideoLayout();
+            
+            // Show toast notification
+            const participantName = participant.name || participant.identity || 'Participant';
+            showToast(`👋 ${participantName} left the call`);
+            
+            // Update participant list if menu is open
+            const menuOverlay = document.getElementById('call-menu-overlay');
+            if (menuOverlay && menuOverlay.classList.contains('active')) {
+                updateParticipantList();
+            }
+            
+            // Don't end the call - keep going with remaining participants
+            console.log('  - Call continues with remaining participants');
+        }
+
+        // ===== NETWORK QUALITY MONITORING =====
+        let currentQuality = 'good';
+        let currentResolution = 'h540';
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 5;
+
+        // Option 3: Dynamic quality adjustment with bitrate control
+        async function handleConnectionQualityWithAdjustment(quality, participant) {
+            // Only monitor our own connection quality
+            if (participant !== room.localParticipant) return;
+            
+            console.log(`📶 Connection quality changed: ${quality}`);
+            currentQuality = quality;
+            
+            // Update UI indicator
+            updateQualityIndicator(quality);
+            
+            // Dynamic bitrate adjustment based on connection quality
+            await adjustVideoQualityDynamic(quality);
+        }
+        
+        async function adjustVideoQualityDynamic(quality) {
+            if (!room || !room.localParticipant) return;
+            
+            const videoPublication = Array.from(room.localParticipant.videoTrackPublications.values())
+                .find(pub => pub.source === LiveKitSDK.Track.Source.Camera);
+            
+            if (!videoPublication || !videoPublication.track) return;
+            
+            try {
+                let targetResolution, targetFrameRate, targetBitrate;
+                
+                if (quality === 'poor') {
+                    // Reduce to 720p to maintain stability
+                    targetResolution = { width: 1280, height: 720 };
+                    targetFrameRate = 30;
+                    targetBitrate = 1500000; // 1.5 Mbps
+                    console.log('📉 Poor connection: Reducing to 720p');
+                } else if (quality === 'good') {
+                    // Use 1080p
+                    targetResolution = { width: 1920, height: 1080 };
+                    targetFrameRate = 30;
+                    targetBitrate = 3000000; // 3 Mbps
+                    console.log('📊 Good connection: Using 1080p');
+                } else if (quality === 'excellent') {
+                    // Use target quality (1080p or 4K if Ultra enabled)
+                    if (ultraQualityEnabled && isAndroidApp) {
+                        targetResolution = { width: 3840, height: 2160 };
+                        targetFrameRate = 30;
+                        targetBitrate = 8000000; // 8 Mbps
+                        console.log('📈 Excellent connection: Using 4K');
+                    } else {
+                        targetResolution = { width: 1920, height: 1080 };
+                        targetFrameRate = 30;
+                        targetBitrate = 3000000; // 3 Mbps
+                        console.log('📈 Excellent connection: Using 1080p');
+                    }
+                }
+                
+                // Apply the quality adjustment
+                await videoPublication.track.restartTrack({
+                    resolution: targetResolution,
+                    frameRate: targetFrameRate
+                });
+                
+                console.log(`✅ Video quality adjusted to ${targetResolution.height}p`);
+            } catch (error) {
+                console.error('❌ Failed to adjust video quality:', error);
+            }
+        }
+        
+        function handleConnectionQuality(quality, participant) {
+            // Legacy handler - redirects to new one
+            handleConnectionQualityWithAdjustment(quality, participant);
+        }
+
+        function updateQualityIndicator(quality) {
+            // Update the quality dot in the participant name label
+            const qualityDots = document.querySelectorAll('.quality-dot');
+            
+            qualityDots.forEach(dot => {
+                // Remove old quality classes
+                dot.classList.remove('excellent', 'good', 'poor');
+                // Add new quality class
+                dot.classList.add(quality);
+            });
+            
+            // Update the quality overlay
+            const overlay = document.getElementById('quality-overlay');
+            const overlayDot = document.getElementById('quality-overlay-dot');
+            const overlayStatus = document.getElementById('quality-overlay-status');
+            
+            if (overlay && overlayDot && overlayStatus) {
+                overlay.classList.add('visible');
+                overlayDot.className = 'quality-dot ' + quality;
+                
+                // Set text based on quality
+                if (quality === 'excellent') {
+                    overlayStatus.textContent = 'Excellent';
+                } else if (quality === 'good') {
+                    overlayStatus.textContent = 'Good';
+                } else {
+                    overlayStatus.textContent = 'Poor';
+                }
+            }
+            
+            // Update stats in overlay
+            updateQualityStats();
+        }
+        
+        async function updateQualityStats() {
+            if (!room || !room.localParticipant) return;
+            
+            try {
+                // Get local video track stats
+                const videoPublication = Array.from(room.localParticipant.videoTrackPublications.values())
+                    .find(pub => pub.source === LiveKitSDK.Track.Source.Camera);
+                
+                if (videoPublication && videoPublication.track) {
+                    const track = videoPublication.track;
+                    
+                    // Get video settings
+                    const settings = track.mediaStreamTrack.getSettings();
+                    const resolution = `${settings.height}p`;
+                    const fps = Math.round(settings.frameRate || 30);
+                    
+                    // Get stats from WebRTC
+                    const stats = await videoPublication.track.getRTCStatsReport();
+                    let bitrate = 0;
+                    let latency = 0;
+                    
+                    stats.forEach(report => {
+                        if (report.type === 'outbound-rtp' && report.mediaType === 'video') {
+                            // Calculate bitrate (bits per second to Mbps)
+                            if (report.bytesSent && report.timestamp) {
+                                bitrate = ((report.bytesSent * 8) / 1000000).toFixed(1);
+                            }
+                        }
+                        if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+                            latency = report.currentRoundTripTime ? Math.round(report.currentRoundTripTime * 1000) : 0;
+                        }
+                    });
+                    
+                    // Update UI
+                    document.getElementById('quality-resolution').textContent = resolution;
+                    document.getElementById('quality-fps').textContent = `${fps} fps`;
+                    document.getElementById('quality-bitrate').textContent = bitrate > 0 ? `${bitrate} Mbps` : '-- Mbps';
+                    document.getElementById('quality-latency').textContent = latency > 0 ? `${latency} ms` : '-- ms';
+                    
+                    // Store current stats
+                    currentStats = { resolution, fps, bitrate, latency };
+                }
+            } catch (error) {
+                console.warn('Error updating quality stats:', error);
+            }
+        }
+
+        async function autoAdjustQuality(quality) {
+            if (!room || !room.localParticipant) return;
+            
+            let targetPreset = null;
+            let targetFps = 30;
+            let newResolution = currentResolution;
+            
+            // Determine target based on quality
+            if (quality === 'poor' && currentResolution !== 'h360') {
+                targetPreset = LiveKitSDK.VideoPresets.h360;
+                targetFps = 15;
+                newResolution = 'h360';
+                showToast('⚠️ Poor connection - reducing to 360p @ 15fps');
+            } else if (quality === 'good' && currentResolution !== 'h540') {
+                targetPreset = LiveKitSDK.VideoPresets.h540;
+                targetFps = 24;
+                newResolution = 'h540';
+                showToast('📶 Connection improved - 540p @ 24fps');
+            } else if (quality === 'excellent' && currentResolution !== 'h720') {
+                targetPreset = LiveKitSDK.VideoPresets.h720;
+                targetFps = 30;
+                newResolution = 'h720';
+                showToast('✅ Excellent connection - 720p @ 30fps');
+            }
+            
+            // Apply the change if needed
+            if (targetPreset && newResolution !== currentResolution) {
+                console.log(`🔄 Switching from ${currentResolution} to ${newResolution} @ ${targetFps}fps`);
+                currentResolution = newResolution;
+                
+                try {
+                    // Get current video track
+                    const videoTrack = Array.from(room.localParticipant.videoTrackPublications.values())
+                        .find(pub => pub.source === LiveKitSDK.Track.Source.Camera)?.track;
+                    
+                    if (videoTrack) {
+                        // Update capture settings
+                        await videoTrack.mediaStreamTrack.applyConstraints({
+                            width: targetPreset.resolution.width,
+                            height: targetPreset.resolution.height,
+                            frameRate: targetFps
+                        });
+                        console.log(`✅ Resolution changed to ${newResolution}`);
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Failed to adjust quality:', e);
+                }
+            }
+        }
+
+        // ===== RECONNECTION LOGIC =====
+        function handleReconnecting() {
+            reconnectAttempts++;
+            console.log(`🔄 Reconnecting... (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+            
+            if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
+                showReconnectingOverlay(reconnectAttempts);
+            } else {
+                // Give up after max attempts
+                hideReconnectingOverlay();
+                showError('Unable to reconnect. Please check your connection and rejoin.');
+                setTimeout(() => {
+                    window.close();
+                    window.location.href = 'about:blank';
+                }, 3000);
+            }
+        }
+
+        function handleReconnected() {
+            console.log('✅ Successfully reconnected!');
+            reconnectAttempts = 0; // Reset counter
+            hideReconnectingOverlay();
+            showToast('✅ Connection restored');
+        }
+
+        function handleConnectionStateChanged(state) {
+            console.log(`🔌 Connection state: ${state}`);
+            
+            // State can be: 'connected', 'reconnecting', 'disconnected'
+            if (state === LiveKitSDK.ConnectionState.Connected) {
+                console.log('✅ Connected');
+                hideReconnectingOverlay();
+            } else if (state === LiveKitSDK.ConnectionState.Reconnecting) {
+                console.log('🔄 Reconnecting...');
+                showReconnectingOverlay(reconnectAttempts + 1);
+            } else if (state === LiveKitSDK.ConnectionState.Disconnected) {
+                console.log('❌ Disconnected');
+                // Only show error if user is actively using the page
+                if (!document.hidden) {
+                    showError('Connection lost. Please reload the page.');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                }
+            }
+        }
+
+        function showReconnectingOverlay(attempt) {
+            // Remove existing overlay if present
+            hideReconnectingOverlay();
+            
+            const overlay = document.createElement('div');
+            overlay.className = 'reconnecting-overlay';
+            overlay.id = 'reconnecting-overlay';
+            overlay.innerHTML = `
+                <div class="reconnecting-content">
+                    <div class="reconnecting-spinner"></div>
+                    <div class="reconnecting-text">Connection lost</div>
+                    <div class="reconnecting-subtext">Reconnecting... (attempt ${attempt}/${MAX_RECONNECT_ATTEMPTS})</div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function hideReconnectingOverlay() {
+            const overlay = document.getElementById('reconnecting-overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+
+        // Browser offline/online detection
+        window.addEventListener('offline', () => {
+            console.log('📴 Device went offline');
+            showToast('⚠️ No internet connection');
+        });
+
+        window.addEventListener('online', () => {
+            console.log('🌐 Device back online');
+            showToast('🌐 Internet restored');
+        });
+        
+        // Keep connection alive when page is hidden/backgrounded
+        let wasPageHidden = false;
+        let wakeLock = null;
+        
+        document.addEventListener('visibilitychange', async () => {
+            if (document.hidden) {
+                console.log('👁️ Page hidden - maintaining connection in background');
+                wasPageHidden = true;
+                
+                // Try to enter PIP mode automatically on mobile when page is hidden
+                if (window.innerWidth <= 768 && document.pictureInPictureEnabled && !document.pictureInPictureElement) {
+                    try {
+                        const mainVideo = document.querySelector('.video-track.main video');
+                        if (mainVideo && mainVideo.readyState >= 2) {
+                            console.log('  - Attempting automatic PIP for mobile...');
+                            await mainVideo.requestPictureInPicture();
+                            console.log('  ✅ Entered PIP mode automatically');
+                        }
+                    } catch (error) {
+                        console.log('  - Auto-PIP not available:', error.message);
+                        // Not all browsers support auto-PIP, that's okay
+                    }
+                }
+            } else {
+                console.log('👁️ Page visible again');
+                
+                // Check room state and attempt reconnection if needed
+                if (room) {
+                    console.log('  - Room state:', room.state);
+                    
+                    if (room.state === 'disconnected') {
+                        console.log('  - Room disconnected while away, attempting to reload...');
+                        showToast('⚠️ Connection lost, reloading...');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else if (room.state === 'connected') {
+                        console.log('  - Room still connected');
+                        if (wasPageHidden) {
+                            showToast('👋 Welcome back!');
+                            
+                            // Re-enable tracks if they were disabled
+                            try {
+                                const videoTrack = Array.from(room.localParticipant.videoTrackPublications.values())
+                                    .find(pub => pub.source === LiveKitSDK.Track.Source.Camera)?.track;
+                                const audioTrack = Array.from(room.localParticipant.audioTrackPublications.values())
+                                    .find(pub => pub.source === LiveKitSDK.Track.Source.Microphone)?.track;
+                                
+                                if (videoTrack && !videoTrack.isMuted) {
+                                    console.log('  - Re-enabling video track');
+                                    await videoTrack.unmute();
+                                }
+                                if (audioTrack && micEnabled) {
+                                    console.log('  - Re-enabling audio track');
+                                    await audioTrack.unmute();
+                                }
+                            } catch (e) {
+                                console.warn('  - Error re-enabling tracks:', e);
+                            }
+                        }
+                    } else if (room.state === 'reconnecting') {
+                        console.log('  - Room is reconnecting');
+                        showToast('� Reconnecting...');
+                    }
+                    
+                    wasPageHidden = false;
+                }
+                
+                // Re-acquire wake lock when page becomes visible
+                if ('wakeLock' in navigator && (!wakeLock || wakeLock.released)) {
+                    requestWakeLock();
+                }
+            }
+        });
+        
+        // Prevent page from pausing when backgrounded
+        // Keep audio/video streams active
+        window.addEventListener('blur', () => {
+            console.log('🪟 Window lost focus - connection remains active');
+        });
+        
+        window.addEventListener('focus', () => {
+            console.log('🪟 Window focused');
+        });
+        
+        // Handle mobile browser page freeze/resume (iOS Safari, Chrome mobile)
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                // Page was restored from back-forward cache
+                console.log('📄 Page restored from cache');
+                if (room) {
+                    console.log('  - Checking room state after restore...');
+                    setTimeout(() => {
+                        if (room.state === 'disconnected') {
+                            console.log('  - Room disconnected, reloading page');
+                            window.location.reload();
+                        }
+                    }, 500);
+                }
+            }
+        });
+        
+        window.addEventListener('pagehide', () => {
+            console.log('📄 Page hidden (may be going to cache)');
+        });
+        
+        // Wake lock function
+        async function requestWakeLock() {
+            if (!('wakeLock' in navigator)) {
+                console.log('⚠️ Wake Lock API not supported');
+                return;
+            }
+            
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                console.log('🔒 Wake lock acquired - screen will stay on');
+                
+                wakeLock.addEventListener('release', () => {
+                    console.log('🔓 Wake lock released');
+                });
+            } catch (err) {
+                console.log('⚠️ Wake lock request failed:', err.message);
+            }
+        }
+
+        function handleDisconnect() {
+            console.log('🔌 Disconnected from room');
+            // Stop call timer
+            stopCallTimer();
+            
+            // Don't forcefully disconnect if user is still in the room
+            // This is called when the SERVER disconnects us or network fails
+            // NOT when we intentionally leave
+            
+            console.log('  - Connection lost, showing reconnect message');
+            showToast('⚠️ Connection lost. Trying to reconnect...');
+        }
+        
+        async function leaveCallGracefully() {
+            console.log('👋 User leaving call gracefully');
+            
+            try {
+                // Stop call timer
+                stopCallTimer();
+                
+                // Stop all tracks before disconnecting
+                if (room && room.localParticipant) {
+                    console.log('  - Stopping local tracks...');
+                    
+                    // Stop camera
+                    const cameraTracks = room.localParticipant.videoTrackPublications;
+                    cameraTracks.forEach(async (pub) => {
+                        if (pub.track) {
+                            pub.track.stop();
+                            await room.localParticipant.unpublishTrack(pub.track);
+                        }
+                    });
+                    
+                    // Stop microphone
+                    const audioTracks = room.localParticipant.audioTrackPublications;
+                    audioTracks.forEach(async (pub) => {
+                        if (pub.track) {
+                            pub.track.stop();
+                            await room.localParticipant.unpublishTrack(pub.track);
+                        }
+                    });
+                    
+                    // Stop screen share if active
+                    if (screenShareTrack) {
+                        screenShareTrack.stop();
+                        await room.localParticipant.unpublishTrack(screenShareTrack);
+                        screenShareTrack = null;
+                    }
+                    
+                    console.log('  - All tracks stopped');
+                }
+                
+                // Disconnect from room
+                if (room) {
+                    console.log('  - Disconnecting from room...');
+                    await room.disconnect();
+                    console.log('  - Disconnected successfully');
+                }
+                
+            } catch (e) {
+                console.error('⚠️ Error during graceful disconnect:', e);
+            }
+            
+            // Redirect to call ended page
+            window.location.href = '/call-ended.html';
+        }
+
+        function createVideoContainer(name, videoElement, isLocal = false, isPip = false) {
+            const container = document.createElement('div');
+            container.className = isPip ? 'video-track pip' : 'video-track main';
+            
+            // CRITICAL: Set initial position for PiP explicitly
+            if (isPip) {
+                container.style.display = 'block'; // Force visibility
+                container.style.position = 'absolute';
+                container.style.zIndex = '200'; // Ensure always on top
+                if (window.innerWidth >= 769) {
+                    // Desktop: top-right corner
+                    container.style.width = '180px'; // Smaller on desktop
+                    container.style.height = '240px';
+                    container.style.top = '20px';
+                    container.style.right = '20px';
+                    container.style.left = 'auto';
+                    container.style.bottom = 'auto';
+                    makeDraggable(container);
+                } else {
+                    // Mobile: top-right corner with touch interactions
+                    container.style.width = '100px';
+                    container.style.height = '133px';
+                    container.style.top = '20px';
+                    container.style.right = '10px';
+                    container.style.bottom = 'auto';
+                    container.style.left = 'auto';
+                    
+                    // Setup mobile touch interactions
+                    setupMobilePIPInteractions(container);
+                }
+            }
+            
+            // Only add name label to non-local (remote) participants
+            if (!isLocal) {
+                const nameLabel = document.createElement('div');
+                nameLabel.className = 'participant-name';
+                
+                // Add quality dot for remote participant
+                const qualityDot = document.createElement('div');
+                qualityDot.className = 'quality-dot excellent';
+                qualityDot.id = 'quality-dot-' + name.replace(/\s+/g, '-');
+                nameLabel.appendChild(qualityDot);
+                
+                const nameText = document.createElement('span');
+                nameText.textContent = name;
+                nameLabel.appendChild(nameText);
+                
+                container.appendChild(nameLabel);
+            }            
+            if (videoElement) {
+                container.appendChild(videoElement);
+            } else {
+                // No video placeholder
+                const placeholder = document.createElement('div');
+                placeholder.className = 'no-video-placeholder';
+                const initial = document.createElement('div');
+                initial.className = 'initial';
+                initial.textContent = name.charAt(0).toUpperCase();
+                placeholder.appendChild(initial);
+                container.appendChild(placeholder);
+            }
+            
+            return container;
+        }
+
+        function updateVideoLayout() {
+            console.log('🔄 Updating video layout...');
+            const container = document.getElementById('video-container');
+            const videos = container.querySelectorAll('.video-track');
+            console.log('  - Total videos:', videos.length);
+            
+            // Ensure proper z-index layering
+            videos.forEach(v => {
+                if (v.classList.contains('main')) {
+                    v.style.zIndex = '1';
+                } else if (v.classList.contains('pip')) {
+                    v.style.zIndex = '300'; // Higher z-index for PIP
+                }
+            });
+            
+            // If only local video and no remote yet, show local in main
+            const remoteVideos = Array.from(videos).filter(v => v.id !== 'local-video');
+            const localVideo = document.getElementById('local-video');
+            
+            console.log('  - Remote videos:', remoteVideos.length);
+            console.log('  - Local video present:', !!localVideo);
+            
+            if (remoteVideos.length === 0 && localVideo) {
+                console.log('  → No remote videos, showing local in main');
+                localVideo.classList.remove('pip');
+                localVideo.classList.add('main');
+                localVideo.style.display = 'block';
+                localVideo.style.position = 'absolute';
+                localVideo.style.top = '0';
+                localVideo.style.left = '0';
+                localVideo.style.right = 'auto';
+                localVideo.style.bottom = 'auto';
+            } else if (remoteVideos.length > 0 && localVideo) {
+                // Remote video exists, ensure local is in PiP
+                console.log('  → Remote video present, local goes to PiP');
+                localVideo.classList.remove('main');
+                localVideo.classList.add('pip');
+                localVideo.style.display = 'block'; // Ensure local video stays visible
+                localVideo.style.position = 'absolute';
+                localVideo.style.zIndex = '300'; // Highest z-index
+                
+                // Reset to correct position (unless it was dragged on desktop)
+                if (!localVideo.dataset.dragged) {
+                    if (window.innerWidth >= 769) {
+                        // Desktop: top-right, small
+                        localVideo.style.width = '180px';
+                        localVideo.style.height = '240px';
+                        localVideo.style.top = '20px';
+                        localVideo.style.right = '20px';
+                        localVideo.style.left = 'auto';
+                        localVideo.style.bottom = 'auto';
+                    } else {
+                        // Mobile: top-right corner
+                        localVideo.style.width = '100px';
+                        localVideo.style.height = '133px';
+                        localVideo.style.top = '20px';
+                        localVideo.style.right = '10px';
+                        localVideo.style.bottom = 'auto';
+                        localVideo.style.left = 'auto';
+                    }
+                }
+                
+                // CRITICAL FIX: Only the FIRST remote video should be in main
+                // All others should be hidden or in grid (for now, just first in main)
+                remoteVideos.forEach((v, index) => {
+                    if (index === 0) {
+                        console.log('  → Setting first remote video as main:', v.id);
+                        v.classList.remove('pip');
+                        v.classList.add('main');
+                        v.style.display = 'block';
+                        v.style.position = 'absolute';
+                        v.style.top = '0';
+                        v.style.left = '0';
+                        v.style.right = 'auto';
+                        v.style.bottom = 'auto';
+                        v.style.width = '100%';
+                        v.style.height = '100%';
+                        v.style.zIndex = '1';
+                    } else {
+                        // Hide additional remote videos ONLY if they're not the local PiP
+                        if (v.id !== 'local-video') {
+                            console.log('  → Hiding additional remote video:', v.id);
+                            v.style.display = 'none';
+                        }
+                    }
+                });
+            }
+            
+            // Log final state
+            console.log('  ✅ Layout updated');
+            console.log('    - Main videos:', container.querySelectorAll('.main').length);
+            console.log('    - PiP videos:', container.querySelectorAll('.pip').length);
+        }
+        
+        // Mobile PIP Interaction Handler
+        function setupMobilePIPInteractions(pipElement) {
+            let tapCount = 0;
+            let tapTimer = null;
+            let longPressTimer = null;
+            let isLongPress = false;
+            let isDragging = false;
+            let startX, startY, initialX, initialY;
+            
+            pipElement.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                isLongPress = false;
+                isDragging = false;
+                
+                const touch = e.touches[0];
+                startX = touch.clientX;
+                startY = touch.clientY;
+                
+                const rect = pipElement.getBoundingClientRect();
+                initialX = rect.left;
+                initialY = rect.top;
+                
+                // Start long press timer for drag mode
+                longPressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    isDragging = true;
+                    pipElement.style.opacity = '0.8';
+                    showToast('� Move PIP');
+                }, 500); // 500ms for long press
+            }, { passive: false });
+            
+            pipElement.addEventListener('touchmove', (e) => {
+                if (!isLongPress && !isDragging) {
+                    // Cancel long press if moving before it triggers
+                    clearTimeout(longPressTimer);
+                    return;
+                }
+                
+                if (isDragging) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const deltaX = touch.clientX - startX;
+                    const deltaY = touch.clientY - startY;
+                    
+                    // Update position
+                    const newX = initialX + deltaX;
+                    const newY = initialY + deltaY;
+                    
+                    // Constrain to viewport
+                    const maxX = window.innerWidth - pipElement.offsetWidth;
+                    const maxY = window.innerHeight - pipElement.offsetHeight;
+                    
+                    pipElement.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
+                    pipElement.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
+                    pipElement.style.right = 'auto';
+                    pipElement.style.bottom = 'auto';
+                }
+            }, { passive: false });
+            
+            pipElement.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                clearTimeout(longPressTimer);
+                
+                if (isDragging) {
+                    // End drag mode
+                    pipElement.style.opacity = '1';
+                    isDragging = false;
+                    isLongPress = false;
+                    return;
+                }
+                
+                if (isLongPress) {
+                    // Long press without drag
+                    isLongPress = false;
+                    return;
+                }
+                
+                // Handle taps
+                tapCount++;
+                
+                if (tapCount === 1) {
+                    tapTimer = setTimeout(() => {
+                        if (tapCount === 1) {
+                            // Single tap: do nothing now
+                        }
+                        tapCount = 0;
+                    }, 300); // 300ms to detect double tap
+                } else if (tapCount === 2) {
+                    // Double tap: swap videos
+                    clearTimeout(tapTimer);
+                    swapVideos();
+                    showToast('🔄 Videos swapped');
+                    tapCount = 0;
+                }
+            }, { passive: false });
+        }
+
+        function swapVideos() {
+            const container = document.getElementById('video-container');
+            const mainVideo = container.querySelector('.video-track.main');
+            const pipVideo = container.querySelector('.video-track.pip');
+            
+            if (mainVideo && pipVideo) {
+                // Swap classes
+                mainVideo.classList.remove('main');
+                mainVideo.classList.add('pip');
+                mainVideo.addEventListener('click', swapVideos);
+                
+                // CRITICAL: Reset positioning for new PiP
+                mainVideo.style.position = 'absolute';
+                mainVideo.style.zIndex = '300';
+                if (window.innerWidth >= 769) {
+                    mainVideo.style.width = '180px';
+                    mainVideo.style.height = '240px';
+                    mainVideo.style.top = '20px';
+                    mainVideo.style.right = '20px';
+                    mainVideo.style.left = 'auto';
+                    mainVideo.style.bottom = 'auto';
+                } else {
+                    mainVideo.style.width = '100px';
+                    mainVideo.style.height = '133px';
+                    mainVideo.style.top = '20px';
+                    mainVideo.style.right = '10px';
+                    mainVideo.style.bottom = 'auto';
+                    mainVideo.style.left = 'auto';
+                    // Re-setup touch interactions
+                    setupMobilePIPInteractions(mainVideo);
+                }
+                mainVideo.style.display = 'block';
+                
+                pipVideo.classList.remove('pip');
+                pipVideo.classList.add('main');
+                pipVideo.removeEventListener('click', swapVideos);
+                
+                // CRITICAL: Reset positioning for new main video
+                pipVideo.style.position = 'absolute';
+                pipVideo.style.width = '100%';
+                pipVideo.style.height = '100%';
+                pipVideo.style.top = '0';
+                pipVideo.style.left = '0';
+                pipVideo.style.right = 'auto';
+                pipVideo.style.bottom = 'auto';
+                pipVideo.style.zIndex = '1';
+                pipVideo.style.display = 'block';
+                
+                showToast('Videos swapped');
+            }
+        }
+
+        // Make PiP draggable on desktop
+        function makeDraggable(element) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            let clickCount = 0;
+            let clickTimer = null;
+            
+            element.onmousedown = dragMouseDown;
+            
+            // Add double-click to swap videos
+            element.addEventListener('dblclick', (e) => {
+                e.preventDefault();
+                swapVideos();
+                showToast('🔄 Videos swapped');
+            });
+            
+            function dragMouseDown(e) {
+                // Don't drag if clicking on video element itself (allow video interactions)
+                if (e.target.tagName === 'VIDEO') return;
+                
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+            
+            function elementDrag(e) {
+                e.preventDefault();
+                
+                // Mark as dragged so layout updates don't reset position
+                element.dataset.dragged = 'true';
+                
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                
+                // Calculate new position
+                let newTop = element.offsetTop - pos2;
+                let newLeft = element.offsetLeft - pos1;
+                
+                // Keep within viewport bounds
+                const maxX = window.innerWidth - element.offsetWidth;
+                const maxY = window.innerHeight - element.offsetHeight;
+                
+                newLeft = Math.max(0, Math.min(newLeft, maxX));
+                newTop = Math.max(0, Math.min(newTop, maxY));
+                
+                element.style.top = newTop + "px";
+                element.style.left = newLeft + "px";
+                element.style.right = "auto";
+            }
+            
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+
+        // Control buttons
+        document.getElementById('mic-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('mic-btn');
+            micEnabled = !micEnabled;
+            await room.localParticipant.setMicrophoneEnabled(micEnabled);
+            btn.classList.toggle('muted', !micEnabled);
+            document.getElementById('mic-icon').innerHTML = micEnabled ? 
+                `<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                 <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>` :
+                `<path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/>`;
+        });
+
+        // Camera toggle button - different behavior for desktop vs mobile
+        let cameraEnabled = true;
+        const isDesktop = window.innerWidth >= 769;
+        
+        document.getElementById('camera-toggle-btn').addEventListener('click', async () => {
+            if (isDesktop) {
+                // Desktop: Toggle camera on/off
+                console.log('🎥 Toggle camera:', !cameraEnabled);
+                const btn = document.getElementById('camera-toggle-btn');
+                cameraEnabled = !cameraEnabled;
+                
+                try {
+                    await room.localParticipant.setCameraEnabled(cameraEnabled);
+                    
+                    // Update icon
+                    document.getElementById('camera-icon').innerHTML = cameraEnabled ?
+                        `<path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>` :
+                        `<path d="M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82L21 17.18V6.5zM3.27 2L2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z"/>`;
+                    
+                    // Toggle button style
+                    btn.classList.toggle('muted', !cameraEnabled);
+                } catch (e) {
+                    console.error('❌ Camera toggle failed:', e);
+                }
+            } else {
+                // Mobile: Switch camera
+                console.log('🔄 Switch camera requested');
+                try {
+                    // Get all video devices
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                    console.log('  - Found', videoDevices.length, 'video devices');
+                    
+                    if (videoDevices.length < 2) {
+                        console.log('  - Only one camera available, cannot switch');
+                        return;
+                    }
+                    
+                    // Get current video track
+                    const currentTrackPub = Array.from(room.localParticipant.videoTrackPublications.values())
+                        .find(pub => pub.source === LiveKitSDK.Track.Source.Camera);
+                    const currentTrack = currentTrackPub?.track;
+                    
+                    if (!currentTrack) {
+                        console.log('  - No current camera track');
+                        return;
+                    }
+                    
+                    // Get current device ID
+                    const currentDeviceId = currentTrack.mediaStreamTrack?.getSettings()?.deviceId;
+                    console.log('  - Current device ID:', currentDeviceId);
+                    
+                    // Find next device (cycle through)
+                    const currentIndex = videoDevices.findIndex(d => d.deviceId === currentDeviceId);
+                    const nextIndex = (currentIndex + 1) % videoDevices.length;
+                    const nextDevice = videoDevices[nextIndex];
+                    console.log('  - Switching to:', nextDevice.label);
+                    
+                    // Unpublish current track
+                    await room.localParticipant.unpublishTrack(currentTrack);
+                    currentTrack.stop();
+                    
+                    // Create new track with new device
+                    const newTrack = await LiveKitSDK.createLocalVideoTrack({
+                        deviceId: nextDevice.deviceId,
+                        resolution: LiveKitSDK.VideoPresets.h540.resolution
+                    });
+                    
+                    // Publish new track
+                    await room.localParticipant.publishTrack(newTrack);
+                    console.log('  ✅ Camera switched successfully');
+                    
+                    // Update local video display
+                    const localContainer = document.getElementById('local-video');
+                    if (localContainer) {
+                        const oldVideo = localContainer.querySelector('video');
+                        if (oldVideo) oldVideo.remove();
+                        
+                        const videoElement = newTrack.attach();
+                        videoElement.style.transform = 'scaleX(-1)'; // Mirror
+                        videoElement.autoplay = true;
+                        videoElement.playsInline = true;
+                        videoElement.muted = true;
+                        localContainer.insertBefore(videoElement, localContainer.firstChild);
+                    }
+                } catch (e) {
+                    console.error('❌ Camera switch failed:', e);
+                }
+            }
+        });
+
+        document.getElementById('end-btn').addEventListener('click', async () => {
+            console.log('🔴 End call button clicked');
+            
+            // Send notification to other participants that we're leaving
+            try {
+                if (room && room.localParticipant) {
+                    console.log('  - Notifying other participants...');
+                    const encoder = new TextEncoder();
+                    const data = encoder.encode(JSON.stringify({
+                        type: 'participant_leaving',
+                        participantId: room.localParticipant.identity,
+                        participantName: room.localParticipant.name,
+                        timestamp: Date.now()
+                    }));
+                    await room.localParticipant.publishData(data, { reliable: true });
+                    console.log('  - Notification sent');
+                }
+            } catch (dataErr) {
+                console.error('  - Failed to send leaving notification:', dataErr);
+            }
+            
+            // Leave call gracefully
+            await leaveCallGracefully();
+        });
+
+        // Menu Button - Show/Hide Menu
+        document.getElementById('menu-btn').addEventListener('click', () => {
+            const overlay = document.getElementById('call-menu-overlay');
+            overlay.classList.add('active');
+            updateParticipantList();
+        });
+        
+        // Close Menu
+        document.getElementById('menu-close-btn').addEventListener('click', () => {
+            document.getElementById('call-menu-overlay').classList.remove('active');
+        });
+        
+        // Close menu when clicking overlay
+        document.getElementById('call-menu-overlay').addEventListener('click', (e) => {
+            if (e.target.id === 'call-menu-overlay') {
+                document.getElementById('call-menu-overlay').classList.remove('active');
+            }
+        });
+        
+        // Add Person Button
+        document.getElementById('add-person-btn').addEventListener('click', () => {
+            // Get current guest link
+            const guestLink = window.location.href;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(guestLink).then(() => {
+                showToast('🔗 Guest link copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy link:', err);
+                showToast('⚠️ Failed to copy link');
+            });
+        });
+        
+        // Quality Overlay Toggle
+        document.getElementById('quality-overlay-toggle').addEventListener('click', () => {
+            qualityOverlayVisible = !qualityOverlayVisible;
+            const toggle = document.getElementById('quality-overlay-toggle');
+            const overlay = document.getElementById('quality-overlay');
+            
+            toggle.classList.toggle('active', qualityOverlayVisible);
+            if (overlay) {
+                overlay.style.display = qualityOverlayVisible ? 'block' : 'none';
+            }
+            
+            showToast(qualityOverlayVisible ? '📊 Call Health: ON' : '📊 Call Health: OFF');
+        });
+        
+        // Ultra Quality Toggle (Android App Only)
+        document.getElementById('ultra-toggle-switch').addEventListener('click', async () => {
+            if (!isAndroidApp) {
+                showToast('⚠️ Ultra Quality only available in Android app');
+                return;
+            }
+            
+            console.log('⚡ Ultra quality toggle clicked');
+            ultraQualityEnabled = !ultraQualityEnabled;
+            
+            const toggleSwitch = document.getElementById('ultra-toggle-switch');
+            toggleSwitch.classList.toggle('active', ultraQualityEnabled);
+            
+            if (ultraQualityEnabled) {
+                showToast('🎥 Ultra Quality: 4K@30fps');
+            } else {
+                showToast('🎥 Standard Quality: 1080p@30fps');
+            }
+            
+            // Update video track if in a call
+            if (room && room.state === 'connected') {
+                try {
+                    const videoPublication = Array.from(room.localParticipant.videoTrackPublications.values())
+                        .find(pub => pub.source === LiveKitSDK.Track.Source.Camera);
+                    
+                    if (videoPublication && videoPublication.track) {
+                        console.log('  - Updating video quality...');
+                        
+                        // Use stable resolutions
+                        let newResolution, newFrameRate;
+                        if (ultraQualityEnabled) {
+                            newResolution = { width: 3840, height: 2160 };
+                            newFrameRate = 30;
+                            console.log('  - Using 4K @ 30fps');
+                        } else {
+                            newResolution = { width: 1920, height: 1080 };
+                            newFrameRate = 30;
+                            console.log('  - Using 1080p @ 30fps');
+                        }
+                        
+                        await videoPublication.track.restartTrack({
+                            resolution: newResolution,
+                            frameRate: newFrameRate
+                        });
+                        
+                        console.log(`  ✅ Video quality updated`);
+                    }
+                } catch (error) {
+                    console.error('❌ Error updating video quality:', error);
+                    showToast('⚠️ Failed to update quality');
+                }
+            }
+        });
+
+        // Screen Share Button
+        document.getElementById('screen-share-btn').addEventListener('click', async () => {
+            console.log('🖥️ Screen share button clicked');
+            
+            if (!room || room.state !== 'connected') {
+                showToast('⚠️ Not connected to call');
+                return;
+            }
+            
+            const btn = document.getElementById('screen-share-btn');
+            
+            try {
+                if (isScreenSharing) {
+                    // Stop screen sharing
+                    console.log('  - Stopping screen share...');
+                    if (screenShareTrack) {
+                        await room.localParticipant.unpublishTrack(screenShareTrack);
+                        screenShareTrack.stop();
+                        screenShareTrack = null;
+                    }
+                    isScreenSharing = false;
+                    btn.classList.remove('muted');
+                    showToast('🖥️ Screen sharing stopped');
+                } else {
+                    // Start screen sharing
+                    console.log('  - Starting screen share...');
+                    
+                    try {
+                        // Request screen share from browser
+                        const stream = await navigator.mediaDevices.getDisplayMedia({
+                            video: {
+                                width: { ideal: ultraQualityEnabled ? 3840 : 1920 },
+                                height: { ideal: ultraQualityEnabled ? 2160 : 1080 },
+                                frameRate: { ideal: 30 }
+                            },
+                            audio: false
+                        });
+                        
+                        const videoTrack = stream.getVideoTracks()[0];
+                        
+                        if (!videoTrack) {
+                            throw new Error('No video track in screen share stream');
+                        }
+                        
+                        // Create LiveKit track from the media stream track
+                        const liveKitTrack = new LiveKitSDK.LocalVideoTrack(videoTrack, {
+                            source: LiveKitSDK.Track.Source.ScreenShare
+                        });
+                        
+                        // Publish the screen share track
+                        await room.localParticipant.publishTrack(liveKitTrack, {
+                            name: 'screen',
+                            simulcast: false, // Screen share doesn't need simulcast
+                            videoCodec: 'h265', // Use H.265 with fallback
+                            videoCodecPref: ['h265', 'vp9', 'h264', 'vp8']
+                        });
+                        
+                        screenShareTrack = liveKitTrack;
+                        isScreenSharing = true;
+                        btn.classList.add('muted');
+                        showToast('🖥️ Sharing your screen');
+                        
+                        console.log('  ✅ Screen share started successfully');
+                        
+                        // Listen for when user stops sharing via browser UI
+                        videoTrack.addEventListener('ended', async () => {
+                            console.log('  - Screen share ended by user');
+                            if (screenShareTrack) {
+                                await room.localParticipant.unpublishTrack(screenShareTrack);
+                                screenShareTrack.stop();
+                                screenShareTrack = null;
+                            }
+                            isScreenSharing = false;
+                            btn.classList.remove('muted');
+                            showToast('🖥️ Screen sharing stopped');
+                        });
+                        
+                    } catch (shareError) {
+                        console.error('❌ Failed to get screen share:', shareError);
+                        throw shareError;
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Screen share error:', error);
+                if (error.name === 'NotAllowedError') {
+                    showToast('⚠️ Screen share permission denied');
+                } else {
+                    showToast('⚠️ Screen share failed');
+                }
+                isScreenSharing = false;
+                btn.classList.remove('muted');
+            }
+        });
+        
+        // Menu Screen Share Handler
+        document.getElementById('menu-screen-share-item').addEventListener('click', async () => {
+            // Close menu first
+            document.getElementById('call-menu-overlay').classList.remove('active');
+            
+            // Trigger the screen share button click
+            document.getElementById('screen-share-btn').click();
+        });
+
+        // Picture-in-Picture button
+        document.getElementById('pip-btn').addEventListener('click', async () => {
+            console.log('🖼️ PIP button clicked');
+            
+            try {
+                // Check if PIP is supported
+                if (!document.pictureInPictureEnabled) {
+                    console.log('  - PIP not supported by browser');
+                    return;
+                }
+                
+                // Get the main video element (remote participant's video)
+                const mainVideo = document.querySelector('.video-track.main video');
+                
+                if (!mainVideo) {
+                    console.log('  - No main video element found');
+                    return;
+                }
+                
+                // Check if already in PIP
+                if (document.pictureInPictureElement) {
+                    console.log('  - Exiting PIP mode');
+                    await document.exitPictureInPicture();
+                } else {
+                    console.log('  - Entering PIP mode');
+                    await mainVideo.requestPictureInPicture();
+                    console.log('  - PIP mode activated');
+                }
+            } catch (error) {
+                console.error('❌ PIP error:', error);
+            }
+        });
+
+        // Update PIP button appearance when entering/exiting PIP
+        document.addEventListener('enterpictureinpicture', () => {
+            console.log('📺 Entered PIP mode');
+            const pipBtn = document.getElementById('pip-btn');
+            if (pipBtn) {
+                pipBtn.style.background = 'rgba(107, 127, 184, 0.8)';
+                pipBtn.title = 'Exit Picture-in-Picture';
+            }
+        });
+
+        document.addEventListener('leavepictureinpicture', () => {
+            console.log('📺 Left PIP mode');
+            const pipBtn = document.getElementById('pip-btn');
+            if (pipBtn) {
+                pipBtn.style.background = '';
+                pipBtn.title = 'Picture-in-Picture';
+            }
+        });
+
+        // Auto-join when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', joinCall);
+        } else {
+            // Already loaded
+            joinCall();
+        }
+        
+        // ===== AUTO-HIDE CONTROLS (like InCallActivity) =====
+        let controlsHideTimer = null;
+        const CONTROLS_HIDE_DELAY = 4000; // 4 seconds, matching app
+        
+        function showControls() {
+            const controls = document.getElementById('controls');
+            if (controls) {
+                controls.classList.remove('hidden');
+                resetControlsHideTimer();
+            }
+        }
+        
+        function hideControls() {
+            const controls = document.getElementById('controls');
+            if (controls) {
+                controls.classList.add('hidden');
+            }
+        }
+        
+        function resetControlsHideTimer() {
+            // Clear existing timer
+            if (controlsHideTimer) {
+                clearTimeout(controlsHideTimer);
+            }
+            
+            // Set new timer to hide controls
+            controlsHideTimer = setTimeout(() => {
+                hideControls();
+            }, CONTROLS_HIDE_DELAY);
+        }
+        
+        // Show/hide controls on tap (mobile) or click (desktop)
+        document.addEventListener('click', (e) => {
+            // Don't toggle if clicking on a control button
+            if (!e.target.closest('.control-btn')) {
+                const controls = document.getElementById('controls');
+                if (controls.classList.contains('hidden')) {
+                    showControls();
+                }
+            }
+        });
+        document.addEventListener('touchstart', (e) => {
+            if (!e.target.closest('.control-btn')) {
+                const controls = document.getElementById('controls');
+                if (controls.classList.contains('hidden')) {
+                    showControls();
+                }
+            }
+        });
+        
+        // On desktop, show controls on mouse move
+        let mouseMoveTimer;
+        document.addEventListener('mousemove', () => {
+            clearTimeout(mouseMoveTimer);
+            mouseMoveTimer = setTimeout(() => {
+                showControls();
+            }, 100);
+        });
+    </script>
+</body>
+</html>
+

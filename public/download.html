@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en" style="background-color: #1b1c1e; margin: 0; padding: 0;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Très³ App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1b1c1e 0%, #2a2b2f 100%);
+            color: #F4F4F5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+        }
+        h1 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #F4F4F5;
+        }
+        .subtitle {
+            font-size: 18px;
+            color: #A0A2A6;
+            margin-bottom: 40px;
+        }
+        .version {
+            display: inline-block;
+            background: #6B7FB8;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .build-date {
+            font-size: 13px;
+            color: #A0A2A6;
+            margin-bottom: 30px;
+        }
+        .download-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        .download-btn {
+            display: block;
+            width: 100%;
+            background: linear-gradient(135deg, #6B7FB8 0%, #7589C4 100%);
+            color: white;
+            text-decoration: none;
+            padding: 18px 30px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 15px 0;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(107, 127, 184, 0.4);
+        }
+        .download-info {
+            font-size: 14px;
+            color: #A0A2A6;
+            margin-top: 10px;
+        }
+        .device-info {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #A0A2A6;
+            text-align: left;
+        }
+        .device-info strong {
+            color: #F4F4F5;
+        }
+        .note {
+            background: rgba(107, 127, 184, 0.1);
+            border-left: 4px solid #6B7FB8;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: left;
+            color: #D1D3D7;
+        }
+        .features {
+            margin-top: 40px;
+            text-align: left;
+        }
+        .features h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #F4F4F5;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #D1D3D7;
+        }
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+        .feature-list li::before {
+            content: "✓";
+            color: #6B7FB8;
+            font-weight: bold;
+            margin-right: 12px;
+            font-size: 18px;
+        }
+        .advanced-downloads {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .advanced-title {
+            font-size: 14px;
+            color: #A0A2A6;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .download-btn-small {
+            display: block;
+            width: 100%;
+            background: rgba(107, 127, 184, 0.2);
+            color: #D1D3D7;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(107, 127, 184, 0.3);
+        }
+        .download-btn-small:hover {
+            background: rgba(107, 127, 184, 0.3);
+            border-color: rgba(107, 127, 184, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="/logo.png" alt="Très³" class="logo">
+        <h1>Très³</h1>
+        <p class="subtitle">High-Quality Video Calling</p>
+        <div class="version">Version 1.4</div>
+        <div class="build-date">Built on October 25, 2025 at 06:56 PM</div>
+
+        <div class="download-section">
+            <h2 style="margin-bottom: 20px;">Download for Android</h2>
+            
+            <a href="/downloads/Tres3-v1.4-arm64.apk" class="download-btn" download>
+                📱 Download (ARM64)
+            </a>
+            <div class="download-info">
+                Recommended for modern phones (2019+)<br>
+                Size: 111M
+            </div>
+
+            <a href="/downloads/Tres3-v1.4-armeabi.apk" class="download-btn" download>
+                📱 Download (ARMv7)
+            </a>
+            <div class="download-info">
+                For older phones (2015-2019)<br>
+                Size: 88M
+            </div>
+
+            <div class="device-info">
+                <strong>Not sure which version?</strong><br>
+                • <strong>ARM64</strong> works on most phones from 2019 onwards (Samsung Galaxy S10+, Pixel 3+, etc.)<br>
+                • <strong>ARMv7</strong> works on older devices including low-end phones like Moto G Play
+            </div>
+
+            <div class="advanced-downloads">
+                <div class="advanced-title">Advanced: x86 Emulators & Tablets</div>
+                <a href="/downloads/Tres3-v1.4-x86_64.apk" class="download-btn-small" download>
+                    💻 x86_64 (148M)
+                </a>
+                <a href="/downloads/Tres3-v1.4-x86.apk" class="download-btn-small" download>
+                    💻 x86 (131M)
+                </a>
+            </div>
+
+            <div class="note">
+                <strong>⚠️ Installation Note:</strong> You may need to enable "Install from Unknown Sources" in your Android settings to install this app.
+            </div>
+        </div>
+
+        <div class="features">
+            <h2>✨ Features</h2>
+            <ul class="feature-list">
+                <li>High-quality video calls up to 1080p</li>
+                <li>Optimized for low-end devices</li>
+                <li>Guest links - join calls without an account</li>
+                <li>Full-screen incoming call notifications</li>
+                <li>Background call support</li>
+                <li>Picture-in-picture mode</li>
+                <li>Network quality indicators</li>
+                <li>Auto-adjusting video quality</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1b1c1e">
+    <title>Incoming Call - 3V</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1b1c1e;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .call-container {
+            text-align: center;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .caller-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6B7FB8, #8B9FD8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: 600;
+            margin: 0 auto 24px;
+            box-shadow: 0 8px 32px rgba(107, 127, 184, 0.3);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .caller-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+        
+        .caller-name {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .call-type {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 60px;
+        }
+        
+        .call-actions {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            margin-top: 40px;
+        }
+        
+        .call-button {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+        
+        .call-button:active {
+            transform: scale(0.95);
+        }
+        
+        .decline-btn {
+            background: #ef4444;
+        }
+        
+        .decline-btn:hover {
+            background: #dc2626;
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+        }
+        
+        .accept-btn {
+            background: #22c55e;
+        }
+        
+        .accept-btn:hover {
+            background: #16a34a;
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.5);
+        }
+        
+        .button-label {
+            margin-top: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .call-action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        /* Ringing animation */
+        .ringing-indicator {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: rgba(107, 127, 184, 0.2);
+            border-radius: 24px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .ring-icon {
+            width: 20px;
+            height: 20px;
+            animation: ring 1s ease-in-out infinite;
+        }
+        
+        @keyframes ring {
+            0%, 100% { transform: rotate(-15deg); }
+            50% { transform: rotate(15deg); }
+        }
+        
+        .caller-info {
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            text-align: left;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+        
+        .info-label {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .info-value {
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="ringing-indicator">
+        <svg class="ring-icon" viewBox="0 0 24 24" fill="white">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+        <span>Incoming Call...</span>
+    </div>
+
+    <div class="call-container">
+        <div class="caller-avatar" id="callerAvatar">
+            <span id="callerInitials">?</span>
+            <img id="callerImage" style="display: none;">
+        </div>
+
+        <h1 class="caller-name" id="callerName">Unknown Caller</h1>
+        <p class="call-type">3V Video Call</p>
+
+        <div class="call-actions">
+            <div class="call-action">
+                <button class="call-button decline-btn" id="declineBtn">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+                        <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
+                    </svg>
+                </button>
+                <div class="button-label">Decline</div>
+            </div>
+
+            <div class="call-action">
+                <button class="call-button accept-btn" id="acceptBtn">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+                        <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+                    </svg>
+                </button>
+                <div class="button-label">Accept</div>
+            </div>
+        </div>
+
+        <div class="caller-info">
+            <div class="info-row">
+                <span class="info-label">Call Type</span>
+                <span class="info-value">Video Call</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Quality</span>
+                <span class="info-value">HD 1080p</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Platform</span>
+                <span class="info-value">3V Web</span>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB3nvi5P3PZYDfqJxaZjnD-TMTkEKNk7qc",
+            authDomain: "v-b93ec.firebaseapp.com",
+            projectId: "v-b93ec",
+            storageBucket: "v-b93ec.firebasestorage.app",
+            messagingSenderId: "685746265293",
+            appId: "1:685746265293:web:4982d354fd80be0d35eb9c",
+            measurementId: "G-6R4XTCCZK4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Get call details from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomName = urlParams.get('room');
+        const callerName = urlParams.get('caller') || 'Unknown Caller';
+        const callerAvatar = urlParams.get('avatar');
+
+        // Update UI with caller info
+        document.getElementById('callerName').textContent = callerName;
+        const initials = callerName.substring(0, 2).toUpperCase();
+        document.getElementById('callerInitials').textContent = initials;
+
+        if (callerAvatar) {
+            const avatarImg = document.getElementById('callerImage');
+            avatarImg.src = callerAvatar;
+            avatarImg.style.display = 'block';
+            document.getElementById('callerInitials').style.display = 'none';
+        }
+
+        // Play ringtone (if browser allows)
+        let ringtoneAudio = null;
+        try {
+            // Create simple ringtone using Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const playRingtone = () => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 440;
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.5);
+            };
+
+            // Ring every 2 seconds
+            const ringtoneInterval = setInterval(playRingtone, 2000);
+            playRingtone();
+
+            // Clean up on page unload
+            window.addEventListener('beforeunload', () => {
+                clearInterval(ringtoneInterval);
+            });
+        } catch (e) {
+            console.log('Could not play ringtone:', e);
+        }
+
+        // Accept call button
+        document.getElementById('acceptBtn').addEventListener('click', async () => {
+            const user = auth.currentUser;
+            if (!user) {
+                window.location.href = '/splash.html';
+                return;
+            }
+
+            if (roomName) {
+                window.location.href = `/join.html?room=${roomName}&displayName=${encodeURIComponent(user.displayName || user.email)}`;
+            } else {
+                alert('Call information missing');
+                window.location.href = '/home.html';
+            }
+        });
+
+        // Decline call button
+        document.getElementById('declineBtn').addEventListener('click', () => {
+            window.location.href = '/home.html';
+        });
+
+        // Check authentication
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = '/splash.html';
+            }
+        });
+
+        // Auto-decline after 30 seconds
+        setTimeout(() => {
+            alert('Call missed');
+            window.location.href = '/home.html';
+        }, 30000);
+    </script>
+</body>
+</html>
