@@ -1,15 +1,43 @@
 # Download APKs
 
-Latest build: **v21.3** (2025-10-24 20:47 UTC)
+Latest build: **v21.5** (2025-10-27 19:38 UTC)
+
+## 🚀 **LATEST: v21.5 with Screen Sharing** 
+
+### **Direct Download (ARM64 - Most Phones)**
+👉 **Click here:** [tres3-v21.5-arm64.apk](https://github.com/bobbygenerik/3v-repo/raw/copilot/vscode1761074179558/public/tres3-v21.5-arm64.apk)
+
+**Direct Link:**
+```
+https://github.com/bobbygenerik/3v-repo/raw/copilot/vscode1761074179558/public/tres3-v21.5-arm64.apk
+```
+
+**Size:** 111 MB | **Build Date:** October 27, 2025
+
+---
+
+## ✨ What's New in v21.5
+
+- ✅ **Screen Sharing** - Share your screen during video calls with MediaProjection
+- ✅ **ML Kit Integration** - Face detection, selfie segmentation, image labeling
+- ✅ **Portrait Mode Effects** - Background blur and beautification
+- ✅ **Video Quality Enhancements** - Adaptive quality based on device capabilities
+- ✅ **All Lint Warnings Fixed** - Cleaner, more stable code
+- ✅ **Gradle 8.9 Update** - Latest build tools and optimizations
+
+---
 
 ## Installation Instructions
 
-1. Click the link for your device below
-2. When the file starts downloading in your browser, **right-click the download** and select "Copy Link Address" 
-3. Paste that link into a new browser tab on your phone
-4. Download and install
+1. Click the download link above
+2. When the file downloads, tap to open
+3. Enable "Install from Unknown Sources" if prompted
+4. Follow installation prompts
+5. Launch app and sign in or create account
 
-## Direct APK Links
+---
+
+## Previous Version: v21.3
 
 ### ARM64 (Most phones - Samsung, Pixel, OnePlus, etc.)
 **File:** `app-arm64-v8a-debug-2025-10-24-204728.apk` (111 MB)
