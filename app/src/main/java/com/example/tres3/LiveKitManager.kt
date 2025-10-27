@@ -1,5 +1,6 @@
 package com.example.tres3
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
 import android.util.Log
@@ -38,8 +39,13 @@ import io.livekit.android.room.participant.ConnectionQuality
 
 object LiveKitManager {
     private val roomMutex = Mutex()
+    // Use @SuppressLint("StaticFieldLeak") because we always store Application context (never Activity)
+    // which is safe and doesn't cause memory leaks
+    @SuppressLint("StaticFieldLeak")
     var currentRoom: Room? = null
+    @SuppressLint("StaticFieldLeak")
     private var lastAudioFocusRequest: android.media.AudioFocusRequest? = null
+    @SuppressLint("StaticFieldLeak")
     private var appContext: Context? = null
     private var isProcessedCameraPublished: Boolean = false
     private var processedTrack: LocalVideoTrack? = null
@@ -316,9 +322,10 @@ object LiveKitManager {
             val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
             val chargePlug = batteryStatus?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
             val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+            // minSdk is 24, so API 17 (JELLY_BEAN_MR1) for BATTERY_PLUGGED_WIRELESS is always available
             val plugged = chargePlug == BatteryManager.BATTERY_PLUGGED_AC ||
                     chargePlug == BatteryManager.BATTERY_PLUGGED_USB ||
-                    (android.os.Build.VERSION.SDK_INT >= 17 && chargePlug == BatteryManager.BATTERY_PLUGGED_WIRELESS)
+                    chargePlug == BatteryManager.BATTERY_PLUGGED_WIRELESS
             charging || plugged
         } catch (_: Exception) {
             false

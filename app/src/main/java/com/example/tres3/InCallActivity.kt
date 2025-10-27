@@ -1231,9 +1231,9 @@ fun formatDuration(seconds: Int): String {
     val secs = seconds % 60
     
     return if (hours > 0) {
-        String.format("%d:%02d:%02d", hours, minutes, secs)
+        String.format(java.util.Locale.US, "%d:%02d:%02d", hours, minutes, secs)
     } else {
-        String.format("%02d:%02d", minutes, secs)
+        String.format(java.util.Locale.US, "%02d:%02d", minutes, secs)
     }
 }
 
@@ -2376,7 +2376,7 @@ fun InCallScreen(
                         modifier = Modifier.padding(horizontal = 4.dp)
                     ) {
                         Text(
-                            text = "${String.format("%.1f", videoScale.value)}x",
+                            text = "${String.format(java.util.Locale.US, "%.1f", videoScale.value)}x",
                             color = Color.White,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,

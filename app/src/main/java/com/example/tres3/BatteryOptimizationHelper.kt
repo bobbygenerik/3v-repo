@@ -17,13 +17,11 @@ object BatteryOptimizationHelper {
      * Check if the app is exempt from battery optimizations
      */
     fun isIgnoringBatteryOptimizations(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-            val isIgnoring = powerManager.isIgnoringBatteryOptimizations(context.packageName)
-            Log.d(TAG, "Is ignoring battery optimizations: $isIgnoring")
-            return isIgnoring
-        }
-        return true // No battery optimization on older versions
+        // minSdk is 24, so we can safely assume M (23) is available
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        val isIgnoring = powerManager.isIgnoringBatteryOptimizations(context.packageName)
+        Log.d(TAG, "Is ignoring battery optimizations: $isIgnoring")
+        return isIgnoring
     }
     
     /**
@@ -62,22 +60,21 @@ object BatteryOptimizationHelper {
      * Open battery optimization settings for this app
      */
     private fun openBatteryOptimizationSettings(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        // minSdk is 24, so M (23) is always available
+        try {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:${context.packageName}")
+            }
+            context.startActivity(intent)
+            Log.d(TAG, "Opened battery optimization settings")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to open battery optimization settings", e)
+            // Fallback to general battery settings
             try {
-                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                    data = Uri.parse("package:${context.packageName}")
-                }
+                val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                 context.startActivity(intent)
-                Log.d(TAG, "Opened battery optimization settings")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to open battery optimization settings", e)
-                // Fallback to general battery settings
-                try {
-                    val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                    context.startActivity(intent)
-                } catch (e2: Exception) {
-                    Log.e(TAG, "Failed to open general battery settings", e2)
-                }
+            } catch (e2: Exception) {
+                Log.e(TAG, "Failed to open general battery settings", e2)
             }
         }
     }
