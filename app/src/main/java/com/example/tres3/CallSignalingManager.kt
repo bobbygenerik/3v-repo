@@ -251,6 +251,93 @@ object CallSignalingManager {
             Log.e(TAG, "Error cleaning up old call signals", e)
         }
     }
+    
+    /**
+     * End an active call and notify the other participant
+     * @param roomName The LiveKit room name
+     * @param otherUserId The user ID of the other participant
+     */
+    suspend fun endCall(roomName: String, otherUserId: String?) {
+        try {
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser == null) {
+                Log.e(TAG, "Cannot end call: not authenticated")
+                return
+            }
+            
+            // Mark the call as ended in a shared location
+            val callEndData = hashMapOf(
+                "roomName" to roomName,
+                "endedBy" to currentUser.uid,
+                "endedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                "status" to "ended"
+            )
+            
+            FirebaseFirestore.getInstance()
+                .collection("activeCallRooms")
+                .document(roomName)
+                .set(callEndData)
+                .await()
+            
+            // Notify the other user if we know their ID
+            if (!otherUserId.isNullOrEmpty() && otherUserId != currentUser.uid) {
+                val notificationData = hashMapOf(
+                    "type" to "call_ended",
+                    "roomName" to roomName,
+                    "endedBy" to currentUser.uid,
+                    "timestamp" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                )
+                
+                FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(otherUserId)
+                    .collection("callSignals")
+                    .add(notificationData)
+                    .await()
+                
+                Log.d(TAG, "🔚 Notified other participant ($otherUserId) that call ended")
+            }
+            
+            Log.d(TAG, "✅ Call ended successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error ending call", e)
+        }
+    }
+    
+    /**
+     * Listen for call end signals in a specific room
+     * @param roomName The LiveKit room name
+     * @param onCallEnded Callback when the call is ended by the other participant
+     * @return ListenerRegistration to remove the listener
+     */
+    fun listenForCallEnd(
+        roomName: String,
+        onCallEnded: () -> Unit
+    ): ListenerRegistration {
+        return FirebaseFirestore.getInstance()
+            .collection("activeCallRooms")
+            .document(roomName)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e(TAG, "Error listening for call end", error)
+                    return@addSnapshotListener
+                }
+                
+                if (snapshot != null && snapshot.exists()) {
+                    val status = snapshot.getString("status")
+                    if (status == "ended") {
+                        val endedBy = snapshot.getString("endedBy") ?: ""
+                        val currentUser = FirebaseAuth.getInstance().currentUser
+                        
+                        // Only trigger if ended by someone else
+                        if (endedBy != currentUser?.uid) {
+                            Log.d(TAG, "🔚 Call ended by other participant")
+                            onCallEnded()
+                        }
+                    }
+                }
+            }
+    }
 }
 
 /**

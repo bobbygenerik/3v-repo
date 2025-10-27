@@ -23,6 +23,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import com.google.firebase.messaging.FirebaseMessaging
+import android.util.Log
+import kotlinx.coroutines.tasks.await
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class CreateAccountActivity : AppCompatActivity() {
 
@@ -184,41 +189,65 @@ class CreateAccountActivity : AppCompatActivity() {
                 if (task.isSuccessful) {
                     val user = FirebaseAuth.getInstance().currentUser
                     
-                    // Store user data in Firestore
-                    val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    val displayName = email.substringBefore("@")
-                    val userData = hashMapOf(
-                        "email" to email,
-                        "displayName" to displayName,
-                        "isOnline" to false,
-                        "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
-                    )
-                    
                     user?.let {
-                        db.collection("users")
-                            .document(it.uid)
-                            .set(userData)
-                            .addOnSuccessListener {
-                                // Send verification email
-                                user.sendEmailVerification()
-                                    ?.addOnCompleteListener { verificationTask ->
-                                        if (verificationTask.isSuccessful) {
-                                            Toast.makeText(this, "Account created! Please check your email to verify.", Toast.LENGTH_LONG).show()
-                                            finish()
-                                        } else {
-                                            Toast.makeText(this, "Account created but failed to send verification email", Toast.LENGTH_SHORT).show()
-                                            finish()
-                                        }
-                                    }
+                        // Get FCM token immediately and save with user data
+                        Log.d("CreateAccount", "🔄 Getting FCM token for new user...")
+                        
+                        FirebaseMessaging.getInstance().token
+                            .addOnSuccessListener { token ->
+                                Log.d("CreateAccount", "✅ FCM token obtained: ${token.take(20)}...")
+                                saveUserDataWithToken(it.uid, email, token)
                             }
                             .addOnFailureListener { e ->
-                                Toast.makeText(this, "Account created but failed to save profile: ${e.message}", Toast.LENGTH_SHORT).show()
-                                finish()
+                                Log.e("CreateAccount", "❌ Failed to get FCM token: ${e.message}")
+                                // Save without token - will be added when user signs in
+                                saveUserDataWithToken(it.uid, email, null)
                             }
                     }
                 } else {
                     Toast.makeText(this, "Account creation failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                 }
+            }
+    }
+    
+    private fun saveUserDataWithToken(uid: String, email: String, fcmToken: String?) {
+        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        val displayName = email.substringBefore("@")
+        
+        val userData = hashMapOf(
+            "email" to email,
+            "displayName" to displayName,
+            "isOnline" to false,
+            "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+            "fcmToken" to (fcmToken ?: ""),
+            "tokenLastUpdated" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+        )
+        
+        Log.d("CreateAccount", "💾 Saving user data with FCM token...")
+        
+        db.collection("users")
+            .document(uid)
+            .set(userData)
+            .addOnSuccessListener {
+                Log.d("CreateAccount", "✅ User profile saved successfully")
+                
+                // Send verification email
+                val user = FirebaseAuth.getInstance().currentUser
+                user?.sendEmailVerification()
+                    ?.addOnCompleteListener { verificationTask ->
+                        if (verificationTask.isSuccessful) {
+                            Toast.makeText(this, "Account created! Please check your email to verify.", Toast.LENGTH_LONG).show()
+                            finish()
+                        } else {
+                            Toast.makeText(this, "Account created but failed to send verification email", Toast.LENGTH_SHORT).show()
+                            finish()
+                        }
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CreateAccount", "❌ Failed to save user profile: ${e.message}")
+                Toast.makeText(this, "Account created but failed to save profile: ${e.message}", Toast.LENGTH_SHORT).show()
+                finish()
             }
     }
 }

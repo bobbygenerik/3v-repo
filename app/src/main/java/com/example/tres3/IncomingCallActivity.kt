@@ -2,11 +2,15 @@ package com.example.tres3
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -23,6 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
+import androidx.core.content.ContextCompat
+import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -33,6 +39,24 @@ import kotlinx.coroutines.tasks.await
 class IncomingCallActivity : ComponentActivity() {
     
     private lateinit var invitation: CallInvitation
+    private var afterPermissions: (() -> Unit)? = null
+
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        val audioGranted = result[Manifest.permission.RECORD_AUDIO] == true
+        val cameraGranted = result[Manifest.permission.CAMERA] == true
+        if (audioGranted && cameraGranted) {
+            afterPermissions?.invoke()
+        } else {
+            android.widget.Toast.makeText(
+                this,
+                "Microphone/Camera permissions are required to join the call",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
+        afterPermissions = null
+    }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,6 +69,7 @@ class IncomingCallActivity : ComponentActivity() {
         val url = intent.getStringExtra("url") ?: ""
         val token = intent.getStringExtra("token") ?: ""
         val callerPhotoUrl = intent.getStringExtra("callerPhotoUrl") // Profile picture URL
+        val isGuestCall = intent.getBooleanExtra("isGuestCall", false) // Flag for guest calls
         
         invitation = CallInvitation(
             id = invitationId,
@@ -56,21 +81,85 @@ class IncomingCallActivity : ComponentActivity() {
             timestamp = null
         )
         
+        Log.d("IncomingCallActivity", "Call from: $fromUserName, isGuest: $isGuestCall, hasToken: ${token.isNotEmpty()}")
+        
         setContent {
             IncomingCallScreen(
                 callerName = fromUserName,
                 callerPhotoUrl = callerPhotoUrl,
-                onAccept = { acceptCall() },
-                onReject = { rejectCall() }
+                onAccept = { acceptCall(isGuestCall, url, token, roomName) },
+                onReject = { rejectCall(isGuestCall) }
             )
         }
     }
     
-    private fun acceptCall() {
+    private fun acceptCall(isGuestCall: Boolean, providedUrl: String, providedToken: String, providedRoomName: String) {
+        // Ensure RECORD_AUDIO and CAMERA runtime permissions before connecting/publishing
+        val needsAudio = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
+        val needsCamera = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+        if (needsAudio || needsCamera) {
+            afterPermissions = { acceptCall(isGuestCall, providedUrl, providedToken, providedRoomName) }
+            permissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA))
+            return
+        }
+
         lifecycleScope.launch {
             try {
-                // Mark as accepted
-                CallSignalingManager.acceptCallInvitation(invitation.id)
+                if (isGuestCall && providedRoomName.isNotEmpty() && providedUrl.isNotEmpty()) {
+                    // Guest call: Fetch a NEW token for the host (not the guest's token!)
+                    Log.d("IncomingCallActivity", "Accepting guest call - fetching NEW token for host")
+                    
+                    val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+                    val currentUser = auth.currentUser
+                        ?: throw IllegalStateException("Not authenticated")
+                    
+                    // Fetch a fresh LiveKit token for the HOST using the same room name
+                    val functions = com.google.firebase.functions.FirebaseFunctions.getInstance("us-central1")
+                    val request = hashMapOf(
+                        "calleeId" to "guest", // arbitrary, server uses auth.uid for identity
+                        "roomName" to providedRoomName
+                    )
+                    
+                    val result = functions
+                        .getHttpsCallable("getLiveKitToken")
+                        .call(request)
+                        .await()
+                    
+                    @Suppress("UNCHECKED_CAST")
+                    val response = result.data as? Map<String, Any>
+                        ?: throw IllegalStateException("Invalid response from token function")
+                    
+                    val url = response["url"] as? String ?: providedUrl
+                    val token = response["token"] as? String
+                        ?: throw IllegalStateException("Missing token in response")
+                    
+                    Log.d("IncomingCallActivity", "✅ Got NEW token for host (length: ${token.length})")
+                    
+                    // Connect to the call with the host's NEW token
+                    val room = LiveKitManager.connectToRoom(
+                        this@IncomingCallActivity,
+                        url,
+                        token
+                    )
+
+                    // Enable camera and microphone
+                    room.localParticipant.setCameraEnabled(true)
+                    room.localParticipant.setMicrophoneEnabled(true)
+                    
+                    // Launch InCallActivity with guest information
+                    val intent = Intent(this@IncomingCallActivity, InCallActivity::class.java).apply {
+                        putExtra("recipient_name", invitation.fromUserName) // Pass guest name
+                        putExtra("recipient_email", "") // Guests don't have email
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    startActivity(intent)
+                    finish()
+                } else {
+                    // Regular call: Use existing flow with Firestore signaling
+                    Log.d("IncomingCallActivity", "Accepting regular call, fetching new token")
+                    
+                    // Mark as accepted
+                    CallSignalingManager.acceptCallInvitation(invitation.id)
 
                 // Fetch a fresh LiveKit token for THIS user (recipient) using the callable
                 val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
@@ -115,19 +204,24 @@ class IncomingCallActivity : ComponentActivity() {
                 val intent = Intent(this@IncomingCallActivity, InCallActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
-                startActivity(intent)
-                finish()
+                    startActivity(intent)
+                    finish()
+                }
             } catch (e: Exception) {
+                Log.e("IncomingCallActivity", "Error accepting call", e)
                 e.printStackTrace()
                 finish()
             }
         }
     }
     
-    private fun rejectCall() {
+    private fun rejectCall(isGuestCall: Boolean) {
         lifecycleScope.launch {
             try {
-                CallSignalingManager.rejectCallInvitation(invitation.id)
+                // Only update Firestore for regular calls, not guest calls
+                if (!isGuestCall) {
+                    CallSignalingManager.rejectCallInvitation(invitation.id)
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
@@ -139,7 +233,8 @@ class IncomingCallActivity : ComponentActivity() {
     override fun onBackPressed() {
         super.onBackPressed()
         // Treat back press as reject
-        rejectCall()
+        val isGuestCall = intent.getBooleanExtra("isGuestCall", false)
+        rejectCall(isGuestCall)
     }
 }
 
@@ -161,48 +256,77 @@ fun IncomingCallScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
             modifier = Modifier.padding(32.dp)
         ) {
-            // Pulsing animation for incoming call
+            // Pulsing animation for the ring
             val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-            val scale by infiniteTransition.animateFloat(
+            val ringScale by infiniteTransition.animateFloat(
                 initialValue = 1f,
-                targetValue = 1.15f,
+                targetValue = 1.2f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(1000, easing = FastOutSlowInEasing),
+                    animation = tween(1200, easing = FastOutSlowInEasing),
                     repeatMode = RepeatMode.Reverse
                 ),
-                label = "scale"
+                label = "ringScale"
+            )
+            val ringAlpha by infiniteTransition.animateFloat(
+                initialValue = 0.8f,
+                targetValue = 0.3f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1200, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "ringAlpha"
             )
             
-            // Caller avatar/photo with pulsing effect and blue outline
+            // Caller avatar/photo with pulsing ring effect
             Box(
-                modifier = Modifier
-                    .size(150.dp)
-                    .clip(CircleShape)
-                    .background(AppColors.PrimaryBlue) // Blue outline/border
-                    .graphicsLayer(scaleX = scale, scaleY = scale),
+                modifier = Modifier.size(180.dp),
                 contentAlignment = Alignment.Center
             ) {
-                if (!callerPhotoUrl.isNullOrEmpty()) {
-                    // Show profile picture
-                    coil.compose.AsyncImage(
-                        model = callerPhotoUrl,
-                        contentDescription = "Caller photo",
-                        modifier = Modifier
-                            .size(140.dp)
-                            .clip(CircleShape),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                    )
-                } else {
-                    // Show initial
-                    Box(
-                        modifier = Modifier
-                            .size(140.dp)
-                            .clip(CircleShape)
-                            .background(AppColors.PrimaryBlue),
-                        contentAlignment = Alignment.Center
-                    ) {
+                // Pulsing ring
+                Box(
+                    modifier = Modifier
+                        .size(170.dp)
+                        .graphicsLayer(scaleX = ringScale, scaleY = ringScale, alpha = ringAlpha)
+                        .border(
+                            width = 4.dp,
+                            color = AppColors.PrimaryBlue,
+                            shape = CircleShape
+                        )
+                )
+                
+                // Profile picture or initials
+                Box(
+                    modifier = Modifier
+                        .size(150.dp)
+                        .border(
+                            width = 4.dp,
+                            color = AppColors.PrimaryBlue,
+                            shape = CircleShape
+                        )
+                        .clip(CircleShape)
+                        .background(if (callerPhotoUrl.isNullOrEmpty()) AppColors.PrimaryBlue else Color.Transparent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (!callerPhotoUrl.isNullOrEmpty()) {
+                        // Show profile picture
+                        coil.compose.AsyncImage(
+                            model = callerPhotoUrl,
+                            contentDescription = "Caller photo",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else {
+                        // Show initials (first letter of first 2 words)
+                        val initials = callerName.trim().split(" ")
+                            .take(2)
+                            .mapNotNull { it.firstOrNull()?.uppercase() }
+                            .joinToString("")
+                            .ifEmpty { "?" }
+                        
                         Text(
-                            text = callerName.firstOrNull()?.uppercase() ?: "?",
+                            text = initials,
                             fontSize = 56.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White

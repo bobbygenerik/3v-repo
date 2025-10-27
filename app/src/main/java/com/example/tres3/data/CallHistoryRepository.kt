@@ -23,6 +23,50 @@ class CallHistoryRepository {
             e.printStackTrace()
         }
     }
+    
+    /**
+     * Save call history for both participants
+     */
+    suspend fun saveCallHistoryForBoth(
+        callerId: String,
+        callerName: String,
+        receiverId: String,
+        receiverName: String,
+        roomName: String,
+        duration: Long,
+        callType: CallType = CallType.VIDEO,
+        callStatus: CallStatus = CallStatus.COMPLETED
+    ) {
+        try {
+            val callHistory = CallHistory(
+                callerId = callerId,
+                callerName = callerName,
+                receiverId = receiverId,
+                receiverName = receiverName,
+                roomName = roomName,
+                callType = callType,
+                callStatus = callStatus,
+                duration = duration
+            )
+            
+            // Save to caller's history
+            firestore.collection("users")
+                .document(callerId)
+                .collection("callHistory")
+                .add(callHistory)
+                .await()
+            
+            // Save to receiver's history
+            firestore.collection("users")
+                .document(receiverId)
+                .collection("callHistory")
+                .add(callHistory)
+                .await()
+                
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     fun getCallHistory(callback: (List<CallHistory>) -> Unit) {
         val currentUser = auth.currentUser ?: return

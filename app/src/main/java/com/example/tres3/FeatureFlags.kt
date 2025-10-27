@@ -34,10 +34,10 @@ object FeatureFlags {
     
     /**
      * Enable advanced video codecs (H.265/HEVC, VP9, VP8)
-     * Default: false (uses H.264 only)
+     * Default: true (enabled)
      */
     fun isAdvancedCodecsEnabled(): Boolean = 
-        prefs.getBoolean("enable_advanced_codecs", false)
+        prefs.getBoolean("enable_advanced_codecs", true)
     
     fun setAdvancedCodecsEnabled(enabled: Boolean) {
         prefs.edit().putBoolean("enable_advanced_codecs", enabled).apply()
@@ -50,10 +50,10 @@ object FeatureFlags {
     /**
      * Enable Camera2 API enhancements
      * Includes auto-focus, exposure optimization, and stabilization
-     * Default: false
+     * Default: true (enabled)
      */
     fun isCameraEnhancementsEnabled(): Boolean = 
-        prefs.getBoolean("enable_camera_enhancements", false)
+        prefs.getBoolean("enable_camera_enhancements", true)
     
     fun setCameraEnhancementsEnabled(enabled: Boolean) {
         prefs.edit().putBoolean("enable_camera_enhancements", enabled).apply()
@@ -66,6 +66,8 @@ object FeatureFlags {
     fun isAutoFocusEnhancementEnabled(): Boolean =
         isCameraEnhancementsEnabled() && prefs.getBoolean("camera_autofocus_enhanced", true)
     
+    fun isCameraAutofocusEnhanced(): Boolean = isAutoFocusEnhancementEnabled()
+    
     /**
      * Enable video stabilization
      * Requires isCameraEnhancementsEnabled() to be true
@@ -73,12 +75,16 @@ object FeatureFlags {
     fun isVideoStabilizationEnabled(): Boolean =
         isCameraEnhancementsEnabled() && prefs.getBoolean("camera_stabilization", true)
     
+    fun isCameraStabilizationEnabled(): Boolean = isVideoStabilizationEnabled()
+    
     /**
      * Enable low-light mode
      * Requires isCameraEnhancementsEnabled() to be true
      */
     fun isLowLightModeEnabled(): Boolean =
-        isCameraEnhancementsEnabled() && prefs.getBoolean("camera_lowlight", false)
+        isCameraEnhancementsEnabled() && prefs.getBoolean("camera_lowlight", true)
+    
+    fun isCameraLowLightEnabled(): Boolean = isLowLightModeEnabled()
     
     // ========================================
     // ML Kit Features
@@ -87,10 +93,10 @@ object FeatureFlags {
     /**
      * Enable Google ML Kit features
      * Master switch for all ML-powered enhancements
-     * Default: false
+     * Default: true (enabled)
      */
     fun isMLKitEnabled(): Boolean = 
-        prefs.getBoolean("enable_ml_features", false)
+        prefs.getBoolean("enable_ml_features", true)
     
     fun setMLKitEnabled(enabled: Boolean) {
         prefs.edit().putBoolean("enable_ml_features", enabled).apply()
@@ -101,7 +107,7 @@ object FeatureFlags {
      * Requires isMLKitEnabled() to be true
      */
     fun isBackgroundBlurEnabled(): Boolean = 
-        isMLKitEnabled() && prefs.getBoolean("ml_background_blur", false)
+        isMLKitEnabled() && prefs.getBoolean("ml_background_blur", true)
     
     fun setBackgroundBlurEnabled(enabled: Boolean) {
         prefs.edit().putBoolean("ml_background_blur", enabled).apply()
@@ -123,7 +129,7 @@ object FeatureFlags {
      * Requires isMLKitEnabled() to be true
      */
     fun isVirtualBackgroundEnabled(): Boolean =
-        isMLKitEnabled() && prefs.getBoolean("ml_virtual_background", false)
+        isMLKitEnabled() && prefs.getBoolean("ml_virtual_background", true)
     
     /**
      * Enable face detection and enhancement
@@ -131,7 +137,7 @@ object FeatureFlags {
      * Requires isMLKitEnabled() to be true
      */
     fun isFaceEnhancementEnabled(): Boolean =
-        isMLKitEnabled() && prefs.getBoolean("ml_face_enhancement", false)
+        isMLKitEnabled() && prefs.getBoolean("ml_face_enhancement", true)
     
     // ========================================
     // Developer & Debug Features
@@ -140,10 +146,10 @@ object FeatureFlags {
     /**
      * Enable developer mode
      * Shows additional debugging information and experimental features
-     * Default: false
+     * Default: true (enabled)
      */
     fun isDeveloperModeEnabled(): Boolean = 
-        prefs.getBoolean("developer_mode", false)
+        prefs.getBoolean("developer_mode", true)
     
     fun setDeveloperModeEnabled(enabled: Boolean) {
         prefs.edit().putBoolean("developer_mode", enabled).apply()
@@ -156,6 +162,13 @@ object FeatureFlags {
      */
     fun isPerformanceOverlayEnabled(): Boolean =
         isDeveloperModeEnabled() && prefs.getBoolean("show_performance_overlay", false)
+
+    /**
+     * Persist toggle for performance overlay
+     */
+    fun setPerformanceOverlayEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("show_performance_overlay", enabled).apply()
+    }
     
     /**
      * Enable verbose logging for debugging

@@ -33,6 +33,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.google.firebase.auth.FirebaseAuth
 import android.content.Intent
+import com.google.firebase.messaging.FirebaseMessaging
+import android.util.Log
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import com.google.firebase.firestore.FirebaseFirestore
 
 class SignInActivity : AppCompatActivity() {
 
@@ -104,7 +110,7 @@ class SignInActivity : AppCompatActivity() {
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email or phone number") },
+                label = { Text("Email or Phone") },
                 leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Person Icon", tint = AppColors.TextLight) },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
@@ -249,7 +255,38 @@ class SignInActivity : AppCompatActivity() {
     }
 
     private fun navigateToDashboard() {
-        startActivity(Intent(this, HomeActivity::class.java))
-        finish()
+        Log.d("SignIn", "🔄 Updating FCM token before navigating to HomeActivity...")
+        
+        lifecycleScope.launch {
+            try {
+                val token = FirebaseMessaging.getInstance().token.await()
+                val user = auth.currentUser
+                
+                if (user != null && token != null) {
+                    Log.d("SignIn", "📱 Got FCM token: ${token.take(20)}...")
+                    
+                    FirebaseFirestore.getInstance()
+                        .collection("users")
+                        .document(user.uid)
+                        .update(
+                            mapOf(
+                                "fcmToken" to token,
+                                "tokenLastUpdated" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                            )
+                        )
+                        .await()
+                    
+                    Log.d("SignIn", "✅ FCM token updated successfully before navigation")
+                } else {
+                    Log.w("SignIn", "⚠️ No user or token available")
+                }
+            } catch (e: Exception) {
+                Log.e("SignIn", "❌ Failed to update FCM token: ${e.message}")
+                // Continue anyway - HomeActivity will retry
+            }
+            
+            startActivity(Intent(this@SignInActivity, HomeActivity::class.java))
+            finish()
+        }
     }
 }

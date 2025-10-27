@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -32,27 +33,77 @@ import coil.compose.AsyncImage
 import com.example.tres3.AppColors
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 class ProfileActivity : AppCompatActivity() {
-    private fun loadProfileData(onComplete: (String) -> Unit) {
+    private fun loadProfileData(onComplete: (String, String?) -> Unit) {
         val currentUser = auth.currentUser ?: return
         firestore.collection("users").document(currentUser.uid)
             .get()
             .addOnSuccessListener { document ->
                 val name = document.getString("displayName") ?: ""
-                onComplete(name)
+                val photoUrl = document.getString("photoUrl")
+                onComplete(name, photoUrl)
             }
             .addOnFailureListener {
-                onComplete("")
+                onComplete("", null)
             }
     }
 
     private lateinit var auth: FirebaseAuth
     private lateinit var firestore: FirebaseFirestore
+    private lateinit var storage: FirebaseStorage
 
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { /* For now, just show a toast */ 
-            Toast.makeText(this, "Image selection not implemented yet", Toast.LENGTH_SHORT).show()
+        uri?.let { 
+            uploadProfilePicture(it)
+        }
+    }
+    
+    private fun uploadProfilePicture(uri: Uri) {
+        val currentUser = auth.currentUser ?: return
+        
+        Log.d("ProfileActivity", "📸 Starting profile picture upload for user: ${currentUser.uid}")
+        Log.d("ProfileActivity", "   Image URI: $uri")
+        
+        Toast.makeText(this, "Uploading profile picture...", Toast.LENGTH_SHORT).show()
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Upload to Firebase Storage
+                val storageRef = storage.reference
+                    .child("profile_pictures/${currentUser.uid}/${System.currentTimeMillis()}.jpg")
+                
+                Log.d("ProfileActivity", "   Uploading to Storage path: ${storageRef.path}")
+                storageRef.putFile(uri).await()
+                
+                val downloadUrl = storageRef.downloadUrl.await().toString()
+                Log.d("ProfileActivity", "   ✅ Upload complete! Download URL: $downloadUrl")
+                
+                // Update Firestore with new photo URL
+                Log.d("ProfileActivity", "   Updating Firestore users/${currentUser.uid} with photoUrl")
+                firestore.collection("users").document(currentUser.uid)
+                    .update("photoUrl", downloadUrl)
+                    .await()
+                
+                Log.d("ProfileActivity", "   ✅ Firestore updated successfully")
+                
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@ProfileActivity, "Profile picture updated!", Toast.LENGTH_SHORT).show()
+                    // Trigger UI refresh by recreating activity
+                    recreate()
+                }
+            } catch (e: Exception) {
+                Log.e("ProfileActivity", "❌ Failed to upload profile picture", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@ProfileActivity, "Failed to upload: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -68,6 +119,7 @@ class ProfileActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
         firestore = FirebaseFirestore.getInstance()
+        storage = FirebaseStorage.getInstance()
 
         val currentUser = auth.currentUser
         if (currentUser == null) {
@@ -85,14 +137,16 @@ class ProfileActivity : AppCompatActivity() {
     @Composable
     fun ProfileScreen() {
         var displayName by remember { mutableStateOf("") }
+        var profilePhotoUrl by remember { mutableStateOf<String?>(null) }
         var isLoading by remember { mutableStateOf(true) }
         var isSaving by remember { mutableStateOf(false) }
         val currentUser = auth.currentUser
 
         // Load profile data
         LaunchedEffect(Unit) {
-            loadProfileData { name ->
+            loadProfileData { name, photoUrl ->
                 displayName = name
+                profilePhotoUrl = photoUrl
                 isLoading = false
             }
         }
@@ -147,7 +201,6 @@ class ProfileActivity : AppCompatActivity() {
                             .clickable { pickImageLauncher.launch("image/*") },
                         contentAlignment = Alignment.Center
                     ) {
-                        val profilePhotoUrl = currentUser?.photoUrl
                         if (profilePhotoUrl != null) {
                             AsyncImage(
                                 model = profilePhotoUrl,

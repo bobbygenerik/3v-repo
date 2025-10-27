@@ -21,21 +21,37 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         Log.e("FCM", "📨 MESSAGE RECEIVED!!!")
         Log.e("FCM", "   From: ${message.from}")
         Log.e("FCM", "   Message ID: ${message.messageId}")
+        Log.e("FCM", "   SentTime: ${message.sentTime}")
         Log.e("FCM", "   Data: ${message.data}")
         Log.e("FCM", "   Notification: ${message.notification?.title}")
         Log.e("FCM", "   Data keys: ${message.data.keys}")
         Log.e("FCM", "════════════════════════════════════════")
+
+        // Ignore stale call invites older than 2 minutes to avoid ghost calls after account switch or delayed delivery
+        val now = System.currentTimeMillis()
+        val ageMs = if (message.sentTime > 0) now - message.sentTime else 0L
+        if (ageMs > 120_000) {
+            Log.w("FCM", "⏭️ Ignoring stale message (age=${ageMs}ms)")
+            return
+        }
 
         val data = message.data
         val type = data["type"]
 
         Log.e("FCM", "Message type: $type")
 
-        if (type == "call_invite") {
-            Log.e("FCM", "✅ This is a call invite! Handling...")
-            handleCallInvite(data)
-        } else {
-            Log.w("FCM", "⚠️ Message type is not 'call_invite': $type")
+        when (type) {
+            "call_invite" -> {
+                Log.e("FCM", "✅ This is a call invite! Handling...")
+                handleCallInvite(data)
+            }
+            "guest_joining" -> {
+                Log.e("FCM", "✅ Guest is joining! Handling...")
+                handleGuestJoining(data)
+            }
+            else -> {
+                Log.w("FCM", "⚠️ Unknown message type: $type")
+            }
         }
     }
 
@@ -85,12 +101,14 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 val useHeadsUpOnly = prefs.getBoolean("heads_up_notifications", false)
                 
                 if (useHeadsUpOnly) {
-                    // Show heads-up notification only
-                    Log.e("FCM", "📳 Showing heads-up notification (user preference)")
-                    showCallNotification(invitationId, fromUserName, fromUserId, roomName, url, token, callerPhotoUrl)
+                    // Show heads-up notification only (user opted for less invasive)
+                    // This will NOT launch full-screen automatically
+                    Log.e("FCM", "📳 Showing heads-up notification ONLY (user preference)")
+                    showCallNotification(invitationId, fromUserName, fromUserId, roomName, url, token, callerPhotoUrl, false)
                 } else {
-                    // Launch full-screen IncomingCallActivity
-                    Log.e("FCM", "🚀 Launching full-screen IncomingCallActivity...")
+                    // Default: Launch full-screen IncomingCallActivity immediately
+                    // No notification needed as full-screen takes over
+                    Log.e("FCM", "🚀 Launching full-screen IncomingCallActivity (default - no notification)...")
                     val intent = Intent(this@MyFirebaseMessagingService, IncomingCallActivity::class.java).apply {
                         putExtra("invitationId", invitationId)
                         putExtra("fromUserName", fromUserName)
@@ -104,7 +122,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                                 Intent.FLAG_ACTIVITY_SINGLE_TOP
                     }
                     startActivity(intent)
-                    Log.e("FCM", "✅ IncomingCallActivity launched!")
+                    Log.e("FCM", "✅ IncomingCallActivity launched! (no notification sent)")
                 }
             } catch (e: Exception) {
                 Log.e("FCM", "❌ Error fetching caller info: ${e.message}", e)
@@ -134,7 +152,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         roomName: String,
         url: String,
         token: String,
-        callerPhotoUrl: String?
+        callerPhotoUrl: String?,
+        useFullScreenIntent: Boolean = true // Control whether notification launches full-screen
     ) {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         
@@ -147,6 +166,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             ).apply {
                 description = "Notifications for incoming video calls"
                 enableVibration(true)
+                enableLights(true)
+                lightColor = android.graphics.Color.BLUE
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+                setShowBadge(true)
                 setSound(
                     android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE),
                     android.media.AudioAttributes.Builder()
@@ -154,6 +177,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                         .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
                 )
+                // CRITICAL: Bypass DND
+                setBypassDnd(true)
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -229,12 +254,22 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val notification = notificationBuilder
             .setContentTitle("$fromUserName is calling")
             .setContentText("Incoming video call")
-            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_MAX)
             .setCategory(androidx.core.app.NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
             .setOngoing(true)
-            .setFullScreenIntent(fullScreenPendingIntent, true)
-            .setContentIntent(fullScreenPendingIntent)
+            .apply {
+                // Only use full-screen intent if requested (for heads-up mode, don't auto-launch)
+                if (useFullScreenIntent) {
+                    setFullScreenIntent(fullScreenPendingIntent, true)
+                }
+            }
+            .setContentIntent(fullScreenPendingIntent) // User can still tap to open
+            .setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC)
+            .setVibrate(longArrayOf(0, 1000, 500, 1000))
+            .setLights(android.graphics.Color.BLUE, 3000, 3000)
+            .setSound(android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE))
+            .setTimeoutAfter(60000) // Auto-dismiss after 60 seconds
             .addAction(
                 android.R.drawable.ic_menu_call,
                 "Decline",
@@ -246,12 +281,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 acceptPendingIntent
             )
             .setColor(0xFF1E88E5.toInt())
-            .setVibrate(longArrayOf(0, 1000, 500, 1000))
-            .setSound(android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE))
             .build()
         
         notificationManager.notify(invitationId.hashCode(), notification)
-        Log.e("FCM", "✅ Heads-up notification shown")
+        Log.e("FCM", "✅ Heads-up notification shown (fullScreen=${useFullScreenIntent})")
     }
 
     override fun onNewToken(token: String) {
@@ -277,7 +310,56 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 }
             }
         } else {
-            Log.w("FCM", "⚠️ No user signed in, token not saved")
+            Log.w("FCM", "⚠️ No user signed in, persisting token locally to retry on login")
+            try {
+                val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+                prefs.edit().putString("pending_fcm_token", token).apply()
+                Log.d("FCM", "✅ Token saved to SharedPreferences for later registration")
+            } catch (e: Exception) {
+                Log.e("FCM", "❌ Failed to persist token locally", e)
+            }
         }
+    }
+    
+    private fun handleGuestJoining(data: Map<String, String>) {
+        Log.e("FCM", "════════════════════════════════════════")
+        Log.e("FCM", "👋 HANDLING GUEST JOINING")
+        Log.e("FCM", "════════════════════════════════════════")
+        
+        val guestName = data["guestName"] ?: "Guest"
+        val roomName = data["roomName"] ?: run {
+            Log.e("FCM", "❌ Missing roomName")
+            return
+        }
+        val token = data["token"] ?: run {
+            Log.e("FCM", "❌ Missing token")
+            return
+        }
+        val url = data["url"] ?: run {
+            Log.e("FCM", "❌ Missing url")
+            return
+        }
+        val invitationId = data["invitationId"] ?: ""
+        
+        Log.e("FCM", "   Guest: $guestName")
+        Log.e("FCM", "   Room: $roomName")
+        Log.e("FCM", "   Token length: ${token.length}")
+        Log.e("FCM", "   URL: $url")
+        
+        // Show incoming call notification for guest
+        // Use field names that IncomingCallActivity expects
+        val intent = Intent(this, IncomingCallActivity::class.java).apply {
+            putExtra("fromUserName", guestName)  // Changed from caller_name
+            putExtra("fromUserId", "guest")      // Changed from caller_id
+            putExtra("roomName", roomName)       // Changed from room_name
+            putExtra("invitationId", invitationId)
+            putExtra("token", token)
+            putExtra("url", url)
+            putExtra("isGuestCall", true)        // Add flag to skip Firestore signaling
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        startActivity(intent)
+        
+        Log.e("FCM", "✅ Started IncomingCallActivity for guest")
     }
 }
