@@ -1,10 +1,12 @@
 package com.example.tres3.video
 
+import android.app.ActivityManager
 import android.content.Context
 import android.media.MediaCodecInfo
 import android.media.MediaCodecList
 import android.os.Build
 import android.util.Log
+import com.example.tres3.FeatureFlags
 
 /**
  * Manages video codec selection and configuration for optimal video quality
@@ -264,12 +266,95 @@ object VideoCodecManager {
     }
     
     /**
+     * Detect if the device is low-end based on RAM and CPU cores
+     * Low-end devices benefit more from VP9's better compression
+     */
+    private fun isLowEndDevice(context: Context): Boolean {
+        try {
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+            val memoryInfo = ActivityManager.MemoryInfo()
+            activityManager?.getMemoryInfo(memoryInfo)
+            
+            // Total RAM in GB
+            val totalRamGb = memoryInfo.totalMem / (1024.0 * 1024.0 * 1024.0)
+            
+            // CPU core count
+            val cpuCores = Runtime.getRuntime().availableProcessors()
+            
+            // Consider device low-end if:
+            // - Less than 3GB RAM, OR
+            // - 4 or fewer CPU cores AND less than 4GB RAM
+            val isLowRam = totalRamGb < 3.0
+            val isLowCpu = cpuCores <= 4 && totalRamGb < 4.0
+            
+            val isLowEnd = isLowRam || isLowCpu
+            
+            Log.d(TAG, "Device performance: RAM=${String.format("%.2f", totalRamGb)}GB, Cores=$cpuCores, LowEnd=$isLowEnd")
+            
+            return isLowEnd
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not determine device performance, assuming mid-range", e)
+            return false
+        }
+    }
+    
+    /**
      * Get the best available codec for the device
-     * Preference order: H.265 (hardware) > VP9 (hardware) > H.264 (hardware) > H.264 (software)
+     * Preference order: 
+     * - High-end devices: H.265 (hardware) > VP9 (hardware) > H.264 (hardware)
+     * - Low-end devices: VP9 (hardware) > H.265 (hardware) > H.264 (hardware)
+     * - Fallback: H.264 (software if needed)
      * 
+     * @param context Application context for device performance detection
      * @param preferQuality If true, prefer quality (H.265/VP9). If false, prefer compatibility (H.264)
      * @return The recommended codec
      */
+    fun getBestCodec(context: Context, preferQuality: Boolean = true): PreferredCodec {
+        // Check if device is low-end for VP9 prioritization
+        val isLowEnd = isLowEndDevice(context)
+        
+        if (preferQuality) {
+            if (isLowEnd) {
+                // Low-end devices: Prioritize VP9 for better compression with lower compute
+                val vp9Info = getCodecInfo(PreferredCodec.VP9)
+                if (vp9Info.hasHardwareEncoder) {
+                    Log.d(TAG, "Selected VP9 (hardware) for low-end device - better compression")
+                    return PreferredCodec.VP9
+                }
+                
+                // Fall back to H.265 if VP9 not available
+                val h265Info = getCodecInfo(PreferredCodec.H265_HEVC)
+                if (h265Info.hasHardwareEncoder) {
+                    Log.d(TAG, "Selected H.265 (hardware) for low-end device")
+                    return PreferredCodec.H265_HEVC
+                }
+            } else {
+                // High-end devices: Prioritize H.265 for best quality
+                val h265Info = getCodecInfo(PreferredCodec.H265_HEVC)
+                if (h265Info.hasHardwareEncoder) {
+                    Log.d(TAG, "Selected H.265 (hardware) for best quality")
+                    return PreferredCodec.H265_HEVC
+                }
+                
+                // Try VP9 hardware (good quality, WebRTC optimized)
+                val vp9Info = getCodecInfo(PreferredCodec.VP9)
+                if (vp9Info.hasHardwareEncoder) {
+                    Log.d(TAG, "Selected VP9 (hardware) for good quality")
+                    return PreferredCodec.VP9
+                }
+            }
+        }
+        
+        // Fall back to H.264 (universal compatibility)
+        Log.d(TAG, "Selected H.264 for maximum compatibility")
+        return PreferredCodec.H264
+    }
+    
+    /**
+     * Get the best available codec for the device (legacy method without context)
+     * @deprecated Use getBestCodec(context, preferQuality) instead
+     */
+    @Deprecated("Use getBestCodec(context, preferQuality) for device-aware codec selection")
     fun getBestCodec(preferQuality: Boolean = false): PreferredCodec {
         if (preferQuality) {
             // Try H.265 hardware first (best quality/compression)
@@ -359,5 +444,23 @@ object VideoCodecManager {
         }
         
         return summary.toString()
+    }
+    
+    /**
+     * Get codec status for diagnostics
+     */
+    fun getCodecStatus(context: Context): Map<String, Any> {
+        val availableCodecs = getAvailableCodecs(context)
+        val bestCodec = getBestCodec()
+        
+        return mapOf(
+            "advancedCodecsEnabled" to FeatureFlags.isAdvancedCodecsEnabled(),
+            "availableCodecCount" to availableCodecs.size,
+            "availableCodecs" to availableCodecs.map { it.displayName }.joinToString(", "),
+            "bestCodec" to bestCodec.displayName,
+            "h264Hardware" to getCodecInfo(PreferredCodec.H264).hasHardwareEncoder,
+            "h265Hardware" to getCodecInfo(PreferredCodec.H265_HEVC).hasHardwareEncoder,
+            "vp9Hardware" to getCodecInfo(PreferredCodec.VP9).hasHardwareEncoder
+        )
     }
 }
