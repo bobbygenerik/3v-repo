@@ -14,5 +14,36 @@
         "*.local"
       ]
     }
-  ]
+  ],
+  "hosting": {
+    "site": "vchat-46b32",
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "headers": [
+      {
+        "source": "**/*.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/g/**",
+        "function": {
+          "functionId": "joinGuest",
+          "region": "us-central1"
+        }
+      }
+    ]
+  }
 }

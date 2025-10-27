@@ -19,6 +19,12 @@ service cloud.firestore {
       // Anyone authenticated can read other user profiles (for contacts/calling)
       allow read: if isSignedIn();
       
+      // Contacts subcollection - NEW: User contacts
+      match /contacts/{contactId} {
+        // Users can read/write their own contacts
+        allow read, write: if isOwner(userId);
+      }
+      
       // Call history subcollection - NEW: Support for your app's call history
       match /callHistory/{historyId} {
         // Users can only read/write their own call history
@@ -116,6 +122,21 @@ service cloud.firestore {
       
       // Anyone authenticated can read presence (for online status)
       allow read: if isSignedIn();
+    }
+    
+    // Guest invitations - for web guest calls
+    match /guestInvitations/{invitationId} {
+      // Authenticated users can create guest invitations
+      allow create: if isSignedIn();
+      
+      // Users can read their own guest invitations
+      allow read: if isSignedIn() && resource.data.hostUserId == request.auth.uid;
+      
+      // Users can update/delete their own invitations
+      allow update, delete: if isSignedIn() && resource.data.hostUserId == request.auth.uid;
+      
+      // Allow public read for guests with the invitation link (token validation happens in client)
+      allow read: if true;
     }
   }
 }
