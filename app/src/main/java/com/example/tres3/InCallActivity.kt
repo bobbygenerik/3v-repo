@@ -97,6 +97,7 @@ class InCallActivity : ComponentActivity() {
     private lateinit var room: Room
     private var isIntentionallyClosing = false  // Track if we're intentionally disconnecting
     private var callEndListener: com.google.firebase.firestore.ListenerRegistration? = null
+    private var directCallEndListener: com.google.firebase.firestore.ListenerRegistration? = null
     
     // Screen sharing state
     internal var pendingScreenShareEnable = false
@@ -243,20 +244,63 @@ class InCallActivity : ComponentActivity() {
     setupContent(recipientName, recipientEmail, guestLink)
     Log.d("InCallActivity", "⏱️ ACTIVITY_CREATED -> UI composed started at t0=${tActivityStart}")
         
-        // Listen for call end signals from the other participant
+        // Listen for call end signals from the other participant (two channels for reliability)
         val roomName = room.name ?: ""
         if (roomName.isNotEmpty()) {
+            // Channel 1: activeCallRooms document listener
             callEndListener = CallSignalingManager.listenForCallEnd(roomName) {
-                Log.d("InCallActivity", "🔚 Other participant ended the call")
-                runOnUiThread {
-                    Toast.makeText(this, "Call ended", Toast.LENGTH_SHORT).show()
-                    val homeIntent = Intent(this, HomeActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    }
-                    startActivity(homeIntent)
-                    finish()
-                }
+                Log.d("InCallActivity", "🔚 [Channel 1] Other participant ended the call via activeCallRooms")
+                handleCallEnded()
             }
+            
+            // Channel 2: Direct callSignals listener for this user
+            val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+            if (currentUser != null) {
+                directCallEndListener = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(currentUser.uid)
+                    .collection("callSignals")
+                    .whereEqualTo("type", "call_ended")
+                    .whereEqualTo("roomName", roomName)
+                    .addSnapshotListener { snapshots, error ->
+                        if (error != null) {
+                            Log.e("InCallActivity", "Error in direct call end listener: ${error.message}")
+                            return@addSnapshotListener
+                        }
+                        
+                        snapshots?.documentChanges?.forEach { change ->
+                            if (change.type == com.google.firebase.firestore.DocumentChange.Type.ADDED) {
+                                val endedBy = change.document.getString("endedBy") ?: ""
+                                if (endedBy != currentUser.uid) {
+                                    Log.d("InCallActivity", "🔚 [Channel 2] Other participant ended call via callSignals")
+                                    // Mark as processed
+                                    change.document.reference.update("status", "processed")
+                                    handleCallEnded()
+                                }
+                            }
+                        }
+                    }
+            }
+        }
+    }
+    
+    /**
+     * Handle call ended by other participant - common logic for both channels
+     */
+    private fun handleCallEnded() {
+        if (isIntentionallyClosing) {
+            Log.d("InCallActivity", "ℹ️ Already closing - ignoring call end signal")
+            return
+        }
+        
+        isIntentionallyClosing = true // Prevent duplicate handling
+        runOnUiThread {
+            Toast.makeText(this, "Call ended by other participant", Toast.LENGTH_SHORT).show()
+            val homeIntent = Intent(this, HomeActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            startActivity(homeIntent)
+            finish()
         }
     }
     
@@ -557,6 +601,9 @@ class InCallActivity : ComponentActivity() {
         try {
             callEndListener?.remove()
             callEndListener = null
+            directCallEndListener?.remove()
+            directCallEndListener = null
+            Log.d("InCallActivity", "✅ Removed call end listeners")
         } catch (e: Exception) {
             Log.e("InCallActivity", "Error removing call end listener: ${e.message}", e)
         }

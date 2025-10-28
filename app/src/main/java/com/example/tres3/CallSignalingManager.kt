@@ -261,23 +261,29 @@ object CallSignalingManager {
         try {
             val currentUser = FirebaseAuth.getInstance().currentUser
             if (currentUser == null) {
-                Log.e(TAG, "Cannot end call: not authenticated")
+                Log.e(TAG, "❌ Cannot end call: not authenticated")
                 return
             }
+            
+            Log.d(TAG, "🔚 Ending call - Room: $roomName, OtherUser: $otherUserId")
             
             // Mark the call as ended in a shared location
             val callEndData = hashMapOf(
                 "roomName" to roomName,
                 "endedBy" to currentUser.uid,
+                "endedByName" to (currentUser.displayName ?: currentUser.email ?: "Unknown"),
                 "endedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
                 "status" to "ended"
             )
             
+            // Use set with merge to ensure the document is created if it doesn't exist
             FirebaseFirestore.getInstance()
                 .collection("activeCallRooms")
                 .document(roomName)
-                .set(callEndData)
+                .set(callEndData, com.google.firebase.firestore.SetOptions.merge())
                 .await()
+            
+            Log.d(TAG, "✅ Call end signal written to activeCallRooms/$roomName")
             
             // Notify the other user if we know their ID
             if (!otherUserId.isNullOrEmpty() && otherUserId != currentUser.uid) {
@@ -285,7 +291,9 @@ object CallSignalingManager {
                     "type" to "call_ended",
                     "roomName" to roomName,
                     "endedBy" to currentUser.uid,
-                    "timestamp" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                    "endedByName" to (currentUser.displayName ?: currentUser.email ?: "Unknown"),
+                    "timestamp" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                    "status" to "pending" // Will be processed by recipient
                 )
                 
                 FirebaseFirestore.getInstance()
@@ -295,12 +303,15 @@ object CallSignalingManager {
                     .add(notificationData)
                     .await()
                 
-                Log.d(TAG, "🔚 Notified other participant ($otherUserId) that call ended")
+                Log.d(TAG, "✅ Notified other participant ($otherUserId) via callSignals")
+            } else {
+                Log.w(TAG, "⚠️ No other participant ID provided - only using activeCallRooms")
             }
             
-            Log.d(TAG, "✅ Call ended successfully")
+            Log.d(TAG, "✅ Call end signaling completed successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "Error ending call", e)
+            Log.e(TAG, "❌ Error ending call: ${e.message}", e)
+            e.printStackTrace()
         }
     }
     
@@ -314,27 +325,39 @@ object CallSignalingManager {
         roomName: String,
         onCallEnded: () -> Unit
     ): ListenerRegistration {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        val currentUserId = currentUser?.uid ?: ""
+        
+        Log.d(TAG, "🎧 Setting up call end listener for room: $roomName")
+        Log.d(TAG, "   Current user: $currentUserId")
+        
         return FirebaseFirestore.getInstance()
             .collection("activeCallRooms")
             .document(roomName)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e(TAG, "Error listening for call end", error)
+                    Log.e(TAG, "❌ Error listening for call end: ${error.message}", error)
                     return@addSnapshotListener
                 }
                 
                 if (snapshot != null && snapshot.exists()) {
                     val status = snapshot.getString("status")
+                    val endedBy = snapshot.getString("endedBy") ?: ""
+                    val endedByName = snapshot.getString("endedByName") ?: "Other participant"
+                    
+                    Log.d(TAG, "🔔 activeCallRooms/$roomName updated - status: $status, endedBy: $endedBy")
+                    
                     if (status == "ended") {
-                        val endedBy = snapshot.getString("endedBy") ?: ""
-                        val currentUser = FirebaseAuth.getInstance().currentUser
-                        
                         // Only trigger if ended by someone else
-                        if (endedBy != currentUser?.uid) {
-                            Log.d(TAG, "🔚 Call ended by other participant")
+                        if (endedBy.isNotEmpty() && endedBy != currentUserId) {
+                            Log.d(TAG, "🔚 Call ended by $endedByName ($endedBy)")
                             onCallEnded()
+                        } else {
+                            Log.d(TAG, "ℹ️ Call ended by self - ignoring")
                         }
                     }
+                } else {
+                    Log.d(TAG, "📭 activeCallRooms/$roomName does not exist yet")
                 }
             }
     }
