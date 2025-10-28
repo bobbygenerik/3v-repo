@@ -17,27 +17,14 @@ workflows:
         - pattern: '*'
           include: true
           source: true
-          include: true
-          source: true
-        - pattern: 'develop'
-          include: true
-          source: true
     scripts:
       - name: Set up local.properties
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
           
-      - name: Get Flutter dependencies
-        script: |
-          flutter pub get
-          
       - name: Build Android APKs (all architectures)
         script: |
           ./gradlew assembleDebug --no-daemon
-          
-      - name: Build Android App Bundle
-        script: |
-          ./gradlew bundleRelease --no-daemon
           
     artifacts:
       - app/build/outputs/**/*.apk
