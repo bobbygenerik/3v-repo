@@ -1,23 +1,22 @@
 workflows:
   android-workflow:
     name: Android Build
-    max_build_duration: 120
-    instance_type: mac_mini_m1
+    max_build_duration: 60
+    instance_type: linux_x2
     environment:
-      android_signing:
-        - tres3_keystore
       groups:
         - google_play
       vars:
         PACKAGE_NAME: "com.example.tres3"
       java: 17
-      flutter: stable
     triggering:
       events:
         - push
         - pull_request
       branch_patterns:
-        - pattern: 'main'
+        - pattern: '*'
+          include: true
+          source: true
           include: true
           source: true
         - pattern: 'develop'
