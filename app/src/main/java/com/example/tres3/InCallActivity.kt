@@ -199,9 +199,7 @@ class InCallActivity : ComponentActivity() {
         }
         // --- END FIX ---
         
-        // TODO: Re-enable data message listener for guest call ending (requires LiveKit 2.21+ event handling pattern)
-        // Listen for data messages from browser (e.g., guest ending call)
-        /*
+        // Listen for data messages (mute_all commands, guest call ending, etc.)
         lifecycleScope.launch {
             room.events.collect { event ->
                 when (event) {
@@ -209,15 +207,33 @@ class InCallActivity : ComponentActivity() {
                         try {
                             val data = String(event.data, Charsets.UTF_8)
                             val json = org.json.JSONObject(data)
-                            if (json.optString("type") == "call_ended" && json.optString("source") == "guest") {
-                                Log.d("InCallActivity", "🔚 Guest ended the call from browser")
-                                runOnUiThread {
-                                    Toast.makeText(this@InCallActivity, "Guest ended the call", Toast.LENGTH_SHORT).show()
-                                    val homeIntent = Intent(this@InCallActivity, HomeActivity::class.java).apply {
-                                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            val messageType = json.optString("type")
+                            
+                            when (messageType) {
+                                "mute_all" -> {
+                                    val fromIdentity = json.optString("from")
+                                    // Don't mute yourself if you sent the command
+                                    if (fromIdentity != room.localParticipant.identity.value) {
+                                        Log.d("InCallActivity", "🔇 Received mute_all command from $fromIdentity")
+                                        runOnUiThread {
+                                            isMicEnabled = false
+                                            room.localParticipant.setMicrophoneEnabled(false)
+                                            Toast.makeText(this@InCallActivity, "You have been muted by moderator", Toast.LENGTH_SHORT).show()
+                                        }
                                     }
-                                    startActivity(homeIntent)
-                                    finish()
+                                }
+                                "call_ended" -> {
+                                    if (json.optString("source") == "guest") {
+                                        Log.d("InCallActivity", "🔚 Guest ended the call from browser")
+                                        runOnUiThread {
+                                            Toast.makeText(this@InCallActivity, "Guest ended the call", Toast.LENGTH_SHORT).show()
+                                            val homeIntent = Intent(this@InCallActivity, HomeActivity::class.java).apply {
+                                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            }
+                                            startActivity(homeIntent)
+                                            finish()
+                                        }
+                                    }
                                 }
                             }
                         } catch (e: Exception) {
@@ -228,7 +244,6 @@ class InCallActivity : ComponentActivity() {
                 }
             }
         }
-        */
         
         // Initialize camera enhancements
         initializeEnhancements()
@@ -2599,6 +2614,41 @@ fun InCallScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Participants", color = Color.White)
+                    }
+                    
+                    // Mute Others (Moderator control)
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            scope.launch(Dispatchers.IO) {
+                                try {
+                                    // Send mute_all data message to all participants
+                                    val payload = """{"type":"mute_all","from":"${room.localParticipant.identity}"}"""
+                                    room.localParticipant.publishData(
+                                        payload.toByteArray(Charsets.UTF_8),
+                                        reliable = true
+                                    )
+                                    Log.d("InCallActivity", "📣 Sent mute_all command to all participants")
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "Muted all participants", Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("InCallActivity", "❌ Failed to send mute command: ${e.message}", e)
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "Failed to mute participants", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.MicOff,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Mute Others", color = Color.White)
                     }
                     
                     TextButton(
