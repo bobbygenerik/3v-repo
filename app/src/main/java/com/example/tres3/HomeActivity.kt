@@ -612,11 +612,13 @@ class HomeActivity : AppCompatActivity() {
 
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     if (currentView == "contacts") {
-                        val filteredContacts = contacts.filter { contact ->
-                            search.isEmpty() ||
-                            contact.name.contains(search, ignoreCase = true) ||
-                            contact.email.contains(search, ignoreCase = true)
-                        }
+                        val filteredContacts = contacts
+                            .filter { contact ->
+                                search.isEmpty() ||
+                                contact.name.contains(search, ignoreCase = true) ||
+                                contact.email.contains(search, ignoreCase = true)
+                            }
+                            .sortedWith(compareByDescending<Contact> { it.isPinned }.thenBy { it.name })
                         items(filteredContacts) { contact ->
                             Card(
                                 modifier = Modifier
@@ -674,6 +676,22 @@ class HomeActivity : AppCompatActivity() {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(contact.name, color = AppColors.TextLight, fontWeight = FontWeight.Medium)
                                         Text(contact.email, color = AppColors.TextLight.copy(alpha = 0.7f))
+                                    }
+
+                                    // Pin/Favorite button
+                                    IconButton(onClick = { 
+                                        toggleContactPin(contact.id, !contact.isPinned)
+                                        // Update local state
+                                        contacts = contacts.map { c ->
+                                            if (c.id == contact.id) c.copy(isPinned = !contact.isPinned)
+                                            else c
+                                        }
+                                    }) {
+                                        Icon(
+                                            imageVector = if (contact.isPinned) Icons.Default.Star else Icons.Default.StarBorder,
+                                            contentDescription = if (contact.isPinned) "Unpin" else "Pin",
+                                            tint = if (contact.isPinned) Color(0xFFFFC107) else AppColors.TextLight.copy(alpha = 0.5f)
+                                        )
                                     }
 
                                     // Call button
@@ -1461,6 +1479,24 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    private fun toggleContactPin(contactId: String, isPinned: Boolean) {
+        val currentUserId = auth.currentUser?.uid ?: return
+        
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                firestore.collection("users")
+                    .document(currentUserId)
+                    .collection("contacts")
+                    .document(contactId)
+                    .update("isPinned", isPinned)
+                    .await()
+                Log.d("HomeActivity", "⭐ Contact pinned status updated: $contactId -> $isPinned")
+            } catch (e: Exception) {
+                Log.e("HomeActivity", "❌ Failed to update pin status: ${e.message}", e)
+            }
+        }
+    }
+
     private fun loadContacts() {
         val currentUserId = auth.currentUser?.uid ?: return
         
@@ -1479,13 +1515,15 @@ class HomeActivity : AppCompatActivity() {
                     val displayName = document.getString("displayName")
                     val email = document.getString("email") ?: ""
                     val userId = document.getString("userId") ?: document.id
+                    val isPinned = document.getBoolean("isPinned") ?: false
                     
                     val contact = Contact(
                         id = userId,
                         name = if (!displayName.isNullOrBlank()) displayName else email.ifEmpty { "Unknown" },
                         email = email,
                         avatarUrl = document.getString("photoUrl"),
-                        isOnline = false // Will be updated by presence fetch below
+                        isOnline = false, // Will be updated by presence fetch below
+                        isPinned = isPinned
                     )
                     contacts.add(contact)
                     
