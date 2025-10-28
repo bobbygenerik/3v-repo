@@ -1311,6 +1311,8 @@ fun InCallScreen(
     var isLocalVideoEnlarged by remember { mutableStateOf(false) }
     // Track current facing for processed-camera pipeline toggles
     var isFrontCamera by remember { mutableStateOf(true) }
+    // Audio-only mode (disables video transmission)
+    var isAudioOnlyMode by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // Performance overlay toggle (developer setting)
@@ -2173,6 +2175,49 @@ fun InCallScreen(
                         modifier = Modifier.size(17.dp)
                     )
                 }
+                
+                // Audio-only Mode toggle (30% smaller)
+                val audioOnlyAnim = rememberAnimatedButtonSpring(showControls, 5)
+                var lastAudioOnlyToggle by remember { mutableLongStateOf(0L) }
+                
+                IconButton(
+                    onClick = {
+                        val now = System.currentTimeMillis()
+                        if (now - lastAudioOnlyToggle < 500) return@IconButton // Debounce 500ms
+                        lastAudioOnlyToggle = now
+                        
+                        val newState = !isAudioOnlyMode
+                        isAudioOnlyMode = newState
+                        scope.launch(Dispatchers.Default) {
+                            try {
+                                // Disable camera when entering audio-only, enable when exiting
+                                room.localParticipant.setCameraEnabled(!newState)
+                                withContext(Dispatchers.Main) { isCameraEnabled = !newState }
+                            } catch (e: Exception) {
+                                Log.e("InCallActivity", "Failed to toggle audio-only mode", e)
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .size(39.dp)
+                        .offset(y = audioOnlyAnim.offsetX)
+                        .graphicsLayer(
+                            alpha = audioOnlyAnim.alpha,
+                            scaleX = audioOnlyAnim.scale,
+                            scaleY = audioOnlyAnim.scale
+                        )
+                        .background(
+                            if (isAudioOnlyMode) AppColors.PrimaryBlue else AppColors.Gray.copy(alpha = 0.3f),
+                            CircleShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (isAudioOnlyMode) Icons.Default.Videocam else Icons.Default.VideocamOff,
+                        contentDescription = "Toggle Audio-only Mode",
+                        tint = Color.White,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
             }
         } else {
             // PORTRAIT MODE: Bottom Center (Original)
@@ -2348,6 +2393,45 @@ fun InCallScreen(
                 Icon(
                     imageVector = Icons.Default.PersonAdd,
                     contentDescription = "Add Person",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            
+            // Audio-only Mode toggle (animates sixth)
+            val audioOnlyAnim = rememberAnimatedButton(showControls, 5)
+            var lastAudioOnlyTogglePortrait by remember { mutableLongStateOf(0L) }
+            
+            IconButton(
+                onClick = {
+                    val now = System.currentTimeMillis()
+                    if (now - lastAudioOnlyTogglePortrait < 500) return@IconButton // Debounce 500ms
+                    lastAudioOnlyTogglePortrait = now
+                    
+                    val newState = !isAudioOnlyMode
+                    isAudioOnlyMode = newState
+                    scope.launch(Dispatchers.Default) {
+                        try {
+                            // Disable camera when entering audio-only, enable when exiting
+                            room.localParticipant.setCameraEnabled(!newState)
+                            withContext(Dispatchers.Main) { isCameraEnabled = !newState }
+                        } catch (e: Exception) {
+                            Log.e("InCallActivity", "Failed to toggle audio-only mode", e)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .size(56.dp)
+                    .offset(y = audioOnlyAnim.offsetY)
+                    .graphicsLayer(alpha = audioOnlyAnim.alpha)
+                    .background(
+                        if (isAudioOnlyMode) AppColors.PrimaryBlue else AppColors.Gray.copy(alpha = 0.3f),
+                        CircleShape
+                    )
+            ) {
+                Icon(
+                    imageVector = if (isAudioOnlyMode) Icons.Default.Videocam else Icons.Default.VideocamOff,
+                    contentDescription = "Toggle Audio-only Mode",
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
