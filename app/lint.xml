@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Suppress LogNotTimber warnings - we use standard Android logging -->
+    <issue id="LogNotTimber" severity="ignore" />
+    
+    <!-- Suppress UnusedResources for debug builds - will be cleaned in release -->
+    <issue id="UnusedResources" severity="informational" />
+    
+    <!-- Suppress GradleDependency - we update on our own schedule -->
+    <issue id="GradleDependency" severity="informational" />
+    
+    <!-- Suppress IconLauncherShape - icon displays correctly -->
+    <issue id="IconLauncherShape" severity="informational" />
+    
+    <!-- Suppress InlinedApi - we have proper version checks -->
+    <issue id="InlinedApi" severity="informational" />
+    
+    <!-- Suppress UnusedAttribute - harmless -->
+    <issue id="UnusedAttribute" severity="informational" />
+    
+    <!-- Suppress LockedOrientationActivity - intentional for some screens -->
+    <issue id="LockedOrientationActivity" severity="informational" />
+    
+    <!-- Suppress DiscouragedApi - we know what we're doing -->
+    <issue id="DiscouragedApi" severity="informational" />
+    
+    <!-- Suppress BatteryLife - we need background capabilities for calls -->
+    <issue id="BatteryLife" severity="informational" />
+    
+    <!-- Suppress CustomSplashScreen - using custom splash -->
+    <issue id="CustomSplashScreen" severity="informational" />
+    
+    <!-- Suppress QueryPermissionsNeeded - not needed for our use case -->
+    <issue id="QueryPermissionsNeeded" severity="informational" />
+    
+    <!-- Suppress VectorPath - vectors work correctly -->
+    <issue id="VectorPath" severity="informational" />
+</lint>

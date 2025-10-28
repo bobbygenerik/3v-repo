@@ -229,6 +229,10 @@
     <attr format="dimension" name="height"/>
     <attr format="reference" name="hideMotionSpec"/>
     <attr format="boolean" name="hideNavigationIcon"/>
+    <attr format="enum" name="implementationMode">
+        <enum name="performance" value="0"/>
+        <enum name="compatible" value="1"/>
+    </attr>
     <attr format="boolean" name="isLightTheme"/>
     <attr format="boolean" name="isMaterial3DynamicColorApplied"/>
     <attr format="boolean" name="isMaterial3Theme"/>
@@ -457,6 +461,14 @@
     <attr format="reference" name="popupMenuBackground"/>
     <attr format="reference" name="recyclerViewStyle"/>
     <attr format="color" name="rippleColor"/>
+    <attr format="enum" name="scaleType">
+        <enum name="fillStart" value="0"/>
+        <enum name="fillCenter" value="1"/>
+        <enum name="fillEnd" value="2"/>
+        <enum name="fitStart" value="3"/>
+        <enum name="fitCenter" value="4"/>
+        <enum name="fitEnd" value="5"/>
+    </attr>
     <attr format="color|reference" name="scrimBackground"/>
     <attr format="boolean" name="selectionRequired"/>
     <attr format="reference" name="shapeAppearanceCornerExtraLarge"/>
@@ -533,6 +545,7 @@
         <enum name="end" value="6"/>
     </attr>
     <attr format="color" name="trackColor"/>
+    <attr format="dimension" name="trackStopIndicatorSize"/>
     <attr format="string|enum" name="transitionEasing">
         <enum name="standard" value="0"/>
         <enum name="accelerate" value="1"/>
@@ -1179,7 +1192,6 @@
     <dimen name="m3_comp_bottom_app_bar_container_elevation">@dimen/m3_sys_elevation_level2</dimen>
     <dimen name="m3_comp_bottom_app_bar_container_height">80dp</dimen>
     <item format="float" name="m3_comp_checkbox_selected_disabled_container_opacity" type="dimen">0.38</item>
-    <dimen name="m3_comp_circular_progress_indicator_active_indicator_width">4dp</dimen>
     <dimen name="m3_comp_date_picker_modal_date_today_container_outline_width">1dp</dimen>
     <dimen name="m3_comp_date_picker_modal_header_container_height">120dp</dimen>
     <dimen name="m3_comp_date_picker_modal_range_selection_header_container_height">128dp</dimen>
@@ -1229,7 +1241,6 @@
     <dimen name="m3_comp_input_chip_unselected_outline_width">1dp</dimen>
     <dimen name="m3_comp_input_chip_with_avatar_avatar_size">24dp</dimen>
     <dimen name="m3_comp_input_chip_with_leading_icon_leading_icon_size">18dp</dimen>
-    <dimen name="m3_comp_linear_progress_indicator_active_indicator_height">4dp</dimen>
     <dimen name="m3_comp_menu_container_elevation">@dimen/m3_sys_elevation_level2</dimen>
     <dimen name="m3_comp_navigation_bar_active_indicator_height">32dp</dimen>
     <dimen name="m3_comp_navigation_bar_active_indicator_width">64dp</dimen>
@@ -1275,6 +1286,9 @@
     <dimen name="m3_comp_primary_navigation_tab_inactive_hover_state_layer_opacity">@dimen/m3_sys_state_hover_state_layer_opacity</dimen>
     <dimen name="m3_comp_primary_navigation_tab_inactive_pressed_state_layer_opacity">@dimen/m3_sys_state_pressed_state_layer_opacity</dimen>
     <dimen name="m3_comp_primary_navigation_tab_with_icon_icon_size">24dp</dimen>
+    <dimen name="m3_comp_progress_indicator_active_indicator_track_space">4dp</dimen>
+    <dimen name="m3_comp_progress_indicator_stop_indicator_size">4dp</dimen>
+    <dimen name="m3_comp_progress_indicator_track_thickness">4dp</dimen>
     <item format="float" name="m3_comp_radio_button_disabled_selected_icon_opacity" type="dimen">0.38</item>
     <item format="float" name="m3_comp_radio_button_disabled_unselected_icon_opacity" type="dimen">0.38</item>
     <dimen name="m3_comp_radio_button_selected_focus_state_layer_opacity">@dimen/m3_sys_state_focus_state_layer_opacity</dimen>
@@ -1283,6 +1297,7 @@
     <dimen name="m3_comp_radio_button_unselected_focus_state_layer_opacity">@dimen/m3_sys_state_focus_state_layer_opacity</dimen>
     <dimen name="m3_comp_radio_button_unselected_hover_state_layer_opacity">@dimen/m3_sys_state_hover_state_layer_opacity</dimen>
     <dimen name="m3_comp_radio_button_unselected_pressed_state_layer_opacity">@dimen/m3_sys_state_pressed_state_layer_opacity</dimen>
+    <item format="float" name="m3_comp_scrim_container_opacity" type="dimen">0.32</item>
     <dimen name="m3_comp_search_bar_avatar_size">30dp</dimen>
     <dimen name="m3_comp_search_bar_container_elevation">@dimen/m3_sys_elevation_level3</dimen>
     <dimen name="m3_comp_search_bar_container_height">56dp</dimen>
@@ -1302,10 +1317,14 @@
     <dimen name="m3_comp_sheet_side_docked_container_width">256dp</dimen>
     <dimen name="m3_comp_sheet_side_docked_modal_container_elevation">@dimen/m3_sys_elevation_level1</dimen>
     <dimen name="m3_comp_sheet_side_docked_standard_container_elevation">@dimen/m3_sys_elevation_level0</dimen>
+    <dimen name="m3_comp_slider_active_handle_height">44dp</dimen>
+    <dimen name="m3_comp_slider_active_handle_leading_space">6dp</dimen>
+    <dimen name="m3_comp_slider_active_handle_width">4dp</dimen>
     <item format="float" name="m3_comp_slider_disabled_active_track_opacity" type="dimen">0.38</item>
     <item format="float" name="m3_comp_slider_disabled_handle_opacity" type="dimen">0.38</item>
     <item format="float" name="m3_comp_slider_disabled_inactive_track_opacity" type="dimen">0.12</item>
-    <dimen name="m3_comp_slider_inactive_track_height">4dp</dimen>
+    <dimen name="m3_comp_slider_inactive_track_height">16dp</dimen>
+    <dimen name="m3_comp_slider_stop_indicator_size">4dp</dimen>
     <dimen name="m3_comp_snackbar_container_elevation">@dimen/m3_sys_elevation_level3</dimen>
     <dimen name="m3_comp_suggestion_chip_container_height">32dp</dimen>
     <dimen name="m3_comp_suggestion_chip_elevated_container_elevation">@dimen/m3_sys_elevation_level1</dimen>
@@ -1377,10 +1396,11 @@
     <dimen name="m3_navigation_rail_item_active_indicator_margin_horizontal">4dp</dimen>
     <dimen name="m3_navigation_rail_item_active_indicator_width">@dimen/m3_comp_navigation_rail_active_indicator_width</dimen>
     <dimen name="m3_navigation_rail_item_min_height">60dp</dimen>
-    <dimen name="m3_navigation_rail_item_padding_bottom">8dp</dimen>
-    <dimen name="m3_navigation_rail_item_padding_bottom_with_large_font">16dp</dimen>
+    <dimen name="m3_navigation_rail_item_padding_bottom">12dp</dimen>
+    <dimen name="m3_navigation_rail_item_padding_bottom_with_large_font">20dp</dimen>
     <dimen name="m3_navigation_rail_item_padding_top">4dp</dimen>
     <dimen name="m3_navigation_rail_item_padding_top_with_large_font">12dp</dimen>
+    <dimen name="m3_navigation_rail_label_padding_horizontal">2dp</dimen>
     <dimen name="m3_ripple_default_alpha">@dimen/m3_sys_state_dragged_state_layer_opacity</dimen>
     <dimen name="m3_ripple_focused_alpha">@dimen/m3_sys_state_focus_state_layer_opacity</dimen>
     <dimen name="m3_ripple_hovered_alpha">@dimen/m3_sys_state_hover_state_layer_opacity</dimen>
@@ -1403,7 +1423,6 @@
     <dimen name="m3_side_sheet_width">@dimen/m3_comp_sheet_side_docked_container_width</dimen>
     <item format="float" name="m3_simple_item_color_hovered_alpha" type="dimen">0.08</item>
     <item format="float" name="m3_simple_item_color_selected_alpha" type="dimen">0.12</item>
-    <dimen name="m3_slider_inactive_track_height">@dimen/m3_comp_slider_inactive_track_height</dimen>
     <dimen name="m3_slider_thumb_elevation">2dp</dimen>
     <dimen name="m3_small_fab_max_image_size">24dp</dimen>
     <dimen name="m3_small_fab_size">40dp</dimen>
@@ -1452,9 +1471,9 @@
     <item format="float" name="m3_sys_motion_easing_standard_decelerate_control_y1" type="dimen">0</item>
     <item format="float" name="m3_sys_motion_easing_standard_decelerate_control_y2" type="dimen">1</item>
     <item format="float" name="m3_sys_state_dragged_state_layer_opacity" type="dimen">0.16</item>
-    <item format="float" name="m3_sys_state_focus_state_layer_opacity" type="dimen">0.10</item>
+    <item format="float" name="m3_sys_state_focus_state_layer_opacity" type="dimen">0.1</item>
     <item format="float" name="m3_sys_state_hover_state_layer_opacity" type="dimen">0.08</item>
-    <item format="float" name="m3_sys_state_pressed_state_layer_opacity" type="dimen">0.10</item>
+    <item format="float" name="m3_sys_state_pressed_state_layer_opacity" type="dimen">0.1</item>
     <dimen name="m3_timepicker_display_stroke_width">2dp</dimen>
     <dimen name="m3_timepicker_window_elevation">@dimen/m3_comp_time_picker_container_elevation</dimen>
     <dimen name="m3_toolbar_text_size_title">20dp</dimen>
@@ -1660,6 +1679,7 @@
     <dimen name="mtrl_slider_label_square_side">26dp</dimen>
     <dimen name="mtrl_slider_thumb_elevation">1dp</dimen>
     <dimen name="mtrl_slider_thumb_radius">10dp</dimen>
+    <dimen name="mtrl_slider_tick_min_spacing">8dp</dimen>
     <dimen name="mtrl_slider_tick_radius">1dp</dimen>
     <dimen name="mtrl_slider_track_height">4dp</dimen>
     <dimen name="mtrl_slider_track_side_padding">16dp</dimen>
@@ -1763,6 +1783,7 @@
     <item name="fragment_container_view_tag" type="id"/>
     <item name="ghost_view" type="id"/>
     <item name="ghost_view_holder" type="id"/>
+    <item name="hide_graphics_layer_in_inspector_tag" type="id"/>
     <item name="hide_in_inspector_tag" type="id"/>
     <item name="home" type="id"/>
     <item name="inspection_slot_table_set" type="id"/>
@@ -1822,8 +1843,11 @@
     <item name="textinput_prefix_text" type="id"/>
     <item name="textinput_suffix_text" type="id"/>
     <item name="title" type="id"/>
+    <item name="transition_clip" type="id"/>
     <item name="transition_current_scene" type="id"/>
+    <item name="transition_image_transform" type="id"/>
     <item name="transition_layout_save" type="id"/>
+    <item name="transition_pause_alpha" type="id"/>
     <item name="transition_position" type="id"/>
     <item name="transition_scene_layoutid_cache" type="id"/>
     <item name="transition_transform" type="id"/>
@@ -1874,6 +1898,7 @@
     <integer name="m3_sys_shape_corner_large_corner_family">0</integer>
     <integer name="m3_sys_shape_corner_medium_corner_family">0</integer>
     <integer name="m3_sys_shape_corner_small_corner_family">0</integer>
+    <integer name="m3c_window_layout_in_display_cutout_mode">1</integer>
     <integer name="material_motion_duration_long_1">300</integer>
     <integer name="material_motion_duration_long_2">350</integer>
     <integer name="material_motion_duration_medium_1">200</integer>
@@ -1935,6 +1960,8 @@
     <string name="abc_shareactionprovider_share_with">Share with</string>
     <string name="abc_shareactionprovider_share_with_application">Share with <ns2:g example="Mail" id="application_name">%s</ns2:g></string>
     <string name="abc_toolbar_collapse_description">Collapse</string>
+    <string name="android.credentials.TYPE_PASSWORD_CREDENTIAL">Password</string>
+    <string name="androidx.credentials.TYPE_PUBLIC_KEY_CREDENTIAL">Passkey</string>
     <string name="androidx_startup" translatable="false">androidx.startup</string>
     <string name="app_name">Três3</string>
     <string name="appbar_scrolling_view_behavior" translatable="false">com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior</string>
@@ -2059,6 +2086,7 @@
     <string name="m3c_dialog">"Dialog"</string>
     <string name="m3c_dropdown_menu_collapsed">Collapsed</string>
     <string name="m3c_dropdown_menu_expanded">Expanded</string>
+    <string name="m3c_dropdown_menu_toggle">Toggle dropdown menu</string>
     <string name="m3c_search_bar_search">Search</string>
     <string name="m3c_snackbar_dismiss">Dismiss</string>
     <string name="m3c_suggestions_available">Suggestions below</string>
@@ -2168,8 +2196,6 @@
     <string description="Button text to indicate that the widget will save the user&apos;s selection [CHAR_LIMIT=16]" name="mtrl_timepicker_confirm">OK</string>
     <string name="navigation_menu">"Navigation menu"</string>
     <string name="not_selected">Not selected</string>
-    <string name="off">Off</string>
-    <string name="on">On</string>
     <string name="password_toggle_content_description">Show password</string>
     <string name="path_password_eye" translatable="false">M12,4.5C7,4.5 2.73,7.61 1,12c1.73,4.39 6,7.5 11,7.5s9.27,-3.11 11,-7.5c-1.73,-4.39 -6,-7.5 -11,-7.5zM12,17c-2.76,0 -5,-2.24 -5,-5s2.24,-5 5,-5 5,2.24 5,5 -2.24,5 -5,5zM12,9c-1.66,0 -3,1.34 -3,3s1.34,3 3,3 3,-1.34 3,-3 -1.34,-3 -3,-3z</string>
     <string name="path_password_eye_mask_strike_through" translatable="false">M2,4.27 L19.73,22 L22.27,19.46 L4.54,1.73 L4.54,1 L23,1 L23,23 L1,23 L1,4.27 Z</string>
@@ -2187,6 +2213,9 @@
     <string name="selected">Selected</string>
     <string description="Title of the side sheet&apos;s accessibility pane that is spoken by TalkBack when the side sheet appears on screen. [CHAR_LIMIT=NONE]" name="side_sheet_accessibility_pane_title">Side Sheet</string>
     <string name="side_sheet_behavior" translatable="false">com.google.android.material.sidesheet.SideSheetBehavior</string>
+    <string name="state_empty">Empty</string>
+    <string name="state_off">Off</string>
+    <string name="state_on">On</string>
     <string name="status_bar_notification_info_overflow">999+</string>
     <string name="switch_role">Switch</string>
     <string name="tab">Tab</string>
@@ -2695,6 +2724,7 @@
     <style name="Base.ThemeOverlay.Material3.Dialog" parent="Base.ThemeOverlay.MaterialComponents.Dialog">
     <item name="materialButtonStyle">@style/Widget.Material3.Button.TextButton.Dialog.Flush</item>
     <item name="android:windowAnimationStyle">@style/MaterialAlertDialog.Material3.Animation</item>
+    <item name="android:backgroundDimAmount">@dimen/m3_comp_scrim_container_opacity</item>
   </style>
     <style name="Base.ThemeOverlay.Material3.SideSheetDialog" parent="Base.V14.ThemeOverlay.Material3.SideSheetDialog"/>
     <style name="Base.ThemeOverlay.Material3.TextInputEditText" parent="ThemeOverlay.MaterialComponents.TextInputEditText">
@@ -2784,6 +2814,7 @@
     <item name="bottomSheetDialogTheme">@style/ThemeOverlay.Material3.BottomSheetDialog</item>
     <item name="materialAlertDialogTheme">@style/ThemeOverlay.Material3.MaterialAlertDialog</item>
     <item name="sideSheetDialogTheme">@style/ThemeOverlay.Material3.SideSheetDialog</item>
+    <item name="android:backgroundDimAmount">@dimen/m3_comp_scrim_container_opacity</item>
 
     
     <item name="materialCalendarStyle">@style/Widget.Material3.MaterialCalendar</item>
@@ -3223,6 +3254,7 @@
     
     <item name="alertDialogTheme">@style/ThemeOverlay.Material3.Dialog.Alert</item>
     <item name="materialAlertDialogTheme">@style/ThemeOverlay.Material3.MaterialAlertDialog</item>
+    <item name="android:backgroundDimAmount">@dimen/m3_comp_scrim_container_opacity</item>
 
     
     <item name="materialCalendarStyle">@style/Widget.Material3.MaterialCalendar</item>
@@ -3320,6 +3352,7 @@
     <item name="bottomSheetDialogTheme">@style/ThemeOverlay.Material3.BottomSheetDialog</item>
     <item name="materialAlertDialogTheme">@style/ThemeOverlay.Material3.MaterialAlertDialog</item>
     <item name="sideSheetDialogTheme">@style/ThemeOverlay.Material3.SideSheetDialog</item>
+    <item name="android:backgroundDimAmount">@dimen/m3_comp_scrim_container_opacity</item>
 
     
     <item name="materialCalendarStyle">@style/Widget.Material3.MaterialCalendar</item>
@@ -3759,6 +3792,7 @@
     
     <item name="alertDialogTheme">@style/ThemeOverlay.Material3.Dialog.Alert</item>
     <item name="materialAlertDialogTheme">@style/ThemeOverlay.Material3.MaterialAlertDialog</item>
+    <item name="android:backgroundDimAmount">@dimen/m3_comp_scrim_container_opacity</item>
 
     
     <item name="materialCalendarStyle">@style/Widget.Material3.MaterialCalendar</item>
@@ -4439,7 +4473,7 @@
     <item name="buttonBarPositiveButtonStyle">@style/Widget.MaterialComponents.Button.TextButton.Dialog</item>
     <item name="buttonBarNegativeButtonStyle">@style/Widget.MaterialComponents.Button.TextButton.Dialog</item>
     <item name="buttonBarNeutralButtonStyle">@style/Widget.MaterialComponents.Button.TextButton.Dialog.Flush</item>
-    <item name="android:backgroundDimAmount">0.32</item>
+    <item name="android:backgroundDimAmount">@dimen/m3_comp_scrim_container_opacity</item>
     <item name="materialAlertDialogBodyTextStyle">@style/MaterialAlertDialog.MaterialComponents.Body.Text</item>
   </style>
     <style name="Base.V14.Widget.MaterialComponents.AutoCompleteTextView" parent="Widget.AppCompat.AutoCompleteTextView">
@@ -5601,6 +5635,19 @@
     <style name="DialogWindowTheme">
         <item name="android:windowClipToOutline">false</item>
     </style>
+    <style name="EdgeToEdgeFloatingDialogTheme" parent="android:Theme.DeviceDefault.Dialog">
+        <item name="android:windowLayoutInDisplayCutoutMode" ns1:targetApi="27">@integer/m3c_window_layout_in_display_cutout_mode</item>
+        <item name="android:windowClipToOutline">false</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowElevation">0dp</item>
+    </style>
+    <style name="EdgeToEdgeFloatingDialogWindowTheme">
+        <item name="android:dialogTheme">@style/EdgeToEdgeFloatingDialogTheme</item>
+    </style>
     <style name="FloatingDialogTheme">
         <item name="android:windowIsFloating">false</item>
     </style>
@@ -6463,6 +6510,10 @@
     <item name="windowActionBar">false</item>
     <item name="windowNoTitle">true</item>
   </style>
+    <style name="Theme.Hidden" parent="@android:style/Theme.DeviceDefault">
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowTranslucentNavigation">true</item>
+    </style>
     <style name="Theme.Material3.Dark" parent="Base.Theme.Material3.Dark"/>
     <style name="Theme.Material3.Dark.BottomSheetDialog" parent="Base.Theme.Material3.Dark.BottomSheetDialog"/>
     <style name="Theme.Material3.Dark.Dialog" parent="Base.Theme.Material3.Dark.Dialog"/>
@@ -6489,8 +6540,17 @@
     <style name="Theme.Material3.DayNight.NoActionBar" parent="Theme.Material3.Light.NoActionBar"/>
     <style name="Theme.Material3.DayNight.SideSheetDialog" parent="Theme.Material3.Light.SideSheetDialog"/>
     <style name="Theme.Material3.DynamicColors.Dark" parent="Theme.Material3.Dark"/>
+    <style name="Theme.Material3.DynamicColors.Dark.NoActionBar">
+    <item name="windowActionBar">false</item>
+    <item name="windowNoTitle">true</item>
+  </style>
     <style name="Theme.Material3.DynamicColors.DayNight" parent="Theme.Material3.DynamicColors.Light"/>
+    <style name="Theme.Material3.DynamicColors.DayNight.NoActionBar" parent="Theme.Material3.DynamicColors.Light.NoActionBar"/>
     <style name="Theme.Material3.DynamicColors.Light" parent="Theme.Material3.Light"/>
+    <style name="Theme.Material3.DynamicColors.Light.NoActionBar">
+    <item name="windowActionBar">false</item>
+    <item name="windowNoTitle">true</item>
+  </style>
     <style name="Theme.Material3.Light" parent="Base.Theme.Material3.Light"/>
     <style name="Theme.Material3.Light.BottomSheetDialog" parent="Base.Theme.Material3.Light.BottomSheetDialog"/>
     <style name="Theme.Material3.Light.Dialog" parent="Base.Theme.Material3.Light.Dialog"/>
@@ -6599,6 +6659,14 @@
     <item name="windowActionBar">false</item>
     <item name="windowNoTitle">true</item>
   </style>
+    <style name="Theme.PlayCore.Transparent" parent="android:Theme">
+<item name="android:windowIsTranslucent">true</item>
+<item name="android:windowBackground">@android:color/transparent</item>
+<item name="android:windowContentOverlay">@null</item>
+<item name="android:windowNoTitle">true</item>
+<item name="android:windowIsFloating">true</item>
+<item name="android:backgroundDimEnabled">false</item>
+</style>
     <style name="Theme.ThreeVChat" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
@@ -7866,12 +7934,37 @@
     <item name="chipSpacingVertical">8dp</item>
   </style>
     <style name="Widget.Material3.CircularProgressIndicator" parent="Widget.MaterialComponents.CircularProgressIndicator">
-    <item name="trackThickness">@dimen/m3_comp_circular_progress_indicator_active_indicator_width</item>
-    <item name="indicatorColor">@macro/m3_comp_circular_progress_indicator_active_indicator_color</item>
+    <item name="trackThickness">@dimen/m3_comp_progress_indicator_track_thickness</item>
+    <item name="indicatorColor">@macro/m3_comp_progress_indicator_active_indicator_color</item>
+    <item name="trackColor">@macro/m3_comp_progress_indicator_track_color</item>
+    <item name="trackCornerRadius">2dp</item>
+    <item name="indicatorTrackGapSize">@dimen/m3_comp_progress_indicator_active_indicator_track_space</item>
   </style>
-    <style name="Widget.Material3.CircularProgressIndicator.ExtraSmall" parent="Widget.MaterialComponents.CircularProgressIndicator.ExtraSmall"/>
-    <style name="Widget.Material3.CircularProgressIndicator.Medium" parent="Widget.MaterialComponents.CircularProgressIndicator.Medium"/>
-    <style name="Widget.Material3.CircularProgressIndicator.Small" parent="Widget.MaterialComponents.CircularProgressIndicator.Small"/>
+    <style name="Widget.Material3.CircularProgressIndicator.ExtraSmall">
+    <item name="trackThickness">@dimen/mtrl_progress_circular_track_thickness_extra_small</item>
+    <item name="indicatorSize">@dimen/mtrl_progress_circular_size_extra_small</item>
+    <item name="indicatorInset">@dimen/mtrl_progress_circular_inset_extra_small</item>
+    <item name="trackCornerRadius">1.25dp</item>
+    <item name="indicatorTrackGapSize">2dp</item>
+  </style>
+    <style name="Widget.Material3.CircularProgressIndicator.Legacy" parent="Widget.MaterialComponents.CircularProgressIndicator">
+    <item name="trackThickness">4dp</item>
+    <item name="indicatorColor">?attr/colorPrimary</item>
+    <item name="trackColor">@android:color/transparent</item>
+    <item name="trackCornerRadius">0dp</item>
+    <item name="indicatorTrackGapSize">0dp</item>
+  </style>
+    <style name="Widget.Material3.CircularProgressIndicator.Legacy.ExtraSmall" parent="Widget.MaterialComponents.CircularProgressIndicator.ExtraSmall"/>
+    <style name="Widget.Material3.CircularProgressIndicator.Legacy.Medium" parent="Widget.MaterialComponents.CircularProgressIndicator.Medium"/>
+    <style name="Widget.Material3.CircularProgressIndicator.Legacy.Small" parent="Widget.MaterialComponents.CircularProgressIndicator.Small"/>
+    <style name="Widget.Material3.CircularProgressIndicator.Medium"/>
+    <style name="Widget.Material3.CircularProgressIndicator.Small">
+    <item name="trackThickness">@dimen/mtrl_progress_circular_track_thickness_small</item>
+    <item name="indicatorSize">@dimen/mtrl_progress_circular_size_small</item>
+    <item name="indicatorInset">@dimen/mtrl_progress_circular_inset_small</item>
+    <item name="trackCornerRadius">1.5dp</item>
+    <item name="indicatorTrackGapSize">3dp</item>
+  </style>
     <style name="Widget.Material3.CollapsingToolbar" parent="Base.Widget.Material3.CollapsingToolbar">
     <item name="scrimVisibleHeightTrigger">@dimen/m3_appbar_scrim_height_trigger</item>
     <item name="expandedTitleTextAppearance">?attr/textAppearanceHeadlineSmall</item>
@@ -7969,9 +8062,20 @@
   </style>
     <style name="Widget.Material3.Light.ActionBar.Solid" parent="Base.Widget.Material3.Light.ActionBar.Solid"/>
     <style name="Widget.Material3.LinearProgressIndicator" parent="Widget.MaterialComponents.LinearProgressIndicator">
-    <item name="trackThickness">@dimen/m3_comp_linear_progress_indicator_active_indicator_height</item>
-    <item name="trackColor">@macro/m3_comp_linear_progress_indicator_track_color</item>
-    <item name="indicatorColor">@macro/m3_comp_linear_progress_indicator_active_indicator_color</item>
+    <item name="trackThickness">@dimen/m3_comp_progress_indicator_track_thickness</item>
+    <item name="trackColor">@macro/m3_comp_progress_indicator_track_color</item>
+    <item name="indicatorColor">@macro/m3_comp_progress_indicator_active_indicator_color</item>
+    <item name="trackCornerRadius">2dp</item>
+    <item name="indicatorTrackGapSize">@dimen/m3_comp_progress_indicator_active_indicator_track_space</item>
+    <item name="trackStopIndicatorSize">@dimen/m3_comp_progress_indicator_stop_indicator_size</item>
+  </style>
+    <style name="Widget.Material3.LinearProgressIndicator.Legacy" parent="Widget.MaterialComponents.LinearProgressIndicator">
+    <item name="trackThickness">4dp</item>
+    <item name="indicatorColor">?attr/colorPrimary</item>
+    <item name="trackColor">?attr/colorSurfaceContainerHighest</item>
+    <item name="trackCornerRadius">0dp</item>
+    <item name="indicatorTrackGapSize">0dp</item>
+    <item name="trackStopIndicatorSize">0dp</item>
   </style>
     <style name="Widget.Material3.MaterialButtonToggleGroup" parent="Widget.MaterialComponents.MaterialButtonToggleGroup"/>
     <style name="Widget.Material3.MaterialCalendar" parent="Widget.MaterialComponents.MaterialCalendar">
@@ -8302,6 +8406,9 @@
     <item name="shapeAppearance">@macro/m3_comp_sheet_side_detached_container_shape</item>
   </style>
     <style name="Widget.Material3.SideSheet.Modal">
+    
+    <item name="android:layout_width">@dimen/m3_side_sheet_width</item>
+    <item name="android:layout_height">match_parent</item>
     <item name="android:elevation" ns1:ignore="NewApi">@dimen/m3_side_sheet_modal_elevation</item>
     <item name="backgroundTint">@macro/m3_comp_sheet_side_docked_modal_container_color</item>
     <item name="shapeAppearance">@macro/m3_comp_sheet_side_docked_modal_container_shape</item>
@@ -8311,19 +8418,49 @@
     <item name="shapeAppearance">@macro/m3_comp_sheet_side_detached_container_shape</item>
   </style>
     <style name="Widget.Material3.Slider" parent="Widget.MaterialComponents.Slider">
-    <item name="haloColor">@color/m3_slider_halo_color</item>  
+    <item name="haloColor">#00FFFFFF</item>
     <item name="labelStyle">@style/Widget.Material3.Slider.Label</item>
     <item name="thumbColor">@color/m3_slider_thumb_color</item>
-    <item name="tickColorActive">@color/m3_slider_inactive_track_color</item> 
-    <item name="tickColorInactive">@color/m3_slider_active_track_color</item> 
+    <item name="tickColorActive">@color/m3_slider_inactive_track_color</item>
+    <item name="tickColorInactive">@color/m3_slider_active_track_color</item>
+    <item name="tickRadiusActive">@null</item>
+    <item name="tickRadiusInactive">@null</item>
     <item name="trackColorActive">@color/m3_slider_active_track_color</item>
     <item name="trackColorInactive">@color/m3_slider_inactive_track_color</item>
-    <item name="trackHeight">@dimen/m3_slider_inactive_track_height</item> 
-    <item name="thumbElevation">@dimen/m3_slider_thumb_elevation</item>
+    <item name="trackHeight">@dimen/m3_comp_slider_inactive_track_height</item>
+    <item name="thumbElevation">0dp</item>
+    <item name="trackInsideCornerSize">2dp</item>
+    <item name="thumbWidth">@dimen/m3_comp_slider_active_handle_width</item>
+    <item name="thumbHeight">@dimen/m3_comp_slider_active_handle_height</item>
+    <item name="thumbTrackGapSize">@dimen/m3_comp_slider_active_handle_leading_space</item>
+    <item name="trackStopIndicatorSize">@dimen/m3_comp_slider_stop_indicator_size</item>
   </style>
     <style name="Widget.Material3.Slider.Label" parent="Widget.Material3.Tooltip">
     <item name="android:textColor">@macro/m3_comp_slider_label_label_text_color</item>
     <item name="backgroundTint">@macro/m3_comp_slider_label_container_color</item>
+    <item name="showMarker">false</item>
+    <item name="android:padding">10dp</item>
+    <item name="android:minHeight">32dp</item>
+  </style>
+    <style name="Widget.Material3.Slider.Legacy" parent="Widget.MaterialComponents.Slider">
+    <item name="haloColor">@color/m3_slider_halo_color_legacy</item>
+    <item name="labelStyle">@style/Widget.Material3.Slider.Legacy.Label</item>
+    <item name="thumbColor">@color/m3_slider_thumb_color_legacy</item>
+    <item name="tickColorActive">@color/m3_slider_inactive_track_color_legacy</item>
+    <item name="tickColorInactive">@color/m3_slider_active_track_color_legacy</item>
+    <item name="trackColorActive">@color/m3_slider_active_track_color_legacy</item>
+    <item name="trackColorInactive">@color/m3_slider_inactive_track_color_legacy</item>
+    <item name="trackHeight">4dp</item>
+    <item name="thumbElevation">@dimen/m3_slider_thumb_elevation</item>
+    <item name="trackInsideCornerSize">0dp</item>
+    <item name="thumbWidth">@null</item>
+    <item name="thumbHeight">@null</item>
+    <item name="thumbTrackGapSize">0dp</item>
+    <item name="trackStopIndicatorSize">0dp</item>
+  </style>
+    <style name="Widget.Material3.Slider.Legacy.Label" parent="Widget.Material3.Tooltip">
+    <item name="android:textColor">?attr/colorOnPrimary</item>
+    <item name="backgroundTint">?attr/colorPrimary</item>
   </style>
     <style name="Widget.Material3.Snackbar" parent="Base.Widget.Material3.Snackbar">
     
@@ -10088,11 +10225,18 @@
         collapses from the outer edge to the inner edge for the circular type.
       -->
       <enum name="inward" value="2"/>
+      <!--
+        Escapes in the progression direction for the linear type;
+        no effect for the circular type.
+      -->
+      <enum name="escape" value="3"/>
     </attr>
     
     <attr format="integer" name="showDelay"/>
     
     <attr format="integer" name="minHideDelay"/>
+    
+    <attr format="dimension" name="indicatorTrackGapSize"/>
   </declare-styleable>
     <declare-styleable name="BottomAppBar">
     
@@ -10224,6 +10368,14 @@
     <declare-styleable name="ButtonBarLayout">
         
         <attr format="boolean" name="allowStacking"/>
+    </declare-styleable>
+    <declare-styleable name="CameraBridgeViewBase">
+       <attr format="boolean" name="show_fps"/>
+       <attr format="integer" name="camera_id">
+          <enum name="any" value="-1"/>
+          <enum name="back" value="99"/>
+          <enum name="front" value="98"/>
+       </attr>
     </declare-styleable>
     <declare-styleable name="Capability">
         
@@ -10826,6 +10978,8 @@
         
         <attr format="string" name="fontProviderQuery"/>
         
+        <attr format="string" name="fontProviderFallbackQuery"/>
+        
         <attr format="reference" name="fontProviderCerts"/>
         
         <attr name="fontProviderFetchStrategy">
@@ -10836,7 +10990,7 @@
               default typeface will be used instead. -->
             <enum name="blocking" value="0"/>
             <!-- The async font fetch works as follows.
-              First, check the local cache, then if the requeted font is not cached, trigger a
+              First, check the local cache, then if the requested font is not cached, trigger a
               request the font and continue with layout inflation. Once the font fetch succeeds, the
               target text view will be refreshed with the downloaded font data. The
               fontProviderFetchTimeout will be ignored if async loading is specified. -->
@@ -11012,6 +11166,8 @@
       -->
       <enum name="endToStart" value="3"/>
     </attr>
+    
+    <attr name="trackStopIndicatorSize"/>
   </declare-styleable>
     <declare-styleable name="ListPopupWindow">
         
@@ -11733,6 +11889,10 @@
         
         <attr format="boolean" name="state_above_anchor"/>
     </declare-styleable>
+    <declare-styleable name="PreviewView">
+        <attr name="scaleType"/>
+        <attr name="implementationMode"/>
+    </declare-styleable>
     <declare-styleable name="PropertySet"><attr name="android:visibility"/><attr name="visibilityMode"/><attr format="float" name="android:alpha"/><attr name="motionProgress"/><attr name="layout_constraintTag"/></declare-styleable>
     <declare-styleable name="RadialViewGroup">
 
@@ -11930,11 +12090,17 @@
     
     <attr format="dimension" name="thumbElevation"/>
     
+    <attr format="dimension" name="thumbWidth"/>
+    
+    <attr format="dimension" name="thumbHeight"/>
+    
     <attr format="dimension" name="thumbRadius"/>
     
     <attr format="color" name="thumbStrokeColor"/>
     
     <attr format="dimension" name="thumbStrokeWidth"/>
+    
+    <attr format="dimension" name="thumbTrackGapSize"/>
     
     <attr name="minTouchTargetSize"/>
     
@@ -11957,6 +12123,10 @@
     <attr format="color" name="trackColorInactive"/>
     
     <attr format="dimension" name="trackHeight"/>
+    
+    <attr format="dimension" name="trackInsideCornerSize"/>
+    
+    <attr name="trackStopIndicatorSize"/>
   </declare-styleable>
     <declare-styleable name="Snackbar">
     
@@ -12570,6 +12740,7 @@
     <attr name="android:minHeight"/>
     <attr name="android:padding"/>
     <attr format="color" name="backgroundTint"/>
+    <attr format="boolean" name="showMarker"/>
   </declare-styleable>
     <declare-styleable name="Transform"><attr name="android:elevation"/><attr name="android:rotation"/><attr name="android:rotationX"/><attr name="android:rotationY"/><attr name="android:scaleX"/><attr name="android:scaleY"/><attr name="android:transformPivotX"/><attr name="android:transformPivotY"/><attr format="dimension" name="android:translationX"/><attr format="dimension" name="android:translationY"/><attr format="dimension" name="android:translationZ"/></declare-styleable>
     <declare-styleable name="Transition"><attr name="android:id"/><attr format="reference" name="constraintSetStart"/><attr format="reference" name="constraintSetEnd"/><attr format="boolean" name="transitionDisable"/><attr name="layoutDuringTransition"/><attr name="pathMotionArc"/><attr format="enum" name="autoTransition">
@@ -12651,7 +12822,6 @@
     <macro name="m3_comp_checkbox_selected_error_icon_color">?attr/colorOnError</macro>
     <macro name="m3_comp_checkbox_selected_icon_color">?attr/colorOnPrimary</macro>
     <macro name="m3_comp_checkbox_unselected_outline_color">?attr/colorOnSurfaceVariant</macro>
-    <macro name="m3_comp_circular_progress_indicator_active_indicator_color">?attr/colorPrimary</macro>
     <macro name="m3_comp_date_picker_modal_container_color">?attr/colorSurfaceContainerHigh</macro>
     <macro name="m3_comp_date_picker_modal_container_shape">?attr/shapeAppearanceCornerExtraLarge</macro>
     <macro name="m3_comp_date_picker_modal_date_label_text_type">?attr/textAppearanceBodyLarge</macro>
@@ -12732,8 +12902,6 @@
     <macro name="m3_comp_icon_button_unselected_icon_color">?attr/colorOnSurfaceVariant</macro>
     <macro name="m3_comp_input_chip_container_shape">?attr/shapeAppearanceCornerSmall</macro>
     <macro name="m3_comp_input_chip_label_text_type">?attr/textAppearanceLabelLarge</macro>
-    <macro name="m3_comp_linear_progress_indicator_active_indicator_color">?attr/colorPrimary</macro>
-    <macro name="m3_comp_linear_progress_indicator_track_color">?attr/colorSurfaceContainerHighest</macro>
     <macro name="m3_comp_menu_container_color">?attr/colorSurfaceContainer</macro>
     <macro name="m3_comp_menu_list_item_selected_container_color">?attr/colorSecondaryContainer</macro>
     <macro name="m3_comp_navigation_bar_active_focus_icon_color">?attr/colorOnSecondaryContainer</macro>
@@ -12853,6 +13021,8 @@
     <macro name="m3_comp_primary_navigation_tab_with_label_text_active_label_text_color">?attr/colorPrimary</macro>
     <macro name="m3_comp_primary_navigation_tab_with_label_text_inactive_label_text_color">?attr/colorOnSurfaceVariant</macro>
     <macro name="m3_comp_primary_navigation_tab_with_label_text_label_text_type">?attr/textAppearanceTitleSmall</macro>
+    <macro name="m3_comp_progress_indicator_active_indicator_color">?attr/colorPrimary</macro>
+    <macro name="m3_comp_progress_indicator_track_color">?attr/colorSecondaryContainer</macro>
     <macro name="m3_comp_radio_button_disabled_selected_icon_color">?attr/colorOnSurface</macro>
     <macro name="m3_comp_radio_button_disabled_unselected_icon_color">?attr/colorOnSurface</macro>
     <macro name="m3_comp_radio_button_selected_focus_icon_color">?attr/colorPrimary</macro>
@@ -12911,9 +13081,9 @@
     <macro name="m3_comp_slider_disabled_handle_color">?attr/colorOnSurface</macro>
     <macro name="m3_comp_slider_disabled_inactive_track_color">?attr/colorOnSurface</macro>
     <macro name="m3_comp_slider_handle_color">?attr/colorPrimary</macro>
-    <macro name="m3_comp_slider_inactive_track_color">?attr/colorSurfaceContainerHighest</macro>
-    <macro name="m3_comp_slider_label_container_color">?attr/colorPrimary</macro>
-    <macro name="m3_comp_slider_label_label_text_color">?attr/colorOnPrimary</macro>
+    <macro name="m3_comp_slider_inactive_track_color">?attr/colorSecondaryContainer</macro>
+    <macro name="m3_comp_slider_label_container_color">?attr/colorSurfaceInverse</macro>
+    <macro name="m3_comp_slider_label_label_text_color">?attr/colorOnSurfaceInverse</macro>
     <macro name="m3_comp_snackbar_container_color">?attr/colorSurfaceInverse</macro>
     <macro name="m3_comp_snackbar_container_shape">?attr/shapeAppearanceCornerExtraSmall</macro>
     <macro name="m3_comp_snackbar_supporting_text_color">?attr/colorOnSurfaceInverse</macro>

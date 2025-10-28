@@ -16,8 +16,6 @@
     <!-- Foreground service for calls -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
-    <!-- Screen sharing/media projection (Android 14+) -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <!-- Battery optimization exemption -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Wake screen for incoming calls -->
@@ -153,7 +151,7 @@
         <service
             android:name="com.example.tres3.CallForegroundService"
             android:exported="false"
-            android:foregroundServiceType="phoneCall|mediaProjection" />
+            android:foregroundServiceType="phoneCall" />
 
         <!-- Telecom ConnectionService for native call UI -->
         <service

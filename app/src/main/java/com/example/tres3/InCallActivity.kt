@@ -1981,12 +1981,18 @@ fun InCallScreen(
                 
                 // Mic toggle (30% smaller)
                 val micAnim = rememberAnimatedButtonSpring(showControls, 1)
+                var lastMicToggle by remember { mutableLongStateOf(0L) }
 
                 IconButton(
                     onClick = {
-                        isMicEnabled = !isMicEnabled
-                        scope.launch {
-                            room.localParticipant.setMicrophoneEnabled(isMicEnabled)
+                        val now = System.currentTimeMillis()
+                        if (now - lastMicToggle < 300) return@IconButton // Debounce 300ms
+                        lastMicToggle = now
+                        
+                        val newState = !isMicEnabled
+                        isMicEnabled = newState // Update UI immediately
+                        scope.launch(Dispatchers.Default) {
+                            room.localParticipant.setMicrophoneEnabled(newState)
                         }
                     },
                     modifier = Modifier
@@ -2012,10 +2018,20 @@ fun InCallScreen(
                 
                 // End call - Modern flat design (30% smaller: 56dp -> 39dp, keep red)
                 val endCallAnim = rememberAnimatedButtonSpring(showControls, 2)
+                var lastEndCallClick by remember { mutableLongStateOf(0L) }
                 
                 IconButton(
                     onClick = {
-                        saveCallHistory()
+                        val now = System.currentTimeMillis()
+                        if (now - lastEndCallClick < 1000) return@IconButton // Prevent double-tap
+                        lastEndCallClick = now
+                        
+                        // Save history in background, don't block disconnect
+                        scope.launch(Dispatchers.IO) {
+                            try { saveCallHistory() } catch (e: Exception) {
+                                Log.e("InCallActivity", "Error saving call history: ${e.message}")
+                            }
+                        }
                         onDisconnect()
                     },
                     modifier = Modifier
@@ -2041,10 +2057,15 @@ fun InCallScreen(
                 
                 // Switch Camera button (landscape only, 30% smaller)
                 val cameraAnim = rememberAnimatedButtonSpring(showControls, 3)
+                var lastCameraToggle by remember { mutableLongStateOf(0L) }
                 
                 IconButton(
                     onClick = {
-                        scope.launch {
+                        val now = System.currentTimeMillis()
+                        if (now - lastCameraToggle < 500) return@IconButton // Debounce 500ms
+                        lastCameraToggle = now
+                        
+                        scope.launch(Dispatchers.Default) {
                             try {
                                 // If processed track is active, republish with flipped facing
                                 if (LiveKitManager.isProcessedCameraActive()) {
@@ -2136,12 +2157,18 @@ fun InCallScreen(
             
             // Mic toggle (animates second)
             val micAnim = rememberAnimatedButton(showControls, 1)
+            var lastMicTogglePortrait by remember { mutableLongStateOf(0L) }
 
             IconButton(
                 onClick = {
-                    isMicEnabled = !isMicEnabled
-                    scope.launch {
-                        room.localParticipant.setMicrophoneEnabled(isMicEnabled)
+                    val now = System.currentTimeMillis()
+                    if (now - lastMicTogglePortrait < 300) return@IconButton // Debounce 300ms
+                    lastMicTogglePortrait = now
+                    
+                    val newState = !isMicEnabled
+                    isMicEnabled = newState // Update UI immediately
+                    scope.launch(Dispatchers.Default) {
+                        room.localParticipant.setMicrophoneEnabled(newState)
                     }
                 },
                 modifier = Modifier
@@ -2163,15 +2190,26 @@ fun InCallScreen(
             
             // End call (animates third - center) - Modern flat design
             val endCallAnim = rememberAnimatedButton(showControls, 2)
+            var lastEndCallClickPortrait by remember { mutableLongStateOf(0L) }
             
             IconButton(
                 onClick = {
-                    saveCallHistory()
-                    // Ensure we clean up processed camera track and audio before leaving
-                    scope.launch {
-                        try { withContext(Dispatchers.Default) { LiveKitManager.unpublishProcessedCameraTrackAndRestoreDefault() } } catch (_: Exception) {}
-                        try { room.localParticipant.setCameraEnabled(false) } catch (_: Exception) {}
-                        try { room.localParticipant.setMicrophoneEnabled(false) } catch (_: Exception) {}
+                    val now = System.currentTimeMillis()
+                    if (now - lastEndCallClickPortrait < 1000) return@IconButton // Prevent double-tap
+                    lastEndCallClickPortrait = now
+                    
+                    // Save history and cleanup in background
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            saveCallHistory()
+                            withContext(Dispatchers.Default) {
+                                try { LiveKitManager.unpublishProcessedCameraTrackAndRestoreDefault() } catch (_: Exception) {}
+                                try { room.localParticipant.setCameraEnabled(false) } catch (_: Exception) {}
+                                try { room.localParticipant.setMicrophoneEnabled(false) } catch (_: Exception) {}
+                            }
+                        } catch (e: Exception) {
+                            Log.e("InCallActivity", "Error during cleanup: ${e.message}")
+                        }
                     }
                     onDisconnect()
                 },
@@ -2194,10 +2232,15 @@ fun InCallScreen(
             
             // Switch camera (animates fourth)
             val switchCamAnim = rememberAnimatedButton(showControls, 3)
+            var lastCameraSwitchPortrait by remember { mutableLongStateOf(0L) }
 
             IconButton(
                 onClick = {
-                    scope.launch {
+                    val now = System.currentTimeMillis()
+                    if (now - lastCameraSwitchPortrait < 500) return@IconButton // Debounce 500ms
+                    lastCameraSwitchPortrait = now
+                    
+                    scope.launch(Dispatchers.Default) {
                         try {
                             val publication = room.localParticipant
                                 .getTrackPublication(Track.Source.CAMERA) as? LocalTrackPublication
@@ -2206,21 +2249,25 @@ fun InCallScreen(
                             if (!room.localParticipant.isCameraEnabled) {
                                 Log.d("InCallActivity", "📷 Camera disabled, re-enabling before switch")
                                 val enabled = room.localParticipant.setCameraEnabled(true)
-                                isCameraEnabled = enabled
+                                withContext(Dispatchers.Main) { isCameraEnabled = enabled }
                             }
 
                             if (localVideoTrack != null) {
                                 Log.d("InCallActivity", "🔁 Switching camera source")
                                 localVideoTrack.switchCamera(null, null)
-                                isCameraEnabled = room.localParticipant.isCameraEnabled
+                                withContext(Dispatchers.Main) {
+                                    isCameraEnabled = room.localParticipant.isCameraEnabled
+                                }
                             } else {
                                 Log.w("InCallActivity", "⚠️ No LocalVideoTrack available, toggling camera state instead")
                                 val enabled = room.localParticipant.setCameraEnabled(!room.localParticipant.isCameraEnabled)
-                                isCameraEnabled = enabled
+                                withContext(Dispatchers.Main) { isCameraEnabled = enabled }
                             }
                         } catch (e: Exception) {
                             Log.e("InCallActivity", "Error switching camera", e)
-                            Toast.makeText(context, "Camera switch failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "Camera switch failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 },
@@ -2292,11 +2339,15 @@ fun InCallScreen(
                     // Background Blur toggle (processed camera track publish/unpublish)
                     val isBlurActive = remember { mutableStateOf(LiveKitManager.isProcessedCameraActive()) }
                     var isTogglingBlur by remember { mutableStateOf(false) }
+                    var lastBlurToggle by remember { mutableLongStateOf(0L) }
 
                     IconButton(
                         onClick = {
+                            val now = System.currentTimeMillis()
+                            if (now - lastBlurToggle < 500 || isTogglingBlur) return@IconButton // Debounce 500ms
+                            lastBlurToggle = now
+                            
                             scope.launch {
-                                if (isTogglingBlur) return@launch
                                 isTogglingBlur = true
                                 try {
                                     if (!room.localParticipant.isCameraEnabled) {
@@ -2324,7 +2375,6 @@ fun InCallScreen(
                                         }
                                     } catch (_: Exception) {}
                                 } finally {
-                                    kotlinx.coroutines.delay(350)
                                     isTogglingBlur = false
                                 }
                             }
