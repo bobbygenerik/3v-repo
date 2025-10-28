@@ -61,6 +61,9 @@ class IncomingCallActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Start incoming call vibration
+        com.example.tres3.utils.VibrationManager.vibrateIncomingCall(this)
+        
         // Get call invitation data from intent
         val invitationId = intent.getStringExtra("invitationId") ?: ""
         val fromUserName = intent.getStringExtra("fromUserName") ?: "Unknown"
@@ -94,6 +97,9 @@ class IncomingCallActivity : ComponentActivity() {
     }
     
     private fun acceptCall(isGuestCall: Boolean, providedUrl: String, providedToken: String, providedRoomName: String) {
+        // Cancel incoming vibration
+        com.example.tres3.utils.VibrationManager.cancelVibration(this)
+        
         // Ensure RECORD_AUDIO and CAMERA runtime permissions before connecting/publishing
         val needsAudio = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
         val needsCamera = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
@@ -216,6 +222,9 @@ class IncomingCallActivity : ComponentActivity() {
     }
     
     private fun rejectCall(isGuestCall: Boolean) {
+        // Cancel incoming vibration
+        com.example.tres3.utils.VibrationManager.cancelVibration(this)
+        
         lifecycleScope.launch {
             try {
                 // Only update Firestore for regular calls, not guest calls

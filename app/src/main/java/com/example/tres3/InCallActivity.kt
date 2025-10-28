@@ -317,6 +317,9 @@ class InCallActivity : ComponentActivity() {
             return
         }
         
+        // Vibrate for call ended
+        com.example.tres3.utils.VibrationManager.vibrateCallEnded(this)
+        
         isIntentionallyClosing = true // Prevent duplicate handling
         runOnUiThread {
             Toast.makeText(this, "Call ended by other participant", Toast.LENGTH_SHORT).show()
@@ -376,6 +379,9 @@ class InCallActivity : ComponentActivity() {
                             recipientEmail = recipientEmail,
                             guestLink = guestLink,
                             onDisconnect = {
+                                // Vibrate for call ended
+                                com.example.tres3.utils.VibrationManager.vibrateCallEnded(this@InCallActivity)
+                                
                                 // Set flag BEFORE disconnecting to prevent crash
                                 isIntentionallyClosing = true
                                 Log.d("InCallActivity", "🔚 Intentionally closing - starting disconnect")
@@ -1343,6 +1349,27 @@ fun InCallScreen(
     var showPerfOverlay by remember { mutableStateOf(FeatureFlags.isPerformanceOverlayEnabled()) }
     // Quick toggles (top-left) visibility for double-tap
     var showTopLeftQuickToggles by remember { mutableStateOf(true) }
+    
+    // Call stats manager
+    val statsManager = remember { com.example.tres3.utils.CallStatsManager(room, scope) }
+    var statsUpdateTrigger by remember { mutableStateOf(0) }
+    
+    // Start/stop stats collection based on overlay visibility
+    LaunchedEffect(showPerfOverlay) {
+        if (showPerfOverlay) {
+            statsManager.onStatsUpdate = { statsUpdateTrigger++ }
+            statsManager.startCollecting()
+        } else {
+            statsManager.stopCollecting()
+        }
+    }
+    
+    // Cleanup stats on exit
+    DisposableEffect(Unit) {
+        onDispose {
+            statsManager.stopCollecting()
+        }
+    }
 
     // Track if this call ever had 2+ remote participants (group call)
     var everHadMultipleParticipants by remember { mutableStateOf(false) }
@@ -3114,29 +3141,118 @@ fun InCallScreen(
                 else -> "Custom ${params.width}x${params.height}@${params.maxFps}"
             }
         } }
-        // Lightweight sampling timer for future metrics
-        var tick by remember { mutableStateOf(0) }
-        LaunchedEffect(Unit) {
-            while (true) {
-                kotlinx.coroutines.delay(1000)
-                tick++
-            }
+        
+        // Trigger recomposition when stats update
+        val statsUpdate = statsUpdateTrigger
+        
+        val connectionQuality = statsManager.getConnectionQuality()
+        val qualityColor = when (connectionQuality) {
+            com.example.tres3.utils.CallStatsManager.ConnectionQuality.EXCELLENT -> Color(0xFF00C853)
+            com.example.tres3.utils.CallStatsManager.ConnectionQuality.GOOD -> Color(0xFF64DD17)
+            com.example.tres3.utils.CallStatsManager.ConnectionQuality.FAIR -> Color(0xFFFFC107)
+            com.example.tres3.utils.CallStatsManager.ConnectionQuality.POOR -> Color(0xFFFF1744)
         }
+        
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(start = 16.dp, top = 96.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color.Black.copy(alpha = 0.55f))
-                .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                .padding(horizontal = 12.dp, vertical = 10.dp)
+                .background(Color.Black.copy(alpha = 0.7f))
+                .border(2.dp, qualityColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Call Health", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text("Video: $qualityName", color = Color.White, fontSize = 12.sp)
-                Text("Codec: ${codecName}", color = Color.White, fontSize = 12.sp)
-                Text("Participants: ${1 + room.remoteParticipants.size}", color = Color.White, fontSize = 12.sp)
-                Text("Cam/Mic: ${if (room.localParticipant.isCameraEnabled) "On" else "Off"}/${if (room.localParticipant.isMicrophoneEnabled) "On" else "Off"}", color = Color.White, fontSize = 12.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Header with connection quality
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Call Quality",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        connectionQuality.name,
+                        color = qualityColor,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                
+                androidx.compose.material3.HorizontalDivider(
+                    thickness = 1.dp,
+                    color = Color.White.copy(alpha = 0.2f)
+                )
+                
+                // Network stats
+                Text("📡 Network", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Latency:", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
+                    Text(statsManager.formatLatency(statsManager.roundTripTime), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Jitter:", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
+                    Text(statsManager.formatJitter(statsManager.jitter), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+                
+                androidx.compose.material3.HorizontalDivider(
+                    thickness = 1.dp,
+                    color = Color.White.copy(alpha = 0.2f)
+                )
+                
+                // Video stats
+                Text("🎥 Video", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Send:", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
+                    Text(statsManager.formatBitrate(statsManager.videoSendBitrate), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Recv:", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
+                    Text(statsManager.formatBitrate(statsManager.videoRecvBitrate), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Loss:", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
+                    Text(statsManager.formatPacketLoss(statsManager.videoPacketLoss), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Resolution:", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
+                    Text("${statsManager.videoResolution} @ ${statsManager.videoFps}fps", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+                
+                androidx.compose.material3.HorizontalDivider(
+                    thickness = 1.dp,
+                    color = Color.White.copy(alpha = 0.2f)
+                )
+                
+                // Audio stats
+                Text("🎤 Audio", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Send:", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
+                    Text(statsManager.formatBitrate(statsManager.audioSendBitrate), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Recv:", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
+                    Text(statsManager.formatBitrate(statsManager.audioRecvBitrate), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Loss:", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
+                    Text(statsManager.formatPacketLoss(statsManager.audioPacketLoss), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+                
+                androidx.compose.material3.HorizontalDivider(
+                    thickness = 1.dp,
+                    color = Color.White.copy(alpha = 0.2f)
+                )
+                
+                // Session info
+                Text("ℹ️ Session", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Text("Codec: ${codecName}", color = Color.White, fontSize = 11.sp)
+                Text("Quality: $qualityName", color = Color.White, fontSize = 11.sp)
+                Text("Participants: ${1 + room.remoteParticipants.size}", color = Color.White, fontSize = 11.sp)
             }
         }
     }
@@ -3152,6 +3268,11 @@ fun InCallScreen(
 
     // Ensure we stay subscribed to remote audio/video tracks (defensive in case of toggles)
     LaunchedEffect(room.remoteParticipants) {
+        // Vibrate when first remote participant joins (call connected)
+        if (room.remoteParticipants.isNotEmpty() && !everHadMultipleParticipants && room.remoteParticipants.size == 1) {
+            com.example.tres3.utils.VibrationManager.vibrateCallConnected(context as android.content.Context)
+        }
+        
         try {
             room.remoteParticipants.values.forEach { rp ->
                 try {
