@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,6 +30,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -660,13 +662,13 @@ class HomeActivity : AppCompatActivity() {
                                                     .clip(CircleShape)
                                                     .background(
                                                         when (contact.status) {
-                                                            com.example.tres3.presence.UserPresenceManager.UserStatus.ONLINE -> Color(0xFF00C853) // Green
-                                                            com.example.tres3.presence.UserPresenceManager.UserStatus.BUSY -> Color(0xFFFF1744) // Red
-                                                            com.example.tres3.presence.UserPresenceManager.UserStatus.AWAY -> Color(0xFFFFC107) // Amber
-                                                            com.example.tres3.presence.UserPresenceManager.UserStatus.OFFLINE -> Color(0xFF757575) // Gray
+                                                            com.example.tres3.presence.UserStatus.ONLINE -> Color(0xFF00C853) // Green
+                                                            com.example.tres3.presence.UserStatus.BUSY -> Color(0xFFFF1744) // Red
+                                                            com.example.tres3.presence.UserStatus.AWAY -> Color(0xFFFFC107) // Amber
+                                                            com.example.tres3.presence.UserStatus.OFFLINE -> Color(0xFF757575) // Gray
                                                         }
                                                     )
-                                                    .border(2.dp, AppColors.Background, CircleShape)
+                                                    .border(2.dp, AppColors.BackgroundDark, CircleShape)
                                             )
                                         }
                                     }
@@ -682,9 +684,9 @@ class HomeActivity : AppCompatActivity() {
                                     IconButton(onClick = { 
                                         toggleContactPin(contact.id, !contact.isPinned)
                                         // Update local state
-                                        contacts = contacts.map { c ->
-                                            if (c.id == contact.id) c.copy(isPinned = !contact.isPinned)
-                                            else c
+                                        val index = contacts.indexOfFirst { it.id == contact.id }
+                                        if (index != -1) {
+                                            contacts[index] = contact.copy(isPinned = !contact.isPinned)
                                         }
                                     }) {
                                         Icon(
