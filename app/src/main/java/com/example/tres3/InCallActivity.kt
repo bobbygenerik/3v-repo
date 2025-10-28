@@ -1354,6 +1354,22 @@ fun InCallScreen(
     val statsManager = remember { com.example.tres3.utils.CallStatsManager(room, scope) }
     var statsUpdateTrigger by remember { mutableStateOf(0) }
     
+    // Caption manager
+    val captionManager = remember { com.example.tres3.utils.CaptionManager(context, scope) }
+    var showCaptions by remember { mutableStateOf(false) }
+    var currentCaption by remember { mutableStateOf("") }
+    
+    // Start/stop captions based on toggle
+    LaunchedEffect(showCaptions) {
+        if (showCaptions) {
+            captionManager.onCaptionReceived = { text -> currentCaption = text }
+            captionManager.startCaptions()
+        } else {
+            captionManager.stopCaptions()
+            currentCaption = ""
+        }
+    }
+    
     // Start/stop stats collection based on overlay visibility
     LaunchedEffect(showPerfOverlay) {
         if (showPerfOverlay) {
@@ -1364,10 +1380,11 @@ fun InCallScreen(
         }
     }
     
-    // Cleanup stats on exit
+    // Cleanup stats and captions on exit
     DisposableEffect(Unit) {
         onDispose {
             statsManager.stopCollecting()
+            captionManager.stopCaptions()
         }
     }
 
@@ -2760,6 +2777,26 @@ fun InCallScreen(
                             color = Color.White
                         )
                     }
+                    
+                    // Toggle Live Captions
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            showCaptions = !showCaptions
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Subtitles,
+                            contentDescription = null,
+                            tint = if (showCaptions) Color.Green else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (showCaptions) "Hide Captions" else "Show Captions",
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }
@@ -3396,6 +3433,14 @@ fun InCallScreen(
             state = reconnectionState,
             modifier = Modifier.fillMaxSize()
         )
+        
+        // ===== CAPTIONS OVERLAY =====
+        if (showCaptions) {
+            CaptionsOverlay(
+                caption = currentCaption,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     
     } // Close OUTER Box (line 441)
 } // End of InCallScreen
@@ -3557,4 +3602,41 @@ fun ReconnectionOverlay(
         }
     }
 }
+
+/**
+ * Live Captions Overlay
+ * Shows transcribed text at the bottom of the screen
+ */
+@Composable
+fun CaptionsOverlay(
+    caption: String,
+    modifier: Modifier = Modifier
+) {
+    if (caption.isNotBlank()) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 80.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        color = Color.Black.copy(alpha = 0.8f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    text = caption,
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
 
