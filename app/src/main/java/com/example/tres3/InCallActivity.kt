@@ -1359,6 +1359,9 @@ fun InCallScreen(
     var showCaptions by remember { mutableStateOf(false) }
     var currentCaption by remember { mutableStateOf("") }
     
+    // Low-light enhancement toggle
+    var enhanceLowLight by remember { mutableStateOf(false) }
+    
     // Start/stop captions based on toggle
     LaunchedEffect(showCaptions) {
         if (showCaptions) {

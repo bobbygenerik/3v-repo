@@ -720,12 +720,15 @@ object LiveKitManager {
             // Create a LocalVideoTrack using our custom capturer and publish it
             val localTrack = withContext(Dispatchers.Main) {
                 try {
+                    // Apply automatic low-light enhancement via video processor
+                    val lowLightProcessor = com.example.tres3.video.LowLightVideoProcessor()
+                    
                     // createVideoTrack(String, VideoCapturer, LocalVideoTrackOptions, VideoProcessor?)
                     room.localParticipant.createVideoTrack(
                         "camera",
                         capturer,
                         options,
-                        null
+                        lowLightProcessor
                     )
                 } catch (e: Throwable) {
                     Log.e("LiveKitManager", "createVideoTrack failed: ${e.message}", e)
@@ -867,11 +870,14 @@ object LiveKitManager {
 
             val localTrack = withContext(Dispatchers.Main) {
                 try {
+                    // Apply automatic low-light enhancement via video processor
+                    val lowLightProcessor = com.example.tres3.video.LowLightVideoProcessor()
+                    
                     room.localParticipant.createVideoTrack(
                         "camera",
                         capturer,
                         options,
-                        null
+                        lowLightProcessor
                     )
                 } catch (e: Throwable) {
                     Log.e("LiveKitManager", "createVideoTrack (enhanced) failed: ${e.message}", e)
