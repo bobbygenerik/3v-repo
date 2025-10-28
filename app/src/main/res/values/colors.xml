@@ -1,5 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Colors are provided by dynamic color when available -->
     <!-- Base background gray used for splash and home background -->
     <color name="ic_launcher_background">#2B2B2B</color>
+    <color name="light_blue">#FF00D4FF</color>
+    <color name="mint_green">#FF00D4AA</color>
+    <color name="background_dark">#FFFFFF</color>
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#80212121</color>
+    <color name="error_high_contrast">#FF0000</color>
 </resources>

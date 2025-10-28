@@ -5,7 +5,7 @@ workflows:
     instance_type: linux_x2
     environment:
       groups:
-        - google_credentials
+        - google_play
       vars:
         PACKAGE_NAME: "com.example.tres3"
       java: 17
@@ -17,22 +17,191 @@ workflows:
         - pattern: '*'
           include: true
           source: true
+          include: true
+          source: true
+        - pattern: 'develop'
+          include: true
+          source: true
     scripts:
       - name: Set up local.properties
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
           
-      - name: Build Android debug APKs
+      - name: Get Flutter dependencies
+        script: |
+          flutter pub get
+          
+      - name: Build Android APKs (all architectures)
         script: |
           ./gradlew assembleDebug --no-daemon
           
+      - name: Build Android App Bundle
+        script: |
+          ./gradlew bundleRelease --no-daemon
+          
     artifacts:
       - app/build/outputs/**/*.apk
+      - app/build/outputs/**/*.aab
+      - app/build/outputs/**/mapping.txt
       
     publishing:
       email:
         recipients:
-          - build@tres3.app
+          - bobbygenerik@example.com
         notify:
           success: true
+          failure: true
+          
+  ios-workflow:
+    name: iOS Build
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    integrations:
+      app_store_connect: tres3_app_store_connect
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.example.tres3
+      groups:
+        - app_store_credentials
+      vars:
+        BUNDLE_ID: "com.example.tres3"
+        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+      flutter: stable
+      xcode: 15.0
+      cocoapods: default
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+          source: true
+    scripts:
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+          
+      - name: Get Flutter dependencies
+        script: |
+          flutter pub get
+          
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios && pod install
+          
+      - name: Flutter build iOS
+        script: |
+          flutter build ios --release --no-codesign
+          
+      - name: Build iOS app
+        script: |
+          xcode-project build-ipa \
+            --workspace "$CM_BUILD_DIR/ios/Runner.xcworkspace" \
+            --scheme "Runner"
+            
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+      
+    publishing:
+      email:
+        recipients:
+          - bobbygenerik@example.com
+        notify:
+          success: true
+          failure: true
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - Internal Testers
+          
+  android-release:
+    name: Android Release Build
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    environment:
+      android_signing:
+        - tres3_keystore
+      groups:
+        - google_play
+      vars:
+        PACKAGE_NAME: "com.example.tres3"
+      java: 17
+      flutter: stable
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'v*'
+          include: true
+    scripts:
+      - name: Set up local.properties
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+          
+      - name: Get Flutter dependencies
+        script: |
+          flutter pub get
+          
+      - name: Build release APKs
+        script: |
+          ./gradlew assembleRelease --no-daemon
+          
+      - name: Build release App Bundle
+        script: |
+          ./gradlew bundleRelease --no-daemon
+          
+    artifacts:
+      - app/build/outputs/**/*.apk
+      - app/build/outputs/**/*.aab
+      - app/build/outputs/**/mapping.txt
+      
+    publishing:
+      email:
+        recipients:
+          - bobbygenerik@example.com
+        notify:
+          success: true
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
+        
+  flutter-test:
+    name: Flutter Tests
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: '*'
+          include: true
+          source: true
+    scripts:
+      - name: Get Flutter dependencies
+        script: |
+          flutter pub get
+          
+      - name: Run Flutter analyze
+        script: |
+          flutter analyze
+          
+      - name: Run Flutter tests
+        script: |
+          flutter test
+          
+    publishing:
+      email:
+        recipients:
+          - bobbygenerik@example.com
+        notify:
           failure: true

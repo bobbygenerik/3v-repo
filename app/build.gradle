@@ -5,73 +5,58 @@ plugins {
     id 'com.google.gms.google-services'
 }
 
+// Load properties from local.properties
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+}
+
 android {
-    namespace 'com.example.threevchat'
+    namespace 'com.example.tres3'
     compileSdk 35
 
-    // Load TURN configuration from local.properties (not committed to VCS)
-    def localProps = new Properties()
-    def lpFile = rootProject.file('local.properties')
-    if (lpFile.exists()) {
-        lpFile.withInputStream { localProps.load(it) }
-    }
-    def TURN_HOST = (localProps.getProperty('turn.host') ?: '')
-    def TURN_PORT = (localProps.getProperty('turn.port') ?: '3478')
-    def TURN_TRANSPORT = (localProps.getProperty('turn.transport') ?: 'udp')
-    def TURN_USERNAME_MODE = (localProps.getProperty('turn.username.mode') ?: 'STATIC') // STATIC or PHONE
-    def TURN_STATIC_USERNAME = (localProps.getProperty('turn.username') ?: '')
-    def TURN_PASSWORD = (localProps.getProperty('turn.password') ?: '')
-    def TURN_FORCE_RELAY = (localProps.getProperty('turn.forceRelay') ?: 'false')
-    def PHONE_AUTH_DISABLE_VERIFICATION = (localProps.getProperty('auth.disableVerification') ?: 'false')
-
     defaultConfig {
-        applicationId 'com.example.threevchat'
+        applicationId "com.example.tres3"
         minSdk 24
         targetSdk 35
-        versionCode 1
-        versionName '1.0.0'
+        versionCode 5
+        versionName "1.4-call-fixes"
 
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary true
         }
-
-        // Expose TURN config in BuildConfig for runtime ICE server setup
-        buildConfigField 'String', 'TURN_HOST', '"' + TURN_HOST + '"'
-        buildConfigField 'int', 'TURN_PORT', TURN_PORT
-        buildConfigField 'String', 'TURN_TRANSPORT', '"' + TURN_TRANSPORT + '"'
-        buildConfigField 'String', 'TURN_USERNAME_MODE', '"' + TURN_USERNAME_MODE + '"'
-        buildConfigField 'String', 'TURN_STATIC_USERNAME', '"' + TURN_STATIC_USERNAME + '"'
-        buildConfigField 'String', 'TURN_PASSWORD', '"' + TURN_PASSWORD + '"'
-        buildConfigField 'boolean', 'TURN_FORCE_RELAY', TURN_FORCE_RELAY
-        // Controls Firebase phone auth verification bypass; default false to allow real SMS
-        buildConfigField 'boolean', 'PHONE_AUTH_DISABLE_APP_VERIFICATION', PHONE_AUTH_DISABLE_VERIFICATION
-
-        // Signaling/runtime feature flags
-        // Use new multi-party mesh signaling by default; set to false to force legacy 1:1 path
-        buildConfigField 'boolean', 'CALL_USE_MESH', 'true'
-        // Simple dedupe window for incoming Firestore signals (milliseconds)
-        buildConfigField 'int', 'SIGNAL_DEDUP_WINDOW_MS', '15000'
-        // Feature flag: show native PIP instead of Compose self PIP (off by default)
-        buildConfigField 'boolean', 'PIP_NATIVE_ENABLED', 'false'
+        
+        // LiveKit configuration - loaded from local.properties (gitignored)
+        buildConfigField "String", "LIVEKIT_URL", "\"${localProperties.getProperty('livekit.url', '')}\""
+        buildConfigField "String", "LIVEKIT_API_KEY", "\"${localProperties.getProperty('livekit.api.key', '')}\""
+        buildConfigField "String", "LIVEKIT_API_SECRET", "\"${localProperties.getProperty('livekit.api.secret', '')}\""
     }
 
     buildTypes {
+        debug {
+            // Standard debug build - no minification for faster builds
+            minifyEnabled false
+            shrinkResources false
+        }
         release {
             minifyEnabled true
+            shrinkResources true
+            // Use R8 full mode for maximum optimization
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-        debug {
-            minifyEnabled false
+        // Optimized debug build for smaller APK size
+        minifiedDebug {
+            initWith debug
+            debuggable false  // Disable debuggable to allow R8 optimization
+            minifyEnabled true
+            shrinkResources true
+            // Use R8 full mode for maximum optimization
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            matchingFallbacks = ['debug']
         }
     }
-
-    // Disable ABI splits in debug to simplify packaging during CI
-    splits {
-        abi {
-            enable false
-        }
-    }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -79,106 +64,116 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
-
     buildFeatures {
         compose true
         buildConfig true
     }
-    // Compose Compiler is configured via the Kotlin Compose plugin for Kotlin 2.0+
-
-    packagingOptions {
-        // Avoid stripping native .so libraries in debug builds; WebRTC libs can cause strip crashes in constrained envs
-        jniLibs {
-            doNotStrip '**/*.so'
-        }
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.15'
+    }
+    
+    // R8 optimization settings
+    androidResources {
+        noCompress += ['tflite', 'lite']  // Don't compress ML models
+    }
+    
+    packaging {
         resources {
-            excludes += ['/META-INF/{AL2.0,LGPL2.1}']
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+            excludes += '/META-INF/DEPENDENCIES'
+            excludes += '/META-INF/LICENSE'
+            excludes += '/META-INF/LICENSE.txt'
+            excludes += '/META-INF/license.txt'
+            excludes += '/META-INF/NOTICE'
+            excludes += '/META-INF/NOTICE.txt'
+            excludes += '/META-INF/notice.txt'
+            excludes += '/META-INF/*.kotlin_module'
+        }
+        
+        // Enable JNI library compression
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+    
+    // Split APKs by ABI for smaller downloads per architecture
+    splits {
+        abi {
+            enable true  // Enable ABI splits for smaller APKs
+            reset()
+            include 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+            universalApk false  // Create architecture-specific APKs only
         }
     }
 }
 
 dependencies {
-    // Compose BOM - manages all Compose library versions
-    def composeBom = platform('androidx.compose:compose-bom:2024.09.02')
-    implementation composeBom
-    androidTestImplementation composeBom
 
-    // Core Android & Kotlin
-    implementation 'androidx.core:core-ktx:1.13.1'
-    implementation 'androidx.activity:activity-compose:1.9.2'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.6'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6'
-    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.6'
-
-    // AppCompat for Activity base class used by CallActivity
-    implementation 'androidx.appcompat:appcompat:1.7.0'
-
-    // Compose UI libraries
+    implementation 'androidx.core:core-ktx:1.15.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
+    implementation 'androidx.activity:activity-compose:1.9.3'
+    implementation platform('androidx.compose:compose-bom:2024.10.00')
     implementation 'androidx.compose.ui:ui'
-    implementation 'androidx.compose.ui:ui-text:1.6.0'
     implementation 'androidx.compose.ui:ui-graphics'
     implementation 'androidx.compose.ui:ui-tooling-preview'
-    debugImplementation 'androidx.compose.ui:ui-tooling'
-    debugImplementation 'androidx.compose.ui:ui-test-manifest'
-    
-    // Material Design 3
-    implementation 'androidx.compose.material3:material3:1.3.0'
-    
-    // Material Icons (filled + extended sets) for Compose
-    implementation 'androidx.compose.material:material-icons-extended'
-    
-    // Compose Foundation (REQUIRED for scrolling, focus, borders, etc.)
-    implementation 'androidx.compose.foundation:foundation'
-    
-    // Navigation
-    implementation 'androidx.navigation:navigation-compose:2.8.0'
-    
-    // Compose Google Fonts (downloadable fonts provider)
-    implementation 'androidx.compose.ui:ui-text-google-fonts'
-    
-    // Play Services base (provider backend for downloadable fonts)
-    implementation 'com.google.android.gms:play-services-base:18.5.0'
-
-    // Firebase BOM and dependencies
-    implementation platform('com.google.firebase:firebase-bom:33.3.0')
-    implementation 'com.google.firebase:firebase-auth-ktx'
-    implementation 'com.google.firebase:firebase-analytics-ktx'
-    implementation 'com.google.firebase:firebase-firestore-ktx'
-    implementation 'com.google.firebase:firebase-database-ktx'
-    implementation 'com.google.firebase:firebase-messaging-ktx'
-    implementation 'com.google.firebase:firebase-config-ktx'
-    implementation 'com.google.firebase:firebase-storage-ktx'
-
-    // Image loading for profile pictures (Coil)
-    implementation 'io.coil-kt:coil-compose:2.6.0'
-
-    // Native WebRTC SDK
-    implementation 'io.github.webrtc-sdk:android:137.7151.04'
-
-    // Play Services (for phone auth)
-    implementation 'com.google.android.gms:play-services-auth:21.2.0'
-    implementation 'com.google.android.gms:play-services-auth-api-phone:18.1.0'
-
-    // CardView for rounded PIP
-    implementation 'androidx.cardview:cardview:1.0.0'
-
-    // Coroutines (ensure latest version for async operations)
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
-
-    // Unit test dependencies
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-extended:1.7.5'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.mockito:mockito-core:5.2.0'
-    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
-    testImplementation 'androidx.test:core:1.5.0'
-    testImplementation 'androidx.test.ext:junit:1.1.5'
-    testImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-    
-    // Android test dependencies
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    androidTestImplementation platform('androidx.compose:compose-bom:2024.10.00')
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
-}
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
 
-// Apply Google Services plugin for Firebase
-apply plugin: 'com.google.gms.google-services'
+    // Firebase
+    implementation platform('com.google.firebase:firebase-bom:33.5.1')
+    implementation 'com.google.firebase:firebase-auth-ktx'
+    implementation 'com.google.firebase:firebase-firestore-ktx'
+    implementation 'com.google.firebase:firebase-messaging-ktx'
+    implementation 'com.google.firebase:firebase-functions-ktx'
+    implementation 'com.google.firebase:firebase-storage-ktx'
+    
+    // Timber for logging
+    implementation 'com.jakewharton.timber:timber:5.0.1'
+    
+    // Coil for image loading
+    implementation 'io.coil-kt:coil-compose:2.7.0'
+    
+    // OkHttp for network requests (Whisper API)
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // LiveKit dependencies (upgraded)
+    implementation 'io.livekit:livekit-android:2.21.0'
+    implementation 'io.livekit:livekit-android-compose-components:1.4.0'
+    
+    // WebRTC - Provided via LiveKit (relocated to livekit.org.webrtc). Remove external to avoid duplicates.
+    
+    // Camera2 API for advanced camera control
+    implementation 'androidx.camera:camera-core:1.4.0'
+    implementation 'androidx.camera:camera-camera2:1.4.0'
+    implementation 'androidx.camera:camera-lifecycle:1.4.0'
+    implementation 'androidx.camera:camera-view:1.4.0'
+    
+    // ML Kit for on-device machine learning
+    implementation 'com.google.mlkit:face-detection:16.1.7'
+    implementation 'com.google.mlkit:segmentation-selfie:16.0.0-beta6'
+    implementation 'com.google.mlkit:image-labeling:17.0.9'
+    
+    // TensorFlow Lite for AI/ML processing
+    implementation 'org.tensorflow:tensorflow-lite:2.14.0'
+    implementation 'org.tensorflow:tensorflow-lite-gpu:2.14.0'
+    implementation 'org.tensorflow:tensorflow-lite-support:0.4.4'
+    
+    // MediaPipe for hand gesture recognition
+    implementation 'com.google.mediapipe:tasks-vision:0.10.14'
+    
+    // OpenCV for advanced image processing
+    implementation 'org.opencv:opencv:4.10.0'
+    
+    // Coroutines for async operations
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0'
+}

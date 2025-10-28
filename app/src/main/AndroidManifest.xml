@@ -7,21 +7,34 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- Android 13+ notifications permission -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Foreground service for calls -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <!-- Battery optimization exemption -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Wake screen for incoming calls -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Telecom API for native call UI -->
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <application
-        android:name="com.example.threevchat.P2PApp"
+        android:name=".Tres3Application"
         android:allowBackup="true"
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.P2PVideo"
+        android:theme="@style/Theme.ThreeVChat"
+        android:usesCleartextTraffic="true"
+        android:largeHeap="true"
         tools:replace="android:label">
 
         <provider
@@ -35,7 +48,7 @@
         </provider>
 
         <activity
-            android:name="com.example.threevchat.MainActivity"
+            android:name="com.example.tres3.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -47,22 +60,21 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <!-- Custom scheme, e.g., p2pvideo://call/{id} -->
                 <data android:scheme="p2pvideo" android:host="call" />
             </intent-filter>
 
-            <!-- Content style that Google Messages could trigger: content://com.example.threevchat/call/{id} -->
+            <!-- Content style -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="content"
-                    android:host="com.example.threevchat"
+                    android:host="com.example.tres3"
                     android:pathPattern="/call/.*" />
             </intent-filter>
 
-            <!-- Tel scheme from Messages: tel:+15551234567 -->
+            <!-- Tel scheme -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -72,24 +84,96 @@
         </activity>
 
         <activity
-            android:name="com.example.threevchat.activities.CallActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.P2PVideo" />
+            android:name="com.example.tres3.CreateAccountActivity"
+            android:exported="false" />
 
         <activity
-            android:name="com.example.threevchat.activities.IncomingCallActivity"
+            android:name="com.example.tres3.SplashActivity"
             android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.P2PVideo" />
+            android:theme="@style/Theme.ThreeVChat.NoActionBar" />
 
+        <activity
+            android:name="com.example.tres3.SignInActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ThreeVChat.NoActionBar" />
+
+        <activity
+            android:name="com.example.tres3.HomeActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.ThreeVChat.NoActionBar" />
+
+        <activity
+            android:name="com.example.tres3.InCallActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:excludeFromRecents="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.ThreeVChat.InCall" />
+
+        <activity
+            android:name="com.example.tres3.IncomingCallActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.ThreeVChat.NoActionBar" />
+
+        <activity
+            android:name="com.example.tres3.ProfileActivity"
+            android:exported="false" />
+
+        <activity
+            android:name="com.example.tres3.SettingsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name="com.example.tres3.DiagnosticsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name="com.example.tres3.CrashReportActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ThreeVChat.NoActionBar" />
+
+        <!-- Firebase Cloud Messaging Service -->
         <service
-            android:name="com.example.threevchat.notifications.AppMessagingService"
+            android:name="com.example.tres3.MyFirebaseMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+
+        <!-- Call Foreground Service -->
+        <service
+            android:name="com.example.tres3.CallForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall" />
+
+        <!-- Telecom ConnectionService for native call UI -->
+        <service
+            android:name="com.example.tres3.Tres3ConnectionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.ConnectionService" />
+            </intent-filter>
+        </service>
+
+        <!-- Call Action Receiver -->
+        <receiver
+            android:name="com.example.tres3.CallActionReceiver"
+            android:exported="false" />
+        
+        <!-- Call Notification Receiver for Accept/Decline actions -->
+        <receiver
+            android:name="com.example.tres3.CallNotificationReceiver"
+            android:exported="false" />
+
     </application>
 
 </manifest>

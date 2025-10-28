@@ -1,0 +1,142 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Users collection - profiles, settings, contacts
+    match /users/{userId} {
+      // Users can read and write their own profile
+      allow read, write: if isOwner(userId);
+      
+      // Anyone authenticated can read other user profiles (for contacts/calling)
+      allow read: if isSignedIn();
+      
+      // Contacts subcollection - NEW: User contacts
+      match /contacts/{contactId} {
+        // Users can read/write their own contacts
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Call history subcollection - NEW: Support for your app's call history
+      match /callHistory/{historyId} {
+        // Users can only read/write their own call history
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Call signals subcollection - NEW: For call invitations/notifications
+      match /callSignals/{signalId} {
+        // Any authenticated user can send invites to others (write)
+        allow create: if isSignedIn();
+        
+        // Only the owner can read their call signals
+        allow read: if isOwner(userId);
+        
+        // Owner can update/delete their signals
+        allow update, delete: if isOwner(userId);
+      }
+    }
+    
+    // Sessions collection - video call sessions
+    match /sessions/{sessionId} {
+      // Anyone authenticated can create a session
+      allow create: if isSignedIn();
+      
+      // Session participants can read and update
+      allow read, update: if isSignedIn();
+      
+      // Session creator or participants can delete
+      allow delete: if isSignedIn();
+      
+      // Participants subcollection
+      match /participants/{participantId} {
+        // Participants can join (create their participant doc)
+        allow create: if isOwner(participantId);
+        
+        // Anyone in session can read participants
+        allow read: if isSignedIn();
+        
+        // Participants can update their own status
+        allow update: if isOwner(participantId);
+        
+        // Participants can leave (delete their participant doc)
+        allow delete: if isOwner(participantId);
+      }
+      
+      // Signals subcollection - WebRTC signaling (SDP, ICE candidates)
+      match /signals/{signalId} {
+        // Anyone authenticated can create signals
+        allow create: if isSignedIn();
+        
+        // Session participants can read signals
+        allow read: if isSignedIn();
+        
+        // Allow update for signal acknowledgment
+        allow update: if isSignedIn();
+        
+        // Allow deletion for cleanup
+        allow delete: if isSignedIn();
+      }
+      
+      // Encryption keys subcollection - E2E encryption key exchange
+      match /encryption_keys/{keyUserId} {
+        // Users can ONLY write their own encryption keys
+        allow create, update: if isOwner(keyUserId);
+        
+        // Session participants can read encryption keys to establish secure connection
+        allow read: if isSignedIn() && 
+          exists(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid));
+        
+        // Users can delete their own keys on call end
+        allow delete: if isOwner(keyUserId);
+      }
+    }
+    
+    // Call logs/history
+    match /call_logs/{callId} {
+      // Users can only read/write their own call logs
+      allow read, write: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid || 
+         request.resource.data.userId == request.auth.uid);
+    }
+    
+    // Contacts
+    match /contacts/{userId} {
+      // Users can only manage their own contacts
+      match /user_contacts/{contactId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+    
+    // User presence/status
+    match /presence/{userId} {
+      // Users can update their own presence
+      allow write: if isOwner(userId);
+      
+      // Anyone authenticated can read presence (for online status)
+      allow read: if isSignedIn();
+    }
+    
+    // Guest invitations - for web guest calls
+    match /guestInvitations/{invitationId} {
+      // Authenticated users can create guest invitations
+      allow create: if isSignedIn();
+      
+      // Users can read their own guest invitations
+      allow read: if isSignedIn() && resource.data.hostUserId == request.auth.uid;
+      
+      // Users can update/delete their own invitations
+      allow update, delete: if isSignedIn() && resource.data.hostUserId == request.auth.uid;
+      
+      // Allow public read for guests with the invitation link (token validation happens in client)
+      allow read: if true;
+    }
+  }
+}

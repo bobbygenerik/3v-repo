@@ -1,0 +1,4 @@
+<resources>
+    <dimen name="home_screen_top_padding">0dp</dimen>
+    <dimen name="home_screen_bottom_padding">0dp</dimen>
+</resources>
