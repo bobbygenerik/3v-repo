@@ -565,24 +565,23 @@ object LiveKitManager {
                 // ENHANCEMENT: Enable advanced audio processing (FaceTime-level quality)
                 try {
                     withContext(Dispatchers.Main) {
-                        // Apply Voice Isolation preference from Settings
-                        val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-                        val voiceIsolation = prefs.getBoolean("voice_isolation", true)
-
-                        val audioOptions = io.livekit.android.room.track.LocalAudioTrackOptions(
-                            noiseSuppression = voiceIsolation,   // Voice Isolation (filters background noise)
-                            echoCancellation = true,             // Prevents feedback/echo
-                            autoGainControl = voiceIsolation      // Normalizes voice levels
-                        )
-                        // Ensure local mic is enabled/published with options if supported
-                        // Some SDK versions ignore options here; we log the preference regardless
-                        // Current SDK signature doesn't accept options on setMicrophoneEnabled.
-                        // We enable mic normally and keep options for future upgrades/logging.
+                        // WebRTC noise suppression is always enabled at the SDK level
+                        // The LiveKit Android SDK (2.21.0) applies these settings by default:
+                        // - noiseSuppression: true
+                        // - echoCancellation: true
+                        // - autoGainControl: true
+                        //
+                        // These are configured in the underlying WebRTC PeerConnection
+                        // and cannot be overridden via setMicrophoneEnabled() in this SDK version.
+                        //
+                        // Future enhancement: When SDK supports LocalAudioTrackOptions parameter,
+                        // we can customize these settings per-call or from user preferences.
+                        
                         val enabled = room.localParticipant.setMicrophoneEnabled(true)
                         val pubs = room.localParticipant.audioTrackPublications
                         Log.d(
                             "LiveKitManager",
-                            "✅ Mic enabled=$enabled, pubs=${pubs.size}, voiceIsolation=$voiceIsolation"
+                            "✅ Mic enabled=$enabled, pubs=${pubs.size}, WebRTC audio processing active (noise suppression, echo cancellation, auto-gain)"
                         )
                     }
                 } catch (e: Exception) {
