@@ -162,6 +162,14 @@ dependencies {
     implementation 'com.google.mlkit:segmentation-selfie:16.0.0-beta6'
     implementation 'com.google.mlkit:image-labeling:17.0.9'
     
+    // TensorFlow Lite for AI/ML processing
+    implementation 'org.tensorflow:tensorflow-lite:2.14.0'
+    implementation 'org.tensorflow:tensorflow-lite-gpu:2.14.0'
+    implementation 'org.tensorflow:tensorflow-lite-support:0.4.4'
+    
+    // MediaPipe for hand gesture recognition
+    implementation 'com.google.mediapipe:tasks-vision:0.10.14'
+    
     // OpenCV for advanced image processing
     implementation 'org.opencv:opencv:4.10.0'
     
