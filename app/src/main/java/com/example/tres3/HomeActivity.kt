@@ -63,7 +63,10 @@ data class Contact(
     val name: String = "",
     val email: String = "",
     val avatarUrl: String? = null,
-    val isOnline: Boolean = false
+    val isOnline: Boolean = false,
+    val status: com.example.tres3.presence.UserStatus = com.example.tres3.presence.UserStatus.OFFLINE,
+    val lastSeen: java.util.Date? = null,
+    val isPinned: Boolean = false
 )
 
 @Composable
@@ -239,6 +242,9 @@ class HomeActivity : AppCompatActivity() {
 
         // Register FCM token for push notifications
         registerFCMToken()
+        
+        // Initialize user presence tracking
+        com.example.tres3.presence.UserPresenceManager.initialize(this)
 
         // Request battery optimization exemption if needed
         if (BatteryOptimizationHelper.shouldRequestBatteryOptimization(this)) {
@@ -289,6 +295,8 @@ class HomeActivity : AppCompatActivity() {
         super.onDestroy()
         // Stop listening for calls when activity is destroyed
         CallSignalingManager.stopListeningForCalls()
+        // Cleanup presence manager
+        com.example.tres3.presence.UserPresenceManager.cleanup()
     }
 
     @Composable
@@ -624,17 +632,41 @@ class HomeActivity : AppCompatActivity() {
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(CircleShape)
-                                            .background(AppColors.PrimaryBlue),
-                                        contentAlignment = Alignment.Center
+                                        modifier = Modifier.size(40.dp)
                                     ) {
-                                        Text(
-                                            text = contact.name.firstOrNull()?.toString() ?: "?",
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        // Avatar
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(CircleShape)
+                                                .background(AppColors.PrimaryBlue),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = contact.name.firstOrNull()?.toString() ?: "?",
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                        
+                                        // Presence indicator
+                                        if (contact.isOnline) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(12.dp)
+                                                    .align(Alignment.BottomEnd)
+                                                    .clip(CircleShape)
+                                                    .background(
+                                                        when (contact.status) {
+                                                            com.example.tres3.presence.UserPresenceManager.UserStatus.ONLINE -> Color(0xFF00C853) // Green
+                                                            com.example.tres3.presence.UserPresenceManager.UserStatus.BUSY -> Color(0xFFFF1744) // Red
+                                                            com.example.tres3.presence.UserPresenceManager.UserStatus.AWAY -> Color(0xFFFFC107) // Amber
+                                                            com.example.tres3.presence.UserPresenceManager.UserStatus.OFFLINE -> Color(0xFF757575) // Gray
+                                                        }
+                                                    )
+                                                    .border(2.dp, AppColors.Background, CircleShape)
+                                            )
+                                        }
                                     }
 
                                     Spacer(modifier = Modifier.width(16.dp))
@@ -1446,15 +1478,34 @@ class HomeActivity : AppCompatActivity() {
                 for (document in documents) {
                     val displayName = document.getString("displayName")
                     val email = document.getString("email") ?: ""
+                    val userId = document.getString("userId") ?: document.id
                     
                     val contact = Contact(
-                        id = document.getString("userId") ?: document.id,
+                        id = userId,
                         name = if (!displayName.isNullOrBlank()) displayName else email.ifEmpty { "Unknown" },
                         email = email,
                         avatarUrl = document.getString("photoUrl"),
-                        isOnline = false // Can be updated with presence detection later
+                        isOnline = false // Will be updated by presence fetch below
                     )
                     contacts.add(contact)
+                    
+                    // Fetch presence status asynchronously for each contact
+                    lifecycleScope.launch {
+                        try {
+                            val status = com.example.tres3.presence.UserPresenceManager.getUserStatus(userId)
+                            val isOnline = status == com.example.tres3.presence.UserStatus.ONLINE || 
+                                          status == com.example.tres3.presence.UserStatus.BUSY
+                            
+                            // Update contact in list
+                            val index = contacts.indexOfFirst { it.id == userId }
+                            if (index != -1) {
+                                contacts[index] = contact.copy(isOnline = isOnline, status = status)
+                                Log.d("HomeActivity", "📡 ${contact.name} is ${status.name}")
+                            }
+                        } catch (e: Exception) {
+                            Log.e("HomeActivity", "Failed to fetch presence for ${contact.name}: ${e.message}")
+                        }
+                    }
                     
                     Log.d("HomeActivity", "✅ Added contact: ${contact.name} (${contact.email})")
                 }
