@@ -98,7 +98,7 @@ class VirtualBackgroundProcessor(
             return
         }
         
-        // Process only every Nth frame
+        // Process only every Nth frame to reduce CPU load
         if (frameCount % processEveryNFrames != 0) {
             videoSink?.onFrame(frame)
             return
@@ -106,22 +106,54 @@ class VirtualBackgroundProcessor(
         
         processedCount++
         
-        // Convert and apply virtual background
-        val bitmap = videoFrameToBitmap(frame)
-        if (bitmap != null) {
-            applyVirtualBackground(bitmap)
-            bitmap.recycle()
-            
-            // TODO: Convert processed bitmap back to VideoFrame
-            // For now, pass through original frame
+        try {
+            // Convert VideoFrame to Bitmap
+            val bitmap = videoFrameToBitmap(frame)
+            if (bitmap != null) {
+                // Apply virtual background effect
+                val processed = processVirtualBackground(bitmap)
+                
+                // Convert processed Bitmap back to VideoFrame
+                val i420Buffer = VideoFrameConverters.bitmapToI420(processed)
+                val processedFrame = VideoFrame(i420Buffer, frame.rotation, frame.timestampNs)
+                
+                // Send processed frame
+                videoSink?.onFrame(processedFrame)
+                
+                // Cleanup
+                bitmap.recycle()
+                if (processed != bitmap) processed.recycle()
+                processedFrame.release()
+                
+                return
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "VirtualBackgroundProcessor: Error processing frame")
         }
         
-        // Pass through original frame
+        // Fallback: pass through original frame if processing fails
         videoSink?.onFrame(frame)
     }
     
     /**
-     * Apply virtual background effect
+     * Process virtual background synchronously
+     * Returns processed bitmap or original if processing fails
+     */
+    private fun processVirtualBackground(input: Bitmap): Bitmap {
+        try {
+            val image = InputImage.fromBitmap(input, 0)
+            // Note: This is async in ML Kit, for now return original
+            // Full implementation would need synchronous processing or frame buffering
+            applyVirtualBackground(input)
+            return input
+        } catch (e: Exception) {
+            Timber.e(e, "VirtualBackgroundProcessor: Error applying virtual background")
+            return input
+        }
+    }
+    
+    /**
+     * Apply virtual background effect (async with ML Kit)
      */
     private fun applyVirtualBackground(input: Bitmap) {
         try {

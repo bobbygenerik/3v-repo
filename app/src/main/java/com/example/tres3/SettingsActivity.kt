@@ -45,6 +45,28 @@ fun SettingsScreen() {
     var developerMode by remember { mutableStateOf(FeatureFlags.isDeveloperModeEnabled()) }
     var perfOverlay by remember { mutableStateOf(FeatureFlags.isPerformanceOverlayEnabled()) }
     
+    // Video Processing Features (default OFF for performance)
+    var beautyFilterDefault by remember { mutableStateOf(sharedPrefs.getBoolean("beauty_filter_default", false)) }
+    var backgroundBlurDefault by remember { mutableStateOf(sharedPrefs.getBoolean("background_blur_default", false)) }
+    var virtualBackgroundDefault by remember { mutableStateOf(sharedPrefs.getBoolean("virtual_background_default", false)) }
+    var faceAutoFramingDefault by remember { mutableStateOf(sharedPrefs.getBoolean("face_auto_framing_default", false)) }
+    var lowLightEnhancementDefault by remember { mutableStateOf(sharedPrefs.getBoolean("low_light_enhancement_default", false)) }
+    
+    // Audio Processing Features
+    var noiseSuppressionDefault by remember { mutableStateOf(sharedPrefs.getBoolean("noise_suppression_default", true)) }
+    var spatialAudioDefault by remember { mutableStateOf(sharedPrefs.getBoolean("spatial_audio_default", false)) }
+    var echoCancellationDefault by remember { mutableStateOf(sharedPrefs.getBoolean("echo_cancellation_default", true)) }
+    
+    // AI Features (default OFF)
+    var handGesturesDefault by remember { mutableStateOf(sharedPrefs.getBoolean("hand_gestures_default", false)) }
+    var emotionDetectionDefault by remember { mutableStateOf(sharedPrefs.getBoolean("emotion_detection_default", false)) }
+    var autoCaptionsDefault by remember { mutableStateOf(sharedPrefs.getBoolean("auto_captions_default", false)) }
+    
+    // UI Features
+    var gridLayoutDefault by remember { mutableStateOf(sharedPrefs.getString("grid_layout_default", "Auto") ?: "Auto") }
+    var pipModeDefault by remember { mutableStateOf(sharedPrefs.getBoolean("pip_mode_default", true)) }
+    var reactionAnimationsEnabled by remember { mutableStateOf(sharedPrefs.getBoolean("reaction_animations", true)) }
+    
     // Advanced codec settings
     val advancedCodecsEnabled = remember { FeatureFlags.isAdvancedCodecsEnabled() }
     var selectedCodec by remember { 
@@ -155,6 +177,198 @@ fun SettingsScreen() {
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // ============= VIDEO PROCESSING FEATURES =============
+        Text(
+            text = "Video Processing",
+            color = AppColors.TextLight,
+            fontSize = 18.sp,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        
+        SettingsSwitch(
+            title = "Beauty Filter (Auto-enable)",
+            subtitle = "Smooth skin and enhance appearance on call start",
+            checked = beautyFilterDefault,
+            onCheckedChange = { newValue ->
+                beautyFilterDefault = newValue
+                sharedPrefs.edit().putBoolean("beauty_filter_default", newValue).apply()
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        SettingsSwitch(
+            title = "Background Blur (Auto-enable)",
+            subtitle = "Blur background on call start (uses GPU)",
+            checked = backgroundBlurDefault,
+            onCheckedChange = { newValue ->
+                backgroundBlurDefault = newValue
+                sharedPrefs.edit().putBoolean("background_blur_default", newValue).apply()
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        SettingsSwitch(
+            title = "Virtual Background (Auto-enable)",
+            subtitle = "Replace background with custom image",
+            checked = virtualBackgroundDefault,
+            onCheckedChange = { newValue ->
+                virtualBackgroundDefault = newValue
+                sharedPrefs.edit().putBoolean("virtual_background_default", newValue).apply()
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        SettingsSwitch(
+            title = "Face Auto-Framing (Auto-enable)",
+            subtitle = "Automatically center and track your face",
+            checked = faceAutoFramingDefault,
+            onCheckedChange = { newValue ->
+                faceAutoFramingDefault = newValue
+                sharedPrefs.edit().putBoolean("face_auto_framing_default", newValue).apply()
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        SettingsSwitch(
+            title = "Low-Light Enhancement (Auto-enable)",
+            subtitle = "Brighten video in dark environments",
+            checked = lowLightEnhancementDefault,
+            onCheckedChange = { newValue ->
+                lowLightEnhancementDefault = newValue
+                sharedPrefs.edit().putBoolean("low_light_enhancement_default", newValue).apply()
+            }
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // ============= AUDIO PROCESSING FEATURES =============
+        Text(
+            text = "Audio Processing",
+            color = AppColors.TextLight,
+            fontSize = 18.sp,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        
+        SettingsSwitch(
+            title = "Noise Suppression",
+            subtitle = "Remove background noise (keyboard, dog barking, etc.)",
+            checked = noiseSuppressionDefault,
+            onCheckedChange = { newValue ->
+                noiseSuppressionDefault = newValue
+                sharedPrefs.edit().putBoolean("noise_suppression_default", newValue).apply()
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        SettingsSwitch(
+            title = "Echo Cancellation",
+            subtitle = "Prevent audio feedback and echo",
+            checked = echoCancellationDefault,
+            onCheckedChange = { newValue ->
+                echoCancellationDefault = newValue
+                sharedPrefs.edit().putBoolean("echo_cancellation_default", newValue).apply()
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        SettingsSwitch(
+            title = "Spatial Audio (Auto-enable)",
+            subtitle = "3D audio positioning (experimental)",
+            checked = spatialAudioDefault,
+            onCheckedChange = { newValue ->
+                spatialAudioDefault = newValue
+                sharedPrefs.edit().putBoolean("spatial_audio_default", newValue).apply()
+            }
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // ============= AI FEATURES =============
+        Text(
+            text = "AI Features",
+            color = AppColors.TextLight,
+            fontSize = 18.sp,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        
+        SettingsSwitch(
+            title = "Hand Gestures (Auto-enable)",
+            subtitle = "Detect hand gestures for reactions (👍 ✌️ etc.)",
+            checked = handGesturesDefault,
+            onCheckedChange = { newValue ->
+                handGesturesDefault = newValue
+                sharedPrefs.edit().putBoolean("hand_gestures_default", newValue).apply()
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        SettingsSwitch(
+            title = "Emotion Detection (Auto-enable)",
+            subtitle = "Detect facial expressions (experimental)",
+            checked = emotionDetectionDefault,
+            onCheckedChange = { newValue ->
+                emotionDetectionDefault = newValue
+                sharedPrefs.edit().putBoolean("emotion_detection_default", newValue).apply()
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        SettingsSwitch(
+            title = "Live Captions (Auto-enable)",
+            subtitle = "Real-time speech-to-text (requires OpenAI key)",
+            checked = autoCaptionsDefault,
+            onCheckedChange = { newValue ->
+                autoCaptionsDefault = newValue
+                sharedPrefs.edit().putBoolean("auto_captions_default", newValue).apply()
+            }
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // ============= UI & INTERACTION =============
+        Text(
+            text = "UI & Interaction",
+            color = AppColors.TextLight,
+            fontSize = 18.sp,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        
+        SettingsDropdown(
+            title = "Default Grid Layout",
+            subtitle = "Video layout for group calls",
+            selectedValue = gridLayoutDefault,
+            options = listOf("Auto", "Grid", "Spotlight", "Sidebar", "Floating"),
+            onValueChange = { newValue ->
+                gridLayoutDefault = newValue
+                sharedPrefs.edit().putString("grid_layout_default", newValue).apply()
+            }
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        SettingsSwitch(
+            title = "Enable Picture-in-Picture",
+            subtitle = "Allow PiP mode when minimizing calls",
+            checked = pipModeDefault,
+            onCheckedChange = { newValue ->
+                pipModeDefault = newValue
+                sharedPrefs.edit().putBoolean("pip_mode_default", newValue).apply()
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        SettingsSwitch(
+            title = "Reaction Animations",
+            subtitle = "Show animated reactions (❤️ 👍 😂)",
+            checked = reactionAnimationsEnabled,
+            onCheckedChange = { newValue ->
+                reactionAnimationsEnabled = newValue
+                sharedPrefs.edit().putBoolean("reaction_animations", newValue).apply()
+            }
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Developer section
         Text(text = "Developer", color = AppColors.TextLight, fontSize = 16.sp)

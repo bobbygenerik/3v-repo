@@ -73,7 +73,7 @@ class BeautyFilterProcessor(
             return
         }
         
-        // Process only every Nth frame
+        // Process only every Nth frame to reduce CPU load
         if (frameCount % processEveryNFrames != 0) {
             videoSink?.onFrame(frame)
             return
@@ -81,20 +81,33 @@ class BeautyFilterProcessor(
         
         processedCount++
         
-        // Convert and apply filter
-        val bitmap = videoFrameToBitmap(frame)
-        if (bitmap != null) {
-            val filtered = applyBeautyFilter(bitmap)
-            lastProcessedBitmap?.recycle()
-            lastProcessedBitmap = filtered
-            bitmap.recycle()
-            
-            // TODO: Convert filtered bitmap back to VideoFrame
-            // For now, pass through original frame
-            // In production, you'd need to convert Bitmap -> I420 -> VideoFrame
+        try {
+            // Convert VideoFrame to Bitmap
+            val bitmap = videoFrameToBitmap(frame)
+            if (bitmap != null) {
+                // Apply beauty filter
+                val filtered = applyBeautyFilter(bitmap)
+                
+                // Convert processed Bitmap back to VideoFrame
+                val i420Buffer = VideoFrameConverters.bitmapToI420(filtered)
+                val processedFrame = VideoFrame(i420Buffer, frame.rotation, frame.timestampNs)
+                
+                // Send processed frame
+                videoSink?.onFrame(processedFrame)
+                
+                // Cache and cleanup
+                lastProcessedBitmap?.recycle()
+                lastProcessedBitmap = filtered
+                bitmap.recycle()
+                processedFrame.release()
+                
+                return
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "BeautyFilterProcessor: Error processing frame")
         }
         
-        // Pass through original frame (filtering would need full conversion pipeline)
+        // Fallback: pass through original frame if processing fails
         videoSink?.onFrame(frame)
     }
     

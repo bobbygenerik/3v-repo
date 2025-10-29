@@ -33,8 +33,36 @@ class CompositeVideoProcessor : VideoProcessor {
      * Add a processor to the chain. Processors are applied in the order they are added.
      */
     fun addProcessor(processor: VideoProcessor) {
-        processors.add(processor)
-        Timber.d("CompositeVideoProcessor: Added ${processor::class.simpleName}, total=${processors.size}")
+        if (!processors.contains(processor)) {
+            processors.add(processor)
+            Timber.d("CompositeVideoProcessor: Added ${processor::class.simpleName}, total=${processors.size}")
+        }
+    }
+    
+    /**
+     * Remove a processor from the chain.
+     */
+    fun removeProcessor(processor: VideoProcessor) {
+        processors.remove(processor)
+        Timber.d("CompositeVideoProcessor: Removed ${processor::class.simpleName}, total=${processors.size}")
+    }
+    
+    /**
+     * Check if the processor chain is empty.
+     */
+    fun isEmpty(): Boolean = processors.isEmpty()
+    
+    /**
+     * Get the number of processors in the chain.
+     */
+    fun getProcessorCount(): Int = processors.size
+    
+    /**
+     * Clear all processors.
+     */
+    fun clearProcessors() {
+        processors.clear()
+        Timber.d("CompositeVideoProcessor: Cleared all processors")
     }
     
     override fun onCapturerStarted(success: Boolean) {

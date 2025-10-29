@@ -68,6 +68,12 @@ import com.example.tres3.ml.MLKitManager
 import com.example.tres3.opencv.OpenCVManager
 import com.example.tres3.video.CameraEnhancer
 import com.example.tres3.video.VideoCodecManager
+import com.example.tres3.video.CompositeVideoProcessor
+import com.example.tres3.video.LowLightVideoProcessor
+import com.example.tres3.video.BeautyFilterProcessor
+import com.example.tres3.video.VirtualBackgroundProcessor
+import com.example.tres3.video.BackgroundBlurProcessor
+import com.example.tres3.video.BackgroundBlurVideoProcessor
 import livekit.org.webrtc.EglBase
 import android.util.Log
 import io.livekit.android.compose.types.TrackReference
@@ -140,6 +146,14 @@ class InCallActivity : ComponentActivity() {
     // Enhancement managers
     private lateinit var cameraEnhancer: CameraEnhancer
     private var enhancementsInitialized = false
+    
+    // Video processors
+    private val compositeProcessor = CompositeVideoProcessor()
+    private var beautyProcessor: BeautyFilterProcessor? = null
+    private var blurProcessor: BackgroundBlurVideoProcessor? = null
+    private var virtualBgProcessor: VirtualBackgroundProcessor? = null
+    private var lowLightProcessor: LowLightVideoProcessor? = null
+    private var processorInitialized = false
     
     companion object {
         // Shared EglBase context for video rendering
@@ -449,7 +463,11 @@ class InCallActivity : ComponentActivity() {
                                         }
                                     }
                                 }
-                            }
+                            },
+                            onToggleBeautyFilter = { enabled -> toggleBeautyFilter(enabled) },
+                            onToggleBackgroundBlur = { enabled -> toggleBackgroundBlur(enabled) },
+                            onToggleVirtualBackground = { enabled -> toggleVirtualBackground(enabled) },
+                            onToggleLowLight = { enabled -> toggleLowLight(enabled) }
                         )
                     }
                 }
@@ -607,6 +625,204 @@ class InCallActivity : ComponentActivity() {
             }
         } catch (e: Exception) {
             Log.e("InCallActivity", "❌ Error cleaning up enhancements: ${e.message}", e)
+        }
+    }
+    
+    // Video processor management
+    private fun initializeVideoProcessors() {
+        if (processorInitialized) return
+        
+        try {
+            // Initialize all video processors
+            beautyProcessor = BeautyFilterProcessor(0.6f)
+            blurProcessor = BackgroundBlurVideoProcessor(this)
+            virtualBgProcessor = VirtualBackgroundProcessor(this)
+            lowLightProcessor = LowLightVideoProcessor()
+            
+            processorInitialized = true
+            Log.d("InCallActivity", "✅ Video processors initialized")
+        } catch (e: Exception) {
+            Log.e("InCallActivity", "❌ Failed to initialize processors: ${e.message}", e)
+        }
+    }
+    
+    // Video processor toggle functions
+    
+    private suspend fun toggleBeautyFilter(enabled: Boolean): Boolean {
+        return withContext(Dispatchers.Default) {
+            try {
+                if (!processorInitialized) initializeVideoProcessors()
+                
+                val processor = beautyProcessor
+                if (processor != null) {
+                    if (enabled) {
+                        compositeProcessor.addProcessor(processor)
+                        Log.d("InCallActivity", "✅ Beauty filter enabled")
+                    } else {
+                        compositeProcessor.removeProcessor(processor)
+                        Log.d("InCallActivity", "✅ Beauty filter disabled")
+                    }
+                    
+                    // Restart camera with updated processor
+                    restartCameraWithProcessors()
+                    true
+                } else {
+                    Log.e("InCallActivity", "❌ Beauty filter processor not initialized")
+                    false
+                }
+            } catch (e: Exception) {
+                Log.e("InCallActivity", "❌ Beauty filter error: ${e.message}", e)
+                false
+            }
+        }
+    }
+    
+    private suspend fun toggleBackgroundBlur(enabled: Boolean): Boolean {
+        return withContext(Dispatchers.Default) {
+            try {
+                if (!processorInitialized) initializeVideoProcessors()
+                
+                val processor = blurProcessor
+                if (processor != null) {
+                    if (enabled) {
+                        compositeProcessor.addProcessor(processor)
+                        Log.d("InCallActivity", "✅ Background blur enabled")
+                    } else {
+                        compositeProcessor.removeProcessor(processor)
+                        Log.d("InCallActivity", "✅ Background blur disabled")
+                    }
+                    
+                    // Restart camera with updated processor
+                    restartCameraWithProcessors()
+                    true
+                } else {
+                    Log.e("InCallActivity", "❌ Background blur processor not initialized")
+                    false
+                }
+            } catch (e: Exception) {
+                Log.e("InCallActivity", "❌ Background blur error: ${e.message}", e)
+                false
+            }
+        }
+    }
+    
+    private suspend fun toggleVirtualBackground(enabled: Boolean): Boolean {
+        return withContext(Dispatchers.Default) {
+            try {
+                if (!processorInitialized) initializeVideoProcessors()
+                
+                val processor = virtualBgProcessor
+                if (processor != null) {
+                    if (enabled) {
+                        compositeProcessor.addProcessor(processor)
+                        Log.d("InCallActivity", "✅ Virtual background enabled")
+                    } else {
+                        compositeProcessor.removeProcessor(processor)
+                        Log.d("InCallActivity", "✅ Virtual background disabled")
+                    }
+                    
+                    // Restart camera with updated processor
+                    restartCameraWithProcessors()
+                    true
+                } else {
+                    Log.e("InCallActivity", "❌ Virtual background processor not initialized")
+                    false
+                }
+            } catch (e: Exception) {
+                Log.e("InCallActivity", "❌ Virtual background error: ${e.message}", e)
+                false
+            }
+        }
+    }
+    
+    private suspend fun toggleLowLight(enabled: Boolean): Boolean {
+        return withContext(Dispatchers.Default) {
+            try {
+                if (!processorInitialized) initializeVideoProcessors()
+                
+                val processor = lowLightProcessor
+                if (processor != null) {
+                    if (enabled) {
+                        compositeProcessor.addProcessor(processor)
+                        Log.d("InCallActivity", "✅ Low-light enhancement enabled")
+                    } else {
+                        compositeProcessor.removeProcessor(processor)
+                        Log.d("InCallActivity", "✅ Low-light enhancement disabled")
+                    }
+                    
+                    // Restart camera with updated processor
+                    restartCameraWithProcessors()
+                    true
+                } else {
+                    Log.e("InCallActivity", "❌ Low-light processor not initialized")
+                    false
+                }
+            } catch (e: Exception) {
+                Log.e("InCallActivity", "❌ Low-light error: ${e.message}", e)
+                false
+            }
+        }
+    }
+    
+    // Helper function to restart camera with current processors
+    private suspend fun restartCameraWithProcessors() {
+        try {
+            withContext(Dispatchers.Main) {
+                // Disable camera
+                room.localParticipant.setCameraEnabled(false)
+                kotlinx.coroutines.delay(200) // Wait for camera to fully stop
+                
+                // Get existing video track and remove it
+                val existingTrack = room.localParticipant.getTrackPublication(Track.Source.CAMERA)?.track as? LocalVideoTrack
+                if (existingTrack != null) {
+                    room.localParticipant.unpublishTrack(existingTrack)
+                    kotlinx.coroutines.delay(100)
+                }
+                
+                // Create new video track with current processor configuration
+                if (!compositeProcessor.isEmpty()) {
+                    // Create capturer using Camera2Enumerator
+                    val enumerator = livekit.org.webrtc.Camera2Enumerator(this@InCallActivity)
+                    val cameraName = enumerator.deviceNames.firstOrNull { enumerator.isFrontFacing(it) }
+                        ?: enumerator.deviceNames.firstOrNull()
+                    
+                    if (cameraName != null) {
+                        val capturer = enumerator.createCapturer(cameraName, null)
+                        
+                        // Create video track options
+                        val options = io.livekit.android.room.track.LocalVideoTrackOptions()
+                        
+                        // Create track WITH processor
+                        val newTrack = room.localParticipant.createVideoTrack(
+                            "camera",
+                            capturer,
+                            options,
+                            compositeProcessor
+                        )
+                        
+                        // Publish it
+                        room.localParticipant.publishVideoTrack(newTrack)
+                        Log.d("InCallActivity", "✅ Camera recreated with ${compositeProcessor.getProcessorCount()} processors")
+                    } else {
+                        Log.e("InCallActivity", "❌ No camera found")
+                        room.localParticipant.setCameraEnabled(true)
+                    }
+                } else {
+                    // No processors, just enable normal camera
+                    room.localParticipant.setCameraEnabled(true)
+                    Log.d("InCallActivity", "✅ Camera enabled without processors")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("InCallActivity", "❌ Failed to restart camera: ${e.message}", e)
+            // Fallback: just enable camera normally
+            withContext(Dispatchers.Main) {
+                try {
+                    room.localParticipant.setCameraEnabled(true)
+                } catch (fallbackError: Exception) {
+                    Log.e("InCallActivity", "❌ Fallback enable also failed: ${fallbackError.message}")
+                }
+            }
         }
     }
     
@@ -1319,7 +1535,11 @@ fun InCallScreen(
     recipientName: String,
     recipientEmail: String,
     guestLink: String? = null,
-    onDisconnect: () -> Unit
+    onDisconnect: () -> Unit,
+    onToggleBeautyFilter: suspend (Boolean) -> Boolean = { false },
+    onToggleBackgroundBlur: suspend (Boolean) -> Boolean = { false },
+    onToggleVirtualBackground: suspend (Boolean) -> Boolean = { false },
+    onToggleLowLight: suspend (Boolean) -> Boolean = { false }
 ) {
     // Retrieve Room object using RoomLocal.current
     val room = RoomLocal.current 
@@ -1332,6 +1552,7 @@ fun InCallScreen(
     var isMicEnabled by remember { mutableStateOf(room.localParticipant.isMicrophoneEnabled) }
     var isCameraEnabled by remember { mutableStateOf(room.localParticipant.isCameraEnabled) }
     var showMenu by remember { mutableStateOf(false) }
+    var showChatPanel by remember { mutableStateOf(false) }
     var showControls by remember { mutableStateOf(true) }
     var callDuration by remember { mutableStateOf(0) }
     var showParticipantsList by remember { mutableStateOf(false) }
@@ -1343,6 +1564,26 @@ fun InCallScreen(
     var isFrontCamera by remember { mutableStateOf(true) }
     // Audio-only mode (disables video transmission)
     var isAudioOnlyMode by remember { mutableStateOf(false) }
+    
+    // Feature toggles for all 34 features
+    var beautyFilterEnabled by remember { mutableStateOf(false) }
+    var backgroundBlurEnabled by remember { mutableStateOf(false) }
+    var virtualBackgroundEnabled by remember { mutableStateOf(false) }
+    var faceAutoFramingEnabled by remember { mutableStateOf(false) }
+    var handGesturesEnabled by remember { mutableStateOf(false) }
+    var emotionDetectionEnabled by remember { mutableStateOf(false) }
+    var noiseGateEnabled by remember { mutableStateOf(false) }
+    var spatialAudioEnabled by remember { mutableStateOf(false) }
+    var enhanceLowLight by remember { mutableStateOf(false) }
+    
+    // Reactions system
+    var showReactionPicker by remember { mutableStateOf(false) }
+    var activeReactions by remember { mutableStateOf<List<Pair<String, Long>>>(emptyList()) }
+    
+    // Chat system
+    var chatMessages by remember { mutableStateOf<List<ChatMessage>>(emptyList()) }
+    var chatInput by remember { mutableStateOf("") }
+    
     val scope = rememberCoroutineScope()
 
     // Performance overlay toggle (developer setting)
@@ -1358,9 +1599,6 @@ fun InCallScreen(
     val captionManager = remember { com.example.tres3.utils.CaptionManager(context, scope) }
     var showCaptions by remember { mutableStateOf(false) }
     var currentCaption by remember { mutableStateOf("") }
-    
-    // Low-light enhancement toggle
-    var enhanceLowLight by remember { mutableStateOf(false) }
     
     // Start/stop captions based on toggle
     LaunchedEffect(showCaptions) {
@@ -1643,19 +1881,24 @@ fun InCallScreen(
                 } else {
                     remoteTracks.first().participant
                 }
-                focusedParticipant?.name?.takeIf { it.isNotBlank() } 
-                    ?: focusedParticipant?.identity?.value 
+                // PRIORITY: LiveKit participant.name > identity > Firebase fallback > recipientName
+                focusedParticipant?.name?.takeIf { it.isNotBlank() && it != "user" } 
+                    ?: focusedParticipant?.identity?.value?.takeIf { it.isNotBlank() }
                     ?: actualRemoteName 
                     ?: recipientName
+                    ?: "Participant"
             } else {
                 // 1-on-1 call: show remote name when focused on remote, "You" when focused on local
                 if (isVideoSwapped) {
                     "You"
                 } else {
-                    remoteTracks.firstOrNull()?.participant?.name?.takeIf { it.isNotBlank() }
-                        ?: remoteTracks.firstOrNull()?.participant?.identity?.value
+                    val remoteParticipant = remoteTracks.firstOrNull()?.participant
+                    // PRIORITY: LiveKit participant.name > identity > Firebase fallback > recipientName
+                    remoteParticipant?.name?.takeIf { it.isNotBlank() && it != "user" }
+                        ?: remoteParticipant?.identity?.value?.takeIf { it.isNotBlank() }
                         ?: actualRemoteName 
                         ?: recipientName
+                        ?: "Participant"
                 }
             }
         }
@@ -2291,35 +2534,19 @@ fun InCallScreen(
                 }
             }
         } else {
-            // PORTRAIT MODE: Bottom Center (Original)
+            // PORTRAIT MODE: Bottom Center - BALANCED LAYOUT
+            // 2 buttons | END CALL | 2 buttons
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 80.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-            // Menu button (animates first)
-            val menuAnim = rememberAnimatedButton(showControls, 0)
+            // LEFT SIDE: Mic + Camera
             
-            IconButton(
-                onClick = { showMenu = !showMenu },
-                modifier = Modifier
-                    .size(56.dp)
-                    .offset(y = menuAnim.offsetY)
-                    .graphicsLayer(alpha = menuAnim.alpha)
-                    .background(AppColors.Gray.copy(alpha = 0.3f), CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "Menu",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            
-            // Mic toggle (animates second)
-            val micAnim = rememberAnimatedButton(showControls, 1)
+            // Mic toggle (animates first)
+            val micAnim = rememberAnimatedButton(showControls, 0)
             var lastMicTogglePortrait by remember { mutableLongStateOf(0L) }
 
             IconButton(
@@ -2351,50 +2578,8 @@ fun InCallScreen(
                 )
             }
             
-            // End call (animates third - center) - Modern flat design
-            val endCallAnim = rememberAnimatedButton(showControls, 2)
-            var lastEndCallClickPortrait by remember { mutableLongStateOf(0L) }
-            
-            IconButton(
-                onClick = {
-                    val now = System.currentTimeMillis()
-                    if (now - lastEndCallClickPortrait < 1000) return@IconButton // Prevent double-tap
-                    lastEndCallClickPortrait = now
-                    
-                    // Save history and cleanup in background
-                    scope.launch(Dispatchers.IO) {
-                        try {
-                            saveCallHistory()
-                            withContext(Dispatchers.Default) {
-                                try { LiveKitManager.unpublishProcessedCameraTrackAndRestoreDefault() } catch (_: Exception) {}
-                                try { room.localParticipant.setCameraEnabled(false) } catch (_: Exception) {}
-                                try { room.localParticipant.setMicrophoneEnabled(false) } catch (_: Exception) {}
-                            }
-                        } catch (e: Exception) {
-                            Log.e("InCallActivity", "Error during cleanup: ${e.message}")
-                        }
-                    }
-                    onDisconnect()
-                },
-                modifier = Modifier
-                    .size(70.dp)
-                    .offset(y = endCallAnim.offsetY)
-                    .graphicsLayer(alpha = endCallAnim.alpha)
-                    .background(
-                        Color(0xFFE53935),
-                        shape = CircleShape
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CallEnd,
-                    contentDescription = "End Call",
-                    tint = Color.White,
-                    modifier = Modifier.size(30.dp)
-                )
-            }
-            
-            // Switch camera (animates fourth)
-            val switchCamAnim = rememberAnimatedButton(showControls, 3)
+            // Switch camera (animates second)
+            val switchCamAnim = rememberAnimatedButton(showControls, 1)
             var lastCameraSwitchPortrait by remember { mutableLongStateOf(0L) }
 
             IconButton(
@@ -2448,61 +2633,89 @@ fun InCallScreen(
                 )
             }
             
-            // Add person (animates fifth)
-            val addPersonAnim = rememberAnimatedButton(showControls, 4)
+            // CENTER: End call (larger, prominent)
+            val endCallAnim = rememberAnimatedButton(showControls, 2)
+            var lastEndCallClickPortrait by remember { mutableLongStateOf(0L) }
+            
+            IconButton(
+                onClick = {
+                    val now = System.currentTimeMillis()
+                    if (now - lastEndCallClickPortrait < 1000) return@IconButton // Prevent double-tap
+                    lastEndCallClickPortrait = now
+                    
+                    // Save history and cleanup in background
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            saveCallHistory()
+                            withContext(Dispatchers.Default) {
+                                try { LiveKitManager.unpublishProcessedCameraTrackAndRestoreDefault() } catch (_: Exception) {}
+                                try { room.localParticipant.setCameraEnabled(false) } catch (_: Exception) {}
+                                try { room.localParticipant.setMicrophoneEnabled(false) } catch (_: Exception) {}
+                            }
+                        } catch (e: Exception) {
+                            Log.e("InCallActivity", "Error during cleanup: ${e.message}")
+                        }
+                    }
+                    onDisconnect()
+                },
+                modifier = Modifier
+                    .size(70.dp)
+                    .offset(y = endCallAnim.offsetY)
+                    .graphicsLayer(alpha = endCallAnim.alpha)
+                    .background(
+                        Color(0xFFE53935),
+                        shape = CircleShape
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CallEnd,
+                    contentDescription = "End Call",
+                    tint = Color.White,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+            
+            // RIGHT SIDE: Chat + More
+            
+            // Chat button (animates third)
+            val chatAnim = rememberAnimatedButton(showControls, 3)
 
             IconButton(
                 onClick = {
-                    showAddPersonDialog = true
+                    showChatPanel = !showChatPanel
+                    Log.d("InCallActivity", "💬 Chat toggled: $showChatPanel")
                 },
                 modifier = Modifier
                     .size(56.dp)
-                    .offset(y = addPersonAnim.offsetY)
-                    .graphicsLayer(alpha = addPersonAnim.alpha)
-                    .background(AppColors.Gray.copy(alpha = 0.3f), CircleShape)
+                    .offset(y = chatAnim.offsetY)
+                    .graphicsLayer(alpha = chatAnim.alpha)
+                    .background(
+                        if (showChatPanel) AppColors.PrimaryBlue else AppColors.Gray.copy(alpha = 0.3f),
+                        CircleShape
+                    )
             ) {
                 Icon(
-                    imageVector = Icons.Default.PersonAdd,
-                    contentDescription = "Add Person",
+                    imageVector = Icons.Default.Chat,
+                    contentDescription = "Chat",
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
             }
             
-            // Audio-only Mode toggle (animates sixth)
-            val audioOnlyAnim = rememberAnimatedButton(showControls, 5)
-            var lastAudioOnlyTogglePortrait by remember { mutableLongStateOf(0L) }
+            // Menu button (animates fourth)
+            val menuAnim = rememberAnimatedButton(showControls, 4)
             
             IconButton(
-                onClick = {
-                    val now = System.currentTimeMillis()
-                    if (now - lastAudioOnlyTogglePortrait < 500) return@IconButton // Debounce 500ms
-                    lastAudioOnlyTogglePortrait = now
-                    
-                    val newState = !isAudioOnlyMode
-                    isAudioOnlyMode = newState
-                    scope.launch(Dispatchers.Default) {
-                        try {
-                            // Disable camera when entering audio-only, enable when exiting
-                            room.localParticipant.setCameraEnabled(!newState)
-                            withContext(Dispatchers.Main) { isCameraEnabled = !newState }
-                        } catch (e: Exception) {
-                            Log.e("InCallActivity", "Failed to toggle audio-only mode", e)
-                        }
-                    }
-                },
+                onClick = { showMenu = !showMenu },
                 modifier = Modifier
                     .size(56.dp)
-                    .offset(y = audioOnlyAnim.offsetY)
-                    .graphicsLayer(alpha = audioOnlyAnim.alpha)
-                    .background(
-                        if (isAudioOnlyMode) AppColors.PrimaryBlue else AppColors.Gray.copy(alpha = 0.3f),
-                        CircleShape
-                    )
+                    .offset(y = menuAnim.offsetY)
+                    .graphicsLayer(alpha = menuAnim.alpha)
+                    .background(AppColors.Gray.copy(alpha = 0.3f), CircleShape)
             ) {
                 Icon(
-                    imageVector = if (isAudioOnlyMode) Icons.Default.Videocam else Icons.Default.VideocamOff,
-                    contentDescription = "Toggle Audio-only Mode",
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "Menu",
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
@@ -2655,6 +2868,7 @@ fun InCallScreen(
                     .padding(8.dp)
             ) {
                 Column {
+                    // Participants List
                     TextButton(
                         onClick = {
                             showMenu = false
@@ -2672,17 +2886,257 @@ fun InCallScreen(
                         Text("Participants", color = Color.White)
                     }
                     
-                    // Mute Others (Moderator control)
+                    // Add Person
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            showAddPersonDialog = true
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.PersonAdd,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Person", color = Color.White)
+                    }
+                    
+                    // Screen Sharing
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            isScreenSharing = !isScreenSharing
+                            scope.launch {
+                                try {
+                                    if (isScreenSharing) {
+                                        Log.d("InCallActivity", "🖥️ Requesting screen capture permission")
+                                        val projectionManager = context.getSystemService(MediaProjectionManager::class.java)
+                                        (context as? InCallActivity)?.screenCaptureRequest?.launch(projectionManager.createScreenCaptureIntent())
+                                    } else {
+                                        Log.d("InCallActivity", "🖥️ Stopping screen share")
+                                        room.localParticipant.setScreenShareEnabled(false)
+                                        Log.d("InCallActivity", "✅ Screen sharing stopped")
+                                        Toast.makeText(context, "Screen sharing stopped", Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("InCallActivity", "❌ Error toggling screen share: ${e.message}", e)
+                                    Toast.makeText(context, "Screen sharing failed: ${e.message}", Toast.LENGTH_LONG).show()
+                                    isScreenSharing = !isScreenSharing
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.ScreenShare,
+                            contentDescription = null,
+                            tint = if (isScreenSharing) Color.Green else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isScreenSharing) "Stop Sharing" else "Share Screen",
+                            color = Color.White
+                        )
+                    }
+                    
+                    // Beauty Filter Toggle
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            scope.launch {
+                                beautyFilterEnabled = !beautyFilterEnabled
+                                val success = onToggleBeautyFilter(beautyFilterEnabled)
+                                if (!success) {
+                                    beautyFilterEnabled = !beautyFilterEnabled
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "Beauty filter failed", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = if (beautyFilterEnabled) Color.Green else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (beautyFilterEnabled) "Beauty: ON" else "Beauty Filter",
+                            color = Color.White
+                        )
+                    }
+                    
+                    // Background Blur Toggle
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            scope.launch {
+                                backgroundBlurEnabled = !backgroundBlurEnabled
+                                val success = onToggleBackgroundBlur(backgroundBlurEnabled)
+                                if (!success) {
+                                    backgroundBlurEnabled = !backgroundBlurEnabled
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "Background blur failed", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = if (backgroundBlurEnabled) Color.Green else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (backgroundBlurEnabled) "Blur: ON" else "Background Blur",
+                            color = Color.White
+                        )
+                    }
+                    
+                    // Virtual Background Toggle
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            scope.launch {
+                                virtualBackgroundEnabled = !virtualBackgroundEnabled
+                                val success = onToggleVirtualBackground(virtualBackgroundEnabled)
+                                if (!success) {
+                                    virtualBackgroundEnabled = !virtualBackgroundEnabled
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "Virtual background failed", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Wallpaper,
+                            contentDescription = null,
+                            tint = if (virtualBackgroundEnabled) Color.Green else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (virtualBackgroundEnabled) "Virtual BG: ON" else "Virtual Background",
+                            color = Color.White
+                        )
+                    }
+                    
+                    // Low-Light Enhancement
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            scope.launch {
+                                enhanceLowLight = !enhanceLowLight
+                                val success = onToggleLowLight(enhanceLowLight)
+                                if (!success) {
+                                    enhanceLowLight = !enhanceLowLight
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "Low-light enhancement failed", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LightMode,
+                            contentDescription = null,
+                            tint = if (enhanceLowLight) Color.Green else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (enhanceLowLight) "Low-Light: ON" else "Low-Light Enhance",
+                            color = Color.White
+                        )
+                    }
+                    
+                    // Live Captions
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            showCaptions = !showCaptions
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Subtitles,
+                            contentDescription = null,
+                            tint = if (showCaptions) Color.Green else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (showCaptions) "Captions: ON" else "Live Captions",
+                            color = Color.White
+                        )
+                    }
+                    
+                    // Audio-only Mode
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            isAudioOnlyMode = !isAudioOnlyMode
+                            scope.launch(Dispatchers.Default) {
+                                try {
+                                    room.localParticipant.setCameraEnabled(!isAudioOnlyMode)
+                                    withContext(Dispatchers.Main) { isCameraEnabled = !isAudioOnlyMode }
+                                } catch (e: Exception) {
+                                    Log.e("InCallActivity", "Failed to toggle audio-only mode", e)
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (isAudioOnlyMode) Icons.Default.Videocam else Icons.Default.VideocamOff,
+                            contentDescription = null,
+                            tint = if (isAudioOnlyMode) Color.Green else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isAudioOnlyMode) "Audio-Only: ON" else "Audio-Only Mode",
+                            color = Color.White
+                        )
+                    }
+                    
+                    // Call Health Overlay
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            val newVal = !showPerfOverlay
+                            showPerfOverlay = newVal
+                            FeatureFlags.setPerformanceOverlayEnabled(newVal)
+                            context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
+                                .edit().putBoolean("show_performance_overlay", newVal).apply()
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            tint = if (showPerfOverlay) Color.Green else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (showPerfOverlay) "Call Health: ON" else "Call Health",
+                            color = Color.White
+                        )
+                    }
+                    
+                    // Mute Others (Moderator)
                     TextButton(
                         onClick = {
                             showMenu = false
                             scope.launch(Dispatchers.IO) {
                                 try {
-                                    // Send mute_all data message to all participants
                                     val payload = """{"type":"mute_all","from":"${room.localParticipant.identity?.value}"}"""
-                                    room.localParticipant.publishData(
-                                        payload.toByteArray(Charsets.UTF_8)
-                                    )
+                                    room.localParticipant.publishData(payload.toByteArray(Charsets.UTF_8))
                                     Log.d("InCallActivity", "📣 Sent mute_all command to all participants")
                                     withContext(Dispatchers.Main) {
                                         Toast.makeText(context, "Muted all participants", Toast.LENGTH_SHORT).show()
@@ -2706,99 +3160,21 @@ fun InCallScreen(
                         Text("Mute Others", color = Color.White)
                     }
                     
+                    // Send Reaction
                     TextButton(
                         onClick = {
                             showMenu = false
-                            isScreenSharing = !isScreenSharing
-                            scope.launch {
-                                try {
-                                    if (isScreenSharing) {
-                                        // Request screen capture permission
-                                        Log.d("InCallActivity", "🖥️ Requesting screen capture permission")
-                                        // Use the Compose-provided context to access system services
-                                        val projectionManager = context.getSystemService(MediaProjectionManager::class.java)
-                                        // Launch the permission request via the activity's result handler
-                                        (context as? InCallActivity)?.screenCaptureRequest?.launch(projectionManager.createScreenCaptureIntent())
-                                    } else {
-                                        // Stop screen sharing
-                                        Log.d("InCallActivity", "🖥️ Stopping screen share")
-                                        room.localParticipant.setScreenShareEnabled(false)
-                                        Log.d("InCallActivity", "✅ Screen sharing stopped")
-                                        Toast.makeText(
-                                            context,
-                                            "Screen sharing stopped",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("InCallActivity", "❌ Error toggling screen share: ${e.message}", e)
-                                    Toast.makeText(
-                                        context,
-                                        "Screen sharing failed: ${e.message}",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                    isScreenSharing = !isScreenSharing // Revert on error
-                                }
-                            }
+                            showReactionPicker = true
                         }
                     ) {
                         Icon(
-                            Icons.Default.ScreenShare,
+                            imageVector = Icons.Default.EmojiEmotions,
                             contentDescription = null,
-                            tint = if (isScreenSharing) Color.Green else Color.White,
+                            tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isScreenSharing) "Stop Sharing" else "Share Screen",
-                            color = Color.White
-                        )
-                    }
-
-                    // Toggle Performance Overlay (developer)
-                    TextButton(
-                        onClick = {
-                            showMenu = false
-                            val newVal = !showPerfOverlay
-                            showPerfOverlay = newVal
-                            // Persist via FeatureFlags
-                            FeatureFlags.setPerformanceOverlayEnabled(newVal)
-                            // Mirror to settings prefs for SettingsActivity consistency
-                            context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
-                                .edit().putBoolean("show_performance_overlay", newVal).apply()
-                        }
-                    ) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = null,
-                            tint = if (showPerfOverlay) Color.Green else Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (showPerfOverlay) "Hide Call Health" else "Show Call Health",
-                            color = Color.White
-                        )
-                    }
-                    
-                    // Toggle Live Captions
-                    TextButton(
-                        onClick = {
-                            showMenu = false
-                            showCaptions = !showCaptions
-                        }
-                    ) {
-                        Icon(
-                            Icons.Default.Subtitles,
-                            contentDescription = null,
-                            tint = if (showCaptions) Color.Green else Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (showCaptions) "Hide Captions" else "Show Captions",
-                            color = Color.White
-                        )
+                        Text("Send Reaction", color = Color.White)
                     }
                 }
             }
@@ -3022,12 +3398,12 @@ fun InCallScreen(
                         isLocalVideoEnlarged = !isLocalVideoEnlarged
                         showControls = true
                     },
-                    onLongPress = {
-                        // Long press = swap main and PiP feeds
+                    onDoubleTap = {
+                        // Double tap = swap main and PiP feeds (changed from long press)
                         if (remoteTracks.isNotEmpty()) {
                             isVideoSwapped = !isVideoSwapped
                             showControls = true
-                            Log.d("InCallActivity", "📺 Video feeds swapped: $isVideoSwapped")
+                            Log.d("InCallActivity", "📺 Video feeds swapped via double-tap: $isVideoSwapped")
                         }
                     }
                 )
@@ -3431,6 +3807,83 @@ fun InCallScreen(
     
         // Connection Quality Indicator removed - now shown as dot next to participant name
         
+        // ===== REACTION PICKER =====
+        if (showReactionPicker) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f))
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { showReactionPicker = false })
+                    },
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(bottom = 160.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color.Black.copy(alpha = 0.95f))
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { /* Prevent closing */ })
+                        }
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        listOf("❤️", "👍", "😂", "🎉", "👏", "🔥").forEach { emoji ->
+                            Text(
+                                text = emoji,
+                                fontSize = 36.sp,
+                                modifier = Modifier
+                                    .clickable {
+                                        showReactionPicker = false
+                                        scope.launch(Dispatchers.IO) {
+                                            try {
+                                                val payload = """{"type":"reaction","emoji":"$emoji","from":"${room.localParticipant.identity?.value}"}"""
+                                                room.localParticipant.publishData(payload.toByteArray(Charsets.UTF_8))
+                                                Log.d("InCallActivity", "🎉 Sent reaction: $emoji")
+                                                withContext(Dispatchers.Main) {
+                                                    activeReactions = activeReactions + (emoji to System.currentTimeMillis())
+                                                }
+                                            } catch (e: Exception) {
+                                                Log.e("InCallActivity", "❌ Failed to send reaction: ${e.message}", e)
+                                            }
+                                        }
+                                    }
+                                    .padding(8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        // ===== ACTIVE REACTIONS OVERLAY =====
+        activeReactions.forEach { (emoji, timestamp) ->
+            val elapsed = System.currentTimeMillis() - timestamp
+            if (elapsed < 3000) { // Show for 3 seconds
+                val progress = elapsed / 3000f
+                val offsetY = (-200 * progress).dp
+                val alpha = 1f - progress
+                
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .offset(y = offsetY)
+                        .graphicsLayer(alpha = alpha)
+                ) {
+                    Text(
+                        text = emoji,
+                        fontSize = 56.sp
+                    )
+                }
+            } else {
+                // Remove expired reactions
+                LaunchedEffect(Unit) {
+                    activeReactions = activeReactions.filter { it.second != timestamp }
+                }
+            }
+        }
+        
         // ===== RECONNECTION OVERLAY =====
         ReconnectionOverlay(
             state = reconnectionState,
@@ -3442,6 +3895,35 @@ fun InCallScreen(
             CaptionsOverlay(
                 caption = currentCaption,
                 modifier = Modifier.fillMaxSize()
+            )
+        }
+        
+        // ===== CHAT PANEL =====
+        if (showChatPanel) {
+            ChatPanel(
+                messages = chatMessages,
+                inputText = chatInput,
+                onInputChange = { chatInput = it },
+                onSend = {
+                    if (chatInput.isNotBlank()) {
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val senderName = room.localParticipant.name ?: room.localParticipant.identity?.value ?: "You"
+                                val payload = """{"type":"chat","message":"$chatInput","from":"$senderName"}"""
+                                room.localParticipant.publishData(payload.toByteArray(Charsets.UTF_8))
+                                Log.d("InCallActivity", "💬 Sent chat message: $chatInput")
+                                withContext(Dispatchers.Main) {
+                                    chatMessages = chatMessages + ChatMessage(senderName, chatInput)
+                                    chatInput = ""
+                                }
+                            } catch (e: Exception) {
+                                Log.e("InCallActivity", "❌ Failed to send chat: ${e.message}", e)
+                            }
+                        }
+                    }
+                },
+                onClose = { showChatPanel = false },
+                modifier = Modifier.align(Alignment.CenterEnd)
             )
         }
     
@@ -3641,5 +4123,133 @@ fun CaptionsOverlay(
         }
     }
 }
+
+/**
+ * Chat message data class
+ */
+data class ChatMessage(
+    val senderName: String,
+    val message: String,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+/**
+ * Chat Panel Composable
+ */
+@Composable
+fun ChatPanel(
+    messages: List<ChatMessage>,
+    inputText: String,
+    onInputChange: (String) -> Unit,
+    onSend: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .width(320.dp)
+            .background(AppColors.BackgroundDark)
+            .padding(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Chat",
+                    color = AppColors.TextLight,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                IconButton(onClick = onClose) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = AppColors.TextLight
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Messages list
+            androidx.compose.foundation.lazy.LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                reverseLayout = true // Latest messages at bottom
+            ) {
+                items(messages.size) { index ->
+                    val msg = messages.reversed()[index]
+                    ChatMessageItem(msg)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+            
+            // Input area
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                androidx.compose.material3.TextField(
+                    value = inputText,
+                    onValueChange = onInputChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Type a message...") },
+                    colors = androidx.compose.material3.TextFieldDefaults.colors(
+                        focusedContainerColor = AppColors.Gray.copy(alpha = 0.2f),
+                        unfocusedContainerColor = AppColors.Gray.copy(alpha = 0.2f),
+                        focusedTextColor = AppColors.TextLight,
+                        unfocusedTextColor = AppColors.TextLight
+                    )
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = onSend,
+                    enabled = inputText.isNotBlank()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = "Send",
+                        tint = if (inputText.isNotBlank()) AppColors.PrimaryBlue else AppColors.Gray
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ChatMessageItem(message: ChatMessage) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(AppColors.Gray.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+            .padding(12.dp)
+    ) {
+        Text(
+            text = message.senderName,
+            color = AppColors.PrimaryBlue,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = message.message,
+            color = AppColors.TextLight,
+            fontSize = 14.sp
+        )
+    }
+}
+
+
 
 

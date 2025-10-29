@@ -32,17 +32,56 @@ class LowLightVideoProcessor : VideoProcessor {
     override fun onFrameCaptured(frame: VideoFrame) {
         frameCount++
         
-        // For now, pass through the frame without processing
-        // Full Bitmap conversion and OpenCV processing would be too CPU intensive
-        // Future enhancement: Process every Nth frame or use GPU acceleration
-        sink?.onFrame(frame)
+        // Process every 5th frame to reduce CPU load (6fps at 30fps input)
+        if (frameCount % 5 != 0) {
+            sink?.onFrame(frame)
+            return
+        }
         
-        // TODO: Implement efficient frame processing
-        // Options:
-        // 1. Process every 10th frame to reduce CPU load
-        // 2. Use WebRTC's native image processing if available
-        // 3. Implement GPU-accelerated processing with RenderScript/Vulkan
-        // 4. Apply processing only when brightness drops below threshold
+        processedCount++
+        
+        try {
+            // Convert VideoFrame to Bitmap via I420
+            val i420 = frame.buffer.toI420()
+            if (i420 != null) {
+                val width = i420.width
+                val height = i420.height
+                
+                // Convert I420 to NV21 to Bitmap
+                val nv21 = VideoFrameConverters.i420ToNV21(i420)
+                val bitmap = VideoFrameConverters.nv21ToBitmap(nv21, width, height)
+                
+                // Apply low-light enhancement using OpenCV
+                val result = OpenCVManager.enhanceLowLight(bitmap)
+                val enhanced = result.processedBitmap
+                
+                if (enhanced != null && enhanced != bitmap && result.success) {
+                    // Convert enhanced Bitmap back to VideoFrame
+                    val i420Buffer = VideoFrameConverters.bitmapToI420(enhanced)
+                    val processedFrame = VideoFrame(i420Buffer, frame.rotation, frame.timestampNs)
+                    
+                    // Send processed frame
+                    sink?.onFrame(processedFrame)
+                    
+                    // Cleanup
+                    if (enhanced != bitmap) enhanced.recycle()
+                    bitmap.recycle()
+                    i420.release()
+                    processedFrame.release()
+                    
+                    return
+                } else {
+                    // Enhancement failed or returned same bitmap
+                    bitmap.recycle()
+                    i420.release()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing frame: ${e.message}", e)
+        }
+        
+        // Fallback: pass through original frame if processing fails
+        sink?.onFrame(frame)
     }
     
     override fun setSink(sink: VideoSink?) {
