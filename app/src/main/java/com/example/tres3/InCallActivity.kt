@@ -485,10 +485,11 @@ class InCallActivity : ComponentActivity() {
             // Initialize camera enhancer
             cameraEnhancer = CameraEnhancer(this)
             
-            // Apply camera enhancements if enabled (independent of Performance Overlay)
-            if (FeatureFlags.isCameraEnhancementsEnabled()) {
-                applyCameraEnhancements()
-            }
+            // HOTFIX: Skip camera enhancements that access camera directly
+            // LiveKit already has exclusive camera access, Camera2 API will conflict
+            // Camera enhancements should be applied via VideoProcessors instead
+            Log.d("InCallActivity", "⚠️ Camera enhancements disabled - using LiveKit's camera control")
+            
             enhancementsInitialized = true
             Log.d("InCallActivity", "✅ Video enhancements initialized successfully")
             
