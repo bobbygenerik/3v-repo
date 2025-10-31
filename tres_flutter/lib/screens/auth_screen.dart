@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../config/app_theme.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -11,86 +12,39 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  final _phoneController = TextEditingController();
-  final _codeController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
-  bool _isPhoneAuth = true;
-  bool _isSignUp = false;
   bool _isLoading = false;
-  
+  bool _obscurePassword = true;
+
   @override
   void dispose() {
-    _phoneController.dispose();
-    _codeController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
-  
-  Future<void> _handlePhoneAuth() async {
-    final authService = context.read<AuthService>();
-    
-    if (authService.isVerificationPending) {
-      // Verify code
-      final code = _codeController.text.trim();
-      if (code.isEmpty) {
-        _showError('Please enter the verification code');
-        return;
-      }
-      
-      setState(() => _isLoading = true);
-      final success = await authService.verifyPhoneCode(code);
-      setState(() => _isLoading = false);
-      
-      if (!success && mounted) {
-        _showError(authService.errorMessage ?? 'Verification failed');
-      }
-    } else {
-      // Send code
-      final phone = _phoneController.text.trim();
-      if (phone.isEmpty) {
-        _showError('Please enter your phone number');
-        return;
-      }
-      
-      // Add + prefix if missing
-      final formattedPhone = phone.startsWith('+') ? phone : '+$phone';
-      
-      setState(() => _isLoading = true);
-      final success = await authService.sendPhoneVerificationCode(formattedPhone);
-      setState(() => _isLoading = false);
-      
-      if (!success && mounted) {
-        _showError(authService.errorMessage ?? 'Failed to send code');
-      }
-    }
-  }
-  
-  Future<void> _handleEmailAuth() async {
+
+  Future<void> _handleSignIn() async {
     final authService = context.read<AuthService>();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
-    
+
     if (email.isEmpty || password.isEmpty) {
       _showError('Please enter email and password');
       return;
     }
-    
+
     setState(() => _isLoading = true);
-    
-    final success = _isSignUp
-        ? await authService.createAccountWithEmail(email, password)
-        : await authService.signInWithEmail(email, password);
-    
+
+    final success = await authService.signInWithEmail(email, password);
+
     setState(() => _isLoading = false);
-    
+
     if (!success && mounted) {
       _showError(authService.errorMessage ?? 'Authentication failed');
     }
   }
-  
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -105,18 +59,36 @@ class _AuthScreenState extends State<AuthScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Reset Password'),
+        backgroundColor: AppColors.primaryDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Reset Password', style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Enter your email address and we\'ll send you a password reset link.'),
+            const Text(
+              'Enter your email address and we\'ll send you a password reset link.',
+              style: TextStyle(color: Colors.white70),
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: emailController,
-              decoration: const InputDecoration(
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
                 labelText: 'Email',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.email),
+                labelStyle: const TextStyle(color: Colors.white70),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.primaryBlue),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.primaryBlue.withOpacity(0.5)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.accentBlue, width: 2),
+                ),
+                prefixIcon: const Icon(Icons.email, color: AppColors.accentBlue),
               ),
               keyboardType: TextInputType.emailAddress,
             ),
@@ -125,9 +97,12 @@ class _AuthScreenState extends State<AuthScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
+            child: const Text('CANCEL', style: TextStyle(color: Colors.white70)),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue,
+            ),
             onPressed: () async {
               final email = emailController.text.trim();
               if (email.isEmpty || !email.contains('@')) {
@@ -136,7 +111,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 );
                 return;
               }
-              
+
               try {
                 await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
                 Navigator.pop(context);
@@ -155,210 +130,455 @@ class _AuthScreenState extends State<AuthScreen> {
                 );
               }
             },
-            child: const Text('SEND RESET EMAIL'),
+            child: const Text('SEND', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
   }
-  
+
+  void _navigateToCreateAccount() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CreateAccountScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final authService = context.watch<AuthService>();
-    
     return Scaffold(
+      backgroundColor: AppColors.backgroundDark,
       body: SafeArea(
         child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                // App Logo
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo
                 Image.asset(
                   'assets/images/logo.png',
-                  height: 120,
+                  height: 150,
                   fit: BoxFit.contain,
                 ),
+                
                 const SizedBox(height: 48),
                 
-                // Auth method toggle
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(
-                      value: true,
-                      label: Text('Phone'),
-                      icon: Icon(Icons.phone),
-                    ),
-                    ButtonSegment(
-                      value: false,
-                      label: Text('Email'),
-                      icon: Icon(Icons.email),
-                    ),
-                  ],
-                  selected: {_isPhoneAuth},
-                  onSelectionChanged: (Set<bool> selection) {
-                    setState(() {
-                      _isPhoneAuth = selection.first;
-                      authService.clearError();
-                    });
-                  },
+                // "Sign in to continue" text
+                const Text(
+                  'Sign in to continue',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
-                const SizedBox(height: 32),
-                
-                // Auth form
-                if (_isPhoneAuth)
-                  _buildPhoneAuthForm(authService)
-                else
-                  _buildEmailAuthForm(),
                 
                 const SizedBox(height: 32),
                 
-                // Submit button - Full width with proper height
+                // Email or Phone field
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _emailController,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: 'Email or Phone',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.only(left: 20, right: 16),
+                        child: Icon(
+                          Icons.person,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Password field
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: 'Password',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.only(left: 20, right: 16),
+                        child: Icon(
+                          Icons.lock,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                        onPressed: () {
+                          setState(() => _obscurePassword = !_obscurePassword);
+                        },
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // Sign In button
                 SizedBox(
                   width: double.infinity,
                   height: 56,
-                  child: FilledButton(
-                    onPressed: _isLoading ? null : () {
-                      _isPhoneAuth ? _handlePhoneAuth() : _handleEmailAuth();
-                    },
-                    style: FilledButton.styleFrom(
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleSignIn,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(28),
                       ),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      elevation: 0,
                     ),
                     child: _isLoading
                         ? const SizedBox(
                             height: 24,
                             width: 24,
                             child: CircularProgressIndicator(
-                              strokeWidth: 3,
+                              strokeWidth: 2,
                               color: Colors.white,
                             ),
                           )
-                        : Text(_getButtonText(authService)),
+                        : const Text(
+                            'Sign In',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
                 
-                // Toggle sign up/sign in (email only)
-                if (!_isPhoneAuth) ...[
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {
-                      setState(() => _isSignUp = !_isSignUp);
-                      authService.clearError();
-                    },
-                    child: Text(
-                      _isSignUp
-                          ? 'Already have an account? Sign in'
-                          : 'Need an account? Sign up',
+                const SizedBox(height: 24),
+                
+                // Create Account button
+                TextButton(
+                  onPressed: _navigateToCreateAccount,
+                  child: const Text(
+                    'Create Account',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
-                  // Forgot Password button (only show when signing in)
-                  if (!_isSignUp)
-                    TextButton(
-                      onPressed: () => _showForgotPasswordDialog(),
-                      child: const Text('Forgot password?'),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Forgot Password button
+                TextButton(
+                  onPressed: _showForgotPasswordDialog,
+                  child: const Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w400,
                     ),
-                ],
-              ], // Closing Column children
-            ), // Closing Column
-          ), // Closing SingleChildScrollView
-        ), // Closing ConstrainedBox
-      ), // Closing Center
-    ), // Closing SafeArea
-    ); // Closing Scaffold
-  }
-  
-  Widget _buildPhoneAuthForm(AuthService authService) {
-    if (authService.isVerificationPending) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Enter the verification code sent to ${_phoneController.text}',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _codeController,
-            decoration: const InputDecoration(
-              labelText: 'Verification Code',
-              hintText: '123456',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.lock),
+                  ),
+                ),
+              ],
             ),
-            keyboardType: TextInputType.number,
-            maxLength: 6,
-            autofocus: true,
           ),
-          TextButton(
-            onPressed: () async {
-              authService.clearError();
-              setState(() => _isLoading = true);
-              await authService.sendPhoneVerificationCode(_phoneController.text);
-              setState(() => _isLoading = false);
-            },
-            child: const Text('Resend code'),
-          ),
-        ],
-      );
-    }
-    
-    return TextField(
-      controller: _phoneController,
-      decoration: const InputDecoration(
-        labelText: 'Phone Number',
-        hintText: '+15551234567',
-        border: OutlineInputBorder(),
-        prefixIcon: Icon(Icons.phone),
-        helperText: 'Include country code (e.g., +1 for US)',
+        ),
       ),
-      keyboardType: TextInputType.phone,
-      autofocus: true,
     );
   }
-  
-  Widget _buildEmailAuthForm() {
-    return Column(
-      children: [
-        TextField(
-          controller: _emailController,
-          decoration: const InputDecoration(
-            labelText: 'Email',
-            hintText: 'your@email.com',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.email),
-          ),
-          keyboardType: TextInputType.emailAddress,
-          autofocus: true,
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _passwordController,
-          decoration: const InputDecoration(
-            labelText: 'Password',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.lock),
-          ),
-          obscureText: true,
-        ),
-      ],
-    );
+}
+
+// Create Account Screen
+class CreateAccountScreen extends StatefulWidget {
+  const CreateAccountScreen({super.key});
+
+  @override
+  State<CreateAccountScreen> createState() => _CreateAccountScreenState();
+}
+
+class _CreateAccountScreenState extends State<CreateAccountScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
-  
-  String _getButtonText(AuthService authService) {
-    if (_isPhoneAuth) {
-      return authService.isVerificationPending ? 'Verify Code' : 'Send Code';
+
+  Future<void> _handleCreateAccount() async {
+    final authService = context.read<AuthService>();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _showError('Please fill in all fields');
+      return;
     }
-    return _isSignUp ? 'Create Account' : 'Sign In';
+
+    if (password != confirmPassword) {
+      _showError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      _showError('Password must be at least 6 characters');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final success = await authService.createAccountWithEmail(email, password);
+
+    setState(() => _isLoading = false);
+
+    if (success) {
+      Navigator.pop(context);
+    } else if (mounted) {
+      _showError(authService.errorMessage ?? 'Account creation failed');
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.backgroundDark,
+      appBar: AppBar(
+        backgroundColor: AppColors.backgroundDark,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo
+                Image.asset(
+                  'assets/images/logo.png',
+                  height: 120,
+                  fit: BoxFit.contain,
+                ),
+                
+                const SizedBox(height: 32),
+                
+                const Text(
+                  'Create Account',
+                  style: TextStyle(
+                    fontSize: 24,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // Email field
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _emailController,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: 'Email',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.only(left: 20, right: 16),
+                        child: Icon(
+                          Icons.email,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Password field
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: 'Password',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.only(left: 20, right: 16),
+                        child: Icon(
+                          Icons.lock,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                        onPressed: () {
+                          setState(() => _obscurePassword = !_obscurePassword);
+                        },
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Confirm Password field
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _confirmPasswordController,
+                    obscureText: _obscureConfirmPassword,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: 'Confirm Password',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.only(left: 20, right: 16),
+                        child: Icon(
+                          Icons.lock,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                        onPressed: () {
+                          setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                        },
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // Create Account button
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleCreateAccount,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Create Account',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

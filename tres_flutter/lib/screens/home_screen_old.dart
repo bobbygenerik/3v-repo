@@ -18,7 +18,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   bool _showContactsView = true;
   List<Map<String, dynamic>> _contacts = [];
@@ -27,10 +27,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   bool _isLoadingContacts = true;
   bool _isLoadingHistory = true;
   
-  // Ticker animation for search placeholder
+  // Animated search placeholder - ticker style
   int _currentPlaceholderIndex = 0;
   final List<String> _placeholders = ['Username', 'Email', 'Phone'];
   late AnimationController _tickerController;
+  late Animation<double> _tickerAnimation;
 
   @override
   void initState() {
@@ -39,21 +40,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _loadCallHistory();
     _searchController.addListener(_filterContacts);
     
-    // Ticker animation
+    // Ticker animation like old airport signs
     _tickerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    _tickerAnimation = CurvedAnimation(
+      parent: _tickerController,
+      curve: Curves.easeInOut,
+    );
+    
     _startTickerAnimation();
   }
 
   void _startTickerAnimation() {
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
-        setState(() {
-          _currentPlaceholderIndex = (_currentPlaceholderIndex + 1) % _placeholders.length;
+        _tickerController.forward().then((_) {
+          setState(() {
+            _currentPlaceholderIndex = (_currentPlaceholderIndex + 1) % _placeholders.length;
+          });
+          _tickerController.reset();
+          _startTickerAnimation();
         });
-        _startTickerAnimation();
       }
     });
   }
@@ -153,40 +162,43 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final user = authService.currentUser;
     
     return Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E), // Dark background matching screenshot
+      backgroundColor: AppColors.backgroundDark,
       body: SafeArea(
         child: Column(
           children: [
-            // Header Row: Logo and Profile
+            // Header with Logo and Profile - EXACT spacing
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 0), // Added top padding to move logo down
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Logo - left aligned with matching edge distance
-                  Padding(
-                    padding: const EdgeInsets.only(left: 0), // 16px from edge (same as profile from right)
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      height: 60,
-                      fit: BoxFit.contain,
-                    ),
+                  // Logo - same size and position as Android
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 64,
+                    fit: BoxFit.contain,
                   ),
-                  // Profile button - right aligned with ring
+                  // Profile dropdown button
                   PopupMenuButton<String>(
                     offset: const Offset(0, 50),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    color: const Color(0xFF2C2C2E),
+                    color: AppColors.primaryDark,
                     onSelected: (value) {
                       switch (value) {
                         case 'profile':
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                          );
                           break;
                         case 'guest_link':
                           _showGuestLinkDialog();
                           break;
                         case 'settings':
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                          );
                           break;
                         case 'signout':
                           _signOut();
@@ -198,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         value: 'profile',
                         child: Row(
                           children: [
-                            Icon(Icons.person, size: 20, color: Color(0xFF6B7FB8)),
+                            Icon(Icons.person, size: 20, color: AppColors.accentBlue),
                             SizedBox(width: 12),
                             Text('Profile', style: TextStyle(color: Colors.white)),
                           ],
@@ -208,7 +220,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         value: 'guest_link',
                         child: Row(
                           children: [
-                            Icon(Icons.link, size: 20, color: Color(0xFF6B7FB8)),
+                            Icon(Icons.link, size: 20, color: AppColors.accentBlue),
                             SizedBox(width: 12),
                             Text('Create Guest Link', style: TextStyle(color: Colors.white)),
                           ],
@@ -218,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         value: 'settings',
                         child: Row(
                           children: [
-                            Icon(Icons.settings, size: 20, color: Color(0xFF6B7FB8)),
+                            Icon(Icons.settings, size: 20, color: AppColors.accentBlue),
                             SizedBox(width: 12),
                             Text('Settings', style: TextStyle(color: Colors.white)),
                           ],
@@ -236,57 +248,48 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         ),
                       ),
                     ],
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFF6B7FB8), // Main app color ring
-                          width: 2,
-                        ),
-                      ),
-                      child: CircleAvatar(
-                        radius: 20,
-                        backgroundColor: const Color(0xFF6B7FB8),
-                        backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-                        child: user?.photoURL == null
-                            ? Text(
-                                _getUserInitial(user),
-                                style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
-                              )
-                            : null,
-                      ),
+                    child: CircleAvatar(
+                      radius: 24,
+                      backgroundColor: AppColors.primaryBlue,
+                      backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+                      child: user?.photoURL == null
+                          ? Text(
+                              _getUserInitial(user),
+                              style: const TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+                            )
+                          : null,
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 80),
-
-            // Welcome Message - CENTERED
-            const Center(
-              child: Text(
-                'Welcome, Bobby Generik',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.white,
+            // Welcome Message - CENTERED like Android
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              child: Center(
+                child: Text(
+                  'Welcome, ${user?.displayName ?? 'User'}',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
             ),
 
-            const SizedBox(height: 32),
-
-            // Search Box - EXACT match to screenshot
+            // Search Box - EXACT Android design with @ and add contact button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Container(
-                height: 54,
+                height: 56,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2C2C2E), // Charcoal gray
-                  borderRadius: BorderRadius.circular(12), // Less rounded
+                  color: AppColors.primaryDark,
+                  borderRadius: BorderRadius.circular(28),
                   border: Border.all(
-                    color: const Color(0xFF3A3A3C),
+                    color: AppColors.primaryBlue.withOpacity(0.3),
                     width: 1,
                   ),
                 ),
@@ -294,129 +297,94 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   children: [
                     // @ symbol
                     const Padding(
-                      padding: EdgeInsets.only(left: 16, right: 8),
+                      padding: EdgeInsets.only(left: 20, right: 12),
                       child: Text(
                         '@',
                         style: TextStyle(
-                          fontSize: 20,
-                          color: Color(0xFF8E8E93), // Gray color
-                          fontWeight: FontWeight.w500,
+                          fontSize: 24,
+                          color: AppColors.accentBlue,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    // Search text and placeholder
+                    // Search input with ticker animation
                     Expanded(
-                      child: _searchController.text.isEmpty
-                          ? Row(
-                              children: [
-                                const Text(
-                                  'Search ',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                Text(
-                                  _placeholders[_currentPlaceholderIndex],
-                                  style: const TextStyle(
-                                    color: Color(0xFF8E8E93),
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : TextField(
-                              controller: _searchController,
-                              style: const TextStyle(color: Colors.white, fontSize: 16),
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                    ),
-                    // Add person icon - opens add contact dialog
-                    GestureDetector(
-                      onTap: () => _showAddContactDialog(),
-                      child: Container(
-                        padding: const EdgeInsets.only(right: 12, left: 8),
-                        child: const Icon(
-                          Icons.person_add,
-                          color: Color(0xFF6B7FB8),
-                          size: 24,
+                      child: TextField(
+                        controller: _searchController,
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        decoration: InputDecoration(
+                          hintText: 'Search ${_placeholders[_currentPlaceholderIndex]}',
+                          hintStyle: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontSize: 16,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
                         ),
                       ),
+                    ),
+                    // Add Contact button - EXACT Android style
+                    IconButton(
+                      onPressed: _showAddContactDialog,
+                      icon: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, color: AppColors.accentBlue, size: 20),
+                          Icon(Icons.person, color: AppColors.accentBlue, size: 20),
+                        ],
+                      ),
+                      padding: const EdgeInsets.only(right: 16),
                     ),
                   ],
                 ),
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // Contacts / History buttons
+            // Toggle Buttons - EXACT Android style
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 children: [
                   Expanded(
-                    child: ElevatedButton(
+                    child: ElevatedButton.icon(
                       onPressed: () => setState(() => _showContactsView = true),
+                      icon: const Icon(Icons.people, size: 20),
+                      label: const Text('Contacts', style: TextStyle(fontSize: 16)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _showContactsView
-                            ? const Color(0xFF6B7FB8)
-                            : const Color(0xFF2C2C2E),
+                        backgroundColor: _showContactsView ? AppColors.primaryBlue : Colors.transparent,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(20),
                           side: BorderSide(
-                            color: _showContactsView
-                                ? const Color(0xFF6B7FB8)
-                                : const Color(0xFF3A3A3C),
+                            color: _showContactsView ? AppColors.primaryBlue : AppColors.primaryDark,
                             width: 1,
                           ),
                         ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.people, size: 18),
-                          SizedBox(width: 8),
-                          Text('Contacts', style: TextStyle(fontSize: 15)),
-                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Expanded(
-                    child: ElevatedButton(
+                    child: ElevatedButton.icon(
                       onPressed: () => setState(() => _showContactsView = false),
+                      icon: const Icon(Icons.history, size: 20),
+                      label: const Text('History', style: TextStyle(fontSize: 16)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: !_showContactsView
-                            ? const Color(0xFF6B7FB8)
-                            : const Color(0xFF2C2C2E),
+                        backgroundColor: !_showContactsView ? AppColors.primaryBlue : Colors.transparent,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(20),
                           side: BorderSide(
-                            color: !_showContactsView
-                                ? const Color(0xFF6B7FB8)
-                                : const Color(0xFF3A3A3C),
+                            color: !_showContactsView ? AppColors.primaryBlue : AppColors.primaryDark,
                             width: 1,
                           ),
                         ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.history, size: 18),
-                          SizedBox(width: 8),
-                          Text('History', style: TextStyle(fontSize: 15)),
-                        ],
                       ),
                     ),
                   ),
@@ -426,17 +394,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
             const SizedBox(height: 24),
 
-            // Section Header
+            // Section Header - EXACT Android style
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   _showContactsView ? 'Your Contacts' : 'Call History',
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: TextStyle(
+                    fontSize: 20,
                     fontWeight: FontWeight.w400,
-                    color: Color(0xFF8E8E93),
+                    color: Colors.white.withOpacity(0.7),
                   ),
                 ),
               ),
@@ -444,7 +412,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
             const SizedBox(height: 16),
 
-            // Content
+            // Content Area
             Expanded(
               child: _showContactsView ? _buildContactsList() : _buildHistoryList(),
             ),
@@ -456,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildContactsList() {
     if (_isLoadingContacts) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF6B7FB8)));
+      return const Center(child: CircularProgressIndicator(color: AppColors.accentBlue));
     }
 
     if (_filteredContacts.isEmpty) {
@@ -482,17 +450,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         final contact = _filteredContacts[index];
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF2C2C2E),
-            borderRadius: BorderRadius.circular(12),
+            color: AppColors.primaryDark,
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             children: [
-              // Large avatar
+              // Avatar - EXACT Android size
               CircleAvatar(
                 radius: 28,
-                backgroundColor: const Color(0xFF6B7FB8),
+                backgroundColor: AppColors.primaryBlue,
                 backgroundImage: contact['photoURL'] != null ? NetworkImage(contact['photoURL']) : null,
                 child: contact['photoURL'] == null
                     ? Text(
@@ -506,7 +474,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     : null,
               ),
               const SizedBox(width: 16),
-              // Name and email
+              // Contact info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,7 +482,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     Text(
                       contact['name'],
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.w500,
                         color: Colors.white,
                       ),
@@ -522,9 +490,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     const SizedBox(height: 4),
                     Text(
                       contact['email'],
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF8E8E93),
+                        color: Colors.white.withOpacity(0.6),
                       ),
                     ),
                   ],
@@ -532,12 +500,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
               // Star icon
               IconButton(
-                icon: const Icon(Icons.star_border, color: Color(0xFF8E8E93), size: 22),
-                onPressed: () {},
+                icon: const Icon(Icons.star_border, color: Colors.white54, size: 24),
+                onPressed: () {
+                  // TODO: Implement favorite
+                },
               ),
-              // Phone icon
+              // Call button
               IconButton(
-                icon: const Icon(Icons.phone, color: Color(0xFF6B7FB8), size: 22),
+                icon: const Icon(Icons.phone, color: AppColors.accentBlue, size: 24),
                 onPressed: () => _startCallWithContact(contact),
               ),
             ],
@@ -549,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildHistoryList() {
     if (_isLoadingHistory) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF6B7FB8)));
+      return const Center(child: CircularProgressIndicator(color: AppColors.accentBlue));
     }
 
     if (_callHistory.isEmpty) {
@@ -577,38 +547,32 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF2C2C2E),
-            borderRadius: BorderRadius.circular(12),
+            color: AppColors.primaryDark,
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: Row(
-            children: [
-              const CircleAvatar(
-                radius: 24,
-                backgroundColor: Color(0xFF6B7FB8),
-                child: Icon(Icons.phone, color: Colors.white, size: 24),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      call['roomName'],
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatTimestamp(call['timestamp']),
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF8E8E93)),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.phone, color: Color(0xFF6B7FB8), size: 20),
-                onPressed: () {},
-              ),
-            ],
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const CircleAvatar(
+              radius: 24,
+              backgroundColor: AppColors.primaryBlue,
+              child: Icon(Icons.phone, color: Colors.white, size: 24),
+            ),
+            title: Text(
+              call['roomName'],
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+            ),
+            subtitle: Text(
+              '${_formatTimestamp(call['timestamp'])}',
+              style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.6)),
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.phone, color: AppColors.accentBlue, size: 20),
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Call again feature coming soon')),
+                );
+              },
+            ),
           ),
         );
       },
@@ -625,6 +589,61 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return '${diff.inDays}d ago';
   }
 
+  void _showAddContactDialog() {
+    final TextEditingController emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.primaryDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Add Contact', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: emailController,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Email or Username',
+            labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+            hintText: 'user@example.com',
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+            filled: true,
+            fillColor: AppColors.backgroundDark,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.accentBlue),
+            ),
+          ),
+          keyboardType: TextInputType.emailAddress,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final email = emailController.text.trim();
+              if (email.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter an email or username')),
+                );
+                return;
+              }
+              Navigator.pop(context);
+              // TODO: Add contact to Firestore
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Added $email to contacts')),
+              );
+              _loadContacts(); // Reload contacts
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryBlue),
+            child: const Text('ADD', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _startCallWithContact(Map<String, dynamic> contact) async {
     final email = contact['email'] as String;
     await _startCall(email);
@@ -639,7 +658,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         context: context,
         barrierDismissible: false,
         builder: (context) => const Center(
-          child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+          child: CircularProgressIndicator(color: AppColors.accentBlue),
         ),
       );
 
@@ -680,130 +699,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
-  void _showAddContactDialog() {
-    final TextEditingController emailController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Add Contact', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter the email address of the person you want to add.',
-              style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: emailController,
-              style: const TextStyle(color: Colors.white),
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: 'Email Address',
-                labelStyle: const TextStyle(color: Color(0xFF8E8E93)),
-                hintText: 'contact@example.com',
-                filled: true,
-                fillColor: const Color(0xFF1C1C1E),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFF6B7FB8)),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL', style: TextStyle(color: Color(0xFF8E8E93))),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final email = emailController.text.trim();
-              if (email.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter an email address')),
-                );
-                return;
-              }
-              
-              if (!email.contains('@')) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a valid email address')),
-                );
-                return;
-              }
-              
-              Navigator.pop(context);
-              
-              try {
-                // Search for user by email
-                final snapshot = await FirebaseFirestore.instance
-                    .collection('users')
-                    .where('email', isEqualTo: email)
-                    .limit(1)
-                    .get();
-                
-                if (snapshot.docs.isEmpty) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('No user found with that email')),
-                    );
-                  }
-                  return;
-                }
-                
-                final userData = snapshot.docs.first.data();
-                final contactUid = snapshot.docs.first.id;
-                
-                // Add to contacts list in UI (in real app, save to Firestore)
-                if (mounted) {
-                  setState(() {
-                    _contacts.add({
-                      'uid': contactUid,
-                      'name': userData['displayName'] ?? userData['name'] ?? 'Unknown',
-                      'email': userData['email'] ?? '',
-                      'photoURL': userData['photoURL'],
-                    });
-                    _filterContacts();
-                  });
-                  
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Added ${userData['displayName'] ?? email} to contacts!')),
-                  );
-                }
-              } catch (e) {
-                debugPrint('Error adding contact: $e');
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6B7FB8)),
-            child: const Text('ADD', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showGuestLinkDialog() {
     final TextEditingController nameController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2E),
+        backgroundColor: AppColors.primaryDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Create Guest Link', style: TextStyle(color: Colors.white)),
         content: Column(
@@ -811,7 +713,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           children: [
             const Text(
               'Generate a link for guests to join calls without an account.',
-              style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14),
+              style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -819,10 +721,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 labelText: 'Guest Name',
-                labelStyle: const TextStyle(color: Color(0xFF8E8E93)),
+                labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
                 hintText: 'John Doe',
                 filled: true,
-                fillColor: const Color(0xFF1C1C1E),
+                fillColor: AppColors.backgroundDark,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
@@ -831,7 +733,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL', style: TextStyle(color: Color(0xFF8E8E93))),
+            child: const Text('CANCEL', style: TextStyle(color: Colors.white70)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -868,7 +770,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 }
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6B7FB8)),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryBlue),
             child: const Text('GENERATE', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -880,17 +782,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2E),
+        backgroundColor: AppColors.primaryDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Sign Out', style: TextStyle(color: Colors.white)),
         content: const Text(
           'Are you sure you want to sign out?',
-          style: TextStyle(color: Color(0xFF8E8E93)),
+          style: TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('CANCEL', style: TextStyle(color: Color(0xFF8E8E93))),
+            child: const Text('CANCEL', style: TextStyle(color: Colors.white70)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),

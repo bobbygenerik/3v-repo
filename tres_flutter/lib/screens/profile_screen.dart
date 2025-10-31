@@ -178,28 +178,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Center(
             child: Stack(
               children: [
-                CircleAvatar(
-                  radius: 60,
-                  backgroundColor: AppColors.primaryBlue,
-                  child: user?.photoURL != null
-                      ? ClipOval(
-                          child: Image.network(
-                            user!.photoURL!,
-                            width: 120,
-                            height: 120,
-                            fit: BoxFit.cover,
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.primaryBlue, // Ring color matching app theme
+                      width: 3,
+                    ),
+                  ),
+                  child: CircleAvatar(
+                    radius: 60,
+                    backgroundColor: AppColors.primaryBlue,
+                    child: user?.photoURL != null
+                        ? ClipOval(
+                            child: Image.network(
+                              user!.photoURL!,
+                              width: 120,
+                              height: 120,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : Text(
+                            (user?.displayName?.isNotEmpty == true
+                                ? user!.displayName![0].toUpperCase()
+                                : user?.email?[0].toUpperCase() ?? 'U'),
+                            style: const TextStyle(
+                              fontSize: 48,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
-                        )
-                      : Text(
-                          (user?.displayName?.isNotEmpty == true
-                              ? user!.displayName![0].toUpperCase()
-                              : user?.email?[0].toUpperCase() ?? 'U'),
-                          style: const TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                  ),
                 ),
                 if (_isEditing)
                   Positioned(
