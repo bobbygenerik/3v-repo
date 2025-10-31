@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'dart:typed_data';
+import 'dart:html' as html;
 import '../config/app_theme.dart';
 import 'diagnostics_screen.dart';
 
@@ -66,31 +66,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _uploadPhoto() async {
     try {
-      final ImagePicker picker = ImagePicker();
-      
-      // For web, we need to be more explicit
-      XFile? image;
-      try {
-        image = await picker.pickImage(
-          source: ImageSource.gallery,
-          maxWidth: 1024,
-          maxHeight: 1024,
-          imageQuality: 90,
-        );
-      } catch (e) {
-        debugPrint('Image picker error: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Image picker not available: $e'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
+      // Use native HTML file picker for web
+      final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+      uploadInput.accept = 'image/*';
+      uploadInput.click();
 
-      if (image == null) {
+      await uploadInput.onChange.first;
+      final files = uploadInput.files;
+      
+      if (files == null || files.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('No image selected')),
@@ -100,6 +84,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
 
       setState(() => _isLoading = true);
+
+      // Read file as bytes
+      final reader = html.FileReader();
+      reader.readAsArrayBuffer(files[0]);
+      await reader.onLoad.first;
+      final bytes = reader.result as Uint8List;
 
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -112,7 +102,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .child('profile_photos')
           .child('${user.uid}.jpg');
 
-      final bytes = await image.readAsBytes();
       final metadata = SettableMetadata(
         contentType: 'image/jpeg',
         customMetadata: {'uploaded-by': user.uid},
@@ -125,21 +114,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       // Update user profile
       await user.updatePhotoURL(photoURL);
-      
-      // Force reload to get updated photo
       await user.reload();
 
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✓ Photo updated successfully!'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
           ),
         );
-        // Trigger rebuild to show new photo
+        // Trigger rebuild
         setState(() {});
       }
     } catch (e) {
@@ -148,7 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error uploading photo: $e'),
+            content: Text('Error: $e'),
             backgroundColor: Colors.red,
           ),
         );
