@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "tres3-5fdba"
-  }
+  },
+  "targets": {
+    "tres3-5fdba": {
+      "hosting": {
+        "tres3-site": [
+          "tres3"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
