@@ -25,17 +25,22 @@ class AuthService extends ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
       
+      debugPrint('🔐 Attempting to sign in with email: $email');
+      
       final credential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
       
+      debugPrint('✅ Sign in successful: ${credential.user?.uid}');
       return credential.user != null;
     } on FirebaseAuthException catch (e) {
+      debugPrint('❌ Firebase Auth Error: ${e.code} - ${e.message}');
       _errorMessage = _mapFirebaseError(e);
       notifyListeners();
       return false;
     } catch (e) {
+      debugPrint('❌ Unexpected Error: $e');
       _errorMessage = 'An unexpected error occurred';
       notifyListeners();
       return false;
@@ -48,17 +53,22 @@ class AuthService extends ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
       
+      debugPrint('🔐 Attempting to create account with email: $email');
+      
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
       
+      debugPrint('✅ Account created successfully: ${credential.user?.uid}');
       return credential.user != null;
     } on FirebaseAuthException catch (e) {
+      debugPrint('❌ Firebase Auth Error: ${e.code} - ${e.message}');
       _errorMessage = _mapFirebaseError(e);
       notifyListeners();
       return false;
     } catch (e) {
+      debugPrint('❌ Unexpected Error: $e');
       _errorMessage = 'An unexpected error occurred';
       notifyListeners();
       return false;
@@ -200,6 +210,8 @@ class AuthService extends ChangeNotifier {
   /// Map Firebase error codes to user-friendly messages
   String _mapFirebaseError(FirebaseAuthException e) {
     switch (e.code) {
+      case 'operation-not-allowed':
+        return 'This sign-in method is not enabled. Please enable it in Firebase Console.';
       case 'invalid-email':
         return 'Invalid email address';
       case 'user-disabled':
@@ -211,7 +223,7 @@ class AuthService extends ChangeNotifier {
       case 'email-already-in-use':
         return 'An account already exists with this email';
       case 'weak-password':
-        return 'Password is too weak';
+        return 'Password is too weak (minimum 6 characters)';
       case 'invalid-phone-number':
         return 'Invalid phone number. Use format: +15551234567';
       case 'invalid-verification-code':
@@ -221,6 +233,7 @@ class AuthService extends ChangeNotifier {
       case 'quota-exceeded':
         return 'Too many requests. Please try again later';
       default:
+        debugPrint('🔴 Unhandled Firebase error code: ${e.code}');
         return e.message ?? 'Authentication failed';
     }
   }
