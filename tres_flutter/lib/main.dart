@@ -58,21 +58,25 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authService = context.watch<AuthService>();
-    
     return StreamBuilder<User?>(
-      stream: authService.authStateChanges,
+      stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+        // Show loading while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            backgroundColor: AppColors.backgroundDark,
+            body: Center(
+              child: CircularProgressIndicator(color: AppColors.accentBlue),
+            ),
           );
         }
         
-        if (snapshot.hasData) {
+        // User is signed in
+        if (snapshot.hasData && snapshot.data != null) {
           return const HomeScreen();
         }
         
+        // User is signed out
         return const AuthScreen();
       },
     );

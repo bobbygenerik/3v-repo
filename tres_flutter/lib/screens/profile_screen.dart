@@ -70,17 +70,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 85,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 90,
       );
 
-      if (image == null) return;
+      if (image == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No image selected')),
+          );
+        }
+        return;
+      }
 
       setState(() => _isLoading = true);
 
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        throw Exception('No user logged in');
+      }
 
       // Upload to Firebase Storage
       final storageRef = FirebaseStorage.instance
@@ -91,10 +100,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (kIsWeb) {
         // Web upload
         final bytes = await image.readAsBytes();
-        await storageRef.putData(bytes);
+        final metadata = SettableMetadata(
+          contentType: 'image/jpeg',
+          customMetadata: {'uploaded-by': user.uid},
+        );
+        await storageRef.putData(bytes, metadata);
       } else {
         // Mobile upload
-        await storageRef.putFile(File(image.path));
+        final metadata = SettableMetadata(
+          contentType: 'image/jpeg',
+          customMetadata: {'uploaded-by': user.uid},
+        );
+        await storageRef.putFile(File(image.path), metadata);
       }
 
       // Get download URL
@@ -102,19 +119,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       // Update user profile
       await user.updatePhotoURL(photoURL);
+      
+      // Force reload to get updated photo
       await user.reload();
+      final updatedUser = FirebaseAuth.instance.currentUser;
 
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Photo updated successfully')),
+          const SnackBar(
+            content: Text('✓ Photo updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
+        // Trigger rebuild to show new photo
+        setState(() {});
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error uploading photo: $e')),
+          SnackBar(
+            content: Text('Error uploading photo: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -250,40 +280,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 24),
 
-          // App Settings Section
+          // Diagnostics Section
           Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.settings, color: AppColors.accentBlue),
-                  title: const Text('App Settings'),
-                  subtitle: const Text('Video, audio, and notifications'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SettingsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.bug_report, color: AppColors.accentBlue),
-                  title: const Text('Diagnostics'),
-                  subtitle: const Text('System health and troubleshooting'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const DiagnosticsScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
+            child: ListTile(
+              leading: const Icon(Icons.bug_report, color: AppColors.accentBlue),
+              title: const Text('Diagnostics'),
+              subtitle: const Text('System health and troubleshooting'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DiagnosticsScreen(),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 24),
@@ -328,15 +339,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _showDeleteAccountDialog(),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.orange),
-                  title: const Text(
-                    'Sign Out',
-                    style: TextStyle(color: Colors.orange),
-                  ),
-                  onTap: () => _showSignOutDialog(),
                 ),
               ],
             ),

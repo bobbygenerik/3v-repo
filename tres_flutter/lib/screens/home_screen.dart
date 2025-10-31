@@ -180,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   // Logo
                   Image.asset(
                     'assets/images/logo.png',
-                    height: 48,
+                    height: 72,
                     fit: BoxFit.contain,
                   ),
                   const Spacer(),
