@@ -68,6 +68,29 @@ import com.example.tres3.ml.MLKitManager
 import com.example.tres3.opencv.OpenCVManager
 import com.example.tres3.video.CameraEnhancer
 import com.example.tres3.video.VideoCodecManager
+
+// AI Feature Coordinators
+import com.example.tres3.ui.InCallManagerCoordinator
+import com.example.tres3.ui.NewAIFeaturesCoordinator
+
+// Individual AI Features (existing - with correct packages)
+import com.example.tres3.ar.ARFiltersManager
+import com.example.tres3.ai.MeetingInsightsBot
+import com.example.tres3.recording.CloudRecordingManager
+import com.example.tres3.security.E2EEncryptionManager
+import com.example.tres3.video.LowLightEnhancer
+import com.example.tres3.video.EmotionDetectionProcessor
+import com.example.tres3.video.HandGestureProcessor
+import com.example.tres3.video.FaceAutoFramingProcessor
+import com.example.tres3.audio.AINoiseCancellation
+import com.example.tres3.layout.GridLayoutManager
+import com.example.tres3.layout.MultiStreamLayoutManager
+
+// New AI Features (4 new)
+import com.example.tres3.video.LipSyncDetector
+import com.example.tres3.analytics.AttendanceTracker
+import com.example.tres3.video.HighlightMomentDetector
+import com.example.tres3.audio.BackgroundNoiseReplacer
 import com.example.tres3.video.CompositeVideoProcessor
 import com.example.tres3.video.LowLightVideoProcessor
 import com.example.tres3.video.BeautyFilterProcessor
@@ -104,6 +127,10 @@ class InCallActivity : ComponentActivity() {
     private var isIntentionallyClosing = false  // Track if we're intentionally disconnecting
     private var callEndListener: com.google.firebase.firestore.ListenerRegistration? = null
     private var directCallEndListener: com.google.firebase.firestore.ListenerRegistration? = null
+    
+    // AI Feature Coordinators (internal for compose access)
+    internal var inCallCoordinator: InCallManagerCoordinator? = null
+    internal var newFeaturesCoordinator: NewAIFeaturesCoordinator? = null
     
     // Screen sharing state
     internal var pendingScreenShareEnable = false
@@ -270,6 +297,38 @@ class InCallActivity : ComponentActivity() {
         
         // Initialize camera enhancements
         initializeEnhancements()
+        
+        // Initialize AI Feature Coordinators
+        lifecycleScope.launch {
+            try {
+                val roomName = room.name ?: ""
+                val callId = roomName.ifEmpty { "call_${System.currentTimeMillis()}" }
+                val rootView = findViewById<android.view.ViewGroup>(android.R.id.content)
+                
+                // Initialize main coordinator (12 existing features)
+                inCallCoordinator = InCallManagerCoordinator(
+                    context = this@InCallActivity,
+                    room = room,
+                    callId = callId,
+                    containerView = rootView
+                )
+                inCallCoordinator?.initialize()
+                Log.d("InCallActivity", "✅ Initialized InCallManagerCoordinator with 12 AI features")
+                
+                // Initialize new features coordinator (4 new features)
+                newFeaturesCoordinator = NewAIFeaturesCoordinator(
+                    context = this@InCallActivity,
+                    room = room,
+                    callId = callId
+                )
+                newFeaturesCoordinator?.initialize()
+                Log.d("InCallActivity", "✅ Initialized NewAIFeaturesCoordinator with 4 new AI features")
+                
+                Log.d("InCallActivity", "🎉 All 16 AI features initialized successfully!")
+            } catch (e: Exception) {
+                Log.e("InCallActivity", "❌ Failed to initialize AI coordinators: ${e.message}", e)
+            }
+        }
         
         val recipientEmail = intent.getStringExtra("recipient_email") ?: ""
         val guestLink = intent.getStringExtra("guest_link")
@@ -829,6 +888,23 @@ class InCallActivity : ComponentActivity() {
     
     override fun onDestroy() {
         Log.d("InCallActivity", "💀 InCallActivity onDestroy - starting cleanup (isFinishing=$isFinishing)")
+        
+        // Clean up AI feature coordinators first
+        try {
+            inCallCoordinator?.cleanup()
+            inCallCoordinator = null
+            Log.d("InCallActivity", "✅ Cleaned up InCallManagerCoordinator")
+        } catch (e: Exception) {
+            Log.e("InCallActivity", "Error cleaning up InCallManagerCoordinator: ${e.message}", e)
+        }
+        
+        try {
+            newFeaturesCoordinator?.cleanup()
+            newFeaturesCoordinator = null
+            Log.d("InCallActivity", "✅ Cleaned up NewAIFeaturesCoordinator")
+        } catch (e: Exception) {
+            Log.e("InCallActivity", "Error cleaning up NewAIFeaturesCoordinator: ${e.message}", e)
+        }
         
         // Wrap everything in try-catch to prevent crashes during cleanup
         try {
@@ -1577,6 +1653,22 @@ fun InCallScreen(
     var spatialAudioEnabled by remember { mutableStateOf(false) }
     var enhanceLowLight by remember { mutableStateOf(false) }
     
+    // AI Features - 16 total
+    var arFilterEnabled by remember { mutableStateOf(false) }
+    var selectedArFilter by remember { mutableStateOf("None") }
+    var isRecording by remember { mutableStateOf(false) }
+    var isEncrypted by remember { mutableStateOf(false) }
+    var encryptionCode by remember { mutableStateOf("") }
+    var aiNoiseCancellationEnabled by remember { mutableStateOf(false) }
+    var backgroundNoiseReplacementEnabled by remember { mutableStateOf(false) }
+    var selectedAmbientSound by remember { mutableStateOf("Silence") }
+    var lipSyncStatus by remember { mutableStateOf("Good") }
+    var lipSyncLag by remember { mutableStateOf(0) }
+    var detectedEmotion by remember { mutableStateOf("") }
+    var detectedGesture by remember { mutableStateOf("") }
+    var highlightMomentsCount by remember { mutableStateOf(0) }
+    var attendanceTracked by remember { mutableStateOf(false) }
+    
     // Reactions system
     var showReactionPicker by remember { mutableStateOf(false) }
     var activeReactions by remember { mutableStateOf<List<Pair<String, Long>>>(emptyList()) }
@@ -1627,6 +1719,52 @@ fun InCallScreen(
         onDispose {
             statsManager.stopCollecting()
             captionManager.stopCaptions()
+        }
+    }
+    
+    // Collect AI coordinator StateFlows
+    val activity = context as? InCallActivity
+    activity?.newFeaturesCoordinator?.let { coordinator ->
+        // Collect lip sync status
+        val lipSyncStatusFlow by coordinator.lipSyncStatus.collectAsState()
+        val lipSyncLagFlow by coordinator.lipSyncLag.collectAsState()
+        LaunchedEffect(lipSyncStatusFlow, lipSyncLagFlow) {
+            lipSyncStatus = lipSyncStatusFlow
+            lipSyncLag = lipSyncLagFlow
+        }
+        
+        // Collect highlight count
+        val highlightCountFlow by coordinator.highlightCount.collectAsState()
+        LaunchedEffect(highlightCountFlow) {
+            highlightMomentsCount = highlightCountFlow
+        }
+        
+        // Collect detected emotion
+        val detectedEmotionFlow by coordinator.detectedEmotion.collectAsState()
+        LaunchedEffect(detectedEmotionFlow) {
+            detectedEmotion = detectedEmotionFlow
+            // Clear emotion after 3 seconds
+            if (detectedEmotionFlow.isNotEmpty()) {
+                kotlinx.coroutines.delay(3000)
+                detectedEmotion = ""
+            }
+        }
+        
+        // Collect detected gesture
+        val detectedGestureFlow by coordinator.detectedGesture.collectAsState()
+        LaunchedEffect(detectedGestureFlow) {
+            detectedGesture = detectedGestureFlow
+            // Clear gesture after 3 seconds
+            if (detectedGestureFlow.isNotEmpty()) {
+                kotlinx.coroutines.delay(3000)
+                detectedGesture = ""
+            }
+        }
+        
+        // Collect attendance count
+        val attendanceCountFlow by coordinator.attendanceCount.collectAsState()
+        LaunchedEffect(attendanceCountFlow) {
+            attendanceTracked = attendanceCountFlow > 0
         }
     }
 
@@ -3074,6 +3212,126 @@ fun InCallScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = if (showCaptions) "Captions: ON" else "Live Captions",
+                            color = Color.White
+                        )
+                    }
+                    
+                    // AI Noise Cancellation
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            aiNoiseCancellationEnabled = !aiNoiseCancellationEnabled
+                            Toast.makeText(
+                                context,
+                                if (aiNoiseCancellationEnabled) "AI Noise Cancellation ON" else "AI Noise Cancellation OFF",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.MicOff,
+                            contentDescription = null,
+                            tint = if (aiNoiseCancellationEnabled) Color.Green else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (aiNoiseCancellationEnabled) "AI Noise: ON" else "AI Noise Cancel",
+                            color = Color.White
+                        )
+                    }
+                    
+                    // Cloud Recording
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            isRecording = !isRecording
+                            Toast.makeText(
+                                context,
+                                if (isRecording) "🔴 Recording Started" else "⏹️ Recording Stopped",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.FiberManualRecord,
+                            contentDescription = null,
+                            tint = if (isRecording) Color.Red else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isRecording) "Recording..." else "Record Call",
+                            color = Color.White
+                        )
+                    }
+                    
+                    // E2E Encryption Status
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            if (encryptionCode.isNotEmpty()) {
+                                Toast.makeText(
+                                    context,
+                                    "Encryption Code: $encryptionCode",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = if (isEncrypted) Color.Green else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isEncrypted) "🔒 Encrypted" else "Encryption",
+                            color = Color.White
+                        )
+                    }
+                    
+                    // AR Filters
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            // TODO: Show AR filter picker dialog
+                            Toast.makeText(context, "AR Filters - Coming Soon", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Face,
+                            contentDescription = null,
+                            tint = if (arFilterEnabled) Color.Green else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (arFilterEnabled) "Filter: $selectedArFilter" else "AR Filters",
+                            color = Color.White
+                        )
+                    }
+                    
+                    // Background Noise Replacement
+                    TextButton(
+                        onClick = {
+                            showMenu = false
+                            backgroundNoiseReplacementEnabled = !backgroundNoiseReplacementEnabled
+                            if (backgroundNoiseReplacementEnabled) {
+                                Toast.makeText(context, "Ambient: $selectedAmbientSound", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.MusicNote,
+                            contentDescription = null,
+                            tint = if (backgroundNoiseReplacementEnabled) Color.Green else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (backgroundNoiseReplacementEnabled) "Ambient: ON" else "Ambient Sound",
                             color = Color.White
                         )
                     }

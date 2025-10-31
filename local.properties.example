@@ -1,0 +1,16 @@
+# Local Android configuration (REQUIRED for app builds)
+# This file is gitignored - never commit actual credentials!
+
+# Android SDK location (adjust to your system)
+sdk.dir=/home/username/Android/Sdk
+
+# LiveKit Configuration (get from https://cloud.livekit.io/)
+livekit.url=wss://your-project.livekit.cloud
+livekit.api.key=your_livekit_api_key_here
+livekit.api.secret=your_livekit_api_secret_here
+
+# ===== SETUP INSTRUCTIONS =====
+# 1. Copy this file to local.properties (same directory)
+# 2. Update sdk.dir to point to your Android SDK
+# 3. Fill in LiveKit credentials from your LiveKit Cloud dashboard
+# 4. NEVER commit local.properties to git

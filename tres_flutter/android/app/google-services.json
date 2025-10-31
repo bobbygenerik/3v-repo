@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "128602192923",
+    "project_id": "tres3-5fdba",
+    "storage_bucket": "tres3-5fdba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:128602192923:android:54108a495b0df6f8d3ccbe",
+        "android_client_info": {
+          "package_name": "com.threeveesocial.tresvideo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIVnKXyCWwDDvhm_p1xbxIxqD7SKBQXcM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

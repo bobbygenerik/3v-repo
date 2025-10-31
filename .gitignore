@@ -14,6 +14,14 @@ local.properties
 *.apk
 *.aab
 
+# Firebase/Cloud Functions
+functions/node_modules/
+functions/.env
+.env
+
+# Google Services (keep google-services.json in repo, but not local overrides)
+# google-services.json is intentionally tracked
+
 # Misc
 captures/
 *.log

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Tres Flutter</string>
+	<string>3V Video Calls</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>tres_flutter</string>
+	<string>3V Video Calls</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -24,6 +24,43 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	
+	<!-- Privacy Permissions -->
+	<key>NSCameraUsageDescription</key>
+	<string>We need camera access for video calls with your contacts</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We need microphone access for voice and video calls</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photo for your profile picture</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save photos from calls to your library</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>We need local network access for peer-to-peer video calls</string>
+	
+	<!-- Background Modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>voip</string>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+	
+	<!-- Deep Link Support -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.threeveesocial.tresvideo</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>tresvideo</string>
+			</array>
+		</dict>
+	</array>
+	
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

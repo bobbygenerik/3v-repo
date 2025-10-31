@@ -112,13 +112,13 @@ class _AuthScreenState extends State<AuthScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // App Logo/Title
-                Icon(
-                  Icons.video_call,
-                  size: 80,
-                  color: Theme.of(context).colorScheme.primary,
+                // App Logo
+                Image.asset(
+                  'assets/images/logo.png',
+                  height: 120,
+                  fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 Text(
                   '3V Video Chat',
                   textAlign: TextAlign.center,
