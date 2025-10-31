@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../services/auth_service.dart';
+import '../services/livekit_service.dart';
+import '../services/guest_link_service.dart';
 import '../config/app_theme.dart';
 import 'profile_screen.dart';
+import 'settings_screen.dart';
+import 'call_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -226,8 +233,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showStartCallDialog() {
-    final roomController = TextEditingController();
+  void _showStartCallDialog([String? recipient]) {
+    final roomController = TextEditingController(text: recipient);
     
     showDialog(
       context: context,
@@ -237,11 +244,11 @@ class _HomeScreenState extends State<HomeScreen> {
         content: TextField(
           controller: roomController,
           decoration: const InputDecoration(
-            labelText: 'Room Name',
-            hintText: 'Enter room name',
-            prefixIcon: Icon(Icons.meeting_room),
+            labelText: 'Recipient Email',
+            hintText: 'Enter email address',
+            prefixIcon: Icon(Icons.email),
           ),
-          autofocus: true,
+          autofocus: recipient == null,
         ),
         actions: [
           TextButton(
@@ -250,18 +257,24 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           FilledButton.icon(
             onPressed: () {
-              final roomName = roomController.text.trim();
-              if (roomName.isEmpty) {
+              final email = roomController.text.trim();
+              if (email.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a room name')),
+                  const SnackBar(content: Text('Please enter recipient email')),
+                );
+                return;
+              }
+              if (!email.contains('@')) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a valid email')),
                 );
                 return;
               }
               Navigator.pop(context);
-              _startCall(roomName);
+              _startCall(email);
             },
             icon: const Icon(Icons.video_call),
-            label: const Text('Start'),
+            label: const Text('Start Call'),
           ),
         ],
       ),
@@ -277,14 +290,58 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _startCall(String roomName) async {
-    // TODO: Get token from Firebase Functions and start call
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Call functionality requires backend token generation'),
-        duration: Duration(seconds: 3),
-      ),
-    );
+  Future<void> _startCall(String recipientEmail) async {
+    try {
+      final authService = context.read<AuthService>();
+      final liveKitService = context.read<LiveKitService>();
+      
+      // Show loading
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Starting call...')),
+        );
+      }
+
+      // Generate room name
+      final roomName = 'room_${DateTime.now().millisecondsSinceEpoch}';
+
+      // Call Firebase Function to get LiveKit token
+      final functions = FirebaseFunctions.instance;
+      final callable = functions.httpsCallable('getLiveKitToken');
+      
+      final response = await callable.call({
+        'calleeId': recipientEmail,
+        'roomName': roomName,
+      });
+
+      final token = response.data['token'] as String;
+      final wsUrl = response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
+
+      if (mounted) {
+        // Navigate to call screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CallScreen(
+              roomName: roomName,
+              token: token,
+              livekitUrl: wsUrl,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to start call: ${e.toString()}'),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      debugPrint('Error starting call: $e');
+    }
   }
 
   String _getUserInitial(dynamic user) {
