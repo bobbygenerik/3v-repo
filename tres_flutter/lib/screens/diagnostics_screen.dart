@@ -122,9 +122,12 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
                 // Status Banner
                 Card(
                   color: _isSystemHealthy()
@@ -279,6 +282,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 const SizedBox(height: 32),
               ],
             ),
+          ),
+        ),
     );
   }
 

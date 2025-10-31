@@ -54,13 +54,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
         ],
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildCallsTab(),
-          _buildContactsTab(),
-          _buildSettingsTab(user),
-        ],
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildCallsTab(),
+              _buildContactsTab(),
+              _buildSettingsTab(user),
+            ],
+          ),
+        ),
       ),
       floatingActionButton: _tabController.index == 0 || _tabController.index == 1
           ? FloatingActionButton.extended(

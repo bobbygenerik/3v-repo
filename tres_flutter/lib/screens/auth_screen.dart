@@ -106,12 +106,14 @@ class _AuthScreenState extends State<AuthScreen> {
     return Scaffold(
       body: SafeArea(
         child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 // App Logo
                 Image.asset(
                   'assets/images/logo.png',
@@ -181,12 +183,13 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                 ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+              ], // Closing Column children
+            ), // Closing Column
+          ), // Closing SingleChildScrollView
+        ), // Closing ConstrainedBox
+      ), // Closing Center
+    ), // Closing SafeArea
+    ); // Closing Scaffold
   }
   
   Widget _buildPhoneAuthForm(AuthService authService) {
