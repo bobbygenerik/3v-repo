@@ -4,7 +4,7 @@
 /// with your actual project credentials.
 class Environment {
   // App Configuration
-  static const String appName = '3V Video Calls';
+  static const String appName = 'Tres';
   static const String appVersion = '1.0.0';
   
   // LiveKit Configuration

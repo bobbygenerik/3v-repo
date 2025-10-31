@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../config/app_theme.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 
@@ -35,7 +36,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('3V Video Chat'),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Image.asset(
+            'assets/images/logo.png',
+            fit: BoxFit.contain,
+          ),
+        ),
+        title: null,
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -45,12 +53,41 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await authService.signOut();
-            },
-            tooltip: 'Sign out',
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: IconButton(
+              icon: CircleAvatar(
+                backgroundColor: AppColors.primaryBlue,
+                child: user?.photoURL != null
+                    ? ClipOval(
+                        child: Image.network(
+                          user!.photoURL!,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Text(
+                              _getUserInitial(user),
+                              style: const TextStyle(fontSize: 16, color: Colors.white),
+                            );
+                          },
+                        ),
+                      )
+                    : Text(
+                        _getUserInitial(user),
+                        style: const TextStyle(fontSize: 16, color: Colors.white),
+                      ),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfileScreen(),
+                  ),
+                );
+              },
+              tooltip: 'Profile',
+            ),
           ),
         ],
       ),
@@ -567,4 +604,13 @@ enum CallType {
         ],
       ),
     );
+  }
+
+  String _getUserInitial(dynamic user) {
+    if (user?.displayName?.isNotEmpty == true) {
+      return user!.displayName![0].toUpperCase();
+    } else if (user?.email?.isNotEmpty == true) {
+      return user!.email![0].toUpperCase();
+    }
+    return "U";
   }

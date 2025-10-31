@@ -299,7 +299,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
 
   void _copyDiagnostics() {
     final text = StringBuffer();
-    text.writeln('=== 3V Video Chat Diagnostics ===\n');
+    text.writeln('=== Tres Diagnostics ===\n');
 
     _diagnostics.forEach((section, items) {
       text.writeln('$section:');

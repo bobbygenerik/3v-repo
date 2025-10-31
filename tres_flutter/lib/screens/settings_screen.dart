@@ -253,7 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
             RadioListTile<String>(
-              title: const Text('High (720p)'),
+              title: const Text('High (1080p)'),
               value: 'high',
               groupValue: _videoQuality,
               onChanged: (value) {
@@ -286,56 +286,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showAboutDialog() {
-    showDialog(
+    showAboutDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('About 3V Video Chat'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Image.asset(
-              'assets/images/logo.png',
-              height: 80,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              '3V Video Chat',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text('Version 1.0.0'),
-            const SizedBox(height: 16),
-            const Text(
-              'A high-quality video calling application built with Flutter and LiveKit.',
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Features:',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppColors.primaryBlue,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text('• HD Video & Audio Calls'),
-            const Text('• Screen Sharing'),
-            const Text('• Guest Links'),
-            const Text('• End-to-End Encryption'),
-            const Text('• Cross-Platform Support'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CLOSE'),
-          ),
-        ],
+      applicationName: 'Tres',
+      applicationVersion: '1.0.0',
+      applicationIcon: Image.asset(
+        'assets/images/logo.png',
+        width: 64,
+        height: 64,
       ),
+      children: [
+        const Text(
+          'Secure video calling with end-to-end encryption.',
+        ),
+      ],
     );
   }
 

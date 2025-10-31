@@ -93,7 +93,7 @@ class GuestLinkService extends ChangeNotifier {
     try {
       await Share.share(
         message,
-        subject: '3V Video Call Invitation',
+        subject: 'Video Call Invitation',
       );
     } catch (e) {
       _error = 'Failed to share link: $e';

@@ -44,7 +44,7 @@ class TresApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GuestLinkService()),
       ],
       child: MaterialApp(
-        title: '3V Video Chat',
+        title: 'Tres',
         theme: AppTheme.darkTheme,
         home: const SplashScreen(),
         debugShowCheckedModeBanner: false,
