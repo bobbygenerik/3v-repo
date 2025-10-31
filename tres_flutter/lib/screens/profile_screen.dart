@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../config/app_theme.dart';
 import 'settings_screen.dart';
 import 'diagnostics_screen.dart';
@@ -58,6 +62,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _uploadPhoto() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+
+      setState(() => _isLoading = true);
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Upload to Firebase Storage
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_photos')
+          .child('${user.uid}.jpg');
+
+      if (kIsWeb) {
+        // Web upload
+        final bytes = await image.readAsBytes();
+        await storageRef.putData(bytes);
+      } else {
+        // Mobile upload
+        await storageRef.putFile(File(image.path));
+      }
+
+      // Get download URL
+      final photoURL = await storageRef.getDownloadURL();
+
+      // Update user profile
+      await user.updatePhotoURL(photoURL);
+      await user.reload();
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Photo updated successfully')),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error uploading photo: $e')),
+        );
+      }
     }
   }
 
@@ -129,14 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       backgroundColor: AppColors.accentBlue,
                       child: IconButton(
                         icon: const Icon(Icons.camera_alt, size: 20),
-                        onPressed: () {
-                          // TODO: Implement photo upload
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Photo upload coming soon'),
-                            ),
-                          );
-                        },
+                        onPressed: _uploadPhoto,
                       ),
                     ),
                   ),
