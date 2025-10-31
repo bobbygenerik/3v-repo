@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../config/app_theme.dart';
-import 'auth_screen.dart';
-import 'home_screen.dart';
+import '../main.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -44,12 +42,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   void _navigateToNextScreen() {
-    final user = FirebaseAuth.instance.currentUser;
-    
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) {
-          return user != null ? const HomeScreen() : const AuthScreen();
+          return const AuthWrapper();
         },
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);

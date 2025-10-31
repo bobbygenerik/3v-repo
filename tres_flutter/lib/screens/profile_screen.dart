@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../config/app_theme.dart';
+import 'settings_screen.dart';
+import 'diagnostics_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -196,6 +198,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 24),
 
+          // App Settings Section
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.settings, color: AppColors.accentBlue),
+                  title: const Text('App Settings'),
+                  subtitle: const Text('Video, audio, and notifications'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.bug_report, color: AppColors.accentBlue),
+                  title: const Text('Diagnostics'),
+                  subtitle: const Text('System health and troubleshooting'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DiagnosticsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
           // Account Actions
           Card(
             child: Column(
@@ -237,6 +277,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _showDeleteAccountDialog(),
                 ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.orange),
+                  title: const Text(
+                    'Sign Out',
+                    style: TextStyle(color: Colors.orange),
+                  ),
+                  onTap: () => _showSignOutDialog(),
+                ),
               ],
             ),
           ),
@@ -274,6 +323,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
               'DELETE',
               style: TextStyle(color: Colors.red),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSignOutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              }
+            },
+            child: const Text('SIGN OUT'),
           ),
         ],
       ),
