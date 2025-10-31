@@ -29,10 +29,22 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>tres_flutter</title>
+  <title>3V Video Chat</title>
   <link rel="manifest" href="manifest.json">
+  
+  <style>
+    /* reCAPTCHA container styling */
+    #recaptcha-container {
+      display: flex;
+      justify-content: center;
+      margin: 20px 0;
+    }
+  </style>
 </head>
 <body>
+  <!-- Container for reCAPTCHA widget (required for phone auth on web) -->
+  <div id="recaptcha-container"></div>
+  
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

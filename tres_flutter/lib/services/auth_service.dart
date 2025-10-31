@@ -1,10 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'web_auth_helper.dart' if (dart.library.io) 'web_auth_helper_stub.dart';
 
 /// Authentication service wrapping Firebase Auth
 /// Supports phone number and email/password authentication
 class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  ConfirmationResult? _webConfirmationResult;
   
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -15,7 +17,7 @@ class AuthService extends ChangeNotifier {
   String? _errorMessage;
   
   String? get errorMessage => _errorMessage;
-  bool get isVerificationPending => _verificationId != null;
+  bool get isVerificationPending => _verificationId != null || _webConfirmationResult != null;
   
   /// Sign in with email and password
   Future<bool> signInWithEmail(String email, String password) async {
@@ -69,8 +71,28 @@ class AuthService extends ChangeNotifier {
     try {
       _errorMessage = null;
       _verificationId = null;
+      _webConfirmationResult = null;
       notifyListeners();
       
+      // Web-specific phone auth with reCAPTCHA
+      if (kIsWeb) {
+        try {
+          // Initialize reCAPTCHA and send verification code
+          _webConfirmationResult = await WebAuthHelper.sendVerificationCode(
+            _auth,
+            phoneNumber,
+          );
+          
+          notifyListeners();
+          return true;
+        } catch (e) {
+          _errorMessage = 'Failed to send verification code. Make sure you completed the reCAPTCHA. Error: ${e.toString()}';
+          notifyListeners();
+          return false;
+        }
+      }
+      
+      // Mobile phone auth
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         timeout: const Duration(seconds: 60),
@@ -99,7 +121,7 @@ class AuthService extends ChangeNotifier {
       
       return true;
     } catch (e) {
-      _errorMessage = 'Failed to send verification code';
+      _errorMessage = 'Failed to send verification code: ${e.toString()}';
       notifyListeners();
       return false;
     }
@@ -107,15 +129,30 @@ class AuthService extends ChangeNotifier {
   
   /// Verify phone number with SMS code
   Future<bool> verifyPhoneCode(String smsCode) async {
-    if (_verificationId == null) {
-      _errorMessage = 'No verification in progress';
-      notifyListeners();
-      return false;
-    }
-    
     try {
       _errorMessage = null;
       notifyListeners();
+      
+      // Web phone verification
+      if (kIsWeb && _webConfirmationResult != null) {
+        try {
+          await _webConfirmationResult!.confirm(smsCode);
+          _webConfirmationResult = null;
+          notifyListeners();
+          return true;
+        } catch (e) {
+          _errorMessage = 'Invalid verification code';
+          notifyListeners();
+          return false;
+        }
+      }
+      
+      // Mobile phone verification
+      if (_verificationId == null) {
+        _errorMessage = 'No verification in progress';
+        notifyListeners();
+        return false;
+      }
       
       final credential = PhoneAuthProvider.credential(
         verificationId: _verificationId!,
@@ -148,6 +185,14 @@ class AuthService extends ChangeNotifier {
   
   /// Clear error message
   void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+  
+  /// Clear verification state
+  void clearVerification() {
+    _verificationId = null;
+    _webConfirmationResult = null;
     _errorMessage = null;
     notifyListeners();
   }
