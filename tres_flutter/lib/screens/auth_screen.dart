@@ -118,14 +118,6 @@ class _AuthScreenState extends State<AuthScreen> {
                   height: 120,
                   fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  '3V Video Chat',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
                 const SizedBox(height: 48),
                 
                 // Auth method toggle
