@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_theme.dart';
 
@@ -57,47 +58,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    _prefs = await SharedPreferences.getInstance();
-    setState(() {
-      // Notifications
-      _notificationsEnabled = _prefs.getBool('notifications_enabled') ?? true;
-      _minimalNotifications = _prefs.getBool('minimal_notifications') ?? false;
-      
-      // Voice Isolation
-      _voiceIsolation = _prefs.getBool('voice_isolation') ?? true;
-      
-      // Video Settings
-      _autoBoost60fps = _prefs.getBool('auto_boost_60fps') ?? false;
-      _portraitBlurIntensity = _prefs.getDouble('portrait_blur_intensity') ?? 70.0;
-      _beautyFilter = _prefs.getBool('beauty_filter') ?? true;
-      _backgroundBlur = _prefs.getBool('background_blur') ?? false;
-      _virtualBackground = _prefs.getBool('virtual_background') ?? false;
-      _faceAutoFraming = _prefs.getBool('face_auto_framing') ?? false;
-      _lowLightEnhancement = _prefs.getBool('low_light_enhancement') ?? false;
-      
-      // Audio Processing
-      _noiseSuppression = _prefs.getBool('noise_suppression') ?? true;
-      _echoCancellation = _prefs.getBool('echo_cancellation') ?? true;
-      _spatialAudio = _prefs.getBool('spatial_audio') ?? false;
-      
-      // AI Features
-      _handGestures = _prefs.getBool('hand_gestures') ?? false;
-      _emotionDetection = _prefs.getBool('emotion_detection') ?? false;
-      _liveCaptions = _prefs.getBool('live_captions') ?? false;
-      
-      // UI & Interaction
-      _defaultGridLayout = _prefs.getString('default_grid_layout') ?? 'auto';
-      _picureInPicture = _prefs.getBool('picture_in_picture') ?? true;
-      _reactionAnimations = _prefs.getBool('reaction_animations') ?? true;
-      
-      // Developer
-      _developerMode = _prefs.getBool('developer_mode') ?? false;
-      _callHealthOverlay = _prefs.getBool('call_health_overlay') ?? false;
-      _callQuality = _prefs.getString('call_quality') ?? 'auto';
-      _videoCodec = _prefs.getString('video_codec') ?? 'H.264 (VP9 if available)';
-      
-      _isLoading = false;
-    });
+    try {
+      _prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          // Notifications
+          _notificationsEnabled = _prefs.getBool('notifications_enabled') ?? true;
+          _minimalNotifications = _prefs.getBool('minimal_notifications') ?? false;
+          
+          // Voice Isolation
+          _voiceIsolation = _prefs.getBool('voice_isolation') ?? true;
+          
+          // Video Settings
+          _autoBoost60fps = _prefs.getBool('auto_boost_60fps') ?? false;
+          _portraitBlurIntensity = _prefs.getDouble('portrait_blur_intensity') ?? 70.0;
+          _beautyFilter = _prefs.getBool('beauty_filter') ?? true;
+          _backgroundBlur = _prefs.getBool('background_blur') ?? false;
+          _virtualBackground = _prefs.getBool('virtual_background') ?? false;
+          _faceAutoFraming = _prefs.getBool('face_auto_framing') ?? false;
+          _lowLightEnhancement = _prefs.getBool('low_light_enhancement') ?? false;
+          
+          // Audio Processing
+          _noiseSuppression = _prefs.getBool('noise_suppression') ?? true;
+          _echoCancellation = _prefs.getBool('echo_cancellation') ?? true;
+          _spatialAudio = _prefs.getBool('spatial_audio') ?? false;
+          
+          // AI Features
+          _handGestures = _prefs.getBool('hand_gestures') ?? false;
+          _emotionDetection = _prefs.getBool('emotion_detection') ?? false;
+          _liveCaptions = _prefs.getBool('live_captions') ?? false;
+          
+          // UI & Interaction
+          _defaultGridLayout = _prefs.getString('default_grid_layout') ?? 'auto';
+          _picureInPicture = _prefs.getBool('picture_in_picture') ?? true;
+          _reactionAnimations = _prefs.getBool('reaction_animations') ?? true;
+          
+          // Developer
+          _developerMode = _prefs.getBool('developer_mode') ?? false;
+          _callHealthOverlay = _prefs.getBool('call_health_overlay') ?? false;
+          _callQuality = _prefs.getString('call_quality') ?? 'auto';
+          _videoCodec = _prefs.getString('video_codec') ?? 'H.264 (VP9 if available)';
+          
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading settings: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _saveSetting(String key, dynamic value) async {

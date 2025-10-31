@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../config/app_theme.dart';
-import 'settings_screen.dart';
 import 'diagnostics_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -68,12 +67,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _uploadPhoto() async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 90,
-      );
+      
+      // For web, we need to be more explicit
+      XFile? image;
+      try {
+        image = await picker.pickImage(
+          source: ImageSource.gallery,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 90,
+        );
+      } catch (e) {
+        debugPrint('Image picker error: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Image picker not available: $e'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
 
       if (image == null) {
         if (mounted) {
@@ -97,22 +112,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .child('profile_photos')
           .child('${user.uid}.jpg');
 
-      if (kIsWeb) {
-        // Web upload
-        final bytes = await image.readAsBytes();
-        final metadata = SettableMetadata(
-          contentType: 'image/jpeg',
-          customMetadata: {'uploaded-by': user.uid},
-        );
-        await storageRef.putData(bytes, metadata);
-      } else {
-        // Mobile upload
-        final metadata = SettableMetadata(
-          contentType: 'image/jpeg',
-          customMetadata: {'uploaded-by': user.uid},
-        );
-        await storageRef.putFile(File(image.path), metadata);
-      }
+      final bytes = await image.readAsBytes();
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {'uploaded-by': user.uid},
+      );
+      
+      await storageRef.putData(bytes, metadata);
 
       // Get download URL
       final photoURL = await storageRef.getDownloadURL();
@@ -122,7 +128,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       
       // Force reload to get updated photo
       await user.reload();
-      final updatedUser = FirebaseAuth.instance.currentUser;
 
       if (mounted) {
         setState(() {
@@ -138,6 +143,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {});
       }
     } catch (e) {
+      debugPrint('Error uploading photo: $e');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

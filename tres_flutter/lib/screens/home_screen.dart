@@ -18,7 +18,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _showContactsView = true; // true = Contacts, false = History
@@ -32,6 +32,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   int _currentPlaceholderIndex = 0;
   final List<String> _placeholders = ['Email', 'Phone', 'Display Name'];
   late AnimationController _placeholderController;
+  late AnimationController _welcomeController;
+  late Animation<double> _welcomeFadeAnimation;
 
   @override
   void initState() {
@@ -40,19 +42,33 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _loadCallHistory();
     _searchController.addListener(_filterContacts);
     
-    // Animate placeholder
+    // Animate placeholder with ticker effect
     _placeholderController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
-    )..addListener(() {
-      if (_placeholderController.isCompleted) {
-        setState(() {
-          _currentPlaceholderIndex = (_currentPlaceholderIndex + 1) % _placeholders.length;
+      duration: const Duration(milliseconds: 500),
+    )..addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) {
+            setState(() {
+              _currentPlaceholderIndex = (_currentPlaceholderIndex + 1) % _placeholders.length;
+            });
+            _placeholderController.forward(from: 0.0);
+          }
         });
-        _placeholderController.forward(from: 0.0);
       }
     });
     _placeholderController.forward();
+    
+    // Welcome message fade-in animation
+    _welcomeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _welcomeFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _welcomeController, curve: Curves.easeIn),
+    );
+    _welcomeController.forward();
   }
 
   @override
@@ -60,6 +76,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _searchController.dispose();
     _scrollController.dispose();
     _placeholderController.dispose();
+    _welcomeController.dispose();
     super.dispose();
   }
 
@@ -172,18 +189,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       body: SafeArea(
         child: Column(
           children: [
-            // Header with Logo and Profile
+            // Header with Logo and Profile - Equal distance from edges
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+              padding: const EdgeInsets.all(16.0),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Logo
+                  // Logo - aligned to left
                   Image.asset(
                     'assets/images/logo.png',
-                    height: 72,
+                    height: 56,
                     fit: BoxFit.contain,
                   ),
-                  const Spacer(),
                   // Profile Button with Dropdown
                   PopupMenuButton<String>(
                     offset: const Offset(0, 50),
@@ -270,58 +287,90 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
             ),
 
-            // Welcome Text
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Welcome, ${user?.displayName ?? 'User'}',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+            // Centered Welcome Text with Animation
+            FadeTransition(
+              opacity: _welcomeFadeAnimation,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                child: Center(
+                  child: Text(
+                    'Welcome, ${user?.displayName ?? 'User'}',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
             ),
 
-            const SizedBox(height: 16),
-
-            // Search Bar with Animated Placeholder
+            // Search Bar with @ icon and Add Contact button - Exact match to Android
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search ${_placeholders[_currentPlaceholderIndex]}',
-                  prefixIcon: const Icon(Icons.search, color: AppColors.accentBlue),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            setState(() {
-                              _searchController.clear();
-                            });
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: AppColors.primaryDark,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.primaryBlue.withOpacity(0.5)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.primaryBlue.withOpacity(0.3)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.accentBlue, width: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.primaryDark,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.primaryBlue.withOpacity(0.3),
+                    width: 1,
                   ),
                 ),
-                onChanged: (value) => setState(() {}),
+                child: Row(
+                  children: [
+                    // @ icon
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12.0),
+                      child: Icon(
+                        Icons.alternate_email,
+                        color: AppColors.accentBlue,
+                        size: 20,
+                      ),
+                    ),
+                    // Search field with ticker animation
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        decoration: InputDecoration(
+                          hintText: 'Search ${_placeholders[_currentPlaceholderIndex]}',
+                          hintStyle: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontSize: 16,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onChanged: (value) => setState(() {}),
+                      ),
+                    ),
+                    // Clear button
+                    if (_searchController.text.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.white70, size: 20),
+                        onPressed: () {
+                          setState(() {
+                            _searchController.clear();
+                          });
+                        },
+                      ),
+                    // Add Contact button
+                    Container(
+                      margin: const EdgeInsets.only(right: 4),
+                      child: IconButton(
+                        icon: const Icon(Icons.person_add, color: AppColors.accentBlue, size: 22),
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Add contact feature coming soon')),
+                          );
+                        },
+                        tooltip: 'Add Contact',
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
