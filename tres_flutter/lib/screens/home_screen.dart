@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../config/app_theme.dart';
 import 'profile_screen.dart';
-import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,36 +11,19 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _showContactsView = true; // true = Contacts, false = History
-  int _currentPlaceholderIndex = 0;
-  final List<String> _placeholders = ['Email', 'Phone', 'Display Name', 'Username'];
-  late AnimationController _placeholderAnimationController;
 
   @override
   void initState() {
     super.initState();
-    _placeholderAnimationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..addListener(() {
-        if (_placeholderAnimationController.isCompleted) {
-          setState(() {
-            _currentPlaceholderIndex = (_currentPlaceholderIndex + 1) % _placeholders.length;
-          });
-          _placeholderAnimationController.forward(from: 0.0);
-        }
-      });
-    _placeholderAnimationController.forward();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
-    _placeholderAnimationController.dispose();
     super.dispose();
   }
 
@@ -49,358 +31,203 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final authService = context.read<AuthService>();
     final user = authService.currentUser;
-    final displayName = user?.displayName ?? user?.email?.split('@')[0] ?? 'User';
     
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top bar with logo and profile
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Logo
-                  Image.asset(
-                    'assets/images/logo.png',
-                    height: 50,
-                    fit: BoxFit.contain,
-                  ),
-                  // Profile menu
-                  PopupMenuButton<String>(
-                    offset: const Offset(0, 50),
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'profile':
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                          );
-                          break;
-                        case 'guest_link':
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Guest link coming soon!')),
-                          );
-                          break;
-                        case 'settings':
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                          );
-                          break;
-                        case 'crash_reports':
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Crash reports coming soon!')),
-                          );
-                          break;
-                        case 'sign_out':
-                          authService.signOut();
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'profile',
-                        child: Row(
-                          children: [
-                            Icon(Icons.person, size: 20),
-                            SizedBox(width: 12),
-                            Text('Profile'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'guest_link',
-                        child: Row(
-                          children: [
-                            Icon(Icons.share, size: 20),
-                            SizedBox(width: 12),
-                            Text('Create Guest Link'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'settings',
-                        child: Row(
-                          children: [
-                            Icon(Icons.settings, size: 20),
-                            SizedBox(width: 12),
-                            Text('Settings'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'sign_out',
-                        child: Row(
-                          children: [
-                            Icon(Icons.logout, color: Colors.red, size: 20),
-                            SizedBox(width: 12),
-                            Text('Sign Out', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'crash_reports',
-                        child: Row(
-                          children: [
-                            Icon(Icons.bug_report, color: Colors.yellow, size: 20),
-                            SizedBox(width: 12),
-                            Text('Crash Reports', style: TextStyle(color: Colors.yellow)),
-                          ],
-                        ),
-                      ),
-                    ],
-                    child: CircleAvatar(
-                      radius: 20,
-                      backgroundColor: AppColors.primaryBlue,
-                      backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-                      child: user?.photoURL == null
-                          ? Text(
+      appBar: AppBar(
+        backgroundColor: AppColors.backgroundDark,
+        elevation: 0,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: IconButton(
+              icon: CircleAvatar(
+                radius: 20,
+                backgroundColor: AppColors.primaryBlue,
+                child: user?.photoURL != null
+                    ? ClipOval(
+                        child: Image.network(
+                          user!.photoURL!,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Text(
                               _getUserInitial(user),
-                              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                            )
-                          : null,
-                    ),
-                  ),
-                ],
+                              style: const TextStyle(fontSize: 18, color: Colors.white),
+                            );
+                          },
+                        ),
+                      )
+                    : Text(
+                        _getUserInitial(user),
+                        style: const TextStyle(fontSize: 18, color: Colors.white),
+                      ),
               ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfileScreen(),
+                  ),
+                );
+              },
+              tooltip: 'Profile & Settings',
             ),
-
-            // Scrollable content
-            Expanded(
+          ),
+        ],
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Container(
+            margin: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3), width: 3),
+              borderRadius: BorderRadius.circular(48),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(45),
               child: SingleChildScrollView(
                 controller: _scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(24.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 8),
-                    
-                    // Welcome text
-                    Center(
-                      child: Text(
-                        'Welcome, $displayName',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                    // Large centered logo
+                    Image.asset(
+                      'assets/images/logo.png',
+                      height: 192,
+                      fit: BoxFit.contain,
                     ),
-                    
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
 
-                    // Search Bar with animated placeholder
-                    AnimatedBuilder(
-                      animation: _placeholderAnimationController,
-                      builder: (context, child) {
-                        return TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            hintText: 'Search ${_placeholders[_currentPlaceholderIndex]}',
-                            prefixIcon: const Icon(Icons.alternate_email, color: AppColors.textLight),
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.person_add, color: AppColors.accentBlue),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Add contact coming soon!')),
-                                );
-                              },
-                            ),
-                            filled: true,
-                            fillColor: AppColors.primaryDark,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(30),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                          ),
-                          onChanged: (value) {
-                            setState(() {});
-                          },
-                        );
+                    // Search Bar
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search contacts or start a call...',
+                        prefixIcon: const Icon(Icons.alternate_email, color: AppColors.accentBlue),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  setState(() {
+                                    _searchController.clear();
+                                  });
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: AppColors.primaryDark,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: AppColors.primaryBlue.withOpacity(0.5)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: AppColors.primaryBlue.withOpacity(0.3)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: AppColors.accentBlue, width: 2),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      ),
+                      onChanged: (value) {
+                        setState(() {});
                       },
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // Toggle buttons (Contacts / History)
+                    // Contacts and Call Logs buttons
                     Row(
                       children: [
                         Expanded(
-                          child: ElevatedButton.icon(
+                          child: OutlinedButton.icon(
                             onPressed: () {
-                              setState(() {
-                                _showContactsView = true;
-                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Contacts coming soon!')),
+                              );
                             },
-                            icon: const Icon(Icons.people, size: 20),
+                            icon: const Icon(Icons.people, size: 18),
                             label: const Text('Contacts'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _showContactsView ? AppColors.primaryBlue : AppColors.primaryDark,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.accentBlue,
+                              side: const BorderSide(color: AppColors.accentBlue),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: ElevatedButton.icon(
+                          child: OutlinedButton.icon(
                             onPressed: () {
-                              setState(() {
-                                _showContactsView = false;
-                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Call history coming soon!')),
+                              );
                             },
-                            icon: const Icon(Icons.history, size: 20),
-                            label: const Text('History'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: !_showContactsView ? AppColors.primaryBlue : AppColors.primaryDark,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
+                            icon: const Icon(Icons.history, size: 18),
+                            label: const Text('Call Logs'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.accentBlue,
+                              side: const BorderSide(color: AppColors.accentBlue),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
                         ),
                       ],
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
-                    // Section title
-                    Text(
-                      _showContactsView ? 'Your Contacts' : 'Call History',
-                      style: const TextStyle(
-                        color: AppColors.textLight,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
+                    // Start Call button with gradient
+                    Container(
+                      width: double.infinity,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [AppColors.accentBlue, AppColors.primaryBlue],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showStartCallDialog(),
+                        icon: const Icon(Icons.phone, size: 20, color: Colors.white),
+                        label: const Text(
+                          'Start Call',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
                       ),
                     ),
 
-                    const SizedBox(height: 16),
-
-                    // List
-                    _showContactsView ? _buildContactsList() : _buildHistoryList(),
-
-                    const SizedBox(height: 80), // Bottom padding
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildContactsList() {
-    // TODO: Connect to Firestore
-    final mockContacts = [
-      {'name': 'Bobby Generik', 'email': 'bgkalt001@gmail.com'},
-      {'name': 'bobbybrown2k1', 'email': 'bobbybrown2k1@gmail.com'},
-    ];
-
-    return Column(
-      children: mockContacts.map((contact) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: AppColors.primaryDark,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            leading: CircleAvatar(
-              radius: 24,
-              backgroundColor: AppColors.primaryBlue,
-              child: Text(
-                contact['name']![0].toUpperCase(),
-                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            title: Text(
-              contact['name']!,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text(
-              contact['email']!,
-              style: const TextStyle(color: AppColors.textLight, fontSize: 13),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.star_border, color: AppColors.textLight, size: 22),
-                  onPressed: () {
-                    // TODO: Toggle favorite
-                  },
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  icon: const Icon(Icons.phone, color: AppColors.accentBlue, size: 22),
-                  onPressed: () => _showStartCallDialog(contact['email']),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildHistoryList() {
-    // TODO: Connect to Firestore
-    final mockHistory = [
-      {'to': 'VIDEO', 'duration': '2m 19s', 'time': '2d ago'},
-      {'to': 'bobbybrown2k1', 'duration': '19s', 'time': '3d ago'},
-      {'to': 'bobbybrown2k1', 'duration': '21s', 'time': '3d ago'},
-      {'to': 'her', 'duration': '2m 19s', 'time': '4d ago'},
-    ];
-
-    return Column(
-      children: mockHistory.map((call) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: AppColors.primaryDark,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            leading: CircleAvatar(
-              radius: 22,
-              backgroundColor: AppColors.primaryBlue,
-              child: const Icon(Icons.phone, color: Colors.white, size: 20),
-            ),
-            title: Text(
-              'To: ${call['to']}',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-            ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                'VIDEO • ${call['duration']}',
-                style: const TextStyle(color: AppColors.textLight, fontSize: 13),
-              ),
-            ),
-            trailing: Text(
-              call['time']!,
-              style: const TextStyle(color: AppColors.textLight, fontSize: 12),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  void _showStartCallDialog([String? recipient]) {
-    final roomController = TextEditingController(text: recipient);
+  void _showStartCallDialog() {
+    final roomController = TextEditingController();
     
     showDialog(
       context: context,
@@ -410,11 +237,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         content: TextField(
           controller: roomController,
           decoration: const InputDecoration(
-            labelText: 'Email or Room Name',
-            hintText: 'Enter recipient email',
-            prefixIcon: Icon(Icons.alternate_email),
+            labelText: 'Room Name',
+            hintText: 'Enter room name',
+            prefixIcon: Icon(Icons.meeting_room),
           ),
-          autofocus: recipient == null,
+          autofocus: true,
         ),
         actions: [
           TextButton(
@@ -423,20 +250,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
           FilledButton.icon(
             onPressed: () {
-              final room = roomController.text.trim();
-              if (room.isEmpty) {
+              final roomName = roomController.text.trim();
+              if (roomName.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a recipient')),
+                  const SnackBar(content: Text('Please enter a room name')),
                 );
                 return;
               }
               Navigator.pop(context);
-              _startCall(room);
+              _startCall(roomName);
             },
             icon: const Icon(Icons.video_call),
             label: const Text('Start'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showShareLinkDialog() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Link sharing coming soon!'),
+        duration: Duration(seconds: 2),
       ),
     );
   }
