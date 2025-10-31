@@ -147,230 +147,399 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = FirebaseAuth.instance.currentUser;
     
     return Scaffold(
+      backgroundColor: const Color(0xFF1C1C1E), // Dark background matching Android
       appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          if (_isEditing)
-            TextButton(
-              onPressed: _isLoading ? null : _saveProfile,
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('SAVE'),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => setState(() => _isEditing = true),
-            ),
-        ],
+        backgroundColor: const Color(0xFF1C1C1E),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Profile Settings',
+          style: TextStyle(
+            color: Color(0xFF8E8E93),
+            fontSize: 20,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-          // Profile Picture
-          Center(
-            child: Stack(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.primaryBlue, // Ring color matching app theme
-                      width: 3,
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+            )
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                child: Column(
+                  children: [
+                    // Profile Picture with ring
+                    GestureDetector(
+                      onTap: _uploadPhoto,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFF6B7FB8), // App's main blue color
+                            width: 4,
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          radius: 80,
+                          backgroundColor: const Color(0xFF2C2C2E),
+                          backgroundImage: user?.photoURL != null 
+                              ? NetworkImage(user!.photoURL!) 
+                              : null,
+                          child: user?.photoURL == null
+                              ? Text(
+                                  (user?.displayName?.isNotEmpty == true
+                                      ? user!.displayName![0].toUpperCase()
+                                      : user?.email?[0].toUpperCase() ?? 'U'),
+                                  style: const TextStyle(
+                                    fontSize: 48,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
                     ),
-                  ),
-                  child: CircleAvatar(
-                    radius: 60,
-                    backgroundColor: AppColors.primaryBlue,
-                    child: user?.photoURL != null
-                        ? ClipOval(
-                            child: Image.network(
-                              user!.photoURL!,
-                              width: 120,
-                              height: 120,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : Text(
-                            (user?.displayName?.isNotEmpty == true
-                                ? user!.displayName![0].toUpperCase()
-                                : user?.email?[0].toUpperCase() ?? 'U'),
-                            style: const TextStyle(
-                              fontSize: 48,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                    
+                    const SizedBox(height: 16),
+                    
+                    // "Tap to change profile picture" text
+                    const Text(
+                      'Tap to change profile picture',
+                      style: TextStyle(
+                        color: Color(0xFF8E8E93),
+                        fontSize: 14,
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 48),
+                    
+                    // Display Name input
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(left: 8, bottom: 8),
+                          child: Text(
+                            'Display Name',
+                            style: TextStyle(
+                              color: Color(0xFF8E8E93),
+                              fontSize: 14,
                             ),
                           ),
-                  ),
-                ),
-                if (_isEditing)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: CircleAvatar(
-                      radius: 20,
-                      backgroundColor: AppColors.accentBlue,
-                      child: IconButton(
-                        icon: const Icon(Icons.camera_alt, size: 20),
-                        onPressed: _uploadPhoto,
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2C2C2E),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFF3A3A3C),
+                              width: 1,
+                            ),
+                          ),
+                          child: TextField(
+                            controller: _nameController,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                              hintText: 'Enter your name',
+                              hintStyle: TextStyle(
+                                color: Color(0xFF8E8E93),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 32),
+                    
+                    // Save Profile button - large rounded button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _saveProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6B7FB8),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(28), // Very rounded like Android
+                          ),
+                        ),
+                        child: const Text(
+                          'Save Profile',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          // User Info Card
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Display Name
-                  TextField(
-                    controller: _nameController,
-                    enabled: _isEditing,
-                    decoration: const InputDecoration(
-                      labelText: 'Display Name',
-                      prefixIcon: Icon(Icons.person),
+                    
+                    const SizedBox(height: 48),
+                    
+                    // Additional options section (collapsible/expandable)
+                    ExpansionTile(
+                      title: const Text(
+                        'Additional Options',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      iconColor: const Color(0xFF6B7FB8),
+                      collapsedIconColor: const Color(0xFF8E8E93),
+                      backgroundColor: const Color(0xFF2C2C2E),
+                      collapsedBackgroundColor: const Color(0xFF2C2C2E),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      collapsedShape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      children: [
+                        // Email/Phone info
+                        Container(
+                          color: const Color(0xFF2C2C2E),
+                          child: ListTile(
+                            leading: Icon(
+                              user?.email != null ? Icons.email : Icons.phone,
+                              color: const Color(0xFF6B7FB8),
+                              size: 20,
+                            ),
+                            title: const Text(
+                              'Contact',
+                              style: TextStyle(color: Colors.white, fontSize: 14),
+                            ),
+                            subtitle: Text(
+                              user?.email ?? user?.phoneNumber ?? 'Not set',
+                              style: const TextStyle(
+                                color: Color(0xFF8E8E93),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                        
+                        // User ID
+                        Container(
+                          color: const Color(0xFF2C2C2E),
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.fingerprint,
+                              color: Color(0xFF6B7FB8),
+                              size: 20,
+                            ),
+                            title: const Text(
+                              'User ID',
+                              style: TextStyle(color: Colors.white, fontSize: 14),
+                            ),
+                            subtitle: Text(
+                              user?.uid ?? 'Unknown',
+                              style: const TextStyle(
+                                color: Color(0xFF8E8E93),
+                                fontSize: 10,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                        
+                        // Member Since
+                        Container(
+                          color: const Color(0xFF2C2C2E),
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.calendar_today,
+                              color: Color(0xFF6B7FB8),
+                              size: 20,
+                            ),
+                            title: const Text(
+                              'Member Since',
+                              style: TextStyle(color: Colors.white, fontSize: 14),
+                            ),
+                            subtitle: Text(
+                              user?.metadata.creationTime?.toString().split(' ')[0] ?? 'Unknown',
+                              style: const TextStyle(
+                                color: Color(0xFF8E8E93),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                        
+                        const Divider(color: Color(0xFF3A3A3C), height: 1),
+                        
+                        // Diagnostics
+                        Container(
+                          color: const Color(0xFF2C2C2E),
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.bug_report,
+                              color: Color(0xFF6B7FB8),
+                              size: 20,
+                            ),
+                            title: const Text(
+                              'Diagnostics',
+                              style: TextStyle(color: Colors.white, fontSize: 14),
+                            ),
+                            trailing: const Icon(
+                              Icons.chevron_right,
+                              color: Color(0xFF8E8E93),
+                              size: 20,
+                            ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const DiagnosticsScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        
+                        // Change Password
+                        Container(
+                          color: const Color(0xFF2C2C2E),
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.lock,
+                              color: Color(0xFF6B7FB8),
+                              size: 20,
+                            ),
+                            title: const Text(
+                              'Change Password',
+                              style: TextStyle(color: Colors.white, fontSize: 14),
+                            ),
+                            trailing: const Icon(
+                              Icons.chevron_right,
+                              color: Color(0xFF8E8E93),
+                              size: 20,
+                            ),
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Password change coming soon'),
+                                  backgroundColor: Color(0xFF2C2C2E),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        
+                        // Privacy Settings
+                        Container(
+                          color: const Color(0xFF2C2C2E),
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.security,
+                              color: Color(0xFF6B7FB8),
+                              size: 20,
+                            ),
+                            title: const Text(
+                              'Privacy Settings',
+                              style: TextStyle(color: Colors.white, fontSize: 14),
+                            ),
+                            trailing: const Icon(
+                              Icons.chevron_right,
+                              color: Color(0xFF8E8E93),
+                              size: 20,
+                            ),
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Privacy settings coming soon'),
+                                  backgroundColor: Color(0xFF2C2C2E),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        
+                        // Delete Account
+                        Container(
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF2C2C2E),
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(12),
+                              bottomRight: Radius.circular(12),
+                            ),
+                          ),
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.delete_forever,
+                              color: Colors.red,
+                              size: 20,
+                            ),
+                            title: const Text(
+                              'Delete Account',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 14,
+                              ),
+                            ),
+                            trailing: const Icon(
+                              Icons.chevron_right,
+                              color: Color(0xFF8E8E93),
+                              size: 20,
+                            ),
+                            onTap: () => _showDeleteAccountDialog(),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Email/Phone (read-only)
-                  ListTile(
-                    leading: Icon(
-                      user?.email != null ? Icons.email : Icons.phone,
-                      color: AppColors.primaryBlue,
-                    ),
-                    title: const Text('Contact'),
-                    subtitle: Text(
-                      user?.email ?? user?.phoneNumber ?? 'Not set',
-                    ),
-                  ),
-
-                  // User ID
-                  ListTile(
-                    leading: const Icon(Icons.fingerprint, color: AppColors.primaryBlue),
-                    title: const Text('User ID'),
-                    subtitle: Text(
-                      user?.uid ?? 'Unknown',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-
-                  // Account Created
-                  ListTile(
-                    leading: const Icon(Icons.calendar_today, color: AppColors.primaryBlue),
-                    title: const Text('Member Since'),
-                    subtitle: Text(
-                      user?.metadata.creationTime?.toString().split(' ')[0] ?? 'Unknown',
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-
-          // Diagnostics Section
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.bug_report, color: AppColors.accentBlue),
-              title: const Text('Diagnostics'),
-              subtitle: const Text('System health and troubleshooting'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const DiagnosticsScreen(),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Account Actions
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.lock, color: AppColors.accentBlue),
-                  title: const Text('Change Password'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    // TODO: Implement password change
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Password change coming soon'),
-                      ),
-                    );
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.security, color: AppColors.accentBlue),
-                  title: const Text('Privacy Settings'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    // TODO: Implement privacy settings
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Privacy settings coming soon'),
-                      ),
-                    );
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.delete_forever, color: Colors.red),
-                  title: const Text(
-                    'Delete Account',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showDeleteAccountDialog(),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  ),
-);
-}
+    );
+  }
 
   void _showDeleteAccountDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Account'),
+        backgroundColor: const Color(0xFF2C2C2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Delete Account',
+          style: TextStyle(color: Colors.white),
+        ),
         content: const Text(
           'Are you sure you want to delete your account? This action cannot be undone.',
+          style: TextStyle(color: Color(0xFF8E8E93)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Color(0xFF8E8E93)),
+            ),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // TODO: Implement account deletion
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Account deletion requires re-authentication'),
+                  backgroundColor: Color(0xFF2C2C2E),
                 ),
               );
             },
@@ -378,31 +547,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               'DELETE',
               style: TextStyle(color: Colors.red),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSignOutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              if (context.mounted) {
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              }
-            },
-            child: const Text('SIGN OUT'),
           ),
         ],
       ),
