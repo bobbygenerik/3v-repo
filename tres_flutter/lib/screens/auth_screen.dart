@@ -152,20 +152,36 @@ class _AuthScreenState extends State<AuthScreen> {
                 else
                   _buildEmailAuthForm(),
                 
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 
-                // Submit button
-                FilledButton(
-                  onPressed: _isLoading ? null : () {
-                    _isPhoneAuth ? _handlePhoneAuth() : _handleEmailAuth();
-                  },
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(_getButtonText(authService)),
+                // Submit button - Full width with proper height
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: FilledButton(
+                    onPressed: _isLoading ? null : () {
+                      _isPhoneAuth ? _handlePhoneAuth() : _handleEmailAuth();
+                    },
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(_getButtonText(authService)),
+                  ),
                 ),
                 
                 // Toggle sign up/sign in (email only)

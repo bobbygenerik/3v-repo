@@ -78,146 +78,74 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildCallsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildCallHistoryItem(
-          name: 'John Doe',
-          time: '2 hours ago',
-          type: CallType.video,
-          missed: false,
-        ),
-        _buildCallHistoryItem(
-          name: 'Jane Smith',
-          time: 'Yesterday',
-          type: CallType.audio,
-          missed: true,
-        ),
-        _buildCallHistoryItem(
-          name: 'Team Meeting',
-          time: '2 days ago',
-          type: CallType.video,
-          missed: false,
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: TextButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.history),
-            label: const Text('View All History'),
+    // TODO: Connect to real Firestore call history
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.call_end,
+            size: 64,
+            color: Colors.grey.shade400,
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCallHistoryItem({
-    required String name,
-    required String time,
-    required CallType type,
-    required bool missed,
-  }) {
-    return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: missed ? Colors.red.shade100 : Colors.blue.shade100,
-          child: Icon(
-            missed ? Icons.call_missed : 
-            (type == CallType.video ? Icons.videocam : Icons.call),
-            color: missed ? Colors.red : Colors.blue,
-          ),
-        ),
-        title: Text(name),
-        subtitle: Row(
-          children: [
-            Icon(
-              missed ? Icons.call_missed : Icons.call_received,
-              size: 14,
-              color: missed ? Colors.red : Colors.green,
+          const SizedBox(height: 16),
+          Text(
+            'No call history yet',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Colors.grey.shade600,
             ),
-            const SizedBox(width: 4),
-            Text(time),
-          ],
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.info_outline),
-          onPressed: () => _showCallDetailsDialog(name, time),
-        ),
-        onTap: () => _showStartCallDialog(defaultRoom: name.replaceAll(' ', '_')),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Your call history will appear here',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey.shade500,
+            ),
+          ),
+          const SizedBox(height: 32),
+          FilledButton.icon(
+            onPressed: () => _showStartCallDialog(),
+            icon: const Icon(Icons.video_call),
+            label: const Text('Start Your First Call'),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildContactsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildContactItem('Alice Johnson', 'Online', true),
-        _buildContactItem('Bob Williams', 'Away', false),
-        _buildContactItem('Carol Davis', 'Online', true),
-        _buildContactItem('David Brown', 'Offline', false),
-        _buildContactItem('Eve Martinez', 'Online', true),
-        const SizedBox(height: 16),
-        Center(
-          child: TextButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.person_add),
-            label: const Text('Add Contact'),
+    // TODO: Connect to real Firestore contacts
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.contacts_outlined,
+            size: 64,
+            color: Colors.grey.shade400,
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildContactItem(String name, String status, bool online) {
-    return Card(
-      child: ListTile(
-        leading: Stack(
-          children: [
-            const CircleAvatar(
-              child: Icon(Icons.person),
+          const SizedBox(height: 16),
+          Text(
+            'No contacts yet',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Colors.grey.shade600,
             ),
-            if (online)
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        title: Text(name),
-        subtitle: Text(
-          status,
-          style: TextStyle(
-            color: online ? Colors.green : Colors.grey,
-            fontSize: 12,
           ),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.videocam),
-              onPressed: online
-                  ? () => _showStartCallDialog(defaultRoom: name.replaceAll(' ', '_'))
-                  : null,
+          const SizedBox(height: 8),
+          Text(
+            'Share your room link to connect with others',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey.shade500,
             ),
-            IconButton(
-              icon: const Icon(Icons.call),
-              onPressed: online
-                  ? () => _showStartCallDialog(defaultRoom: name.replaceAll(' ', '_'))
-                  : null,
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 32),
+          FilledButton.icon(
+            onPressed: () => _showStartCallDialog(),
+            icon: const Icon(Icons.share),
+            label: const Text('Create Room & Share Link'),
+          ),
+        ],
       ),
     );
   }
@@ -425,39 +353,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showCallDetailsDialog(String name, String time) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Call with $name'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Time: $time'),
-            const SizedBox(height: 8),
-            const Text('Duration: 15:32'),
-            const SizedBox(height: 8),
-            const Text('Quality: Good'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _showStartCallDialog(defaultRoom: name.replaceAll(' ', '_'));
-            },
-            child: const Text('Call Again'),
           ),
         ],
       ),
