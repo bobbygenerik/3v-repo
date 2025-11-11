@@ -30,20 +30,16 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
   @override
   void initState() {
     super.initState();
-    
+
     // Setup pulse animation for avatar
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
-    
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    ));
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -78,7 +74,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
         child: Column(
           children: [
             const Spacer(flex: 2),
-            
+
             // Caller Avatar with Pulse Animation
             ScaleTransition(
               scale: _pulseAnimation,
@@ -87,10 +83,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                 height: 150,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.primaryBlue,
-                    width: 3,
-                  ),
+                  border: Border.all(color: AppColors.primaryBlue, width: 3),
                 ),
                 child: CircleAvatar(
                   radius: 73,
@@ -113,9 +106,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Caller Name
             Text(
               widget.callerName,
@@ -126,9 +119,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
               ),
               textAlign: TextAlign.center,
             ),
-            
+
             const SizedBox(height: 8),
-            
+
             // Call Type
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -150,21 +143,18 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Room Name (if different from caller)
             if (widget.roomName != widget.callerName)
               Text(
                 'Room: ${widget.roomName}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.gray,
-                ),
+                style: const TextStyle(fontSize: 14, color: AppColors.gray),
               ),
-            
+
             const Spacer(flex: 3),
-            
+
             // Call Actions
             Padding(
               padding: const EdgeInsets.all(32),
@@ -178,10 +168,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                         heroTag: 'decline',
                         onPressed: _declineCall,
                         backgroundColor: Colors.red,
-                        child: const Icon(
-                          Icons.call_end,
-                          size: 32,
-                        ),
+                        child: const Icon(Icons.call_end, size: 32),
                       ),
                       const SizedBox(height: 12),
                       const Text(
@@ -193,7 +180,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                       ),
                     ],
                   ),
-                  
+
                   // Accept Button
                   Column(
                     children: [
@@ -219,7 +206,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 32),
           ],
         ),

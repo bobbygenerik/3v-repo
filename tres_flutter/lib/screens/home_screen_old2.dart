@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -27,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<Map<String, dynamic>> _filteredContacts = [];
   bool _isLoadingContacts = true;
   bool _isLoadingHistory = true;
-  
+
   // Animated search placeholder
   int _currentPlaceholderIndex = 0;
   final List<String> _placeholders = ['Email', 'Phone', 'Display Name'];
@@ -41,25 +40,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _loadContacts();
     _loadCallHistory();
     _searchController.addListener(_filterContacts);
-    
+
     // Animate placeholder with ticker effect
-    _placeholderController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    )..addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        Future.delayed(const Duration(seconds: 3), () {
-          if (mounted) {
-            setState(() {
-              _currentPlaceholderIndex = (_currentPlaceholderIndex + 1) % _placeholders.length;
+    _placeholderController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 500),
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed) {
+            Future.delayed(const Duration(seconds: 3), () {
+              if (mounted) {
+                setState(() {
+                  _currentPlaceholderIndex =
+                      (_currentPlaceholderIndex + 1) % _placeholders.length;
+                });
+                _placeholderController.forward(from: 0.0);
+              }
             });
-            _placeholderController.forward(from: 0.0);
           }
         });
-      }
-    });
     _placeholderController.forward();
-    
+
     // Welcome message fade-in animation
     _welcomeController = AnimationController(
       vsync: this,
@@ -173,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (timestamp == null) return 'Unknown';
     final now = DateTime.now();
     final diff = now.difference(timestamp);
-    
+
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     return '${diff.inDays}d ago';
@@ -183,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final authService = context.read<AuthService>();
     final user = authService.currentUser;
-    
+
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
       body: SafeArea(
@@ -204,14 +205,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   // Profile Button with Dropdown
                   PopupMenuButton<String>(
                     offset: const Offset(0, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     color: AppColors.primaryDark,
                     onSelected: (value) {
                       switch (value) {
                         case 'profile':
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                            MaterialPageRoute(
+                              builder: (context) => const ProfileScreen(),
+                            ),
                           );
                           break;
                         case 'guest_link':
@@ -220,7 +225,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         case 'settings':
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                            MaterialPageRoute(
+                              builder: (context) => const SettingsScreen(),
+                            ),
                           );
                           break;
                         case 'signout':
@@ -233,9 +240,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         value: 'profile',
                         child: Row(
                           children: const [
-                            Icon(Icons.person, size: 20, color: AppColors.accentBlue),
+                            Icon(
+                              Icons.person,
+                              size: 20,
+                              color: AppColors.accentBlue,
+                            ),
                             SizedBox(width: 12),
-                            Text('Profile', style: TextStyle(color: Colors.white)),
+                            Text(
+                              'Profile',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ],
                         ),
                       ),
@@ -243,9 +257,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         value: 'guest_link',
                         child: Row(
                           children: const [
-                            Icon(Icons.link, size: 20, color: AppColors.accentBlue),
+                            Icon(
+                              Icons.link,
+                              size: 20,
+                              color: AppColors.accentBlue,
+                            ),
                             SizedBox(width: 12),
-                            Text('Create Guest Link', style: TextStyle(color: Colors.white)),
+                            Text(
+                              'Create Guest Link',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ],
                         ),
                       ),
@@ -253,9 +274,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         value: 'settings',
                         child: Row(
                           children: const [
-                            Icon(Icons.settings, size: 20, color: AppColors.accentBlue),
+                            Icon(
+                              Icons.settings,
+                              size: 20,
+                              color: AppColors.accentBlue,
+                            ),
                             SizedBox(width: 12),
-                            Text('Settings', style: TextStyle(color: Colors.white)),
+                            Text(
+                              'Settings',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ],
                         ),
                       ),
@@ -266,7 +294,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           children: const [
                             Icon(Icons.logout, size: 20, color: Colors.red),
                             SizedBox(width: 12),
-                            Text('Sign Out', style: TextStyle(color: Colors.red)),
+                            Text(
+                              'Sign Out',
+                              style: TextStyle(color: Colors.red),
+                            ),
                           ],
                         ),
                       ),
@@ -274,11 +305,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: CircleAvatar(
                       radius: 20,
                       backgroundColor: AppColors.primaryBlue,
-                      backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+                      backgroundImage: user?.photoURL != null
+                          ? NetworkImage(user!.photoURL!)
+                          : null,
                       child: user?.photoURL == null
                           ? Text(
                               _getUserInitial(user),
-                              style: const TextStyle(fontSize: 18, color: Colors.white),
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: Colors.white,
+                              ),
                             )
                           : null,
                     ),
@@ -307,7 +343,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
             // Search Bar with @ icon and Add Contact button - Exact match to Android
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
               child: Container(
                 decoration: BoxDecoration(
                   color: AppColors.primaryDark,
@@ -332,16 +371,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Expanded(
                       child: TextField(
                         controller: _searchController,
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
                         decoration: InputDecoration(
-                          hintText: 'Search ${_placeholders[_currentPlaceholderIndex]}',
+                          hintText:
+                              'Search ${_placeholders[_currentPlaceholderIndex]}',
                           hintStyle: TextStyle(
                             color: Colors.white.withOpacity(0.5),
                             fontSize: 16,
                           ),
                           border: InputBorder.none,
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                          ),
                         ),
                         onChanged: (value) => setState(() {}),
                       ),
@@ -349,7 +394,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     // Clear button
                     if (_searchController.text.isNotEmpty)
                       IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.white70, size: 20),
+                        icon: const Icon(
+                          Icons.clear,
+                          color: Colors.white70,
+                          size: 20,
+                        ),
                         onPressed: () {
                           setState(() {
                             _searchController.clear();
@@ -360,10 +409,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Container(
                       margin: const EdgeInsets.only(right: 4),
                       child: IconButton(
-                        icon: const Icon(Icons.person_add, color: AppColors.accentBlue, size: 22),
+                        icon: const Icon(
+                          Icons.person_add,
+                          color: AppColors.accentBlue,
+                          size: 22,
+                        ),
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Add contact feature coming soon')),
+                            const SnackBar(
+                              content: Text('Add contact feature coming soon'),
+                            ),
                           );
                         },
                         tooltip: 'Add Contact',
@@ -387,30 +442,47 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       icon: const Icon(Icons.people, size: 18),
                       label: const Text('Contacts'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _showContactsView ? AppColors.primaryBlue : Colors.transparent,
-                        foregroundColor: _showContactsView ? Colors.white : AppColors.accentBlue,
+                        backgroundColor: _showContactsView
+                            ? AppColors.primaryBlue
+                            : Colors.transparent,
+                        foregroundColor: _showContactsView
+                            ? Colors.white
+                            : AppColors.accentBlue,
                         side: BorderSide(
-                          color: _showContactsView ? AppColors.primaryBlue : AppColors.accentBlue,
+                          color: _showContactsView
+                              ? AppColors.primaryBlue
+                              : AppColors.accentBlue,
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () => setState(() => _showContactsView = false),
+                      onPressed: () =>
+                          setState(() => _showContactsView = false),
                       icon: const Icon(Icons.history, size: 18),
                       label: const Text('History'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: !_showContactsView ? AppColors.primaryBlue : Colors.transparent,
-                        foregroundColor: !_showContactsView ? Colors.white : AppColors.accentBlue,
+                        backgroundColor: !_showContactsView
+                            ? AppColors.primaryBlue
+                            : Colors.transparent,
+                        foregroundColor: !_showContactsView
+                            ? Colors.white
+                            : AppColors.accentBlue,
                         side: BorderSide(
-                          color: !_showContactsView ? AppColors.primaryBlue : AppColors.accentBlue,
+                          color: !_showContactsView
+                              ? AppColors.primaryBlue
+                              : AppColors.accentBlue,
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ),
@@ -422,7 +494,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
             // Content Area (Contacts or History)
             Expanded(
-              child: _showContactsView ? _buildContactsList() : _buildHistoryList(),
+              child: _showContactsView
+                  ? _buildContactsList()
+                  : _buildHistoryList(),
             ),
 
             // Start Call FAB
@@ -459,7 +533,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildContactsList() {
     if (_isLoadingContacts) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.accentBlue));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.accentBlue),
+      );
     }
 
     if (_filteredContacts.isEmpty) {
@@ -467,11 +543,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.people_outline, size: 64, color: Colors.white.withOpacity(0.3)),
+            Icon(
+              Icons.people_outline,
+              size: 64,
+              color: Colors.white.withOpacity(0.3),
+            ),
             const SizedBox(height: 16),
             Text(
-              _searchController.text.isEmpty ? 'No contacts yet' : 'No contacts found',
-              style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.5)),
+              _searchController.text.isEmpty
+                  ? 'No contacts yet'
+                  : 'No contacts found',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white.withOpacity(0.5),
+              ),
             ),
           ],
         ),
@@ -486,17 +571,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return Card(
           color: AppColors.primaryDark,
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
             leading: CircleAvatar(
               radius: 28,
               backgroundColor: AppColors.primaryBlue,
-              backgroundImage: contact['photoURL'] != null ? NetworkImage(contact['photoURL']) : null,
+              backgroundImage: contact['photoURL'] != null
+                  ? NetworkImage(contact['photoURL'])
+                  : null,
               child: contact['photoURL'] == null
                   ? Text(
                       contact['name'][0].toUpperCase(),
-                      style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     )
                   : null,
             ),
@@ -510,13 +606,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             subtitle: Text(
               contact['email'],
-              style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.7)),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.7),
+              ),
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.phone, color: AppColors.accentBlue, size: 24),
+                  icon: const Icon(
+                    Icons.phone,
+                    color: AppColors.accentBlue,
+                    size: 24,
+                  ),
                   onPressed: () => _startCallWithContact(contact),
                 ),
               ],
@@ -529,7 +632,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildHistoryList() {
     if (_isLoadingHistory) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.accentBlue));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.accentBlue),
+      );
     }
 
     if (_callHistory.isEmpty) {
@@ -541,7 +646,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const SizedBox(height: 16),
             Text(
               'No call history yet',
-              style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.5)),
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white.withOpacity(0.5),
+              ),
             ),
           ],
         ),
@@ -556,9 +664,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return Card(
           color: AppColors.primaryDark,
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
             leading: const CircleAvatar(
               radius: 24,
               backgroundColor: AppColors.primaryBlue,
@@ -574,14 +687,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             subtitle: Text(
               '${_formatTimestamp(call['timestamp'])} • ${_formatDuration(call['duration'])}',
-              style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.7)),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.7),
+              ),
             ),
             trailing: IconButton(
-              icon: const Icon(Icons.phone, color: AppColors.accentBlue, size: 20),
+              icon: const Icon(
+                Icons.phone,
+                color: AppColors.accentBlue,
+                size: 20,
+              ),
               onPressed: () {
                 // Call again with same room
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Call again feature coming soon')),
+                  const SnackBar(
+                    content: Text('Call again feature coming soon'),
+                  ),
                 );
               },
             ),
@@ -623,11 +745,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.primaryBlue.withOpacity(0.5)),
+                  borderSide: BorderSide(
+                    color: AppColors.primaryBlue.withOpacity(0.5),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.accentBlue, width: 2),
+                  borderSide: const BorderSide(
+                    color: AppColors.accentBlue,
+                    width: 2,
+                  ),
                 ),
               ),
               style: const TextStyle(color: Colors.white),
@@ -638,7 +765,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -661,7 +791,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryBlue,
             ),
-            child: const Text('Start Call', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Start Call',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -695,7 +828,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       });
 
       final token = response.data['token'] as String;
-      final wsUrl = response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
+      final wsUrl =
+          response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
 
       // Dismiss loading
       if (mounted) Navigator.pop(context);
@@ -705,11 +839,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => CallScreen(
-              roomName: roomName,
-              token: token,
-              livekitUrl: wsUrl,
-            ),
+            builder: (context) =>
+                CallScreen(roomName: roomName, token: token, livekitUrl: wsUrl),
           ),
         );
       }
@@ -718,9 +849,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (mounted) {
         // Dismiss loading if shown
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error starting call: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error starting call: $e')));
       }
     }
   }
@@ -733,7 +864,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.primaryDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Create Guest Link', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Create Guest Link',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -762,7 +896,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -773,40 +910,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 );
                 return;
               }
-              
+
               Navigator.pop(context);
-              
+
               try {
                 final guestLinkService = GuestLinkService();
-                final roomName = 'guest_${DateTime.now().millisecondsSinceEpoch}';
+                final roomName =
+                    'guest_${DateTime.now().millisecondsSinceEpoch}';
                 final link = await guestLinkService.generateGuestLink(
                   roomName: roomName,
                   guestName: name,
                 );
-                
+
                 if (mounted && link != null) {
                   await Clipboard.setData(ClipboardData(text: link));
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Guest link copied to clipboard!')),
+                    const SnackBar(
+                      content: Text('Guest link copied to clipboard!'),
+                    ),
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Failed to generate guest link')),
+                    const SnackBar(
+                      content: Text('Failed to generate guest link'),
+                    ),
                   );
                 }
               } catch (e) {
                 debugPrint('Error generating guest link: $e');
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryBlue,
             ),
-            child: const Text('Generate Link', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Generate Link',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -827,12 +972,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Sign Out', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Sign Out',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),

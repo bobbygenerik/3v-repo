@@ -47,10 +47,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -61,7 +58,10 @@ class _AuthScreenState extends State<AuthScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.primaryDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Reset Password', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Reset Password',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -82,13 +82,21 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.primaryBlue.withOpacity(0.5)),
+                  borderSide: BorderSide(
+                    color: AppColors.primaryBlue.withOpacity(0.5),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.accentBlue, width: 2),
+                  borderSide: const BorderSide(
+                    color: AppColors.accentBlue,
+                    width: 2,
+                  ),
                 ),
-                prefixIcon: const Icon(Icons.email, color: AppColors.accentBlue),
+                prefixIcon: const Icon(
+                  Icons.email,
+                  color: AppColors.accentBlue,
+                ),
               ),
               keyboardType: TextInputType.emailAddress,
             ),
@@ -97,7 +105,10 @@ class _AuthScreenState extends State<AuthScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -113,7 +124,9 @@ class _AuthScreenState extends State<AuthScreen> {
               }
 
               try {
-                await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                await FirebaseAuth.instance.sendPasswordResetEmail(
+                  email: email,
+                );
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -140,9 +153,7 @@ class _AuthScreenState extends State<AuthScreen> {
   void _navigateToCreateAccount() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const CreateAccountScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const CreateAccountScreen()),
     );
   }
 
@@ -163,9 +174,9 @@ class _AuthScreenState extends State<AuthScreen> {
                   height: 150,
                   fit: BoxFit.contain,
                 ),
-                
+
                 const SizedBox(height: 48),
-                
+
                 // "Sign in to continue" text
                 const Text(
                   'Sign in to continue',
@@ -175,9 +186,9 @@ class _AuthScreenState extends State<AuthScreen> {
                     fontWeight: FontWeight.w400,
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Email or Phone field
                 Container(
                   decoration: BoxDecoration(
@@ -193,7 +204,9 @@ class _AuthScreenState extends State<AuthScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Email or Phone',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                      ),
                       prefixIcon: Padding(
                         padding: const EdgeInsets.only(left: 20, right: 16),
                         child: Icon(
@@ -202,14 +215,17 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       ),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 18,
+                      ),
                     ),
                     keyboardType: TextInputType.emailAddress,
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Password field
                 Container(
                   decoration: BoxDecoration(
@@ -226,7 +242,9 @@ class _AuthScreenState extends State<AuthScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Password',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                      ),
                       prefixIcon: Padding(
                         padding: const EdgeInsets.only(left: 20, right: 16),
                         child: Icon(
@@ -236,7 +254,9 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                           color: Colors.white.withOpacity(0.7),
                         ),
                         onPressed: () {
@@ -244,13 +264,16 @@ class _AuthScreenState extends State<AuthScreen> {
                         },
                       ),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 18,
+                      ),
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Sign In button
                 SizedBox(
                   width: double.infinity,
@@ -283,9 +306,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Create Account button
                 TextButton(
                   onPressed: _navigateToCreateAccount,
@@ -298,9 +321,9 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Forgot Password button
                 TextButton(
                   onPressed: _showForgotPasswordDialog,
@@ -382,10 +405,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -414,9 +434,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   height: 120,
                   fit: BoxFit.contain,
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 const Text(
                   'Create Account',
                   style: TextStyle(
@@ -425,9 +445,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Email field
                 Container(
                   decoration: BoxDecoration(
@@ -443,7 +463,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Email',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                      ),
                       prefixIcon: Padding(
                         padding: const EdgeInsets.only(left: 20, right: 16),
                         child: Icon(
@@ -452,14 +474,17 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                         ),
                       ),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 18,
+                      ),
                     ),
                     keyboardType: TextInputType.emailAddress,
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Password field
                 Container(
                   decoration: BoxDecoration(
@@ -476,7 +501,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Password',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                      ),
                       prefixIcon: Padding(
                         padding: const EdgeInsets.only(left: 20, right: 16),
                         child: Icon(
@@ -486,7 +513,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                           color: Colors.white.withOpacity(0.7),
                         ),
                         onPressed: () {
@@ -494,13 +523,16 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                         },
                       ),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 18,
+                      ),
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Confirm Password field
                 Container(
                   decoration: BoxDecoration(
@@ -517,7 +549,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Confirm Password',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                      ),
                       prefixIcon: Padding(
                         padding: const EdgeInsets.only(left: 20, right: 16),
                         child: Icon(
@@ -527,21 +561,29 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                           color: Colors.white.withOpacity(0.7),
                         ),
                         onPressed: () {
-                          setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                          setState(
+                            () => _obscureConfirmPassword =
+                                !_obscureConfirmPassword,
+                          );
                         },
                       ),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 18,
+                      ),
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Create Account button
                 SizedBox(
                   width: double.infinity,

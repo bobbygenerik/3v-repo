@@ -124,9 +124,9 @@ class CallStats {
 }
 
 /// Call Statistics Service
-/// 
+///
 /// Collects and monitors real-time call quality metrics using LiveKit.
-/// 
+///
 /// Features:
 /// - Video/audio bitrate tracking
 /// - Packet loss monitoring
@@ -134,21 +134,21 @@ class CallStats {
 /// - Jitter calculation
 /// - Connection quality assessment
 /// - Real-time updates (1 second interval)
-/// 
+///
 /// Usage:
 /// ```dart
 /// final statsService = CallStatsService();
 /// await statsService.initialize(room);
-/// 
+///
 /// // Start collecting stats
 /// statsService.startCollecting();
-/// 
+///
 /// // Listen to updates
 /// statsService.addListener(() {
 ///   print('Quality: ${statsService.currentStats.quality.label}');
 ///   print('RTT: ${statsService.currentStats.roundTripTimeFormatted}');
 /// });
-/// 
+///
 /// // Stop collecting
 /// statsService.stopCollecting();
 /// ```
@@ -189,7 +189,7 @@ class CallStatsService extends ChangeNotifier {
 
     debugPrint('$_tag: Starting stats collection');
     _isCollecting = true;
-    
+
     _statsTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _collectStats();
     });
@@ -216,25 +216,25 @@ class CallStatsService extends ChangeNotifier {
 
     try {
       // In production: Get stats from LiveKit tracks
-      // 
+      //
       // Example implementation:
-      // 
+      //
       // final localParticipant = _room!.localParticipant;
-      // 
+      //
       // // Get local video track stats
       // final videoTrack = localParticipant?.videoTracks.firstOrNull?.track;
       // if (videoTrack != null) {
       //   final stats = await videoTrack.getStats();
       //   // Parse outbound-rtp stats for video
       // }
-      // 
+      //
       // // Get local audio track stats
       // final audioTrack = localParticipant?.audioTracks.firstOrNull?.track;
       // if (audioTrack != null) {
       //   final stats = await audioTrack.getStats();
       //   // Parse outbound-rtp stats for audio
       // }
-      // 
+      //
       // // Get remote participant stats
       // final remoteParticipant = _room!.remoteParticipants.values.firstOrNull;
       // if (remoteParticipant != null) {
@@ -255,7 +255,6 @@ class CallStatsService extends ChangeNotifier {
       }
 
       notifyListeners();
-
     } catch (e) {
       debugPrint('$_tag: Error collecting stats: $e');
     }
@@ -306,17 +305,17 @@ class CallStatsService extends ChangeNotifier {
     if (rttMs < 50 && packetLoss < 1) {
       return CallConnectionQuality.excellent;
     }
-    
+
     // Good: RTT < 100ms, loss < 2%
     if (rttMs < 100 && packetLoss < 2) {
       return CallConnectionQuality.good;
     }
-    
+
     // Fair: RTT < 200ms, loss < 5%
     if (rttMs < 200 && packetLoss < 5) {
       return CallConnectionQuality.fair;
     }
-    
+
     // Poor: Everything else
     return CallConnectionQuality.poor;
   }
@@ -336,17 +335,33 @@ class CallStatsService extends ChangeNotifier {
     }
 
     final count = recentStats.length;
-    
+
     return CallStats(
-      videoSendBitrate: recentStats.map((s) => s.videoSendBitrate).reduce((a, b) => a + b) / count,
-      videoRecvBitrate: recentStats.map((s) => s.videoRecvBitrate).reduce((a, b) => a + b) / count,
-      videoPacketLoss: recentStats.map((s) => s.videoPacketLoss).reduce((a, b) => a + b) / count,
+      videoSendBitrate:
+          recentStats.map((s) => s.videoSendBitrate).reduce((a, b) => a + b) /
+          count,
+      videoRecvBitrate:
+          recentStats.map((s) => s.videoRecvBitrate).reduce((a, b) => a + b) /
+          count,
+      videoPacketLoss:
+          recentStats.map((s) => s.videoPacketLoss).reduce((a, b) => a + b) /
+          count,
       videoResolution: recentStats.last.videoResolution,
-      videoFps: (recentStats.map((s) => s.videoFps).reduce((a, b) => a + b) / count).round(),
-      audioSendBitrate: recentStats.map((s) => s.audioSendBitrate).reduce((a, b) => a + b) / count,
-      audioRecvBitrate: recentStats.map((s) => s.audioRecvBitrate).reduce((a, b) => a + b) / count,
-      audioPacketLoss: recentStats.map((s) => s.audioPacketLoss).reduce((a, b) => a + b) / count,
-      roundTripTime: recentStats.map((s) => s.roundTripTime).reduce((a, b) => a + b) / count,
+      videoFps:
+          (recentStats.map((s) => s.videoFps).reduce((a, b) => a + b) / count)
+              .round(),
+      audioSendBitrate:
+          recentStats.map((s) => s.audioSendBitrate).reduce((a, b) => a + b) /
+          count,
+      audioRecvBitrate:
+          recentStats.map((s) => s.audioRecvBitrate).reduce((a, b) => a + b) /
+          count,
+      audioPacketLoss:
+          recentStats.map((s) => s.audioPacketLoss).reduce((a, b) => a + b) /
+          count,
+      roundTripTime:
+          recentStats.map((s) => s.roundTripTime).reduce((a, b) => a + b) /
+          count,
       jitter: recentStats.map((s) => s.jitter).reduce((a, b) => a + b) / count,
       quality: _currentStats.quality,
     );
@@ -365,10 +380,17 @@ class CallStatsService extends ChangeNotifier {
     }
 
     final recent = _statsHistory.sublist(_statsHistory.length - 5);
-    final older = _statsHistory.sublist(_statsHistory.length - 10, _statsHistory.length - 5);
+    final older = _statsHistory.sublist(
+      _statsHistory.length - 10,
+      _statsHistory.length - 5,
+    );
 
-    final recentAvgQuality = recent.map((s) => s.quality.score).reduce((a, b) => a + b) / recent.length;
-    final olderAvgQuality = older.map((s) => s.quality.score).reduce((a, b) => a + b) / older.length;
+    final recentAvgQuality =
+        recent.map((s) => s.quality.score).reduce((a, b) => a + b) /
+        recent.length;
+    final olderAvgQuality =
+        older.map((s) => s.quality.score).reduce((a, b) => a + b) /
+        older.length;
 
     final diff = recentAvgQuality - olderAvgQuality;
 
@@ -401,11 +423,11 @@ class CallStatsService extends ChangeNotifier {
   /// Clean up resources
   Future<void> cleanup() async {
     debugPrint('$_tag: Cleaning up...');
-    
+
     stopCollecting();
     _statsHistory.clear();
     _room = null;
-    
+
     debugPrint('$_tag: ✅ Cleaned up');
   }
 

@@ -69,7 +69,8 @@ class SignalingService extends ChangeNotifier {
         return false;
       }
 
-      final callerName = currentUser.displayName ?? currentUser.email ?? 'Unknown';
+      final callerName =
+          currentUser.displayName ?? currentUser.email ?? 'Unknown';
 
       final inviteData = {
         'type': 'call_invite',
@@ -83,7 +84,9 @@ class SignalingService extends ChangeNotifier {
         'avatarUrl': callerAvatarUrl ?? '',
       };
 
-      debugPrint('📤 Sending call invitation to $recipientName (ID: $recipientUserId)');
+      debugPrint(
+        '📤 Sending call invitation to $recipientName (ID: $recipientUserId)',
+      );
       debugPrint('   Room: $roomName');
       debugPrint('   Caller: $callerName');
 
@@ -113,7 +116,9 @@ class SignalingService extends ChangeNotifier {
     // Remove any existing listener
     stopListeningForCalls();
 
-    debugPrint('🎧 Starting to listen for call invitations for user: ${currentUser.uid}');
+    debugPrint(
+      '🎧 Starting to listen for call invitations for user: ${currentUser.uid}',
+    );
     debugPrint('   Listening path: users/${currentUser.uid}/callSignals');
 
     _callSignalSubscription = _firestore
@@ -123,42 +128,48 @@ class SignalingService extends ChangeNotifier {
         .where('status', isEqualTo: 'pending')
         .snapshots()
         .listen(
-      (snapshot) {
-        debugPrint('🔔 Call signal listener triggered - ${snapshot.docs.length} documents');
+          (snapshot) {
+            debugPrint(
+              '🔔 Call signal listener triggered - ${snapshot.docs.length} documents',
+            );
 
-        if (snapshot.docs.isEmpty) {
-          debugPrint('📭 No pending call signals');
-          return;
-        }
-
-        debugPrint('📬 Processing ${snapshot.docs.length} call signal documents');
-
-        // Process new call invitations
-        for (var docChange in snapshot.docChanges) {
-          if (docChange.type == DocumentChangeType.added) {
-            final doc = docChange.doc;
-            debugPrint('   New call signal document ID: ${doc.id}');
-
-            try {
-              final invitation = CallInvitation.fromFirestore(doc);
-
-              debugPrint('📞 Incoming call from: ${invitation.fromUserName}');
-              debugPrint('   Room: ${invitation.roomName}');
-
-              // Mark as received (not pending anymore)
-              doc.reference.update({'status': 'ringing'});
-
-              onCallReceived(invitation);
-            } catch (e) {
-              debugPrint('❌ Error processing call invitation: $e');
+            if (snapshot.docs.isEmpty) {
+              debugPrint('📭 No pending call signals');
+              return;
             }
-          }
-        }
-      },
-      onError: (error) {
-        debugPrint('❌ Error listening for call signals: $error');
-      },
-    );
+
+            debugPrint(
+              '📬 Processing ${snapshot.docs.length} call signal documents',
+            );
+
+            // Process new call invitations
+            for (var docChange in snapshot.docChanges) {
+              if (docChange.type == DocumentChangeType.added) {
+                final doc = docChange.doc;
+                debugPrint('   New call signal document ID: ${doc.id}');
+
+                try {
+                  final invitation = CallInvitation.fromFirestore(doc);
+
+                  debugPrint(
+                    '📞 Incoming call from: ${invitation.fromUserName}',
+                  );
+                  debugPrint('   Room: ${invitation.roomName}');
+
+                  // Mark as received (not pending anymore)
+                  doc.reference.update({'status': 'ringing'});
+
+                  onCallReceived(invitation);
+                } catch (e) {
+                  debugPrint('❌ Error processing call invitation: $e');
+                }
+              }
+            }
+          },
+          onError: (error) {
+            debugPrint('❌ Error listening for call signals: $error');
+          },
+        );
   }
 
   /// Stop listening for call invitations
@@ -267,7 +278,8 @@ class SignalingService extends ChangeNotifier {
       final callEndData = {
         'roomName': roomName,
         'endedBy': currentUser.uid,
-        'endedByName': currentUser.displayName ?? currentUser.email ?? 'Unknown',
+        'endedByName':
+            currentUser.displayName ?? currentUser.email ?? 'Unknown',
         'endedAt': FieldValue.serverTimestamp(),
         'status': 'ended',
       };
@@ -288,7 +300,8 @@ class SignalingService extends ChangeNotifier {
           'type': 'call_ended',
           'roomName': roomName,
           'endedBy': currentUser.uid,
-          'endedByName': currentUser.displayName ?? currentUser.email ?? 'Unknown',
+          'endedByName':
+              currentUser.displayName ?? currentUser.email ?? 'Unknown',
           'timestamp': FieldValue.serverTimestamp(),
           'status': 'pending', // Will be processed by recipient
         };
@@ -299,9 +312,13 @@ class SignalingService extends ChangeNotifier {
             .collection('callSignals')
             .add(notificationData);
 
-        debugPrint('✅ Notified other participant ($otherUserId) via callSignals');
+        debugPrint(
+          '✅ Notified other participant ($otherUserId) via callSignals',
+        );
       } else {
-        debugPrint('⚠️ No other participant ID provided - only using activeCallRooms');
+        debugPrint(
+          '⚠️ No other participant ID provided - only using activeCallRooms',
+        );
       }
 
       debugPrint('✅ Call end signaling completed successfully');
@@ -330,32 +347,34 @@ class SignalingService extends ChangeNotifier {
         .doc(roomName)
         .snapshots()
         .listen(
-      (snapshot) {
-        if (snapshot.exists) {
-          final data = snapshot.data() as Map<String, dynamic>?;
-          final status = data?['status'];
-          final endedBy = data?['endedBy'] ?? '';
-          final endedByName = data?['endedByName'] ?? 'Other participant';
+          (snapshot) {
+            if (snapshot.exists) {
+              final data = snapshot.data();
+              final status = data?['status'];
+              final endedBy = data?['endedBy'] ?? '';
+              final endedByName = data?['endedByName'] ?? 'Other participant';
 
-          debugPrint('🔔 activeCallRooms/$roomName updated - status: $status, endedBy: $endedBy');
+              debugPrint(
+                '🔔 activeCallRooms/$roomName updated - status: $status, endedBy: $endedBy',
+              );
 
-          if (status == 'ended') {
-            // Only trigger if ended by someone else
-            if (endedBy.isNotEmpty && endedBy != currentUserId) {
-              debugPrint('🔚 Call ended by $endedByName ($endedBy)');
-              onCallEnded();
+              if (status == 'ended') {
+                // Only trigger if ended by someone else
+                if (endedBy.isNotEmpty && endedBy != currentUserId) {
+                  debugPrint('🔚 Call ended by $endedByName ($endedBy)');
+                  onCallEnded();
+                } else {
+                  debugPrint('ℹ️ Call ended by self - ignoring');
+                }
+              }
             } else {
-              debugPrint('ℹ️ Call ended by self - ignoring');
+              debugPrint('📭 activeCallRooms/$roomName does not exist yet');
             }
-          }
-        } else {
-          debugPrint('📭 activeCallRooms/$roomName does not exist yet');
-        }
-      },
-      onError: (error) {
-        debugPrint('❌ Error listening for call end: $error');
-      },
-    );
+          },
+          onError: (error) {
+            debugPrint('❌ Error listening for call end: $error');
+          },
+        );
   }
 
   /// Stop listening for call end signals

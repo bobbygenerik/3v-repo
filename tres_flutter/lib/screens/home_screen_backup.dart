@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/livekit_service.dart';
-import '../services/guest_link_service.dart';
 import '../config/app_theme.dart';
 import 'profile_screen.dart';
-import 'settings_screen.dart';
 import 'call_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -19,16 +15,17 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _showContactsView = true;
+  final bool _showContactsView = true;
   List<Map<String, dynamic>> _contacts = [];
   List<Map<String, dynamic>> _callHistory = [];
   List<Map<String, dynamic>> _filteredContacts = [];
   bool _isLoadingContacts = true;
   bool _isLoadingHistory = true;
-  
+
   // Animated search placeholder
   int _currentPlaceholderIndex = 0;
   final List<String> _placeholders = ['Email', 'Phone', 'Display Name'];
@@ -40,19 +37,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _loadContacts();
     _loadCallHistory();
     _searchController.addListener(_filterContacts);
-    
+
     // Animate placeholder
-    _placeholderController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..addListener(() {
-      if (_placeholderController.isCompleted) {
-        setState(() {
-          _currentPlaceholderIndex = (_currentPlaceholderIndex + 1) % _placeholders.length;
-        });
-        _placeholderController.forward(from: 0.0);
-      }
-    });
+    _placeholderController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 3))
+          ..addListener(() {
+            if (_placeholderController.isCompleted) {
+              setState(() {
+                _currentPlaceholderIndex =
+                    (_currentPlaceholderIndex + 1) % _placeholders.length;
+              });
+              _placeholderController.forward(from: 0.0);
+            }
+          });
     _placeholderController.forward();
   }
 
@@ -140,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final authService = context.read<AuthService>();
     final user = authService.currentUser;
-    
+
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
       appBar: AppBar(
@@ -163,14 +160,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           errorBuilder: (context, error, stackTrace) {
                             return Text(
                               _getUserInitial(user),
-                              style: const TextStyle(fontSize: 18, color: Colors.white),
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: Colors.white,
+                              ),
                             );
                           },
                         ),
                       )
                     : Text(
                         _getUserInitial(user),
-                        style: const TextStyle(fontSize: 18, color: Colors.white),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
                       ),
               ),
               onPressed: () {
@@ -192,7 +195,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           child: Container(
             margin: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
-              border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3), width: 3),
+              border: Border.all(
+                color: AppColors.primaryBlue.withOpacity(0.3),
+                width: 3,
+              ),
               borderRadius: BorderRadius.circular(48),
             ),
             child: ClipRRect(
@@ -216,7 +222,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       controller: _searchController,
                       decoration: InputDecoration(
                         hintText: 'Search contacts or start a call...',
-                        prefixIcon: const Icon(Icons.alternate_email, color: AppColors.accentBlue),
+                        prefixIcon: const Icon(
+                          Icons.alternate_email,
+                          color: AppColors.accentBlue,
+                        ),
                         suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear),
@@ -231,17 +240,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         fillColor: AppColors.primaryDark,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppColors.primaryBlue.withOpacity(0.5)),
+                          borderSide: BorderSide(
+                            color: AppColors.primaryBlue.withOpacity(0.5),
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppColors.primaryBlue.withOpacity(0.3)),
+                          borderSide: BorderSide(
+                            color: AppColors.primaryBlue.withOpacity(0.3),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: AppColors.accentBlue, width: 2),
+                          borderSide: const BorderSide(
+                            color: AppColors.accentBlue,
+                            width: 2,
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                       ),
                       onChanged: (value) {
                         setState(() {});
@@ -257,14 +276,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           child: OutlinedButton.icon(
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Contacts coming soon!')),
+                                const SnackBar(
+                                  content: Text('Contacts coming soon!'),
+                                ),
                               );
                             },
                             icon: const Icon(Icons.people, size: 18),
                             label: const Text('Contacts'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.accentBlue,
-                              side: const BorderSide(color: AppColors.accentBlue),
+                              side: const BorderSide(
+                                color: AppColors.accentBlue,
+                              ),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
@@ -274,14 +297,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           child: OutlinedButton.icon(
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Call history coming soon!')),
+                                const SnackBar(
+                                  content: Text('Call history coming soon!'),
+                                ),
                               );
                             },
                             icon: const Icon(Icons.history, size: 18),
                             label: const Text('Call Logs'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.accentBlue,
-                              side: const BorderSide(color: AppColors.accentBlue),
+                              side: const BorderSide(
+                                color: AppColors.accentBlue,
+                              ),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
@@ -305,7 +332,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                       child: ElevatedButton.icon(
                         onPressed: () => _showStartCallDialog(),
-                        icon: const Icon(Icons.phone, size: 20, color: Colors.white),
+                        icon: const Icon(
+                          Icons.phone,
+                          size: 20,
+                          color: Colors.white,
+                        ),
                         label: const Text(
                           'Start Call',
                           style: TextStyle(
@@ -337,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   void _showStartCallDialog([String? recipient]) {
     final roomController = TextEditingController(text: recipient);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -396,12 +427,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     try {
       final authService = context.read<AuthService>();
       final liveKitService = context.read<LiveKitService>();
-      
+
       // Show loading
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Starting call...')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Starting call...')));
       }
 
       // Generate room name
@@ -410,25 +441,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       // Call Firebase Function to get LiveKit token
       final functions = FirebaseFunctions.instance;
       final callable = functions.httpsCallable('getLiveKitToken');
-      
+
       final response = await callable.call({
         'calleeId': recipientEmail,
         'roomName': roomName,
       });
 
       final token = response.data['token'] as String;
-      final wsUrl = response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
+      final wsUrl =
+          response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
 
       if (mounted) {
         // Navigate to call screen
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => CallScreen(
-              roomName: roomName,
-              token: token,
-              livekitUrl: wsUrl,
-            ),
+            builder: (context) =>
+                CallScreen(roomName: roomName, token: token, livekitUrl: wsUrl),
           ),
         );
       }

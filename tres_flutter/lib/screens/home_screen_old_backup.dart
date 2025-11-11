@@ -12,7 +12,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _roomNameController = TextEditingController();
 
@@ -33,15 +34,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final authService = context.read<AuthService>();
     final user = authService.currentUser;
-    
+
     return Scaffold(
       appBar: AppBar(
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Image.asset(
-            'assets/images/logo.png',
-            fit: BoxFit.contain,
-          ),
+          child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
         ),
         title: null,
         bottom: TabBar(
@@ -68,14 +66,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           errorBuilder: (context, error, stackTrace) {
                             return Text(
                               _getUserInitial(user),
-                              style: const TextStyle(fontSize: 16, color: Colors.white),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
                             );
                           },
                         ),
                       )
                     : Text(
                         _getUserInitial(user),
-                        style: const TextStyle(fontSize: 16, color: Colors.white),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
                       ),
               ),
               onPressed: () {
@@ -104,7 +108,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
         ),
       ),
-      floatingActionButton: _tabController.index == 0 || _tabController.index == 1
+      floatingActionButton:
+          _tabController.index == 0 || _tabController.index == 1
           ? FloatingActionButton.extended(
               onPressed: () => _showStartCallDialog(),
               icon: const Icon(Icons.video_call),
@@ -120,24 +125,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.call_end,
-            size: 64,
-            color: Colors.grey.shade400,
-          ),
+          Icon(Icons.call_end, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 16),
           Text(
             'No call history yet',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Colors.grey.shade600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 8),
           Text(
             'Your call history will appear here',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey.shade500,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade500),
           ),
           const SizedBox(height: 32),
           FilledButton.icon(
@@ -156,25 +157,21 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.contacts_outlined,
-            size: 64,
-            color: Colors.grey.shade400,
-          ),
+          Icon(Icons.contacts_outlined, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 16),
           Text(
             'No contacts yet',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Colors.grey.shade600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 8),
           Text(
             'Share your room link to connect with others',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey.shade500,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade500),
           ),
           const SizedBox(height: 32),
           FilledButton.icon(
@@ -197,9 +194,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const ProfileScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
               );
             },
             child: Padding(
@@ -217,7 +212,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    user?.displayName ?? user?.phoneNumber ?? user?.email ?? 'User',
+                    user?.displayName ??
+                        user?.phoneNumber ??
+                        user?.email ??
+                        'User',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 4),
@@ -231,7 +229,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
         ),
         const SizedBox(height: 16),
-        
+
         // Quick Settings
         Card(
           child: Column(
@@ -269,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
         ),
         const SizedBox(height: 16),
-        
+
         // Help & About
         Card(
           child: Column(
@@ -302,7 +300,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   void _showStartCallDialog({String? defaultRoom}) {
     _roomNameController.text = defaultRoom ?? '';
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -340,9 +338,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 );
                 return;
               }
-              
+
               Navigator.of(context).pop();
-              
+
               // TODO: Get token from backend
               // For now, show configuration needed
               _showLiveKitConfigNeeded();
@@ -481,136 +479,130 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 }
 
-enum CallType {
-  video,
-  audio,
-}
+enum CallType { video, audio }
 
-  @override
-  Widget build(BuildContext context) {
-    final authService = context.read<AuthService>();
-    final user = authService.currentUser;
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('3V Video Chat'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await authService.signOut();
+@override
+Widget build(BuildContext context) {
+  final authService = context.read<AuthService>();
+  final user = authService.currentUser;
+
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text('3V Video Chat'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.logout),
+          onPressed: () async {
+            await authService.signOut();
+          },
+          tooltip: 'Sign out',
+        ),
+      ],
+    ),
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.videocam,
+            size: 100,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(height: 24),
+          Text('Welcome!', style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 8),
+          Text(
+            user?.phoneNumber ?? user?.email ?? 'User',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 48),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'Video calling is ready! Configure LiveKit URL and token generation, then use the button below to start a call.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontStyle: FontStyle.italic),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () {
+              _showCallSetupDialog(context);
             },
-            tooltip: 'Sign out',
+            icon: const Icon(Icons.settings),
+            label: const Text('Configure LiveKit'),
           ),
         ],
       ),
-      body: Center(
+    ),
+    floatingActionButton: FloatingActionButton.extended(
+      onPressed: () {
+        // TODO: Get proper room name and token from backend
+        // For now, show message about configuration
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Configure LiveKit URL and generate token first. '
+              'See FLUTTER_MIGRATION.md for setup instructions.',
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      },
+      icon: const Icon(Icons.video_call),
+      label: const Text('Start Call'),
+    ),
+  );
+}
+
+void _showCallSetupDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('LiveKit Configuration'),
+      content: const SingleChildScrollView(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.videocam,
-              size: 100,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 24),
             Text(
-              'Welcome!',
-              style: Theme.of(context).textTheme.headlineMedium,
+              'To enable video calls, you need:',
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 12),
+            Text('1. LiveKit Cloud account or self-hosted server'),
+            SizedBox(height: 8),
+            Text('2. Backend API to generate access tokens'),
+            SizedBox(height: 8),
+            Text('3. Configure LIVEKIT_URL in app'),
+            SizedBox(height: 16),
             Text(
-              user?.phoneNumber ?? user?.email ?? 'User',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 48),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                'Video calling is ready! Configure LiveKit URL and token generation, then use the button below to start a call.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontStyle: FontStyle.italic),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () {
-                _showCallSetupDialog(context);
-              },
-              icon: const Icon(Icons.settings),
-              label: const Text('Configure LiveKit'),
+              'See Android app for reference:\n'
+              '• LiveKitManager.kt has token generation\n'
+              '• Uses Firebase Functions or direct API\n'
+              '• Tokens are room-scoped with TTL',
+              style: TextStyle(fontSize: 12),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Get proper room name and token from backend
-          // For now, show message about configuration
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Configure LiveKit URL and generate token first. '
-                'See FLUTTER_MIGRATION.md for setup instructions.',
-              ),
-              duration: Duration(seconds: 4),
-            ),
-          );
-        },
-        icon: const Icon(Icons.video_call),
-        label: const Text('Start Call'),
-      ),
-    );
-  }
-  
-  void _showCallSetupDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('LiveKit Configuration'),
-        content: const SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'To enable video calls, you need:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 12),
-              Text('1. LiveKit Cloud account or self-hosted server'),
-              SizedBox(height: 8),
-              Text('2. Backend API to generate access tokens'),
-              SizedBox(height: 8),
-              Text('3. Configure LIVEKIT_URL in app'),
-              SizedBox(height: 16),
-              Text(
-                'See Android app for reference:\n'
-                '• LiveKitManager.kt has token generation\n'
-                '• Uses Firebase Functions or direct API\n'
-                '• Tokens are room-scoped with TTL',
-                style: TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('OK'),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 
-  String _getUserInitial(dynamic user) {
-    if (user?.displayName?.isNotEmpty == true) {
-      return user!.displayName![0].toUpperCase();
-    } else if (user?.email?.isNotEmpty == true) {
-      return user!.email![0].toUpperCase();
-    }
-    return "U";
+String _getUserInitial(dynamic user) {
+  if (user?.displayName?.isNotEmpty == true) {
+    return user!.displayName![0].toUpperCase();
+  } else if (user?.email?.isNotEmpty == true) {
+    return user!.email![0].toUpperCase();
   }
+  return "U";
+}

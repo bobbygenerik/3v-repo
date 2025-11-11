@@ -15,11 +15,11 @@ class _AuthScreenState extends State<AuthScreen> {
   final _codeController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   bool _isPhoneAuth = true;
   bool _isSignUp = false;
   bool _isLoading = false;
-  
+
   @override
   void dispose() {
     _phoneController.dispose();
@@ -28,10 +28,10 @@ class _AuthScreenState extends State<AuthScreen> {
     _passwordController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _handlePhoneAuth() async {
     final authService = context.read<AuthService>();
-    
+
     if (authService.isVerificationPending) {
       // Verify code
       final code = _codeController.text.trim();
@@ -39,11 +39,11 @@ class _AuthScreenState extends State<AuthScreen> {
         _showError('Please enter the verification code');
         return;
       }
-      
+
       setState(() => _isLoading = true);
       final success = await authService.verifyPhoneCode(code);
       setState(() => _isLoading = false);
-      
+
       if (!success && mounted) {
         _showError(authService.errorMessage ?? 'Verification failed');
       }
@@ -54,49 +54,48 @@ class _AuthScreenState extends State<AuthScreen> {
         _showError('Please enter your phone number');
         return;
       }
-      
+
       // Add + prefix if missing
       final formattedPhone = phone.startsWith('+') ? phone : '+$phone';
-      
+
       setState(() => _isLoading = true);
-      final success = await authService.sendPhoneVerificationCode(formattedPhone);
+      final success = await authService.sendPhoneVerificationCode(
+        formattedPhone,
+      );
       setState(() => _isLoading = false);
-      
+
       if (!success && mounted) {
         _showError(authService.errorMessage ?? 'Failed to send code');
       }
     }
   }
-  
+
   Future<void> _handleEmailAuth() async {
     final authService = context.read<AuthService>();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
-    
+
     if (email.isEmpty || password.isEmpty) {
       _showError('Please enter email and password');
       return;
     }
-    
+
     setState(() => _isLoading = true);
-    
+
     final success = _isSignUp
         ? await authService.createAccountWithEmail(email, password)
         : await authService.signInWithEmail(email, password);
-    
+
     setState(() => _isLoading = false);
-    
+
     if (!success && mounted) {
       _showError(authService.errorMessage ?? 'Authentication failed');
     }
   }
-  
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -109,7 +108,9 @@ class _AuthScreenState extends State<AuthScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Enter your email address and we\'ll send you a password reset link.'),
+            const Text(
+              'Enter your email address and we\'ll send you a password reset link.',
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: emailController,
@@ -136,9 +137,11 @@ class _AuthScreenState extends State<AuthScreen> {
                 );
                 return;
               }
-              
+
               try {
-                await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                await FirebaseAuth.instance.sendPasswordResetEmail(
+                  email: email,
+                );
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -161,11 +164,11 @@ class _AuthScreenState extends State<AuthScreen> {
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final authService = context.watch<AuthService>();
-    
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -177,106 +180,110 @@ class _AuthScreenState extends State<AuthScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                // App Logo
-                Image.asset(
-                  'assets/images/logo.png',
-                  height: 120,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 48),
-                
-                // Auth method toggle
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(
-                      value: true,
-                      label: Text('Phone'),
-                      icon: Icon(Icons.phone),
-                    ),
-                    ButtonSegment(
-                      value: false,
-                      label: Text('Email'),
-                      icon: Icon(Icons.email),
-                    ),
-                  ],
-                  selected: {_isPhoneAuth},
-                  onSelectionChanged: (Set<bool> selection) {
-                    setState(() {
-                      _isPhoneAuth = selection.first;
-                      authService.clearError();
-                    });
-                  },
-                ),
-                const SizedBox(height: 32),
-                
-                // Auth form
-                if (_isPhoneAuth)
-                  _buildPhoneAuthForm(authService)
-                else
-                  _buildEmailAuthForm(),
-                
-                const SizedBox(height: 32),
-                
-                // Submit button - Full width with proper height
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: FilledButton(
-                    onPressed: _isLoading ? null : () {
-                      _isPhoneAuth ? _handlePhoneAuth() : _handleEmailAuth();
-                    },
-                    style: FilledButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(_getButtonText(authService)),
+                  // App Logo
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 120,
+                    fit: BoxFit.contain,
                   ),
-                ),
-                
-                // Toggle sign up/sign in (email only)
-                if (!_isPhoneAuth) ...[
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {
-                      setState(() => _isSignUp = !_isSignUp);
-                      authService.clearError();
+                  const SizedBox(height: 48),
+
+                  // Auth method toggle
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: true,
+                        label: Text('Phone'),
+                        icon: Icon(Icons.phone),
+                      ),
+                      ButtonSegment(
+                        value: false,
+                        label: Text('Email'),
+                        icon: Icon(Icons.email),
+                      ),
+                    ],
+                    selected: {_isPhoneAuth},
+                    onSelectionChanged: (Set<bool> selection) {
+                      setState(() {
+                        _isPhoneAuth = selection.first;
+                        authService.clearError();
+                      });
                     },
-                    child: Text(
-                      _isSignUp
-                          ? 'Already have an account? Sign in'
-                          : 'Need an account? Sign up',
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Auth form
+                  if (_isPhoneAuth)
+                    _buildPhoneAuthForm(authService)
+                  else
+                    _buildEmailAuthForm(),
+
+                  const SizedBox(height: 32),
+
+                  // Submit button - Full width with proper height
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: FilledButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              _isPhoneAuth
+                                  ? _handlePhoneAuth()
+                                  : _handleEmailAuth();
+                            },
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(_getButtonText(authService)),
                     ),
                   ),
-                  // Forgot Password button (only show when signing in)
-                  if (!_isSignUp)
+
+                  // Toggle sign up/sign in (email only)
+                  if (!_isPhoneAuth) ...[
+                    const SizedBox(height: 16),
                     TextButton(
-                      onPressed: () => _showForgotPasswordDialog(),
-                      child: const Text('Forgot password?'),
+                      onPressed: () {
+                        setState(() => _isSignUp = !_isSignUp);
+                        authService.clearError();
+                      },
+                      child: Text(
+                        _isSignUp
+                            ? 'Already have an account? Sign in'
+                            : 'Need an account? Sign up',
+                      ),
                     ),
-                ],
-              ], // Closing Column children
-            ), // Closing Column
-          ), // Closing SingleChildScrollView
-        ), // Closing ConstrainedBox
-      ), // Closing Center
-    ), // Closing SafeArea
+                    // Forgot Password button (only show when signing in)
+                    if (!_isSignUp)
+                      TextButton(
+                        onPressed: () => _showForgotPasswordDialog(),
+                        child: const Text('Forgot password?'),
+                      ),
+                  ],
+                ], // Closing Column children
+              ), // Closing Column
+            ), // Closing SingleChildScrollView
+          ), // Closing ConstrainedBox
+        ), // Closing Center
+      ), // Closing SafeArea
     ); // Closing Scaffold
   }
-  
+
   Widget _buildPhoneAuthForm(AuthService authService) {
     if (authService.isVerificationPending) {
       return Column(
@@ -304,7 +311,9 @@ class _AuthScreenState extends State<AuthScreen> {
             onPressed: () async {
               authService.clearError();
               setState(() => _isLoading = true);
-              await authService.sendPhoneVerificationCode(_phoneController.text);
+              await authService.sendPhoneVerificationCode(
+                _phoneController.text,
+              );
               setState(() => _isLoading = false);
             },
             child: const Text('Resend code'),
@@ -312,7 +321,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ],
       );
     }
-    
+
     return TextField(
       controller: _phoneController,
       decoration: const InputDecoration(
@@ -326,7 +335,7 @@ class _AuthScreenState extends State<AuthScreen> {
       autofocus: true,
     );
   }
-  
+
   Widget _buildEmailAuthForm() {
     return Column(
       children: [
@@ -354,7 +363,7 @@ class _AuthScreenState extends State<AuthScreen> {
       ],
     );
   }
-  
+
   String _getButtonText(AuthService authService) {
     if (_isPhoneAuth) {
       return authService.isVerificationPending ? 'Verify Code' : 'Send Code';

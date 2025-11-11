@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/guest_link_service.dart';
-import '../config/app_theme.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 import 'call_screen.dart';
@@ -18,7 +16,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   bool _showContactsView = true;
   List<Map<String, dynamic>> _contacts = [];
@@ -26,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   List<Map<String, dynamic>> _filteredContacts = [];
   bool _isLoadingContacts = true;
   bool _isLoadingHistory = true;
-  
+
   // Ticker animation for search placeholder
   int _currentPlaceholderIndex = 0;
   final List<String> _placeholders = ['Username', 'Email', 'Phone'];
@@ -38,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _loadContacts();
     _loadCallHistory();
     _searchController.addListener(_filterContacts);
-    
+
     // Ticker animation
     _tickerController = AnimationController(
       vsync: this,
@@ -51,7 +50,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         setState(() {
-          _currentPlaceholderIndex = (_currentPlaceholderIndex + 1) % _placeholders.length;
+          _currentPlaceholderIndex =
+              (_currentPlaceholderIndex + 1) % _placeholders.length;
         });
         _startTickerAnimation();
       }
@@ -151,21 +151,30 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final authService = context.read<AuthService>();
     final user = authService.currentUser;
-    
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E), // Dark background matching screenshot
+      backgroundColor: const Color(
+        0xFF1C1C1E,
+      ), // Dark background matching screenshot
       body: SafeArea(
         child: Column(
           children: [
             // Header Row: Logo and Profile
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 0), // Added top padding to move logo down
+              padding: const EdgeInsets.fromLTRB(
+                16,
+                24,
+                16,
+                0,
+              ), // Added top padding to move logo down
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // Logo - left aligned with matching edge distance
                   Padding(
-                    padding: const EdgeInsets.only(left: 0), // 16px from edge (same as profile from right)
+                    padding: const EdgeInsets.only(
+                      left: 0,
+                    ), // 16px from edge (same as profile from right)
                     child: Image.asset(
                       'assets/images/logo.png',
                       height: 60,
@@ -175,18 +184,30 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   // Profile button - right aligned with ring
                   PopupMenuButton<String>(
                     offset: const Offset(0, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     color: const Color(0xFF2C2C2E),
                     onSelected: (value) {
                       switch (value) {
                         case 'profile':
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ProfileScreen(),
+                            ),
+                          );
                           break;
                         case 'guest_link':
                           _showGuestLinkDialog();
                           break;
                         case 'settings':
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SettingsScreen(),
+                            ),
+                          );
                           break;
                         case 'signout':
                           _signOut();
@@ -198,9 +219,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         value: 'profile',
                         child: Row(
                           children: [
-                            Icon(Icons.person, size: 20, color: Color(0xFF6B7FB8)),
+                            Icon(
+                              Icons.person,
+                              size: 20,
+                              color: Color(0xFF6B7FB8),
+                            ),
                             SizedBox(width: 12),
-                            Text('Profile', style: TextStyle(color: Colors.white)),
+                            Text(
+                              'Profile',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ],
                         ),
                       ),
@@ -208,9 +236,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         value: 'guest_link',
                         child: Row(
                           children: [
-                            Icon(Icons.link, size: 20, color: Color(0xFF6B7FB8)),
+                            Icon(
+                              Icons.link,
+                              size: 20,
+                              color: Color(0xFF6B7FB8),
+                            ),
                             SizedBox(width: 12),
-                            Text('Create Guest Link', style: TextStyle(color: Colors.white)),
+                            Text(
+                              'Create Guest Link',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ],
                         ),
                       ),
@@ -218,9 +253,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         value: 'settings',
                         child: Row(
                           children: [
-                            Icon(Icons.settings, size: 20, color: Color(0xFF6B7FB8)),
+                            Icon(
+                              Icons.settings,
+                              size: 20,
+                              color: Color(0xFF6B7FB8),
+                            ),
                             SizedBox(width: 12),
-                            Text('Settings', style: TextStyle(color: Colors.white)),
+                            Text(
+                              'Settings',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ],
                         ),
                       ),
@@ -231,7 +273,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           children: [
                             Icon(Icons.logout, size: 20, color: Colors.red),
                             SizedBox(width: 12),
-                            Text('Sign Out', style: TextStyle(color: Colors.red)),
+                            Text(
+                              'Sign Out',
+                              style: TextStyle(color: Colors.red),
+                            ),
                           ],
                         ),
                       ),
@@ -247,11 +292,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       child: CircleAvatar(
                         radius: 20,
                         backgroundColor: const Color(0xFF6B7FB8),
-                        backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+                        backgroundImage: user?.photoURL != null
+                            ? NetworkImage(user!.photoURL!)
+                            : null,
                         child: user?.photoURL == null
                             ? Text(
                                 _getUserInitial(user),
-                                style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               )
                             : null,
                       ),
@@ -285,10 +336,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 decoration: BoxDecoration(
                   color: const Color(0xFF2C2C2E), // Charcoal gray
                   borderRadius: BorderRadius.circular(12), // Less rounded
-                  border: Border.all(
-                    color: const Color(0xFF3A3A3C),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFF3A3A3C), width: 1),
                 ),
                 child: Row(
                   children: [
@@ -327,7 +375,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             )
                           : TextField(
                               controller: _searchController,
-                              style: const TextStyle(color: Colors.white, fontSize: 16),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
                                 isDense: true,
@@ -392,7 +443,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => setState(() => _showContactsView = false),
+                      onPressed: () =>
+                          setState(() => _showContactsView = false),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: !_showContactsView
                             ? const Color(0xFF6B7FB8)
@@ -446,7 +498,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
             // Content
             Expanded(
-              child: _showContactsView ? _buildContactsList() : _buildHistoryList(),
+              child: _showContactsView
+                  ? _buildContactsList()
+                  : _buildHistoryList(),
             ),
           ],
         ),
@@ -456,7 +510,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildContactsList() {
     if (_isLoadingContacts) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF6B7FB8)));
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+      );
     }
 
     if (_filteredContacts.isEmpty) {
@@ -464,11 +520,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.people_outline, size: 64, color: Colors.white.withOpacity(0.3)),
+            Icon(
+              Icons.people_outline,
+              size: 64,
+              color: Colors.white.withOpacity(0.3),
+            ),
             const SizedBox(height: 16),
             Text(
-              _searchController.text.isEmpty ? 'No contacts yet' : 'No contacts found',
-              style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.5)),
+              _searchController.text.isEmpty
+                  ? 'No contacts yet'
+                  : 'No contacts found',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white.withOpacity(0.5),
+              ),
             ),
           ],
         ),
@@ -493,7 +558,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               CircleAvatar(
                 radius: 28,
                 backgroundColor: const Color(0xFF6B7FB8),
-                backgroundImage: contact['photoURL'] != null ? NetworkImage(contact['photoURL']) : null,
+                backgroundImage: contact['photoURL'] != null
+                    ? NetworkImage(contact['photoURL'])
+                    : null,
                 child: contact['photoURL'] == null
                     ? Text(
                         contact['name'][0].toUpperCase(),
@@ -532,12 +599,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
               // Star icon
               IconButton(
-                icon: const Icon(Icons.star_border, color: Color(0xFF8E8E93), size: 22),
+                icon: const Icon(
+                  Icons.star_border,
+                  color: Color(0xFF8E8E93),
+                  size: 22,
+                ),
                 onPressed: () {},
               ),
               // Phone icon
               IconButton(
-                icon: const Icon(Icons.phone, color: Color(0xFF6B7FB8), size: 22),
+                icon: const Icon(
+                  Icons.phone,
+                  color: Color(0xFF6B7FB8),
+                  size: 22,
+                ),
                 onPressed: () => _startCallWithContact(contact),
               ),
             ],
@@ -549,7 +624,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildHistoryList() {
     if (_isLoadingHistory) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF6B7FB8)));
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+      );
     }
 
     if (_callHistory.isEmpty) {
@@ -561,7 +638,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             const SizedBox(height: 16),
             Text(
               'No call history yet',
-              style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.5)),
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white.withOpacity(0.5),
+              ),
             ),
           ],
         ),
@@ -594,18 +674,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   children: [
                     Text(
                       call['roomName'],
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _formatTimestamp(call['timestamp']),
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF8E8E93)),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF8E8E93),
+                      ),
                     ),
                   ],
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.phone, color: Color(0xFF6B7FB8), size: 20),
+                icon: const Icon(
+                  Icons.phone,
+                  color: Color(0xFF6B7FB8),
+                  size: 20,
+                ),
                 onPressed: () {},
               ),
             ],
@@ -619,7 +710,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (timestamp == null) return 'Unknown';
     final now = DateTime.now();
     final diff = now.difference(timestamp);
-    
+
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     return '${diff.inDays}d ago';
@@ -653,7 +744,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       });
 
       final token = response.data['token'] as String;
-      final wsUrl = response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
+      final wsUrl =
+          response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
 
       if (mounted) Navigator.pop(context);
 
@@ -661,11 +753,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => CallScreen(
-              roomName: roomName,
-              token: token,
-              livekitUrl: wsUrl,
-            ),
+            builder: (context) =>
+                CallScreen(roomName: roomName, token: token, livekitUrl: wsUrl),
           ),
         );
       }
@@ -673,9 +762,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       debugPrint('Error starting call: $e');
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error starting call: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error starting call: $e')));
       }
     }
   }
@@ -707,7 +796,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 hintText: 'contact@example.com',
                 filled: true,
                 fillColor: const Color(0xFF1C1C1E),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
@@ -723,27 +814,34 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL', style: TextStyle(color: Color(0xFF8E8E93))),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Color(0xFF8E8E93)),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
               final email = emailController.text.trim();
               if (email.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter an email address')),
+                  const SnackBar(
+                    content: Text('Please enter an email address'),
+                  ),
                 );
                 return;
               }
-              
+
               if (!email.contains('@')) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a valid email address')),
+                  const SnackBar(
+                    content: Text('Please enter a valid email address'),
+                  ),
                 );
                 return;
               }
-              
+
               Navigator.pop(context);
-              
+
               try {
                 // Search for user by email
                 final snapshot = await FirebaseFirestore.instance
@@ -751,45 +849,56 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     .where('email', isEqualTo: email)
                     .limit(1)
                     .get();
-                
+
                 if (snapshot.docs.isEmpty) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('No user found with that email')),
+                      const SnackBar(
+                        content: Text('No user found with that email'),
+                      ),
                     );
                   }
                   return;
                 }
-                
+
                 final userData = snapshot.docs.first.data();
                 final contactUid = snapshot.docs.first.id;
-                
+
                 // Add to contacts list in UI (in real app, save to Firestore)
                 if (mounted) {
                   setState(() {
                     _contacts.add({
                       'uid': contactUid,
-                      'name': userData['displayName'] ?? userData['name'] ?? 'Unknown',
+                      'name':
+                          userData['displayName'] ??
+                          userData['name'] ??
+                          'Unknown',
                       'email': userData['email'] ?? '',
                       'photoURL': userData['photoURL'],
                     });
                     _filterContacts();
                   });
-                  
+
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Added ${userData['displayName'] ?? email} to contacts!')),
+                    SnackBar(
+                      content: Text(
+                        'Added ${userData['displayName'] ?? email} to contacts!',
+                      ),
+                    ),
                   );
                 }
               } catch (e) {
                 debugPrint('Error adding contact: $e');
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6B7FB8)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6B7FB8),
+            ),
             child: const Text('ADD', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -805,7 +914,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2C2C2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Create Guest Link', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Create Guest Link',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -823,7 +935,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 hintText: 'John Doe',
                 filled: true,
                 fillColor: const Color(0xFF1C1C1E),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
           ],
@@ -831,7 +945,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL', style: TextStyle(color: Color(0xFF8E8E93))),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Color(0xFF8E8E93)),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -842,34 +959,42 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 );
                 return;
               }
-              
+
               Navigator.pop(context);
-              
+
               try {
                 final guestLinkService = GuestLinkService();
-                final roomName = 'guest_${DateTime.now().millisecondsSinceEpoch}';
+                final roomName =
+                    'guest_${DateTime.now().millisecondsSinceEpoch}';
                 final link = await guestLinkService.generateGuestLink(
                   roomName: roomName,
                   guestName: name,
                 );
-                
+
                 if (mounted && link != null) {
                   await Clipboard.setData(ClipboardData(text: link));
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Guest link copied to clipboard!')),
+                    const SnackBar(
+                      content: Text('Guest link copied to clipboard!'),
+                    ),
                   );
                 }
               } catch (e) {
                 debugPrint('Error generating guest link: $e');
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6B7FB8)),
-            child: const Text('GENERATE', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6B7FB8),
+            ),
+            child: const Text(
+              'GENERATE',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -890,12 +1015,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('CANCEL', style: TextStyle(color: Color(0xFF8E8E93))),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Color(0xFF8E8E93)),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('SIGN OUT', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'SIGN OUT',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),

@@ -11,7 +11,7 @@ class CallScreen extends StatefulWidget {
   final String roomName;
   final String token;
   final String livekitUrl;
-  
+
   const CallScreen({
     super.key,
     required this.roomName,
@@ -27,32 +27,32 @@ class _CallScreenState extends State<CallScreen> {
   bool _isConnecting = true;
   late CallFeaturesCoordinator _coordinator;
   final TextEditingController _chatController = TextEditingController();
-  
+
   @override
   void initState() {
     super.initState();
     _coordinator = CallFeaturesCoordinator();
     _connectToRoom();
   }
-  
+
   Future<void> _connectToRoom() async {
     final livekit = context.read<LiveKitService>();
-    
+
     final success = await livekit.connect(
       url: widget.livekitUrl,
       token: widget.token,
       roomName: widget.roomName,
     );
-    
+
     // Initialize coordinator with room (now async)
     if (success && livekit.room != null) {
       await _coordinator.initialize(livekit.room!);
       // Start collecting stats automatically
       _coordinator.startStatsCollection();
     }
-    
+
     setState(() => _isConnecting = false);
-    
+
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -62,7 +62,7 @@ class _CallScreenState extends State<CallScreen> {
       );
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (_isConnecting) {
@@ -79,7 +79,7 @@ class _CallScreenState extends State<CallScreen> {
         ),
       );
     }
-    
+
     return ChangeNotifierProvider<CallFeaturesCoordinator>.value(
       value: _coordinator,
       child: Scaffold(
@@ -91,24 +91,24 @@ class _CallScreenState extends State<CallScreen> {
                 children: [
                   // Remote participants grid
                   _buildParticipantsGrid(livekit),
-                  
+
                   // Reaction overlay (floating emojis)
                   ReactionOverlay(reactions: coordinator.activeReactions),
-                  
+
                   // Local video preview (small, top-right)
                   Positioned(
                     top: 16,
                     right: 16,
                     child: _buildLocalVideoPreview(livekit),
                   ),
-                  
+
                   // Room info (top-left)
                   Positioned(
                     top: 16,
                     left: 16,
                     child: _buildRoomInfo(coordinator),
                   ),
-                  
+
                   // Stats overlay (top-right, below local video)
                   if (coordinator.isStatsCollecting)
                     Positioned(
@@ -118,7 +118,7 @@ class _CallScreenState extends State<CallScreen> {
                         statsService: coordinator.statsService,
                       ),
                     ),
-                  
+
                   // Call controls (bottom)
                   Positioned(
                     bottom: 32,
@@ -126,7 +126,7 @@ class _CallScreenState extends State<CallScreen> {
                     right: 0,
                     child: _buildCallControls(livekit, coordinator),
                   ),
-                  
+
                   // Chat panel (bottom sheet)
                   if (coordinator.isChatOpen)
                     Positioned(
@@ -143,7 +143,7 @@ class _CallScreenState extends State<CallScreen> {
       ),
     );
   }
-  
+
   Widget _buildRoomInfo(CallFeaturesCoordinator coordinator) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,22 +202,22 @@ class _CallScreenState extends State<CallScreen> {
       ],
     );
   }
-  
+
   Color _getQualityColor(int score) {
     if (score >= 80) return Colors.green;
     if (score >= 50) return Colors.orange;
     return Colors.red;
   }
-  
+
   IconData _getQualityIcon(int score) {
     if (score >= 80) return Icons.signal_cellular_4_bar;
     if (score >= 50) return Icons.signal_cellular_alt_2_bar;
     return Icons.signal_cellular_alt_1_bar;
   }
-  
+
   Widget _buildParticipantsGrid(LiveKitService livekit) {
     final remoteParticipants = livekit.remoteParticipants;
-    
+
     if (remoteParticipants.isEmpty) {
       return const Center(
         child: Column(
@@ -233,7 +233,7 @@ class _CallScreenState extends State<CallScreen> {
         ),
       );
     }
-    
+
     // Simple grid layout for multiple participants
     return GridView.builder(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -242,20 +242,18 @@ class _CallScreenState extends State<CallScreen> {
       ),
       itemCount: remoteParticipants.length,
       itemBuilder: (context, index) {
-        return ParticipantVideo(
-          participant: remoteParticipants[index],
-        );
+        return ParticipantVideo(participant: remoteParticipants[index]);
       },
     );
   }
-  
+
   Widget _buildLocalVideoPreview(LiveKitService livekit) {
     final localParticipant = livekit.localParticipant;
-    
+
     if (localParticipant == null) {
       return const SizedBox.shrink();
     }
-    
+
     return Container(
       width: 120,
       height: 160,
@@ -264,14 +262,14 @@ class _CallScreenState extends State<CallScreen> {
         borderRadius: BorderRadius.circular(8),
       ),
       clipBehavior: Clip.antiAlias,
-      child: ParticipantVideo(
-        participant: localParticipant,
-        isLocal: true,
-      ),
+      child: ParticipantVideo(participant: localParticipant, isLocal: true),
     );
   }
-  
-  Widget _buildCallControls(LiveKitService livekit, CallFeaturesCoordinator coordinator) {
+
+  Widget _buildCallControls(
+    LiveKitService livekit,
+    CallFeaturesCoordinator coordinator,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -308,7 +306,7 @@ class _CallScreenState extends State<CallScreen> {
               }).toList(),
             ),
           ),
-          
+
           // Main control buttons
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -321,7 +319,7 @@ class _CallScreenState extends State<CallScreen> {
                     ? Colors.white24
                     : Colors.red,
               ),
-              
+
               // Chat button with badge
               _buildControlButton(
                 icon: Icons.chat,
@@ -333,14 +331,14 @@ class _CallScreenState extends State<CallScreen> {
                     ? coordinator.unreadMessageCount.toString()
                     : null,
               ),
-              
+
               // Switch camera
               _buildControlButton(
                 icon: Icons.cameraswitch,
                 onPressed: livekit.switchCamera,
                 backgroundColor: Colors.white24,
               ),
-              
+
               // Toggle camera
               _buildControlButton(
                 icon: livekit.isCameraEnabled
@@ -351,14 +349,14 @@ class _CallScreenState extends State<CallScreen> {
                     ? Colors.white24
                     : Colors.red,
               ),
-              
+
               // More menu
               _buildControlButton(
                 icon: Icons.more_vert,
                 onPressed: () => _showMoreMenu(coordinator),
                 backgroundColor: Colors.white24,
               ),
-              
+
               // End call
               _buildControlButton(
                 icon: Icons.call_end,
@@ -376,7 +374,7 @@ class _CallScreenState extends State<CallScreen> {
       ),
     );
   }
-  
+
   Widget _buildControlButton({
     required IconData icon,
     required VoidCallback onPressed,
@@ -407,10 +405,7 @@ class _CallScreenState extends State<CallScreen> {
                 color: Colors.red,
                 shape: BoxShape.circle,
               ),
-              constraints: const BoxConstraints(
-                minWidth: 20,
-                minHeight: 20,
-              ),
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
               child: Text(
                 badge,
                 style: const TextStyle(
@@ -425,7 +420,7 @@ class _CallScreenState extends State<CallScreen> {
       ],
     );
   }
-  
+
   // Chat panel
   Widget _buildChatPanel(CallFeaturesCoordinator coordinator) {
     return Container(
@@ -467,7 +462,7 @@ class _CallScreenState extends State<CallScreen> {
               ],
             ),
           ),
-          
+
           // Messages list
           Expanded(
             child: ListView.builder(
@@ -475,13 +470,14 @@ class _CallScreenState extends State<CallScreen> {
               reverse: true,
               itemCount: coordinator.chatMessages.length,
               itemBuilder: (context, index) {
-                final reversedIndex = coordinator.chatMessages.length - 1 - index;
+                final reversedIndex =
+                    coordinator.chatMessages.length - 1 - index;
                 final message = coordinator.chatMessages[reversedIndex];
                 return _buildChatMessage(message);
               },
             ),
           ),
-          
+
           // Typing indicators
           if (coordinator.chatService.typingUsers.isNotEmpty)
             Container(
@@ -495,14 +491,12 @@ class _CallScreenState extends State<CallScreen> {
                 ),
               ),
             ),
-          
+
           // Message input
           Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
-              border: Border(
-                top: BorderSide(color: Colors.white24, width: 1),
-              ),
+              border: Border(top: BorderSide(color: Colors.white24, width: 1)),
             ),
             child: Row(
               children: [
@@ -555,7 +549,7 @@ class _CallScreenState extends State<CallScreen> {
       ),
     );
   }
-  
+
   Widget _buildChatMessage(chat.ChatMessage message) {
     return Align(
       alignment: message.isLocal ? Alignment.centerRight : Alignment.centerLeft,
@@ -582,24 +576,18 @@ class _CallScreenState extends State<CallScreen> {
                 ),
               ),
             const SizedBox(height: 4),
-            Text(
-              message.message,
-              style: const TextStyle(color: Colors.white),
-            ),
+            Text(message.message, style: const TextStyle(color: Colors.white)),
             const SizedBox(height: 4),
             Text(
               message.getFormattedTime(),
-              style: const TextStyle(
-                color: Colors.white60,
-                fontSize: 10,
-              ),
+              style: const TextStyle(color: Colors.white60, fontSize: 10),
             ),
           ],
         ),
       ),
     );
   }
-  
+
   // More menu
   void _showMoreMenu(CallFeaturesCoordinator coordinator) {
     showModalBottomSheet(
@@ -644,7 +632,7 @@ class _CallScreenState extends State<CallScreen> {
                 ],
               ),
             ),
-            
+
             // Feature toggles
             _buildMenuToggle(
               icon: Icons.fiber_manual_record,
@@ -688,11 +676,14 @@ class _CallScreenState extends State<CallScreen> {
               value: coordinator.isSpatialAudioEnabled,
               onChanged: (value) => coordinator.toggleSpatialAudio(),
             ),
-            
+
             // AR Filters picker
             ListTile(
               leading: const Icon(Icons.face, color: Colors.white),
-              title: const Text('AR Filters', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'AR Filters',
+                style: TextStyle(color: Colors.white),
+              ),
               subtitle: Text(
                 ArFilters.getDisplayName(coordinator.activeArFilter),
                 style: const TextStyle(color: Colors.white60),
@@ -703,11 +694,14 @@ class _CallScreenState extends State<CallScreen> {
                 _showArFilterPicker(coordinator);
               },
             ),
-            
+
             // Layout mode picker
             ListTile(
               leading: const Icon(Icons.grid_view, color: Colors.white),
-              title: const Text('Layout Mode', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'Layout Mode',
+                style: TextStyle(color: Colors.white),
+              ),
               subtitle: Text(
                 coordinator.layoutMode.name.toUpperCase(),
                 style: const TextStyle(color: Colors.white60),
@@ -718,14 +712,14 @@ class _CallScreenState extends State<CallScreen> {
                 _showLayoutModePicker(coordinator);
               },
             ),
-            
+
             const SizedBox(height: 16),
           ],
         ),
       ),
     );
   }
-  
+
   Widget _buildMenuToggle({
     required IconData icon,
     required String title,
@@ -737,10 +731,10 @@ class _CallScreenState extends State<CallScreen> {
       title: Text(title, style: const TextStyle(color: Colors.white)),
       value: value,
       onChanged: onChanged,
-      activeColor: Colors.blue,
+      activeThumbColor: Colors.blue,
     );
   }
-  
+
   void _showArFilterPicker(CallFeaturesCoordinator coordinator) {
     showModalBottomSheet(
       context: context,
@@ -788,7 +782,7 @@ class _CallScreenState extends State<CallScreen> {
       ),
     );
   }
-  
+
   void _showLayoutModePicker(CallFeaturesCoordinator coordinator) {
     showModalBottomSheet(
       context: context,
@@ -836,7 +830,7 @@ class _CallScreenState extends State<CallScreen> {
       ),
     );
   }
-  
+
   @override
   void dispose() {
     _coordinator.cleanup(); // Fire and forget async cleanup

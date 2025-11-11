@@ -3,12 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
 
 /// Screen share status enum
-enum ScreenShareStatus {
-  notSharing,
-  requestingPermission,
-  sharing,
-  failed,
-}
+enum ScreenShareStatus { notSharing, requestingPermission, sharing, failed }
 
 /// Screen resolution options
 enum ScreenResolution {
@@ -24,31 +19,31 @@ enum ScreenResolution {
 }
 
 /// Screen Share Service
-/// 
+///
 /// Manages screen sharing functionality for video calls using LiveKit.
-/// 
+///
 /// Features:
 /// - Start/stop screen sharing
 /// - Resolution and FPS configuration
 /// - Permission handling (iOS/Android)
 /// - Status tracking
-/// 
+///
 /// Platform-specific behavior:
 /// - Android: Uses MediaProjection API
 /// - iOS: Uses ReplayKit
 /// - Web: Uses screen capture API
-/// 
+///
 /// Usage:
 /// ```dart
 /// final screenShare = ScreenShareService();
 /// await screenShare.initialize(room);
-/// 
+///
 /// // Start sharing
 /// await screenShare.startScreenShare(
 ///   resolution: ScreenResolution.fullHd1080p,
 ///   fps: 15,
 /// );
-/// 
+///
 /// // Stop sharing
 /// await screenShare.stopScreenShare();
 /// ```
@@ -74,7 +69,7 @@ class ScreenShareService extends ChangeNotifier {
   int get fps => _fps;
   int get framesSent => _framesSent;
   double get bitrate => _bitrate;
-  
+
   Duration? get shareDuration {
     if (_shareStartTime == null) return null;
     return DateTime.now().difference(_shareStartTime!);
@@ -87,7 +82,7 @@ class ScreenShareService extends ChangeNotifier {
   }
 
   /// Start screen sharing
-  /// 
+  ///
   /// Implementation with LiveKit:
   /// ```dart
   /// // Create screen share track
@@ -101,7 +96,7 @@ class ScreenShareService extends ChangeNotifier {
   ///     ),
   ///   ),
   /// );
-  /// 
+  ///
   /// // Publish track
   /// await room.localParticipant?.publishVideoTrack(track);
   /// ```
@@ -127,10 +122,12 @@ class ScreenShareService extends ChangeNotifier {
       _resolution = resolution ?? ScreenResolution.hd720p;
       _fps = fps ?? 15;
 
-      debugPrint('$_tag: Starting screen share ${_resolution.label} @ ${_fps}fps');
+      debugPrint(
+        '$_tag: Starting screen share ${_resolution.label} @ ${_fps}fps',
+      );
 
       // In production: Create screen share track with LiveKit
-      // 
+      //
       // Android implementation:
       // 1. Request MediaProjection permission
       // 2. Create screen capture track
@@ -179,7 +176,6 @@ class ScreenShareService extends ChangeNotifier {
       notifyListeners();
       debugPrint('$_tag: ✅ Screen share started');
       return true;
-
     } catch (e) {
       debugPrint('$_tag: ❌ Failed to start screen share: $e');
       _status = ScreenShareStatus.failed;
@@ -206,7 +202,7 @@ class ScreenShareService extends ChangeNotifier {
       if (_screenShareTrack != null) {
         // In production: Unpublish from room
         // await _room!.localParticipant?.unpublishTrack(_screenShareTrack!.sid);
-        
+
         await _screenShareTrack!.stop();
         await _screenShareTrack!.dispose();
         _screenShareTrack = null;
@@ -218,7 +214,6 @@ class ScreenShareService extends ChangeNotifier {
 
       debugPrint('$_tag: ✅ Screen share stopped');
       return true;
-
     } catch (e) {
       debugPrint('$_tag: ❌ Failed to stop screen share: $e');
       return false;
@@ -249,13 +244,12 @@ class ScreenShareService extends ChangeNotifier {
 
       // In production: Update track parameters
       // This may require stopping and restarting the track
-      
+
       _resolution = resolution;
       notifyListeners();
 
       debugPrint('$_tag: ✅ Resolution updated');
       return true;
-
     } catch (e) {
       debugPrint('$_tag: ❌ Failed to update resolution: $e');
       return false;
@@ -278,13 +272,12 @@ class ScreenShareService extends ChangeNotifier {
       debugPrint('$_tag: Updating FPS to $fps');
 
       // In production: Update track parameters
-      
+
       _fps = fps;
       notifyListeners();
 
       debugPrint('$_tag: ✅ FPS updated');
       return true;
-
     } catch (e) {
       debugPrint('$_tag: ❌ Failed to update FPS: $e');
       return false;
@@ -312,7 +305,9 @@ class ScreenShareService extends ChangeNotifier {
 
       // Simulate stats update
       _framesSent += _fps; // Approximate frames per second
-      _bitrate = 1500000 + (DateTime.now().millisecond % 500000); // Simulate 1.5-2.0 Mbps
+      _bitrate =
+          1500000 +
+          (DateTime.now().millisecond % 500000); // Simulate 1.5-2.0 Mbps
 
       notifyListeners();
     } catch (e) {
@@ -354,7 +349,7 @@ class ScreenShareService extends ChangeNotifier {
   /// Clean up resources
   Future<void> cleanup() async {
     debugPrint('$_tag: Cleaning up...');
-    
+
     _statsTimer?.cancel();
     _statsTimer = null;
 

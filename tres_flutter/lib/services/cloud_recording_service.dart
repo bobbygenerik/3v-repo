@@ -79,17 +79,17 @@ class RecordingMetadata {
 }
 
 /// Cloud Recording Service
-/// 
+///
 /// Manages call recording with automatic cloud upload to Firebase Storage.
 /// Uses LiveKit Cloud Egress for server-side recording.
-/// 
+///
 /// Features:
 /// - Start/stop recording via LiveKit API
 /// - Automatic upload to Firebase Storage
 /// - Recording metadata tracking
 /// - Download URL generation
 /// - Storage management
-/// 
+///
 /// Note: Requires LiveKit Cloud or self-hosted LiveKit server with Egress enabled.
 class CloudRecordingService extends ChangeNotifier {
   static const String _tag = 'CloudRecording';
@@ -106,7 +106,8 @@ class CloudRecordingService extends ChangeNotifier {
   RecordingStatus get status => _status;
   RecordingMetadata? get currentRecording => _currentRecording;
   bool get isRecording => _status == RecordingStatus.recording;
-  List<RecordingMetadata> get allRecordings => List.unmodifiable(_recordings.values);
+  List<RecordingMetadata> get allRecordings =>
+      List.unmodifiable(_recordings.values);
 
   /// Update status from current recording
   void _syncStatus() {
@@ -114,10 +115,10 @@ class CloudRecordingService extends ChangeNotifier {
   }
 
   /// Start recording a call
-  /// 
+  ///
   /// In production, this should call your backend API which then calls
   /// LiveKit Egress API to start server-side recording:
-  /// 
+  ///
   /// POST /v1/egress/room_composite
   /// {
   ///   "room_name": "room-name",
@@ -135,8 +136,9 @@ class CloudRecordingService extends ChangeNotifier {
     }
 
     try {
-      final fileName = 'recording_${callId}_${DateTime.now().millisecondsSinceEpoch}.mp4';
-      
+      final fileName =
+          'recording_${callId}_${DateTime.now().millisecondsSinceEpoch}.mp4';
+
       final metadata = RecordingMetadata(
         callId: callId,
         fileName: fileName,
@@ -163,7 +165,7 @@ class CloudRecordingService extends ChangeNotifier {
 
       // For now, simulate starting
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       // Simulate getting recording ID from LiveKit
       final recordingId = 'EG_${DateTime.now().millisecondsSinceEpoch}';
 
@@ -176,14 +178,14 @@ class CloudRecordingService extends ChangeNotifier {
       notifyListeners();
 
       debugPrint('$_tag: ✅ Recording started: $callId');
-      
+
       // Save metadata to Firestore
       await _saveMetadataToFirestore(_currentRecording!);
-      
+
       return true;
     } catch (e) {
       debugPrint('$_tag: ❌ Failed to start recording: $e');
-      
+
       if (_currentRecording != null) {
         _currentRecording = _currentRecording!.copyWith(
           status: RecordingStatus.failed,
@@ -191,7 +193,7 @@ class CloudRecordingService extends ChangeNotifier {
         _recordings[_currentRecording!.callId] = _currentRecording!;
         notifyListeners();
       }
-      
+
       return false;
     }
   }
@@ -205,11 +207,9 @@ class CloudRecordingService extends ChangeNotifier {
 
     try {
       final metadata = _currentRecording!;
-      
+
       // Update status
-      _currentRecording = metadata.copyWith(
-        status: RecordingStatus.stopping,
-      );
+      _currentRecording = metadata.copyWith(status: RecordingStatus.stopping);
       notifyListeners();
 
       // In production: Call backend API to stop LiveKit Egress
@@ -234,18 +234,20 @@ class CloudRecordingService extends ChangeNotifier {
       _recordings[metadata.callId] = _currentRecording!;
       notifyListeners();
 
-      debugPrint('$_tag: ✅ Recording stopped: ${metadata.callId} (${duration.inSeconds}s)');
+      debugPrint(
+        '$_tag: ✅ Recording stopped: ${metadata.callId} (${duration.inSeconds}s)',
+      );
 
       // Upload to Firebase Storage (in production, LiveKit can upload directly)
       await _uploadToStorage(_currentRecording!);
 
       final finalMetadata = _currentRecording;
       _currentRecording = null; // Clear current recording
-      
+
       return finalMetadata;
     } catch (e) {
       debugPrint('$_tag: ❌ Failed to stop recording: $e');
-      
+
       if (_currentRecording != null) {
         _currentRecording = _currentRecording!.copyWith(
           status: RecordingStatus.failed,
@@ -253,13 +255,13 @@ class CloudRecordingService extends ChangeNotifier {
         _recordings[_currentRecording!.callId] = _currentRecording!;
         notifyListeners();
       }
-      
+
       return null;
     }
   }
 
   /// Upload recording to Firebase Storage
-  /// 
+  ///
   /// In production with LiveKit Cloud, configure output to upload directly:
   /// "output": {
   ///   "file": {
@@ -290,18 +292,18 @@ class CloudRecordingService extends ChangeNotifier {
         status: RecordingStatus.uploaded,
       );
       _recordings[metadata.callId] = _currentRecording!;
-      
+
       await _saveMetadataToFirestore(_currentRecording!);
       notifyListeners();
 
       debugPrint('$_tag: ✅ Recording uploaded: $downloadUrl');
     } catch (e) {
       debugPrint('$_tag: ❌ Upload failed: $e');
-      
+
       _currentRecording = metadata.copyWith(status: RecordingStatus.failed);
       _recordings[metadata.callId] = _currentRecording!;
       notifyListeners();
-      
+
       rethrow;
     }
   }
@@ -313,7 +315,7 @@ class CloudRecordingService extends ChangeNotifier {
           .collection('recordings')
           .doc(metadata.callId)
           .set(metadata.toJson());
-      
+
       debugPrint('$_tag: Metadata saved to Firestore');
     } catch (e) {
       debugPrint('$_tag: ⚠️ Failed to save metadata: $e');
@@ -386,9 +388,9 @@ class CloudRecordingService extends ChangeNotifier {
   Future<int> cleanupOldRecordings({int olderThanDays = 30}) async {
     final cutoffDate = DateTime.now().subtract(Duration(days: olderThanDays));
     final toDelete = _recordings.values.where((r) {
-      return r.endTime != null && 
-             r.endTime!.isBefore(cutoffDate) &&
-             r.status == RecordingStatus.uploaded;
+      return r.endTime != null &&
+          r.endTime!.isBefore(cutoffDate) &&
+          r.status == RecordingStatus.uploaded;
     }).toList();
 
     int deletedCount = 0;

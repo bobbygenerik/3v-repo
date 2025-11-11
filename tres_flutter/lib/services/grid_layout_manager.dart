@@ -3,10 +3,10 @@ import 'package:livekit_client/livekit_client.dart';
 
 /// Layout modes for video grid
 enum LayoutMode {
-  grid,       // Gallery view (all participants in grid)
-  spotlight,  // Active speaker full screen
-  pinned,     // Pinned participant full screen
-  sidebar;    // Active speaker with sidebar thumbnails
+  grid, // Gallery view (all participants in grid)
+  spotlight, // Active speaker full screen
+  pinned, // Pinned participant full screen
+  sidebar; // Active speaker with sidebar thumbnails
 
   String get label {
     switch (this) {
@@ -81,27 +81,27 @@ class ParticipantTile {
 }
 
 /// Grid Layout Manager
-/// 
+///
 /// Manages video participant layout and positioning for video calls.
-/// 
+///
 /// Features:
 /// - Multiple layout modes (grid, spotlight, pinned, sidebar)
 /// - Dynamic participant positioning
 /// - Active speaker detection
 /// - Pinned participant support
 /// - Responsive grid calculations
-/// 
+///
 /// Usage:
 /// ```dart
 /// final layoutManager = GridLayoutManager();
 /// layoutManager.initialize(room);
-/// 
+///
 /// // Set layout mode
 /// layoutManager.setLayoutMode(LayoutMode.spotlight);
-/// 
+///
 /// // Pin a participant
 /// layoutManager.pinParticipant(participant);
-/// 
+///
 /// // Get tile positions
 /// final tiles = layoutManager.getTiles(
 ///   containerWidth: 1920,
@@ -127,11 +127,13 @@ class GridLayoutManager extends ChangeNotifier {
   Future<void> initialize(Room room) async {
     _room = room;
     _updateParticipants();
-    
+
     // Listen to room events
     _room!.addListener(_onRoomChanged);
-    
-    debugPrint('$_tag: Manager initialized with ${_participants.length} participants');
+
+    debugPrint(
+      '$_tag: Manager initialized with ${_participants.length} participants',
+    );
   }
 
   /// Handle room changes
@@ -161,7 +163,7 @@ class GridLayoutManager extends ChangeNotifier {
   /// Set layout mode
   void setLayoutMode(LayoutMode mode) {
     if (_layoutMode == mode) return;
-    
+
     _layoutMode = mode;
     debugPrint('$_tag: Layout mode changed to ${mode.label}');
     notifyListeners();
@@ -170,7 +172,7 @@ class GridLayoutManager extends ChangeNotifier {
   /// Pin a participant
   void pinParticipant(Participant? participant) {
     _pinnedParticipant = participant;
-    
+
     if (participant != null) {
       debugPrint('$_tag: Pinned participant: ${participant.identity}');
       // Auto-switch to pinned layout
@@ -178,7 +180,7 @@ class GridLayoutManager extends ChangeNotifier {
     } else {
       debugPrint('$_tag: Unpinned participant');
     }
-    
+
     notifyListeners();
   }
 
@@ -199,7 +201,7 @@ class GridLayoutManager extends ChangeNotifier {
   /// Set active speaker (called from LiveKit events)
   void setActiveSpeaker(Participant? participant) {
     if (_activeSpeaker == participant) return;
-    
+
     _activeSpeaker = participant;
     debugPrint('$_tag: Active speaker: ${participant?.identity ?? "none"}');
     notifyListeners();
@@ -229,7 +231,7 @@ class GridLayoutManager extends ChangeNotifier {
   /// Calculate grid layout (equal-sized tiles)
   List<ParticipantTile> _calculateGridLayout(double width, double height) {
     final count = _participants.length;
-    
+
     // Calculate optimal grid dimensions
     final cols = _calculateOptimalColumns(count, width / height);
     final rows = (count / cols).ceil();
@@ -238,20 +240,22 @@ class GridLayoutManager extends ChangeNotifier {
     final tileHeight = height / rows;
 
     final tiles = <ParticipantTile>[];
-    
+
     for (var i = 0; i < count; i++) {
       final row = i ~/ cols;
       final col = i % cols;
-      
-      tiles.add(ParticipantTile(
-        participant: _participants[i],
-        x: col * tileWidth,
-        y: row * tileHeight,
-        width: tileWidth,
-        height: tileHeight,
-        isActive: _participants[i] == _activeSpeaker,
-        isLocal: _participants[i] == _room?.localParticipant,
-      ));
+
+      tiles.add(
+        ParticipantTile(
+          participant: _participants[i],
+          x: col * tileWidth,
+          y: row * tileHeight,
+          width: tileWidth,
+          height: tileHeight,
+          isActive: _participants[i] == _activeSpeaker,
+          isLocal: _participants[i] == _room?.localParticipant,
+        ),
+      );
     }
 
     return tiles;
@@ -260,7 +264,7 @@ class GridLayoutManager extends ChangeNotifier {
   /// Calculate spotlight layout (active speaker full screen)
   List<ParticipantTile> _calculateSpotlightLayout(double width, double height) {
     final spotlight = _activeSpeaker ?? _participants.first;
-    
+
     return [
       ParticipantTile(
         participant: spotlight,
@@ -277,7 +281,7 @@ class GridLayoutManager extends ChangeNotifier {
   /// Calculate pinned layout (pinned participant full screen)
   List<ParticipantTile> _calculatePinnedLayout(double width, double height) {
     final pinned = _pinnedParticipant ?? _participants.first;
-    
+
     return [
       ParticipantTile(
         participant: pinned,
@@ -303,29 +307,33 @@ class GridLayoutManager extends ChangeNotifier {
     final sidebarWidth = width - mainWidth;
 
     // Add main tile
-    tiles.add(ParticipantTile(
-      participant: mainParticipant,
-      x: 0,
-      y: 0,
-      width: mainWidth,
-      height: height,
-      isActive: true,
-      isLocal: mainParticipant == _room?.localParticipant,
-    ));
+    tiles.add(
+      ParticipantTile(
+        participant: mainParticipant,
+        x: 0,
+        y: 0,
+        width: mainWidth,
+        height: height,
+        isActive: true,
+        isLocal: mainParticipant == _room?.localParticipant,
+      ),
+    );
 
     // Add sidebar thumbnails
     if (others.isNotEmpty) {
       final thumbnailHeight = height / others.length;
-      
+
       for (var i = 0; i < others.length; i++) {
-        tiles.add(ParticipantTile(
-          participant: others[i],
-          x: mainWidth,
-          y: i * thumbnailHeight,
-          width: sidebarWidth,
-          height: thumbnailHeight,
-          isLocal: others[i] == _room?.localParticipant,
-        ));
+        tiles.add(
+          ParticipantTile(
+            participant: others[i],
+            x: mainWidth,
+            y: i * thumbnailHeight,
+            width: sidebarWidth,
+            height: thumbnailHeight,
+            isLocal: others[i] == _room?.localParticipant,
+          ),
+        );
       }
     }
 
@@ -373,13 +381,13 @@ class GridLayoutManager extends ChangeNotifier {
   /// Clean up resources
   Future<void> cleanup() async {
     debugPrint('$_tag: Cleaning up...');
-    
+
     _room?.removeListener(_onRoomChanged);
     _room = null;
     _participants = [];
     _pinnedParticipant = null;
     _activeSpeaker = null;
-    
+
     debugPrint('$_tag: ✅ Cleaned up');
   }
 

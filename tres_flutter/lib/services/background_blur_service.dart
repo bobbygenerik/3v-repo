@@ -1,15 +1,14 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui' show Size;
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_selfie_segmentation/google_mlkit_selfie_segmentation.dart';
 import 'package:image/image.dart' as img;
 
 /// Background blur service for video calls
-/// 
+///
 /// Uses ML Kit Selfie Segmentation to detect person and blur background
 /// Similar to FaceTime's Portrait Mode
-/// 
+///
 /// Performance: ~50-100ms per frame (Flutter is slower than native)
 class BackgroundBlurService extends ChangeNotifier {
   static const String _tag = 'BackgroundBlur';
@@ -59,7 +58,7 @@ class BackgroundBlurService extends ChangeNotifier {
   }
 
   /// Process a video frame and blur the background
-  /// 
+  ///
   /// @param inputImage Input image as Uint8List (RGBA format)
   /// @param width Image width
   /// @param height Image height
@@ -117,7 +116,9 @@ class BackgroundBlurService extends ChangeNotifier {
       // Step 6: Encode back to bytes
       final outputBytes = output.buffer.asUint8List();
 
-      final processingTime = DateTime.now().difference(startTime).inMilliseconds;
+      final processingTime = DateTime.now()
+          .difference(startTime)
+          .inMilliseconds;
       if (processingTime > 100) {
         debugPrint('$_tag: ⚠️ Slow processing: ${processingTime}ms');
       }

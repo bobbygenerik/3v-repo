@@ -72,7 +72,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           'Firebase': {
             'App Name': Firebase.app().name,
             'User ID': user?.uid ?? 'Not signed in',
-            'Auth Provider': user?.providerData.firstOrNull?.providerId ?? 'None',
+            'Auth Provider':
+                user?.providerData.firstOrNull?.providerId ?? 'None',
             'Email Verified': user?.emailVerified.toString() ?? 'N/A',
           },
           'LiveKit': {
@@ -96,7 +97,9 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       });
     } catch (e) {
       setState(() {
-        _diagnostics = {'Error': {'Message': e.toString()}};
+        _diagnostics = {
+          'Error': {'Message': e.toString()},
+        };
         _isLoading = false;
       });
     }
@@ -128,162 +131,169 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                // Status Banner
-                Card(
-                  color: _isSystemHealthy()
-                      ? Colors.green.shade900
-                      : Colors.orange.shade900,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Icon(
-                          _isSystemHealthy()
-                              ? Icons.check_circle
-                              : Icons.warning,
-                          color: Colors.white,
-                          size: 32,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _isSystemHealthy()
-                                    ? 'System Healthy'
-                                    : 'Configuration Issues',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
+                    // Status Banner
+                    Card(
+                      color: _isSystemHealthy()
+                          ? Colors.green.shade900
+                          : Colors.orange.shade900,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _isSystemHealthy()
+                                  ? Icons.check_circle
+                                  : Icons.warning,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _isSystemHealthy()
+                                        ? 'System Healthy'
+                                        : 'Configuration Issues',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _isSystemHealthy()
+                                        ? 'All systems operational'
+                                        : 'Check configuration below',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _isSystemHealthy()
-                                    ? 'All systems operational'
-                                    : 'Check configuration below',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Diagnostics Sections
-                ..._diagnostics.entries.map((section) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
-                        child: Text(
-                          section.key.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryBlue,
-                            letterSpacing: 1.2,
-                          ),
+                            ),
+                          ],
                         ),
                       ),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: (section.value as Map<String, dynamic>)
-                                .entries
-                                .map((item) {
-                              return Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        item.key,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.textLight,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 3,
-                                      child: Text(
-                                        item.value.toString(),
-                                        style: const TextStyle(
-                                          color: AppColors.textWhite,
-                                        ),
-                                        textAlign: TextAlign.right,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Diagnostics Sections
+                    ..._diagnostics.entries.map((section) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
+                            child: Text(
+                              section.key.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryBlue,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
                           ),
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                children:
+                                    (section.value as Map<String, dynamic>)
+                                        .entries
+                                        .map((item) {
+                                          return Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 8,
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Expanded(
+                                                  flex: 2,
+                                                  child: Text(
+                                                    item.key,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color:
+                                                          AppColors.textLight,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Expanded(
+                                                  flex: 3,
+                                                  child: Text(
+                                                    item.value.toString(),
+                                                    style: const TextStyle(
+                                                      color:
+                                                          AppColors.textWhite,
+                                                    ),
+                                                    textAlign: TextAlign.right,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        })
+                                        .toList(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+
+                    const SizedBox(height: 24),
+
+                    // Test Buttons
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'SYSTEM TESTS',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryBlue,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: _testNetworkConnection,
+                              icon: const Icon(Icons.wifi),
+                              label: const Text('Test Network'),
+                            ),
+                            const SizedBox(height: 8),
+                            ElevatedButton.icon(
+                              onPressed: _testFirebaseConnection,
+                              icon: const Icon(Icons.cloud),
+                              label: const Text('Test Firebase'),
+                            ),
+                            const SizedBox(height: 8),
+                            ElevatedButton.icon(
+                              onPressed: _testLiveKitConnection,
+                              icon: const Icon(Icons.video_call),
+                              label: const Text('Test LiveKit'),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  );
-                }).toList(),
-
-                const SizedBox(height: 24),
-
-                // Test Buttons
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'SYSTEM TESTS',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryBlue,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: _testNetworkConnection,
-                          icon: const Icon(Icons.wifi),
-                          label: const Text('Test Network'),
-                        ),
-                        const SizedBox(height: 8),
-                        ElevatedButton.icon(
-                          onPressed: _testFirebaseConnection,
-                          icon: const Icon(Icons.cloud),
-                          label: const Text('Test Firebase'),
-                        ),
-                        const SizedBox(height: 8),
-                        ElevatedButton.icon(
-                          onPressed: _testLiveKitConnection,
-                          icon: const Icon(Icons.video_call),
-                          label: const Text('Test LiveKit'),
-                        ),
-                      ],
                     ),
-                  ),
-                ),
 
-                const SizedBox(height: 32),
-              ],
+                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
     );
   }
 

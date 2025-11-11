@@ -79,7 +79,8 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   ScreenShareStatus get screenShareStatus => screenShareService.status;
   CallStats get currentCallStats => statsService.currentStats;
   CallConnectionQuality get connectionQuality => statsService.currentQuality;
-  List<ParticipantTile> get participantTiles => layoutManager.participants.isEmpty
+  List<ParticipantTile> get participantTiles =>
+      layoutManager.participants.isEmpty
       ? []
       : layoutManager.getTiles(containerWidth: 1920, containerHeight: 1080);
   Participant? get pinnedParticipant => layoutManager.pinnedParticipant;
@@ -301,7 +302,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   void toggleSpatialAudio() {
     _isSpatialAudioEnabled = !_isSpatialAudioEnabled;
     notifyListeners();
-    debugPrint('Spatial audio ${_isSpatialAudioEnabled ? "enabled" : "disabled"}');
+    debugPrint(
+      'Spatial audio ${_isSpatialAudioEnabled ? "enabled" : "disabled"}',
+    );
 
     // TODO: Implement spatial audio logic
   }
@@ -311,7 +314,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     _isBackgroundBlurEnabled = !_isBackgroundBlurEnabled;
     await backgroundBlurService.setEnabled(_isBackgroundBlurEnabled);
     notifyListeners();
-    debugPrint('Background blur ${_isBackgroundBlurEnabled ? "enabled" : "disabled"}');
+    debugPrint(
+      'Background blur ${_isBackgroundBlurEnabled ? "enabled" : "disabled"}',
+    );
   }
 
   /// Toggle beauty filter
@@ -319,7 +324,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     _isBeautyFilterEnabled = !_isBeautyFilterEnabled;
     beautyFilterService.setEnabled(_isBeautyFilterEnabled);
     notifyListeners();
-    debugPrint('Beauty filter ${_isBeautyFilterEnabled ? "enabled" : "disabled"}');
+    debugPrint(
+      'Beauty filter ${_isBeautyFilterEnabled ? "enabled" : "disabled"}',
+    );
   }
 
   /// Set beauty filter intensity (0.0 - 1.0)
@@ -332,11 +339,11 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   void setArFilter(String filterName) {
     _activeArFilter = filterName;
     _isArFilterEnabled = filterName != 'none';
-    
+
     // Convert string filter name to ARFilterType enum
     final filterType = _stringToArFilterType(filterName);
     arFiltersService.applyFilter(filterType);
-    
+
     notifyListeners();
     debugPrint('AR filter set to: $filterName');
   }
@@ -373,7 +380,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   void toggleAiNoiseCancellation() {
     _isAiNoiseCancellationEnabled = !_isAiNoiseCancellationEnabled;
     notifyListeners();
-    debugPrint('AI noise cancellation ${_isAiNoiseCancellationEnabled ? "enabled" : "disabled"}');
+    debugPrint(
+      'AI noise cancellation ${_isAiNoiseCancellationEnabled ? "enabled" : "disabled"}',
+    );
 
     // TODO: Implement AI noise cancellation logic
   }
@@ -443,7 +452,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
     chatService.cleanup();
     reactionService.cleanup();
-    
+
     // Dispose ML services
     await backgroundBlurService.dispose();
     beautyFilterService.dispose();
@@ -483,18 +492,18 @@ class ArFilters {
   static const String sparkles = 'sparkles';
 
   static List<String> get all => [
-        none,
-        glasses,
-        hat,
-        mask,
-        bunnyEars,
-        catEars,
-        crown,
-        monocle,
-        piratePatch,
-        santaHat,
-        sparkles,
-      ];
+    none,
+    glasses,
+    hat,
+    mask,
+    bunnyEars,
+    catEars,
+    crown,
+    monocle,
+    piratePatch,
+    santaHat,
+    sparkles,
+  ];
 
   static String getDisplayName(String filter) {
     switch (filter) {

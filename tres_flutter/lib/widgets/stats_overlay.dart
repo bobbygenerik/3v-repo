@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import '../services/call_stats_service.dart';
 
 /// Stats Overlay Widget
-/// 
+///
 /// Shows real-time call quality statistics in an expandable overlay
 class StatsOverlay extends StatefulWidget {
   final CallStatsService statsService;
-  
-  const StatsOverlay({
-    super.key,
-    required this.statsService,
-  });
+
+  const StatsOverlay({super.key, required this.statsService});
 
   @override
   State<StatsOverlay> createState() => _StatsOverlayState();
@@ -31,7 +28,7 @@ class _StatsOverlayState extends State<StatsOverlay> {
   Widget _buildCollapsedView() {
     final stats = widget.statsService.currentStats;
     final quality = widget.statsService.currentQuality;
-    
+
     return GestureDetector(
       onTap: () => setState(() => _isExpanded = true),
       child: Container(
@@ -50,11 +47,7 @@ class _StatsOverlayState extends State<StatsOverlay> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              _getQualityIcon(quality),
-              color: Colors.white,
-              size: 16,
-            ),
+            Icon(_getQualityIcon(quality), color: Colors.white, size: 16),
             const SizedBox(width: 6),
             Text(
               quality.label,
@@ -67,17 +60,10 @@ class _StatsOverlayState extends State<StatsOverlay> {
             const SizedBox(width: 4),
             Text(
               '• ${stats.roundTripTimeFormatted}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 11),
             ),
             const SizedBox(width: 4),
-            const Icon(
-              Icons.expand_more,
-              color: Colors.white,
-              size: 14,
-            ),
+            const Icon(Icons.expand_more, color: Colors.white, size: 14),
           ],
         ),
       ),
@@ -87,17 +73,14 @@ class _StatsOverlayState extends State<StatsOverlay> {
   Widget _buildExpandedView() {
     final stats = widget.statsService.currentStats;
     final quality = widget.statsService.currentQuality;
-    
+
     return Container(
       width: 320,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.9),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _getQualityColor(quality),
-          width: 2,
-        ),
+        border: Border.all(color: _getQualityColor(quality), width: 2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.5),
@@ -137,7 +120,7 @@ class _StatsOverlayState extends State<StatsOverlay> {
             ],
           ),
           const Divider(color: Colors.white24, height: 24),
-          
+
           // Video Stats
           _buildSectionHeader('Video'),
           const SizedBox(height: 8),
@@ -145,31 +128,43 @@ class _StatsOverlayState extends State<StatsOverlay> {
           _buildStatRow('FPS', '${stats.videoFps}'),
           _buildStatRow('Send', stats.videoSendBitrateFormatted),
           _buildStatRow('Receive', stats.videoRecvBitrateFormatted),
-          _buildStatRow('Packet Loss', stats.videoPacketLossFormatted, 
-            warning: stats.videoPacketLoss > 2),
-          
+          _buildStatRow(
+            'Packet Loss',
+            stats.videoPacketLossFormatted,
+            warning: stats.videoPacketLoss > 2,
+          ),
+
           const SizedBox(height: 12),
-          
+
           // Audio Stats
           _buildSectionHeader('Audio'),
           const SizedBox(height: 8),
           _buildStatRow('Send', stats.audioSendBitrateFormatted),
           _buildStatRow('Receive', stats.audioRecvBitrateFormatted),
-          _buildStatRow('Packet Loss', stats.audioPacketLossFormatted,
-            warning: stats.audioPacketLoss > 2),
-          
+          _buildStatRow(
+            'Packet Loss',
+            stats.audioPacketLossFormatted,
+            warning: stats.audioPacketLoss > 2,
+          ),
+
           const SizedBox(height: 12),
-          
+
           // Network Stats
           _buildSectionHeader('Network'),
           const SizedBox(height: 8),
-          _buildStatRow('RTT', stats.roundTripTimeFormatted,
-            warning: stats.roundTripTime > 0.15), // > 150ms
-          _buildStatRow('Jitter', stats.jitterFormatted,
-            warning: stats.jitter > 0.005), // > 5ms
-          
+          _buildStatRow(
+            'RTT',
+            stats.roundTripTimeFormatted,
+            warning: stats.roundTripTime > 0.15,
+          ), // > 150ms
+          _buildStatRow(
+            'Jitter',
+            stats.jitterFormatted,
+            warning: stats.jitter > 0.005,
+          ), // > 5ms
+
           const SizedBox(height: 12),
-          
+
           // Quality Score
           _buildQualityBar(quality.score),
         ],
@@ -197,10 +192,7 @@ class _StatsOverlayState extends State<StatsOverlay> {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white60,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: Colors.white60, fontSize: 13),
           ),
           Row(
             children: [
@@ -259,9 +251,9 @@ class _StatsOverlayState extends State<StatsOverlay> {
           child: LinearProgressIndicator(
             value: score / 100,
             backgroundColor: Colors.white24,
-            valueColor: AlwaysStoppedAnimation(_getQualityColor(
-              widget.statsService.currentQuality,
-            )),
+            valueColor: AlwaysStoppedAnimation(
+              _getQualityColor(widget.statsService.currentQuality),
+            ),
             minHeight: 8,
           ),
         ),

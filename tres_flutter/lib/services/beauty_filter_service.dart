@@ -1,15 +1,14 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 
 /// Beauty filter service for video calls
-/// 
+///
 /// Applies real-time beauty effects to video frames:
 /// - Skin smoothing (reduces blemishes and imperfections)
 /// - Brightness adjustment (subtle brightening)
 /// - Warm color tone (slight pink tint for healthy appearance)
 /// - Edge preservation (maintains facial features)
-/// 
+///
 /// Performance: ~30-80ms per frame (lighter than background blur)
 class BeautyFilterService extends ChangeNotifier {
   static const String _tag = 'BeautyFilter';
@@ -56,7 +55,7 @@ class BeautyFilterService extends ChangeNotifier {
   }
 
   /// Process a video frame and apply beauty filter
-  /// 
+  ///
   /// @param inputImage Input image as Uint8List (RGBA format)
   /// @param width Image width
   /// @param height Image height
@@ -97,7 +96,9 @@ class BeautyFilterService extends ChangeNotifier {
       // Encode back to bytes
       final outputBytes = filtered.buffer.asUint8List();
 
-      final processingTime = DateTime.now().difference(startTime).inMilliseconds;
+      final processingTime = DateTime.now()
+          .difference(startTime)
+          .inMilliseconds;
       if (processingTime > 100) {
         debugPrint('$_tag: ⚠️ Slow processing: ${processingTime}ms');
       }
@@ -112,7 +113,7 @@ class BeautyFilterService extends ChangeNotifier {
   }
 
   /// Apply beauty filter to image
-  /// 
+  ///
   /// Algorithm:
   /// 1. Box blur for skin smoothing
   /// 2. Blend original with blurred (preserves edges)
@@ -144,7 +145,8 @@ class BeautyFilterService extends ChangeNotifier {
           final blurB = blurPixel.b.toInt();
 
           // Calculate contrast to preserve edges
-          final contrast = (origR - blurR) * (origR - blurR) +
+          final contrast =
+              (origR - blurR) * (origR - blurR) +
               (origG - blurG) * (origG - blurG) +
               (origB - blurB) * (origB - blurB);
 

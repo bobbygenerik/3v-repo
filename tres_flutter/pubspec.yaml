@@ -71,6 +71,8 @@ dependencies:
   image_picker: ^1.2.0
   shared_preferences: ^2.5.3
 
+  device_info_plus: any
+  connectivity_plus: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

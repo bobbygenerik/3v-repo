@@ -14,21 +14,21 @@ import 'services/guest_link_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize Firebase with auto-generated options
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   // Print environment configuration in debug mode
   Environment.printConfig();
-  
+
   // Validate environment configuration
   if (!Environment.validate()) {
     debugPrint('⚠️  Warning: Some environment variables are not configured');
-    debugPrint('Please update lib/config/environment.dart with your credentials');
+    debugPrint(
+      'Please update lib/config/environment.dart with your credentials',
+    );
   }
-  
+
   runApp(const TresApp());
 }
 
@@ -70,12 +70,12 @@ class AuthWrapper extends StatelessWidget {
             ),
           );
         }
-        
+
         // User is signed in
         if (snapshot.hasData && snapshot.data != null) {
           return const HomeScreen();
         }
-        
+
         // User is signed out
         return const AuthScreen();
       },

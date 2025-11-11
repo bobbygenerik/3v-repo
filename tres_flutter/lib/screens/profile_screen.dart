@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:typed_data';
 import 'dart:html' as html;
-import '../config/app_theme.dart';
 import 'diagnostics_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -42,11 +40,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _saveProfile() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final user = FirebaseAuth.instance.currentUser;
       await user?.updateDisplayName(_nameController.text);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully')),
@@ -55,9 +53,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating profile: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating profile: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -67,18 +65,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _uploadPhoto() async {
     try {
       // Use native HTML file picker for web
-      final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+      final html.FileUploadInputElement uploadInput =
+          html.FileUploadInputElement();
       uploadInput.accept = 'image/*';
       uploadInput.click();
 
       await uploadInput.onChange.first;
       final files = uploadInput.files;
-      
+
       if (files == null || files.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No image selected')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('No image selected')));
         }
         return;
       }
@@ -106,7 +105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         contentType: 'image/jpeg',
         customMetadata: {'uploaded-by': user.uid},
       );
-      
+
       await storageRef.putData(bytes, metadata);
 
       // Get download URL
@@ -133,10 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -145,9 +141,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E), // Dark background matching Android
+      backgroundColor: const Color(
+        0xFF1C1C1E,
+      ), // Dark background matching Android
       appBar: AppBar(
         backgroundColor: const Color(0xFF1C1C1E),
         elevation: 0,
@@ -170,7 +168,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             )
           : SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 32,
+                ),
                 child: Column(
                   children: [
                     // Profile Picture with ring
@@ -180,15 +181,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(0xFF6B7FB8), // App's main blue color
+                            color: const Color(
+                              0xFF6B7FB8,
+                            ), // App's main blue color
                             width: 4,
                           ),
                         ),
                         child: CircleAvatar(
                           radius: 80,
                           backgroundColor: const Color(0xFF2C2C2E),
-                          backgroundImage: user?.photoURL != null 
-                              ? NetworkImage(user!.photoURL!) 
+                          backgroundImage: user?.photoURL != null
+                              ? NetworkImage(user!.photoURL!)
                               : null,
                           child: user?.photoURL == null
                               ? Text(
@@ -205,20 +208,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // "Tap to change profile picture" text
                     const Text(
                       'Tap to change profile picture',
-                      style: TextStyle(
-                        color: Color(0xFF8E8E93),
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14),
                     ),
-                    
+
                     const SizedBox(height: 48),
-                    
+
                     // Display Name input
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,17 +255,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 vertical: 16,
                               ),
                               hintText: 'Enter your name',
-                              hintStyle: TextStyle(
-                                color: Color(0xFF8E8E93),
-                              ),
+                              hintStyle: TextStyle(color: Color(0xFF8E8E93)),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 32),
-                    
+
                     // Save Profile button - large rounded button
                     SizedBox(
                       width: double.infinity,
@@ -277,7 +275,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(28), // Very rounded like Android
+                            borderRadius: BorderRadius.circular(
+                              28,
+                            ), // Very rounded like Android
                           ),
                         ),
                         child: const Text(
@@ -289,9 +289,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 48),
-                    
+
                     // Additional options section (collapsible/expandable)
                     ExpansionTile(
                       title: const Text(
@@ -324,7 +324,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             title: const Text(
                               'Contact',
-                              style: TextStyle(color: Colors.white, fontSize: 14),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
                             ),
                             subtitle: Text(
                               user?.email ?? user?.phoneNumber ?? 'Not set',
@@ -335,7 +338,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
-                        
+
                         // User ID
                         Container(
                           color: const Color(0xFF2C2C2E),
@@ -347,7 +350,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             title: const Text(
                               'User ID',
-                              style: TextStyle(color: Colors.white, fontSize: 14),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
                             ),
                             subtitle: Text(
                               user?.uid ?? 'Unknown',
@@ -359,7 +365,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
-                        
+
                         // Member Since
                         Container(
                           color: const Color(0xFF2C2C2E),
@@ -371,10 +377,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             title: const Text(
                               'Member Since',
-                              style: TextStyle(color: Colors.white, fontSize: 14),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
                             ),
                             subtitle: Text(
-                              user?.metadata.creationTime?.toString().split(' ')[0] ?? 'Unknown',
+                              user?.metadata.creationTime?.toString().split(
+                                    ' ',
+                                  )[0] ??
+                                  'Unknown',
                               style: const TextStyle(
                                 color: Color(0xFF8E8E93),
                                 fontSize: 12,
@@ -382,9 +394,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
-                        
+
                         const Divider(color: Color(0xFF3A3A3C), height: 1),
-                        
+
                         // Diagnostics
                         Container(
                           color: const Color(0xFF2C2C2E),
@@ -396,7 +408,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             title: const Text(
                               'Diagnostics',
-                              style: TextStyle(color: Colors.white, fontSize: 14),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
                             ),
                             trailing: const Icon(
                               Icons.chevron_right,
@@ -407,13 +422,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const DiagnosticsScreen(),
+                                  builder: (context) =>
+                                      const DiagnosticsScreen(),
                                 ),
                               );
                             },
                           ),
                         ),
-                        
+
                         // Change Password
                         Container(
                           color: const Color(0xFF2C2C2E),
@@ -425,7 +441,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             title: const Text(
                               'Change Password',
-                              style: TextStyle(color: Colors.white, fontSize: 14),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
                             ),
                             trailing: const Icon(
                               Icons.chevron_right,
@@ -442,7 +461,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             },
                           ),
                         ),
-                        
+
                         // Privacy Settings
                         Container(
                           color: const Color(0xFF2C2C2E),
@@ -454,7 +473,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             title: const Text(
                               'Privacy Settings',
-                              style: TextStyle(color: Colors.white, fontSize: 14),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
                             ),
                             trailing: const Icon(
                               Icons.chevron_right,
@@ -471,7 +493,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             },
                           ),
                         ),
-                        
+
                         // Delete Account
                         Container(
                           decoration: const BoxDecoration(
@@ -489,10 +511,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             title: const Text(
                               'Delete Account',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontSize: 14,
-                              ),
+                              style: TextStyle(color: Colors.red, fontSize: 14),
                             ),
                             trailing: const Icon(
                               Icons.chevron_right,
@@ -543,10 +562,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               );
             },
-            child: const Text(
-              'DELETE',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const Text('DELETE', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

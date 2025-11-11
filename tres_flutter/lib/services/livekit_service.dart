@@ -7,23 +7,23 @@ class LiveKitService extends ChangeNotifier {
   Room? _room;
   LocalVideoTrack? _localVideoTrack;
   LocalAudioTrack? _localAudioTrack;
-  
+
   Room? get room => _room;
   LocalVideoTrack? get localVideoTrack => _localVideoTrack;
   LocalAudioTrack? get localAudioTrack => _localAudioTrack;
-  
+
   bool get isConnected => _room?.connectionState == ConnectionState.connected;
   bool get isMicrophoneEnabled => _localAudioTrack?.muted == false;
   bool get isCameraEnabled => _localVideoTrack?.muted == false;
-  
-  List<Participant> get remoteParticipants => 
+
+  List<Participant> get remoteParticipants =>
       _room?.remoteParticipants.values.toList() ?? [];
-  
+
   LocalParticipant? get localParticipant => _room?.localParticipant;
-  
+
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
-  
+
   /// Connect to LiveKit room
   /// Returns true if connection successful
   Future<bool> connect({
@@ -33,13 +33,13 @@ class LiveKitService extends ChangeNotifier {
   }) async {
     try {
       _errorMessage = null;
-      
+
       // Create room instance
       _room = Room();
-      
+
       // Set up event listeners before connecting
       _setupRoomListeners();
-      
+
       // Connect to room
       await _room!.connect(
         url,
@@ -58,11 +58,11 @@ class LiveKitService extends ChangeNotifier {
           dynacast: true,
         ),
       );
-      
+
       // Enable local tracks
       await enableCamera();
       await enableMicrophone();
-      
+
       notifyListeners();
       return true;
     } catch (e) {
@@ -71,30 +71,30 @@ class LiveKitService extends ChangeNotifier {
       return false;
     }
   }
-  
+
   /// Disconnect from room and cleanup
   Future<void> disconnect() async {
     try {
       await _localVideoTrack?.stop();
       await _localAudioTrack?.stop();
-      
+
       await _room?.disconnect();
-      
+
       _localVideoTrack = null;
       _localAudioTrack = null;
       _room = null;
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error disconnecting: $e');
     }
   }
-  
+
   /// Enable camera and publish video track
   Future<void> enableCamera() async {
     try {
       if (_room == null) return;
-      
+
       // Create camera track if not exists
       if (_localVideoTrack == null) {
         _localVideoTrack = await LocalVideoTrack.createCameraTrack(
@@ -103,11 +103,11 @@ class LiveKitService extends ChangeNotifier {
             params: VideoParametersPresets.h720_169,
           ),
         );
-        
+
         // Publish to room
         await _room!.localParticipant?.publishVideoTrack(_localVideoTrack!);
       }
-      
+
       // Unmute
       await _localVideoTrack?.unmute();
       notifyListeners();
@@ -116,7 +116,7 @@ class LiveKitService extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// Disable camera (mute video track)
   Future<void> disableCamera() async {
     try {
@@ -127,12 +127,12 @@ class LiveKitService extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// Enable microphone and publish audio track
   Future<void> enableMicrophone() async {
     try {
       if (_room == null) return;
-      
+
       // Create audio track if not exists
       if (_localAudioTrack == null) {
         _localAudioTrack = await LocalAudioTrack.create(
@@ -142,11 +142,11 @@ class LiveKitService extends ChangeNotifier {
             autoGainControl: true,
           ),
         );
-        
+
         // Publish to room
         await _room!.localParticipant?.publishAudioTrack(_localAudioTrack!);
       }
-      
+
       // Unmute
       await _localAudioTrack?.unmute();
       notifyListeners();
@@ -155,7 +155,7 @@ class LiveKitService extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// Disable microphone (mute audio track)
   Future<void> disableMicrophone() async {
     try {
@@ -166,7 +166,7 @@ class LiveKitService extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// Toggle microphone state
   Future<void> toggleMicrophone() async {
     if (isMicrophoneEnabled) {
@@ -175,7 +175,7 @@ class LiveKitService extends ChangeNotifier {
       await enableMicrophone();
     }
   }
-  
+
   /// Toggle camera state
   Future<void> toggleCamera() async {
     if (isCameraEnabled) {
@@ -184,7 +184,7 @@ class LiveKitService extends ChangeNotifier {
       await enableCamera();
     }
   }
-  
+
   /// Switch between front and back camera
   Future<void> switchCamera() async {
     try {
@@ -200,13 +200,13 @@ class LiveKitService extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// Set up room event listeners
   void _setupRoomListeners() {
     if (_room == null) return;
-    
+
     _room!.addListener(_onRoomDidUpdate);
-    
+
     // Listen to room events
     _room!.createListener()
       ..on<RoomDisconnectedEvent>((event) {
@@ -234,11 +234,11 @@ class LiveKitService extends ChangeNotifier {
         notifyListeners();
       });
   }
-  
+
   void _onRoomDidUpdate() {
     notifyListeners();
   }
-  
+
   @override
   void dispose() {
     disconnect();

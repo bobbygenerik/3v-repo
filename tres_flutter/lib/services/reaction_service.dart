@@ -36,17 +36,20 @@ class Reaction {
     required this.senderId,
     required this.senderName,
     DateTime? timestamp,
-  })  : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        timestamp = timestamp ?? DateTime.now();
+  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+       timestamp = timestamp ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
-        'type': 'reaction',
-        'id': id,
-        'reaction': type.name,
-        'timestamp': timestamp.millisecondsSinceEpoch,
-      };
+    'type': 'reaction',
+    'id': id,
+    'reaction': type.name,
+    'timestamp': timestamp.millisecondsSinceEpoch,
+  };
 
-  factory Reaction.fromJson(Map<String, dynamic> json, Participant? participant) {
+  factory Reaction.fromJson(
+    Map<String, dynamic> json,
+    Participant? participant,
+  ) {
     final reactionType = ReactionType.fromString(json['reaction'] ?? '');
     return Reaction(
       id: json['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
@@ -87,8 +90,8 @@ class ReactionService extends ChangeNotifier {
     try {
       _roomListener = _room!.createListener();
       _roomListener!.on<DataReceivedEvent>((event) {
-        final data = event.data is Uint8List 
-            ? event.data as Uint8List 
+        final data = event.data is Uint8List
+            ? event.data as Uint8List
             : Uint8List.fromList(event.data);
         _handleIncomingData(data, event.participant);
       });
@@ -148,7 +151,9 @@ class ReactionService extends ChangeNotifier {
   /// Handle received reaction
   void _handleReceivedReaction(Reaction reaction) {
     _addReaction(reaction);
-    debugPrint('📬 Received reaction from ${reaction.senderName}: ${reaction.type.emoji}');
+    debugPrint(
+      '📬 Received reaction from ${reaction.senderName}: ${reaction.type.emoji}',
+    );
   }
 
   /// Add reaction to active list
@@ -162,13 +167,10 @@ class ReactionService extends ChangeNotifier {
     notifyListeners();
 
     // Auto-remove after animation duration
-    Future.delayed(
-      Duration(milliseconds: _animationDurationMs),
-      () {
-        _activeReactions.remove(reaction);
-        notifyListeners();
-      },
-    );
+    Future.delayed(Duration(milliseconds: _animationDurationMs), () {
+      _activeReactions.remove(reaction);
+      notifyListeners();
+    });
   }
 
   /// Get all available reaction types
@@ -207,7 +209,9 @@ class ReactionOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Stack(
-      children: reactions.map((reaction) => _ReactionWidget(reaction: reaction)).toList(),
+      children: reactions
+          .map((reaction) => _ReactionWidget(reaction: reaction))
+          .toList(),
     );
   }
 }
@@ -240,7 +244,9 @@ class _ReactionWidgetState extends State<_ReactionWidget>
     // Generate random horizontal positions
     final random = Random();
     _startX = 0.25 + random.nextDouble() * 0.5; // 25% to 75% of screen width
-    _endX = _startX + (random.nextDouble() - 0.5) * 0.3; // Drift up to 15% left/right
+    _endX =
+        _startX +
+        (random.nextDouble() - 0.5) * 0.3; // Drift up to 15% left/right
 
     // Create animation controller
     _controller = AnimationController(
@@ -256,14 +262,16 @@ class _ReactionWidgetState extends State<_ReactionWidget>
     ]).animate(_controller);
 
     // Move upward animation
-    _moveYAnimation = Tween<double>(begin: 1.0, end: 0.2).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _moveYAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.2,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     // Horizontal drift animation
-    _moveXAnimation = Tween<double>(begin: _startX, end: _endX).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _moveXAnimation = Tween<double>(
+      begin: _startX,
+      end: _endX,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     // Scale animation (grow then shrink)
     _scaleAnimation = TweenSequence<double>([
@@ -289,7 +297,9 @@ class _ReactionWidgetState extends State<_ReactionWidget>
       animation: _controller,
       builder: (context, child) {
         return Positioned(
-          left: _moveXAnimation.value * size.width - 24, // Center emoji (48px / 2)
+          left:
+              _moveXAnimation.value * size.width -
+              24, // Center emoji (48px / 2)
           top: _moveYAnimation.value * size.height - 24,
           child: Opacity(
             opacity: _fadeAnimation.value,

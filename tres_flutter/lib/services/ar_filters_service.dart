@@ -1,33 +1,31 @@
-import 'dart:typed_data';
 import 'dart:ui' show Size, Offset;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' hide Size, Offset;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
 
 /// AR filter types matching Android implementation
 enum ARFilterType {
   none,
-  glasses,      // Sunglasses 🕶️
-  hat,          // Top hat 🎩
-  mask,         // Face mask 😷
-  bunnyEars,    // Bunny ears 🐰
-  catEars,      // Cat ears 🐱
-  crown,        // Crown 👑
-  monocle,      // Monocle 🧐
-  piratePatch,  // Pirate eye patch 🏴‍☠️
-  santaHat,     // Santa hat 🎅
-  sparkles,     // Sparkles overlay ✨
+  glasses, // Sunglasses 🕶️
+  hat, // Top hat 🎩
+  mask, // Face mask 😷
+  bunnyEars, // Bunny ears 🐰
+  catEars, // Cat ears 🐱
+  crown, // Crown 👑
+  monocle, // Monocle 🧐
+  piratePatch, // Pirate eye patch 🏴‍☠️
+  santaHat, // Santa hat 🎅
+  sparkles, // Sparkles overlay ✨
 }
 
 /// AR Filters service for video calls
-/// 
+///
 /// Features:
 /// - Face detection and landmark tracking with ML Kit
 /// - 11 AR filters (glasses, hats, masks, accessories)
 /// - Real-time effect application
 /// - Performance optimization
-/// 
+///
 /// Note: This is a simplified Flutter implementation.
 /// For production, consider using ARKit (iOS) or ARCore (Android).
 class ARFiltersService extends ChangeNotifier {
@@ -38,7 +36,7 @@ class ARFiltersService extends ChangeNotifier {
   ARFilterType _currentFilter = ARFilterType.none;
   double _intensity = 1.0;
   bool _isProcessing = false;
-  
+
   List<Face> _detectedFaces = [];
   int _framesProcessed = 0;
 
@@ -91,7 +89,7 @@ class ARFiltersService extends ChangeNotifier {
   }
 
   /// Process a video frame and apply AR filter
-  /// 
+  ///
   /// @param inputImage Input image as Uint8List (RGBA format)
   /// @param width Image width
   /// @param height Image height
@@ -101,7 +99,9 @@ class ARFiltersService extends ChangeNotifier {
     int width,
     int height,
   ) async {
-    if (!_isInitialized || _currentFilter == ARFilterType.none || _isProcessing) {
+    if (!_isInitialized ||
+        _currentFilter == ARFilterType.none ||
+        _isProcessing) {
       return null;
     }
 
@@ -144,7 +144,9 @@ class ARFiltersService extends ChangeNotifier {
       // Step 4: Encode back to bytes
       final outputBytes = filtered.buffer.asUint8List();
 
-      final processingTime = DateTime.now().difference(startTime).inMilliseconds;
+      final processingTime = DateTime.now()
+          .difference(startTime)
+          .inMilliseconds;
       if (processingTime > 100) {
         debugPrint('$_tag: ⚠️ Slow processing: ${processingTime}ms');
       }
@@ -206,10 +208,12 @@ class ARFiltersService extends ChangeNotifier {
   void _drawGlasses(img.Image image, Face face) {
     final leftEye = face.landmarks[FaceLandmarkType.leftEye];
     final rightEye = face.landmarks[FaceLandmarkType.rightEye];
-    
+
     if (leftEye == null || rightEye == null) return;
 
-    final eyeDistance = (rightEye.position.x - leftEye.position.x).abs().toDouble();
+    final eyeDistance = (rightEye.position.x - leftEye.position.x)
+        .abs()
+        .toDouble();
     final glassesWidth = (eyeDistance * 0.6).toInt();
 
     // Draw left lens
@@ -279,7 +283,9 @@ class ARFiltersService extends ChangeNotifier {
 
     if (nose == null || leftMouth == null || rightMouth == null) return;
 
-    final maskWidth = ((rightMouth.position.x - leftMouth.position.x).toDouble() * 1.5).toInt();
+    final maskWidth =
+        ((rightMouth.position.x - leftMouth.position.x).toDouble() * 1.5)
+            .toInt();
     final maskHeight = (maskWidth * 0.6).toInt();
     final maskX = (nose.position.x - maskWidth / 2).toInt();
     final maskY = nose.position.y;
@@ -490,7 +496,7 @@ class ARFiltersService extends ChangeNotifier {
   /// Draw sparkles overlay filter
   void _drawSparkles(img.Image image, Face face) {
     final bbox = face.boundingBox;
-    
+
     // Draw multiple sparkles around the face
     final sparkles = [
       Offset(bbox.left.toDouble() - 20, bbox.top.toDouble()),
@@ -558,7 +564,9 @@ class ARFiltersService extends ChangeNotifier {
       await _faceDetector?.close();
       _faceDetector = null;
       _isInitialized = false;
-      debugPrint('$_tag: ✅ AR filters disposed (processed $_framesProcessed frames)');
+      debugPrint(
+        '$_tag: ✅ AR filters disposed (processed $_framesProcessed frames)',
+      );
     } catch (e) {
       debugPrint('$_tag: ❌ Error disposing: $e');
     }
