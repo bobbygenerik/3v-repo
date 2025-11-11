@@ -34,11 +34,11 @@ class _StatsOverlayState extends State<StatsOverlay> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: _getQualityColor(quality).withOpacity(0.9),
+          color: _getQualityColor(quality).withAlpha((0.9 * 255).round()),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withAlpha((0.3 * 255).round()),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -78,12 +78,12 @@ class _StatsOverlayState extends State<StatsOverlay> {
       width: 320,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.9),
+        color: Colors.black.withAlpha((0.9 * 255).round()),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _getQualityColor(quality), width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withAlpha((0.5 * 255).round()),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),

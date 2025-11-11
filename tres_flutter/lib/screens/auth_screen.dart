@@ -83,7 +83,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: AppColors.primaryBlue.withOpacity(0.5),
+                    color: AppColors.primaryBlue.withAlpha((0.5 * 255).round()),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -195,7 +195,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      color: AppColors.primaryBlue.withAlpha((0.5 * 255).round()),
                       width: 1,
                     ),
                   ),
@@ -205,13 +205,13 @@ class _AuthScreenState extends State<AuthScreen> {
                     decoration: InputDecoration(
                       hintText: 'Email or Phone',
                       hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withAlpha((0.5 * 255).round()),
                       ),
                       prefixIcon: Padding(
                         padding: const EdgeInsets.only(left: 20, right: 16),
                         child: Icon(
-                          Icons.person,
-                          color: Colors.white.withOpacity(0.7),
+                            Icons.person,
+                            color: Colors.white.withAlpha((0.7 * 255).round()),
                         ),
                       ),
                       border: InputBorder.none,
@@ -232,7 +232,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      color: AppColors.primaryBlue.withAlpha((0.5 * 255).round()),
                       width: 1,
                     ),
                   ),
@@ -243,13 +243,13 @@ class _AuthScreenState extends State<AuthScreen> {
                     decoration: InputDecoration(
                       hintText: 'Password',
                       hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withAlpha((0.5 * 255).round()),
                       ),
                       prefixIcon: Padding(
                         padding: const EdgeInsets.only(left: 20, right: 16),
                         child: Icon(
-                          Icons.lock,
-                          color: Colors.white.withOpacity(0.7),
+                            Icons.lock,
+                            color: Colors.white.withAlpha((0.7 * 255).round()),
                         ),
                       ),
                       suffixIcon: IconButton(
@@ -257,7 +257,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           _obscurePassword
                               ? Icons.visibility_off
                               : Icons.visibility,
-                          color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withAlpha((0.7 * 255).round()),
                         ),
                         onPressed: () {
                           setState(() => _obscurePassword = !_obscurePassword);
@@ -454,7 +454,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      color: AppColors.primaryBlue.withAlpha((0.5 * 255).round()),
                       width: 1,
                     ),
                   ),
@@ -464,13 +464,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     decoration: InputDecoration(
                       hintText: 'Email',
                       hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withAlpha((0.5 * 255).round()),
                       ),
                       prefixIcon: Padding(
                         padding: const EdgeInsets.only(left: 20, right: 16),
                         child: Icon(
                           Icons.email,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withAlpha((0.7 * 255).round()),
                         ),
                       ),
                       border: InputBorder.none,
@@ -491,7 +491,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      color: AppColors.primaryBlue.withAlpha((0.5 * 255).round()),
                       width: 1,
                     ),
                   ),
@@ -502,13 +502,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     decoration: InputDecoration(
                       hintText: 'Password',
                       hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withAlpha((0.5 * 255).round()),
                       ),
                       prefixIcon: Padding(
                         padding: const EdgeInsets.only(left: 20, right: 16),
                         child: Icon(
                           Icons.lock,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withAlpha((0.7 * 255).round()),
                         ),
                       ),
                       suffixIcon: IconButton(
@@ -516,7 +516,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           _obscurePassword
                               ? Icons.visibility_off
                               : Icons.visibility,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withAlpha((0.7 * 255).round()),
                         ),
                         onPressed: () {
                           setState(() => _obscurePassword = !_obscurePassword);
@@ -539,7 +539,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      color: AppColors.primaryBlue.withAlpha((0.5 * 255).round()),
                       width: 1,
                     ),
                   ),
@@ -550,13 +550,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     decoration: InputDecoration(
                       hintText: 'Confirm Password',
                       hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withAlpha((0.5 * 255).round()),
                       ),
                       prefixIcon: Padding(
                         padding: const EdgeInsets.only(left: 20, right: 16),
                         child: Icon(
                           Icons.lock,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withAlpha((0.7 * 255).round()),
                         ),
                       ),
                       suffixIcon: IconButton(
@@ -564,7 +564,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           _obscureConfirmPassword
                               ? Icons.visibility_off
                               : Icons.visibility,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withAlpha((0.7 * 255).round()),
                         ),
                         onPressed: () {
                           setState(

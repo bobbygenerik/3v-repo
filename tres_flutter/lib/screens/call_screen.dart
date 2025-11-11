@@ -176,7 +176,7 @@ class _CallScreenState extends State<CallScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: _getQualityColor(coordinator.qualityScore).withOpacity(0.7),
+            color: _getQualityColor(coordinator.qualityScore).withAlpha((0.7 * 255).round()),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Row(
@@ -284,7 +284,7 @@ class _CallScreenState extends State<CallScreen> {
               borderRadius: BorderRadius.circular(30),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withAlpha((0.3 * 255).round()),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
