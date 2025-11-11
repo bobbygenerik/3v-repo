@@ -1,5 +1,6 @@
 import 'dart:html' as html;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 /// Web-specific helper for phone authentication
 /// Handles reCAPTCHA initialization and verification
@@ -22,7 +23,7 @@ class WebAuthHelper {
 
       _recaptchaInitialized = true;
     } catch (e) {
-      print('Failed to initialize reCAPTCHA: $e');
+      debugPrint('Failed to initialize reCAPTCHA: $e');
       rethrow;
     }
   }
@@ -49,7 +50,7 @@ class WebAuthHelper {
 
       return confirmationResult;
     } catch (e) {
-      print('Error sending verification code: $e');
+      debugPrint('Error sending verification code: $e');
       rethrow;
     }
   }
