@@ -7,6 +7,7 @@ class LiveKitService extends ChangeNotifier {
   Room? _room;
   LocalVideoTrack? _localVideoTrack;
   LocalAudioTrack? _localAudioTrack;
+  CameraPosition _currentCameraPosition = CameraPosition.front; // Track current camera
   
   Room? get room => _room;
   LocalVideoTrack? get localVideoTrack => _localVideoTrack;
@@ -44,15 +45,28 @@ class LiveKitService extends ChangeNotifier {
       await _room!.connect(
         url,
         token,
-        roomOptions: const RoomOptions(
+        roomOptions: RoomOptions(
           defaultCameraCaptureOptions: CameraCaptureOptions(
             maxFrameRate: 30,
+            params: VideoParametersPresets.h720_169, // Reduced from 1080p for better performance
+          ),
+          defaultScreenShareCaptureOptions: ScreenShareCaptureOptions(
+            maxFrameRate: 15,
             params: VideoParametersPresets.h720_169,
           ),
           defaultAudioCaptureOptions: AudioCaptureOptions(
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
+          ),
+          defaultVideoPublishOptions: VideoPublishOptions(
+            videoEncoding: VideoEncoding(
+              maxBitrate: 1500 * 1000, // Reduced to 1.5 Mbps for less lag
+              maxFramerate: 30,
+            ),
+          ),
+          defaultAudioPublishOptions: AudioPublishOptions(
+            audioBitrate: 64 * 1000, // 64 kbps
           ),
           adaptiveStream: true,
           dynacast: true,
@@ -93,25 +107,36 @@ class LiveKitService extends ChangeNotifier {
   /// Enable camera and publish video track
   Future<void> enableCamera() async {
     try {
-      if (_room == null) return;
+      debugPrint('📹 enableCamera() called');
+      if (_room == null) {
+        debugPrint('❌ Room is null, cannot enable camera');
+        return;
+      }
       
       // Create camera track if not exists
       if (_localVideoTrack == null) {
+        debugPrint('📹 Creating new camera track...');
         _localVideoTrack = await LocalVideoTrack.createCameraTrack(
           const CameraCaptureOptions(
             maxFrameRate: 30,
-            params: VideoParametersPresets.h720_169,
+            params: VideoParametersPresets.h720_169, // Reduced from 1080p
           ),
         );
+        debugPrint('✅ Camera track created: ${_localVideoTrack?.sid}');
         
         // Publish to room
+        debugPrint('📤 Publishing video track to room...');
         await _room!.localParticipant?.publishVideoTrack(_localVideoTrack!);
+        debugPrint('✅ Video track published');
       }
       
       // Unmute
+      debugPrint('🎥 Unmuting video track...');
       await _localVideoTrack?.unmute();
+      debugPrint('✅ Video track unmuted');
       notifyListeners();
     } catch (e) {
+      debugPrint('❌ Failed to enable camera: $e');
       _errorMessage = 'Failed to enable camera: ${e.toString()}';
       notifyListeners();
     }
@@ -189,13 +214,21 @@ class LiveKitService extends ChangeNotifier {
   Future<void> switchCamera() async {
     try {
       final track = _localVideoTrack;
-      if (track != null) {
-        // Toggle camera position
-        await track.setCameraPosition(CameraPosition.front);
-        // Note: LiveKit automatically toggles between front/back
-        notifyListeners();
+      if (track == null) {
+        debugPrint('❌ Cannot switch camera: no active video track');
+        return;
       }
+      
+      // Toggle between front and back camera
+      _currentCameraPosition = (_currentCameraPosition == CameraPosition.front)
+          ? CameraPosition.back
+          : CameraPosition.front;
+      
+      await track.setCameraPosition(_currentCameraPosition);
+      debugPrint('✅ Camera switched to: $_currentCameraPosition');
+      notifyListeners();
     } catch (e) {
+      debugPrint('❌ Camera switch error: $e');
       _errorMessage = 'Failed to switch camera: ${e.toString()}';
       notifyListeners();
     }
@@ -214,19 +247,25 @@ class LiveKitService extends ChangeNotifier {
         notifyListeners();
       })
       ..on<ParticipantConnectedEvent>((event) {
-        debugPrint('Participant connected: ${event.participant.identity}');
+        debugPrint('👤 Participant connected: ${event.participant.identity}');
+        debugPrint('   - Video tracks: ${event.participant.videoTrackPublications.length}');
+        debugPrint('   - Audio tracks: ${event.participant.audioTrackPublications.length}');
         notifyListeners();
       })
       ..on<ParticipantDisconnectedEvent>((event) {
-        debugPrint('Participant disconnected: ${event.participant.identity}');
+        debugPrint('👋 Participant disconnected: ${event.participant.identity}');
         notifyListeners();
       })
       ..on<TrackPublishedEvent>((event) {
-        debugPrint('Track published: ${event.publication.sid}');
+        debugPrint('📢 Track published: ${event.publication.sid} by ${event.participant.identity}');
+        debugPrint('   - Kind: ${event.publication.kind}');
+        debugPrint('   - Source: ${event.publication.source}');
         notifyListeners();
       })
       ..on<TrackSubscribedEvent>((event) {
-        debugPrint('Track subscribed: ${event.track.sid}');
+        debugPrint('✅ Track subscribed: ${event.track.sid}');
+        debugPrint('   - Kind: ${event.track.kind}');
+        debugPrint('   - Participant: ${event.participant.identity}');
         notifyListeners();
       })
       ..on<TrackUnpublishedEvent>((event) {
