@@ -222,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen>
                             Icon(
                               Icons.person,
                               size: 20,
-                              color: Color(0xFF6B7FB8),
+                              color: const Color(0xFF6B7FB8),
                             ),
                             const SizedBox(width: 12),
                             Text(
@@ -239,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen>
                             Icon(
                               Icons.link,
                               size: 20,
-                              color: Color(0xFF6B7FB8),
+                              color: const Color(0xFF6B7FB8),
                             ),
                             const SizedBox(width: 12),
                             Text(
@@ -256,7 +256,7 @@ class _HomeScreenState extends State<HomeScreen>
                             Icon(
                               Icons.settings,
                               size: 20,
-                              color: Color(0xFF6B7FB8),
+                              color: const Color(0xFF6B7FB8),
                             ),
                             const SizedBox(width: 12),
                             Text(
@@ -347,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen>
                         '@',
                         style: TextStyle(
                           fontSize: 20,
-                          color: Color(0xFF8E8E93), // Gray color
+                          color: const Color(0xFF8E8E93), // Gray color
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -393,7 +393,7 @@ class _HomeScreenState extends State<HomeScreen>
                         padding: const EdgeInsets.only(right: 12, left: 8),
                         child: const Icon(
                           Icons.person_add,
-                          color: Color(0xFF6B7FB8),
+                          color: const Color(0xFF6B7FB8),
                           size: 24,
                         ),
                       ),
@@ -488,7 +488,7 @@ class _HomeScreenState extends State<HomeScreen>
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w400,
-                    color: Color(0xFF8E8E93),
+                    color: const Color(0xFF8E8E93),
                   ),
                 ),
               ),
