@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Environment configuration for the app
 ///
 /// After setting up Firebase with FlutterFire CLI, update the values below
@@ -67,12 +69,12 @@ class Environment {
   /// Validate that all required configuration is set
   static bool validate() {
     if (liveKitUrl.contains('your-livekit-server.com')) {
-      print('❌ LiveKit URL not configured');
+      debugPrint('❌ LiveKit URL not configured');
       return false;
     }
 
     if (functionsBaseUrl.contains('YOUR_PROJECT_ID')) {
-      print('❌ Firebase Functions URL not configured');
+      debugPrint('❌ Firebase Functions URL not configured');
       return false;
     }
 
@@ -81,18 +83,18 @@ class Environment {
 
   /// Print current configuration (for debugging)
   static void printConfig() {
-    if (!enableDebugLogging) return;
+  if (!enableDebugLogging) return;
 
-    print('=== Environment Configuration ===');
-    print('App Name: $appName');
-    print('App Version: $appVersion');
-    print('LiveKit URL: $liveKitUrl');
-    print('Functions Base URL: $functionsBaseUrl');
-    print('ML Features: $enableMLFeatures');
-    print('E2E Encryption: $enableE2EEncryption');
-    print('Cloud Recording: $enableCloudRecording');
-    print('Screen Share: $enableScreenShare');
-    print('Development Mode: $isDevelopment');
-    print('================================');
+  debugPrint('=== Environment Configuration ===');
+  debugPrint('App Name: $appName');
+  debugPrint('App Version: $appVersion');
+  debugPrint('LiveKit URL: $liveKitUrl');
+  debugPrint('Functions Base URL: $functionsBaseUrl');
+  debugPrint('ML Features: $enableMLFeatures');
+  debugPrint('E2E Encryption: $enableE2EEncryption');
+  debugPrint('Cloud Recording: $enableCloudRecording');
+  debugPrint('Screen Share: $enableScreenShare');
+  debugPrint('Development Mode: $isDevelopment');
+  debugPrint('================================');
   }
 }
