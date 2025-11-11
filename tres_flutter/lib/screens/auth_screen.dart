@@ -204,9 +204,9 @@ class _AuthScreenState extends State<AuthScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Email or Phone',
-                      hintStyle: TextStyle(
+                      hintStyle: TextStyle(for sale near us
                           color: Colors.white.withAlpha((0.5 * 255).round()),
-                      ),
+                      ),😃
                       prefixIcon: Padding(
                         padding: const EdgeInsets.only(left: 20, right: 16),
                         child: Icon(

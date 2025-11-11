@@ -326,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: AppColors.primaryDark,
                   borderRadius: BorderRadius.circular(28),
                   border: Border.all(
-                    color: AppColors.primaryBlue.withOpacity(0.3),
+                    color: AppColors.primaryBlue.withAlpha((0.3 * 255).round()),
                     width: 1,
                   ),
                 ),
@@ -356,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           hintText:
                               'Search ${_placeholders[_currentPlaceholderIndex]}',
                           hintStyle: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
+                            color: Colors.white.withAlpha((0.5 * 255).round()),
                             fontSize: 16,
                           ),
                           border: InputBorder.none,
@@ -468,7 +468,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w400,
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withAlpha((0.7 * 255).round()),
                   ),
                 ),
               ),
@@ -503,7 +503,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Icon(
               Icons.people_outline,
               size: 64,
-              color: Colors.white.withOpacity(0.3),
+              color: Colors.white.withAlpha((0.3 * 255).round()),
             ),
             const SizedBox(height: 16),
             Text(
@@ -512,7 +512,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   : 'No contacts found',
               style: TextStyle(
                 fontSize: 18,
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withAlpha((0.5 * 255).round()),
               ),
             ),
           ],
@@ -571,7 +571,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       contact['email'],
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withAlpha((0.6 * 255).round()),
                       ),
                     ),
                   ],
@@ -616,13 +616,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.history, size: 64, color: Colors.white.withOpacity(0.3)),
+            Icon(Icons.history, size: 64, color: Colors.white.withAlpha((0.3 * 255).round())),
             const SizedBox(height: 16),
             Text(
               'No call history yet',
               style: TextStyle(
                 fontSize: 18,
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withAlpha((0.5 * 255).round()),
               ),
             ),
           ],

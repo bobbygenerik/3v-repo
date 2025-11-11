@@ -523,16 +523,16 @@ class _HomeScreenState extends State<HomeScreen>
             Icon(
               Icons.people_outline,
               size: 64,
-              color: Colors.white.withOpacity(0.3),
+              color: Colors.white.withAlpha((0.3 * 255).round()),
             ),
             const SizedBox(height: 16),
             Text(
               _searchController.text.isEmpty
                   ? 'No contacts yet'
                   : 'No contacts found',
-              style: TextStyle(
+                style: TextStyle(
                 fontSize: 18,
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withAlpha((0.5 * 255).round()),
               ),
             ),
           ],
@@ -634,13 +634,13 @@ class _HomeScreenState extends State<HomeScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.history, size: 64, color: Colors.white.withOpacity(0.3)),
+            Icon(Icons.history, size: 64, color: Colors.white.withAlpha((0.3 * 255).round())),
             const SizedBox(height: 16),
             Text(
               'No call history yet',
               style: TextStyle(
                 fontSize: 18,
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withAlpha((0.5 * 255).round()),
               ),
             ),
           ],
