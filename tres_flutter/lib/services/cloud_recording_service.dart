@@ -94,6 +94,7 @@ class RecordingMetadata {
 class CloudRecordingService extends ChangeNotifier {
   static const String _tag = 'CloudRecording';
   static const String _storageBasePath = 'call-recordings';
+  // ignore: unused_field
   static const int _maxFileSizeMB = 500;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

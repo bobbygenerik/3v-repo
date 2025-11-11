@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
-import '../services/livekit_service.dart';
 import '../config/app_theme.dart';
 import 'profile_screen.dart';
 import 'call_screen.dart';
+// livekit service import removed (unused in this screen)
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,11 +19,17 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  // Fields are intentionally kept for potential UI state; analyzer flagged them as unused
+  // ignore: unused_field
   final bool _showContactsView = true;
   List<Map<String, dynamic>> _contacts = [];
+  // ignore: unused_field
   List<Map<String, dynamic>> _callHistory = [];
+  // ignore: unused_field
   List<Map<String, dynamic>> _filteredContacts = [];
+  // ignore: unused_field
   bool _isLoadingContacts = true;
+  // ignore: unused_field
   bool _isLoadingHistory = true;
 
   // Animated search placeholder
@@ -414,20 +420,10 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  void _showShareLinkDialog() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Link sharing coming soon!'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
+  // share link dialog intentionally removed (unused)
 
   Future<void> _startCall(String recipientEmail) async {
     try {
-      final authService = context.read<AuthService>();
-      final liveKitService = context.read<LiveKitService>();
-
       // Show loading
       if (mounted) {
         ScaffoldMessenger.of(

@@ -1,0 +1,57 @@
+Total (errors+warnings): 23
+Errors: 0
+Warnings: 23
+
+Top files by issues:
+- /workspaces/3v-repo/tres_flutter/lib/screens/home_screen_backup.dart: 8 (errors: 0, warnings: 8)
+- /workspaces/3v-repo/tres_flutter/lib/services/chat_service.dart: 5 (errors: 0, warnings: 5)
+- /workspaces/3v-repo/tres_flutter/lib/services/reaction_service.dart: 3 (errors: 0, warnings: 3)
+- /workspaces/3v-repo/tres_flutter/lib/services/signaling_service.dart: 2 (errors: 0, warnings: 2)
+- /workspaces/3v-repo/tres_flutter/lib/screens/home_screen_old.dart: 1 (errors: 0, warnings: 1)
+- /workspaces/3v-repo/tres_flutter/lib/screens/home_screen_old_backup.dart: 1 (errors: 0, warnings: 1)
+- /workspaces/3v-repo/tres_flutter/lib/screens/profile_screen.dart: 1 (errors: 0, warnings: 1)
+- /workspaces/3v-repo/tres_flutter/lib/services/cloud_recording_service.dart: 1 (errors: 0, warnings: 1)
+- /workspaces/3v-repo/tres_flutter/lib/services/e2e_encryption_service.dart: 1 (errors: 0, warnings: 1)
+
+Details:
+
+FILE: /workspaces/3v-repo/tres_flutter/lib/screens/home_screen_backup.dart
+  - [warning] unused_field at 22:14 — The value of the field '_showContactsView' isn't used.
+  - [warning] unused_field at 24:30 — The value of the field '_callHistory' isn't used.
+  - [warning] unused_field at 25:30 — The value of the field '_filteredContacts' isn't used.
+  - [warning] unused_field at 26:8 — The value of the field '_isLoadingContacts' isn't used.
+  - [warning] unused_field at 27:8 — The value of the field '_isLoadingHistory' isn't used.
+  - [warning] unused_element at 417:8 — The declaration '_showShareLinkDialog' isn't referenced.
+  - [warning] unused_local_variable at 428:13 — The value of the local variable 'authService' isn't used.
+  - [warning] unused_local_variable at 429:13 — The value of the local variable 'liveKitService' isn't used.
+
+FILE: /workspaces/3v-repo/tres_flutter/lib/services/chat_service.dart
+  - [warning] dead_code at 130:42 — Dead code.
+  - [warning] dead_null_aware_expression at 130:45 — The left operand can't be null, so the right operand is never executed.
+  - [warning] dead_code at 164:48 — Dead code.
+  - [warning] dead_null_aware_expression at 164:51 — The left operand can't be null, so the right operand is never executed.
+  - [warning] dead_null_aware_expression at 165:54 — The left operand can't be null, so the right operand is never executed.
+
+FILE: /workspaces/3v-repo/tres_flutter/lib/services/reaction_service.dart
+  - [warning] dead_code at 130:48 — Dead code.
+  - [warning] dead_null_aware_expression at 130:51 — The left operand can't be null, so the right operand is never executed.
+  - [warning] dead_null_aware_expression at 131:54 — The left operand can't be null, so the right operand is never executed.
+
+FILE: /workspaces/3v-repo/tres_flutter/lib/services/signaling_service.dart
+  - [warning] unused_field at 52:11 — The value of the field '_currentRoomName' isn't used.
+  - [warning] unused_field at 53:15 — The value of the field '_onCallEnded' isn't used.
+
+FILE: /workspaces/3v-repo/tres_flutter/lib/screens/home_screen_old.dart
+  - [warning] unused_field at 33:26 — The value of the field '_tickerAnimation' isn't used.
+
+FILE: /workspaces/3v-repo/tres_flutter/lib/screens/home_screen_old_backup.dart
+  - [warning] unused_element at 397:8 — The declaration '_showVideoQualityDialog' isn't referenced.
+
+FILE: /workspaces/3v-repo/tres_flutter/lib/screens/profile_screen.dart
+  - [warning] unused_field at 18:8 — The value of the field '_isEditing' isn't used.
+
+FILE: /workspaces/3v-repo/tres_flutter/lib/services/cloud_recording_service.dart
+  - [warning] unused_field at 97:20 — The value of the field '_maxFileSizeMB' isn't used.
+
+FILE: /workspaces/3v-repo/tres_flutter/lib/services/e2e_encryption_service.dart
+  - [warning] unused_element at 234:8 — The declaration '_updateFrameCount' isn't referenced.

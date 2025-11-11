@@ -125,10 +125,10 @@ class ChatService extends ChangeNotifier {
 
         case _messageTypeTyping:
           if (participant != null) {
-            final indicator = TypingIndicator(
-              userId: participant.sid,
-              userName: participant.name ?? 'Unknown',
-            );
+              final indicator = TypingIndicator(
+                userId: participant.sid,
+                userName: participant.name,
+              );
             _handleTypingIndicator(indicator);
           }
           break;
@@ -160,9 +160,9 @@ class ChatService extends ChangeNotifier {
     }
 
     try {
-      final message = ChatMessage(
-        senderId: _room!.localParticipant!.sid ?? 'local',
-        senderName: _room!.localParticipant!.name ?? 'You',
+        final message = ChatMessage(
+          senderId: _room!.localParticipant!.sid,
+          senderName: _room!.localParticipant!.name,
         message: text.trim(),
         isLocal: true,
       );

@@ -127,8 +127,8 @@ class ReactionService extends ChangeNotifier {
     try {
       final reaction = Reaction(
         type: type,
-        senderId: _room!.localParticipant!.sid ?? 'local',
-        senderName: _room!.localParticipant!.name ?? 'You',
+        senderId: _room!.localParticipant!.sid,
+        senderName: _room!.localParticipant!.name,
       );
 
       // Create JSON payload

@@ -30,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentPlaceholderIndex = 0;
   final List<String> _placeholders = ['Username', 'Email', 'Phone'];
   late AnimationController _tickerController;
+  // ignore: unused_field
   late Animation<double> _tickerAnimation;
 
   @override

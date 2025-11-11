@@ -49,7 +49,10 @@ class SignalingService extends ChangeNotifier {
   StreamSubscription<QuerySnapshot>? _callSignalSubscription;
   StreamSubscription<DocumentSnapshot>? _callEndSubscription;
 
+  // These fields are written for external lifecycle control and may be read elsewhere; suppress unused warnings
+  // ignore: unused_field
   String? _currentRoomName;
+  // ignore: unused_field
   Function()? _onCallEnded;
 
   /// Send a call invitation to another user

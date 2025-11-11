@@ -394,50 +394,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  void _showVideoQualityDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Video Quality'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: const Text('Auto'),
-              subtitle: const Text('Adjusts based on connection'),
-              value: 'auto',
-              groupValue: 'auto',
-              onChanged: (value) {},
-            ),
-            RadioListTile<String>(
-              title: const Text('720p'),
-              subtitle: const Text('HD quality'),
-              value: '720p',
-              groupValue: 'auto',
-              onChanged: (value) {},
-            ),
-            RadioListTile<String>(
-              title: const Text('1080p'),
-              subtitle: const Text('Full HD (higher bandwidth)'),
-              value: '1080p',
-              groupValue: 'auto',
-              onChanged: (value) {},
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
+  // _showVideoQualityDialog removed (unused)
 
   void _showAboutDialog() {
     showDialog(

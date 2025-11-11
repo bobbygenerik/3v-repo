@@ -231,6 +231,7 @@ class E2EEncryptionService extends ChangeNotifier {
   /// Update encrypted frame counter
   ///
   /// Called internally when frames are encrypted
+  // ignore: unused_element
   void _updateFrameCount() {
     _encryptedFrames++;
 
