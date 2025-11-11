@@ -382,7 +382,7 @@ class CloudRecordingService extends ChangeNotifier {
   int getTotalStorageUsed() {
     return _recordings.values
         .where((r) => r.fileSizeBytes != null)
-        .fold(0, (sum, r) => sum + r.fileSizeBytes!);
+        .fold(0, (total, r) => total + r.fileSizeBytes!);
   }
 
   /// Clean up old recordings (older than specified days)
