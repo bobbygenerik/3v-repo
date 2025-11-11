@@ -77,7 +77,7 @@ class GuestLinkService extends ChangeNotifier {
       notifyListeners();
 
       if (kDebugMode) {
-        print('❌ Error generating guest link: $e');
+        debugPrint('❌ Error generating guest link: $e');
       }
       return null;
     }
@@ -111,7 +111,7 @@ class GuestLinkService extends ChangeNotifier {
     // Note: Clipboard access requires platform channels
     // This is a placeholder for the actual implementation
     if (kDebugMode) {
-      print('📋 Guest link copied: $_currentGuestLink');
+      debugPrint('📋 Guest link copied: $_currentGuestLink');
     }
   }
 
@@ -124,7 +124,7 @@ class GuestLinkService extends ChangeNotifier {
       return token.isNotEmpty && token.length > 20;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error validating token: $e');
+        debugPrint('❌ Error validating token: $e');
       }
       return false;
     }
@@ -148,7 +148,7 @@ class GuestLinkService extends ChangeNotifier {
       return null;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error parsing guest link: $e');
+        debugPrint('❌ Error parsing guest link: $e');
       }
       return null;
     }
