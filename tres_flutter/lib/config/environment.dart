@@ -83,18 +83,18 @@ class Environment {
 
   /// Print current configuration (for debugging)
   static void printConfig() {
-  if (!enableDebugLogging) return;
+    if (!enableDebugLogging) return;
 
-  debugPrint('=== Environment Configuration ===');
-  debugPrint('App Name: $appName');
-  debugPrint('App Version: $appVersion');
-  debugPrint('LiveKit URL: $liveKitUrl');
-  debugPrint('Functions Base URL: $functionsBaseUrl');
-  debugPrint('ML Features: $enableMLFeatures');
-  debugPrint('E2E Encryption: $enableE2EEncryption');
-  debugPrint('Cloud Recording: $enableCloudRecording');
-  debugPrint('Screen Share: $enableScreenShare');
-  debugPrint('Development Mode: $isDevelopment');
-  debugPrint('================================');
+    debugPrint('=== Environment Configuration ===');
+    debugPrint('App Name: $appName');
+    debugPrint('App Version: $appVersion');
+    debugPrint('LiveKit URL: $liveKitUrl');
+    debugPrint('Functions Base URL: $functionsBaseUrl');
+    debugPrint('ML Features: $enableMLFeatures');
+    debugPrint('E2E Encryption: $enableE2EEncryption');
+    debugPrint('Cloud Recording: $enableCloudRecording');
+    debugPrint('Screen Share: $enableScreenShare');
+    debugPrint('Development Mode: $isDevelopment');
+    debugPrint('================================');
   }
 }
