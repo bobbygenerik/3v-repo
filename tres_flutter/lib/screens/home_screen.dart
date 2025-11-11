@@ -224,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen>
                               size: 20,
                               color: Color(0xFF6B7FB8),
                             ),
-                            SizedBox(width: 12),
+                            const SizedBox(width: 12),
                             Text(
                               'Profile',
                               style: TextStyle(color: Colors.white),
@@ -241,7 +241,7 @@ class _HomeScreenState extends State<HomeScreen>
                               size: 20,
                               color: Color(0xFF6B7FB8),
                             ),
-                            SizedBox(width: 12),
+                            const SizedBox(width: 12),
                             Text(
                               'Create Guest Link',
                               style: TextStyle(color: Colors.white),
@@ -258,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen>
                               size: 20,
                               color: Color(0xFF6B7FB8),
                             ),
-                            SizedBox(width: 12),
+                            const SizedBox(width: 12),
                             Text(
                               'Settings',
                               style: TextStyle(color: Colors.white),
@@ -272,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen>
                         child: Row(
                           children: [
                             Icon(Icons.logout, size: 20, color: Colors.red),
-                            SizedBox(width: 12),
+                            const SizedBox(width: 12),
                             Text(
                               'Sign Out',
                               style: TextStyle(color: Colors.red),
@@ -434,7 +434,7 @@ class _HomeScreenState extends State<HomeScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: const [
                           Icon(Icons.people, size: 18),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Text('Contacts', style: TextStyle(fontSize: 15)),
                         ],
                       ),
@@ -466,7 +466,7 @@ class _HomeScreenState extends State<HomeScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: const [
                           Icon(Icons.history, size: 18),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Text('History', style: TextStyle(fontSize: 15)),
                         ],
                       ),
