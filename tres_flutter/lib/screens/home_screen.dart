@@ -342,7 +342,7 @@ class _HomeScreenState extends State<HomeScreen>
                   children: [
                     // @ symbol
                     const Padding(
-                      padding: EdgeInsets.only(left: 16, right: 8),
+                      padding: const EdgeInsets.only(left: 16, right: 8),
                       child: Text(
                         '@',
                         style: TextStyle(
@@ -382,7 +382,7 @@ class _HomeScreenState extends State<HomeScreen>
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
                                 isDense: true,
-                                contentPadding: EdgeInsets.zero,
+                                contentPadding: const EdgeInsets.zero,
                               ),
                             ),
                     ),

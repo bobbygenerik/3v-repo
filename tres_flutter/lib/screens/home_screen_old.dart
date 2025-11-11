@@ -334,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   children: [
                     // @ symbol
                     const Padding(
-                      padding: EdgeInsets.only(left: 20, right: 12),
+                      padding: const EdgeInsets.only(left: 20, right: 12),
                       child: Text(
                         '@',
                         style: TextStyle(
