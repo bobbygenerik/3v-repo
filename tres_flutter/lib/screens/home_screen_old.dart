@@ -722,7 +722,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(this.context).pop(),
             child: const Text(
               'CANCEL',
               style: TextStyle(color: Colors.white70),
@@ -739,9 +739,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 );
                 return;
               }
-              Navigator.pop(context);
+              Navigator.of(this.context).pop();
               // TODO: Add contact to Firestore
-              ScaffoldMessenger.of(context).showSnackBar(
+              ScaffoldMessenger.of(this.context).showSnackBar(
                 SnackBar(content: Text('Added $email to contacts')),
               );
               _loadContacts(); // Reload contacts
@@ -790,7 +790,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!mounted) return;
       Navigator.of(this.context).pop();
 
-      if (!mounted) return;
       Navigator.of(this.context).push(
         MaterialPageRoute(
           builder: (context) =>
@@ -845,7 +844,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(this.context).pop(),
             child: const Text(
               'CANCEL',
               style: TextStyle(color: Colors.white70),
@@ -861,7 +860,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 return;
               }
 
-              Navigator.pop(context);
+              Navigator.of(this.context).pop();
 
               try {
                 final guestLinkService = GuestLinkService();
@@ -917,14 +916,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.of(this.context).pop(false),
             child: const Text(
               'CANCEL',
               style: TextStyle(color: Colors.white70),
             ),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.of(this.context).pop(true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text(
               'SIGN OUT',
