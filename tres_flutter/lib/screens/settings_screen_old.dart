@@ -320,12 +320,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () async {
+              // Close the dialog first
               Navigator.pop(context);
               final authService = context.read<AuthService>();
               await authService.signOut();
-              if (context.mounted) {
-                Navigator.pop(context); // Go back to home
-              }
+              // Ensure the state is still mounted before using this.context
+              if (!mounted) return;
+              // After sign out, pop the settings screen to return to home/login
+              Navigator.of(this.context).pop();
             },
             child: const Text('SIGN OUT', style: TextStyle(color: Colors.red)),
           ),

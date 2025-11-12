@@ -447,26 +447,23 @@ class _HomeScreenState extends State<HomeScreen>
       final wsUrl =
           response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
 
-      if (mounted) {
-        // Navigate to call screen
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                CallScreen(roomName: roomName, token: token, livekitUrl: wsUrl),
-          ),
-        );
-      }
+      // Ensure the State is still mounted before using the State's context
+      if (!mounted) return;
+      Navigator.of(this.context).push(
+        MaterialPageRoute(
+          builder: (c) =>
+              CallScreen(roomName: roomName, token: token, livekitUrl: wsUrl),
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to start call: ${e.toString()}'),
-            duration: const Duration(seconds: 5),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to start call: ${e.toString()}'),
+          duration: const Duration(seconds: 5),
+          backgroundColor: Colors.red,
+        ),
+      );
       debugPrint('Error starting call: $e');
     }
   }
