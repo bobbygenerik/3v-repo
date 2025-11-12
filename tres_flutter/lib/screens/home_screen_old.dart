@@ -787,25 +787,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final wsUrl =
           response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
 
-      if (mounted) Navigator.pop(context);
+      if (!mounted) return;
+      Navigator.of(this.context).pop();
 
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                CallScreen(roomName: roomName, token: token, livekitUrl: wsUrl),
-          ),
-        );
-      }
+      if (!mounted) return;
+      Navigator.of(this.context).push(
+        MaterialPageRoute(
+          builder: (context) =>
+              CallScreen(roomName: roomName, token: token, livekitUrl: wsUrl),
+        ),
+      );
     } catch (e) {
       debugPrint('Error starting call: $e');
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error starting call: $e')));
-      }
+      if (!mounted) return;
+      Navigator.of(this.context).pop();
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        SnackBar(content: Text('Error starting call: $e')),
+      );
     }
   }
 
@@ -874,9 +872,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   guestName: name,
                 );
 
-                if (mounted && link != null) {
-                  await Clipboard.setData(ClipboardData(text: link));
-                  ScaffoldMessenger.of(context).showSnackBar(
+                if (link != null && mounted) {
+                  // Don't await Clipboard.setData here to avoid creating another
+                  // async gap between the mounted check and using the context.
+                  Clipboard.setData(ClipboardData(text: link));
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(this.context).showSnackBar(
                     const SnackBar(
                       content: Text('Guest link copied to clipboard!'),
                     ),
@@ -884,11 +885,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 }
               } catch (e) {
                 debugPrint('Error generating guest link: $e');
-                if (mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                }
+                if (!mounted) return;
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  SnackBar(content: Text('Error: $e')),
+                );
               }
             },
             style: ElevatedButton.styleFrom(
@@ -936,7 +936,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
 
     if (confirm == true) {
-      await context.read<AuthService>().signOut();
+      // Capture the auth service before the await to avoid using
+      // `context` after an async gap.
+      final authService = context.read<AuthService>();
+      await authService.signOut();
     }
   }
 }
