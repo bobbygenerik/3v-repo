@@ -747,25 +747,24 @@ class _HomeScreenState extends State<HomeScreen>
       final wsUrl =
           response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
 
-      if (mounted) Navigator.pop(context);
+      // Ensure the State is still mounted before using the State's context
+      if (!mounted) return;
 
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                CallScreen(roomName: roomName, token: token, livekitUrl: wsUrl),
-          ),
-        );
-      }
+      Navigator.of(this.context).pop();
+      Navigator.of(this.context).push(
+        MaterialPageRoute(
+          builder: (c) =>
+              CallScreen(roomName: roomName, token: token, livekitUrl: wsUrl),
+        ),
+      );
     } catch (e) {
       debugPrint('Error starting call: $e');
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error starting call: $e')));
-      }
+      if (!mounted) return;
+
+      Navigator.of(this.context).pop();
+      ScaffoldMessenger.of(
+        this.context,
+      ).showSnackBar(SnackBar(content: Text('Error starting call: $e')));
     }
   }
 
@@ -850,51 +849,47 @@ class _HomeScreenState extends State<HomeScreen>
                     .limit(1)
                     .get();
 
-                if (snapshot.docs.isEmpty) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                  if (snapshot.docs.isEmpty) {
+                    // Use the State's context (not the dialog builder context)
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(this.context).showSnackBar(
                       const SnackBar(
                         content: Text('No user found with that email'),
                       ),
                     );
+                    return;
                   }
-                  return;
-                }
 
                 final userData = snapshot.docs.first.data();
                 final contactUid = snapshot.docs.first.id;
 
                 // Add to contacts list in UI (in real app, save to Firestore)
-                if (mounted) {
-                  setState(() {
-                    _contacts.add({
-                      'uid': contactUid,
-                      'name':
-                          userData['displayName'] ??
-                          userData['name'] ??
-                          'Unknown',
-                      'email': userData['email'] ?? '',
-                      'photoURL': userData['photoURL'],
-                    });
-                    _filterContacts();
-                  });
+                if (!mounted) return;
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Added ${userData['displayName'] ?? email} to contacts!',
-                      ),
+                setState(() {
+                  _contacts.add({
+                    'uid': contactUid,
+                    'name': userData['displayName'] ?? userData['name'] ?? 'Unknown',
+                    'email': userData['email'] ?? '',
+                    'photoURL': userData['photoURL'],
+                  });
+                  _filterContacts();
+                });
+
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Added ${userData['displayName'] ?? email} to contacts!',
                     ),
-                  );
-                }
-              } catch (e) {
-                debugPrint('Error adding contact: $e');
-                if (mounted) {
+                  ),
+                );
+                } catch (e) {
+                  debugPrint('Error adding contact: $e');
+                  if (!mounted) return;
                   ScaffoldMessenger.of(
-                    context,
+                    this.context,
                   ).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
-              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF6B7FB8),
@@ -971,9 +966,12 @@ class _HomeScreenState extends State<HomeScreen>
                   guestName: name,
                 );
 
-                if (mounted && link != null) {
-                  await Clipboard.setData(ClipboardData(text: link));
-                  ScaffoldMessenger.of(context).showSnackBar(
+                if (!mounted) return;
+                if (link != null) {
+                  // Don't await the clipboard operation to avoid creating an
+                  // async gap between the mounted check and using the context.
+                  Clipboard.setData(ClipboardData(text: link));
+                  ScaffoldMessenger.of(this.context).showSnackBar(
                     const SnackBar(
                       content: Text('Guest link copied to clipboard!'),
                     ),
@@ -981,11 +979,10 @@ class _HomeScreenState extends State<HomeScreen>
                 }
               } catch (e) {
                 debugPrint('Error generating guest link: $e');
-                if (mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                }
+                if (!mounted) return;
+                ScaffoldMessenger.of(
+                  this.context,
+                ).showSnackBar(SnackBar(content: Text('Error: $e')));
               }
             },
             style: ElevatedButton.styleFrom(
@@ -1002,6 +999,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _signOut() async {
+    // Capture AuthService before awaiting the dialog so we don't use
+    // BuildContext across an async gap.
+    final authService = context.read<AuthService>();
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -1033,7 +1033,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
 
     if (confirm == true) {
-      await context.read<AuthService>().signOut();
+      await authService.signOut();
     }
   }
 }
