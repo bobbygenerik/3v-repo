@@ -689,7 +689,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               '${_formatTimestamp(call['timestamp'])} • ${_formatDuration(call['duration'])}',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withAlpha((0.7 * 255).round()),
               ),
             ),
             trailing: IconButton(
