@@ -46,7 +46,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(this.context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
@@ -104,7 +104,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(this.context).pop(),
             child: const Text(
               'CANCEL',
               style: TextStyle(color: Colors.white70),
@@ -157,9 +157,8 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _navigateToCreateAccount() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CreateAccountScreen()),
+    Navigator.of(this.context).push(
+      MaterialPageRoute(builder: (c) => const CreateAccountScreen()),
     );
   }
 
@@ -427,7 +426,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(this.context).pop(),
         ),
       ),
       body: SafeArea(
