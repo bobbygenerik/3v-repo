@@ -661,7 +661,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               _formatTimestamp(call['timestamp']),
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.white.withOpacity(0.6),
+                color: Colors.white.withAlpha((0.6 * 255).round()),
               ),
             ),
             trailing: IconButton(
@@ -708,9 +708,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             labelText: 'Email or Username',
-            labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+            labelStyle: TextStyle(color: Colors.white.withAlpha((0.7 * 255).round())),
             hintText: 'user@example.com',
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+            hintStyle: TextStyle(color: Colors.white.withAlpha((0.3 * 255).round())),
             filled: true,
             fillColor: AppColors.backgroundDark,
             border: OutlineInputBorder(
@@ -834,7 +834,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 labelText: 'Guest Name',
-                labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                labelStyle: TextStyle(color: Colors.white.withAlpha((0.7 * 255).round())),
                 hintText: 'John Doe',
                 filled: true,
                 fillColor: AppColors.backgroundDark,

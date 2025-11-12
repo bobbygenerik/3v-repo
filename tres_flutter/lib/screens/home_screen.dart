@@ -381,8 +381,8 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
-                                isDense: true,
-                                contentPadding: const EdgeInsets.zero,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
                               ),
                             ),
                     ),

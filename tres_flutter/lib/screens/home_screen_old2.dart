@@ -352,7 +352,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: AppColors.primaryDark,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: AppColors.primaryBlue.withOpacity(0.3),
+                    color: AppColors.primaryBlue.withAlpha((0.3 * 255).round()),
                     width: 1,
                   ),
                 ),
@@ -379,7 +379,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           hintText:
                               'Search ${_placeholders[_currentPlaceholderIndex]}',
                           hintStyle: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
+                            color: Colors.white.withAlpha((0.5 * 255).round()),
                             fontSize: 16,
                           ),
                           border: InputBorder.none,
@@ -546,7 +546,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Icon(
               Icons.people_outline,
               size: 64,
-              color: Colors.white.withOpacity(0.3),
+              color: Colors.white.withAlpha((0.3 * 255).round()),
             ),
             const SizedBox(height: 16),
             Text(
@@ -555,7 +555,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   : 'No contacts found',
               style: TextStyle(
                 fontSize: 18,
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withAlpha((0.5 * 255).round()),
               ),
             ),
           ],
@@ -606,9 +606,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             subtitle: Text(
               contact['email'],
-              style: TextStyle(
+                style: TextStyle(
                 fontSize: 14,
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withAlpha((0.7 * 255).round()),
               ),
             ),
             trailing: Row(
@@ -642,14 +642,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.history, size: 64, color: Colors.white.withOpacity(0.3)),
+            Icon(Icons.history, size: 64, color: Colors.white.withAlpha((0.3 * 255).round())),
             const SizedBox(height: 16),
             Text(
               'No call history yet',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.white.withOpacity(0.5),
-              ),
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.white.withAlpha((0.5 * 255).round()),
+                ),
             ),
           ],
         ),
@@ -734,9 +734,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               controller: emailController,
               decoration: InputDecoration(
                 labelText: 'Recipient Email',
-                labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                labelStyle: TextStyle(color: Colors.white.withAlpha((0.7 * 255).round())),
                 hintText: 'user@example.com',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                hintStyle: TextStyle(color: Colors.white.withAlpha((0.3 * 255).round())),
                 filled: true,
                 fillColor: AppColors.backgroundDark,
                 border: OutlineInputBorder(
@@ -746,7 +746,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: AppColors.primaryBlue.withOpacity(0.5),
+                    color: AppColors.primaryBlue.withAlpha((0.5 * 255).round()),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -880,9 +880,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               controller: nameController,
               decoration: InputDecoration(
                 labelText: 'Guest Name',
-                labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                labelStyle: TextStyle(color: Colors.white.withAlpha((0.7 * 255).round())),
                 hintText: 'John Doe',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                hintStyle: TextStyle(color: Colors.white.withAlpha((0.3 * 255).round())),
                 filled: true,
                 fillColor: AppColors.backgroundDark,
                 border: OutlineInputBorder(

@@ -202,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen>
             margin: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
               border: Border.all(
-                color: AppColors.primaryBlue.withOpacity(0.3),
+                color: AppColors.primaryBlue.withAlpha((0.3 * 255).round()),
                 width: 3,
               ),
               borderRadius: BorderRadius.circular(48),
@@ -247,13 +247,13 @@ class _HomeScreenState extends State<HomeScreen>
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(
-                            color: AppColors.primaryBlue.withOpacity(0.5),
+                            color: AppColors.primaryBlue.withAlpha((0.5 * 255).round()),
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(
-                            color: AppColors.primaryBlue.withOpacity(0.3),
+                            color: AppColors.primaryBlue.withAlpha((0.3 * 255).round()),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
