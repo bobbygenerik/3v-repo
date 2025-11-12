@@ -212,10 +212,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     onSelected: (value) {
                       switch (value) {
                         case 'profile':
-                          Navigator.push(
-                            context,
+                          Navigator.of(this.context).push(
                             MaterialPageRoute(
-                              builder: (context) => const ProfileScreen(),
+                              builder: (c) => const ProfileScreen(),
                             ),
                           );
                           break;
@@ -223,10 +222,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           _showGuestLinkDialog();
                           break;
                         case 'settings':
-                          Navigator.push(
-                            context,
+                          Navigator.of(this.context).push(
                             MaterialPageRoute(
-                              builder: (context) => const SettingsScreen(),
+                              builder: (c) => const SettingsScreen(),
                             ),
                           );
                           break;
