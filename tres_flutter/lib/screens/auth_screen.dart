@@ -123,27 +123,31 @@ class _AuthScreenState extends State<AuthScreen> {
                 return;
               }
 
-              try {
-                await FirebaseAuth.instance.sendPasswordResetEmail(
-                  email: email,
-                );
-                if (!mounted) return;
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Password reset email sent to $email'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error: $e'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
+                try {
+                  await FirebaseAuth.instance.sendPasswordResetEmail(
+                    email: email,
+                  );
+                  // Ensure the State is still mounted and use the State's context
+                  // (not the dialog builder context) when popping and showing
+                  // a SnackBar to avoid using a dialog context across the
+                  // async gap.
+                  if (!mounted) return;
+                  Navigator.of(this.context).pop();
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(
+                      content: Text('Password reset email sent to $email'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
             },
             child: const Text('SEND', style: TextStyle(color: Colors.white)),
           ),
@@ -396,11 +400,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
     final success = await authService.createAccountWithEmail(email, password);
 
+    // Guard against using the State's context after the async gap.
+    if (!mounted) return;
+
     setState(() => _isLoading = false);
 
     if (success) {
-      Navigator.pop(context);
-    } else if (mounted) {
+      Navigator.of(this.context).pop();
+    } else {
       _showError(authService.errorMessage ?? 'Account creation failed');
     }
   }
