@@ -94,7 +94,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(this.context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
@@ -125,7 +125,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(this.context).pop(),
             child: const Text('CANCEL'),
           ),
           TextButton(
@@ -138,19 +138,21 @@ class _AuthScreenState extends State<AuthScreen> {
                 return;
               }
 
-              try {
+                try {
                 await FirebaseAuth.instance.sendPasswordResetEmail(
                   email: email,
                 );
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (!mounted) return;
+                Navigator.of(this.context).pop();
+                ScaffoldMessenger.of(this.context).showSnackBar(
                   SnackBar(
                     content: Text('Password reset email sent to $email'),
                     backgroundColor: Colors.green,
                   ),
                 );
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (!mounted) return;
+                ScaffoldMessenger.of(this.context).showSnackBar(
                   SnackBar(
                     content: Text('Error: $e'),
                     backgroundColor: Colors.red,

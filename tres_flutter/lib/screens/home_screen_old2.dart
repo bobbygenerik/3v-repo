@@ -764,7 +764,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(this.context).pop(),
             child: const Text(
               'Cancel',
               style: TextStyle(color: Colors.white70),
@@ -785,7 +785,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 );
                 return;
               }
-              Navigator.pop(context);
+              Navigator.of(this.context).pop();
               await _startCall(email);
             },
             style: ElevatedButton.styleFrom(
@@ -831,28 +831,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final wsUrl =
           response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
 
-      // Dismiss loading
-      if (mounted) Navigator.pop(context);
-
-      // Navigate to call screen
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                CallScreen(roomName: roomName, token: token, livekitUrl: wsUrl),
-          ),
-        );
-      }
+      // Dismiss loading and navigate using State.context with mounted guard
+      if (!mounted) return;
+      Navigator.of(this.context).pop();
+      Navigator.of(this.context).push(
+        MaterialPageRoute(
+          builder: (context) =>
+              CallScreen(roomName: roomName, token: token, livekitUrl: wsUrl),
+        ),
+      );
     } catch (e) {
       debugPrint('Error starting call: $e');
-      if (mounted) {
-        // Dismiss loading if shown
-        Navigator.pop(context);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error starting call: $e')));
-      }
+      if (!mounted) return;
+      Navigator.of(this.context).pop();
+      ScaffoldMessenger.of(this.context)
+          .showSnackBar(SnackBar(content: Text('Error starting call: $e')));
     }
   }
 
@@ -895,7 +888,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(this.context).pop(),
             child: const Text(
               'Cancel',
               style: TextStyle(color: Colors.white70),
@@ -922,15 +915,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   guestName: name,
                 );
 
-                if (mounted && link != null) {
-                  await Clipboard.setData(ClipboardData(text: link));
-                  ScaffoldMessenger.of(context).showSnackBar(
+                if (!mounted) return;
+                if (link != null) {
+                  // Do not await clipboard write to avoid a new async gap.
+                  Clipboard.setData(ClipboardData(text: link));
+                  ScaffoldMessenger.of(this.context).showSnackBar(
                     const SnackBar(
                       content: Text('Guest link copied to clipboard!'),
                     ),
                   );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(this.context).showSnackBar(
                     const SnackBar(
                       content: Text('Failed to generate guest link'),
                     ),
@@ -971,14 +966,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.of(this.context).pop(false),
             child: const Text(
               'Cancel',
               style: TextStyle(color: Colors.white70),
             ),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.of(this.context).pop(true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text(
               'Sign Out',
