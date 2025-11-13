@@ -989,147 +989,114 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   void _showMoreMenu(CallFeaturesCoordinator coordinator) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1C1C1E),
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      isDismissible: true,
-      enableDrag: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1C1C1E),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
         ),
-      ),
-      builder: (context) => SafeArea(
-        child: Consumer<CallFeaturesCoordinator>(
-          builder: (context, coord, child) => Container(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: Colors.white24, width: 1),
+        padding: const EdgeInsets.only(bottom: 16),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.white24, width: 1),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.tune, color: Colors.white),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'More Options',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.tune, color: Colors.white),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'More Options',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
                 ),
-                
-                // Feature toggles
-                _buildMenuToggle(
-                  icon: Icons.monitor_heart,
-                  title: 'Call Health Overlay',
-                  value: coord.isStatsCollecting,
-                  onChanged: (value) {
-                    if (value) {
-                      coord.startStatsCollection();
-                    } else {
-                      coord.stopStatsCollection();
-                    }
-                  },
-                ),
-                _buildMenuToggle(
-                  icon: Icons.fiber_manual_record,
-                  title: 'Recording',
-                  value: coord.isRecording,
-                  onChanged: (value) async {
-                    await coord.toggleRecording();
-                  },
-                ),
-                _buildMenuToggle(
-                  icon: Icons.screen_share,
-                  title: 'Screen Share',
-                  value: coord.isScreenSharing,
-                  onChanged: (value) async {
-                    await coord.toggleScreenShare();
-                  },
-                ),
-                _buildMenuToggle(
-                  icon: Icons.blur_on,
-                  title: 'Background Blur',
-                  value: coord.isBackgroundBlurEnabled,
-                  onChanged: (value) async {
-                    await coord.toggleBackgroundBlur();
-                  },
-                ),
-                _buildMenuToggle(
-                  icon: Icons.face_retouching_natural,
-                  title: 'Beauty Filter',
-                  value: coord.isBeautyFilterEnabled,
-                  onChanged: (value) {
-                    coord.toggleBeautyFilter();
-                  },
-                ),
-                _buildMenuToggle(
-                  icon: Icons.noise_control_off,
-                  title: 'AI Noise Cancellation',
-                  value: coord.isAiNoiseCancellationEnabled,
-                  onChanged: (value) {
-                    coord.toggleAiNoiseCancellation();
-                  },
-                ),
-                _buildMenuToggle(
-                  icon: Icons.spatial_audio,
-                  title: 'Spatial Audio',
-                  value: coord.isSpatialAudioEnabled,
-                  onChanged: (value) {
-                    coord.toggleSpatialAudio();
-                  },
-                ),
-                
-                // AR Filters picker
-                ListTile(
-                  leading: const Icon(Icons.face, color: Colors.white),
-                  title: const Text('AR Filters', style: TextStyle(color: Colors.white)),
-                  subtitle: Text(
-                    ArFilters.getDisplayName(coord.activeArFilter),
-                    style: const TextStyle(color: Colors.white60),
-                  ),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showArFilterPicker(coordinator);
-                  },
-                ),
-                
-                // Layout mode picker
-                ListTile(
-                  leading: const Icon(Icons.grid_view, color: Colors.white),
-                  title: const Text('Layout Mode', style: TextStyle(color: Colors.white)),
-                  subtitle: Text(
-                    coord.layoutMode.name.toUpperCase(),
-                    style: const TextStyle(color: Colors.white60),
-                  ),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showLayoutModePicker(coordinator);
-                  },
-                ),
-                
-                const SizedBox(height: 16),
-              ],
-            ),
+              ),
+              
+              // Feature toggles
+              _buildMenuToggle(
+                icon: Icons.monitor_heart,
+                title: 'Call Health Overlay',
+                value: coordinator.isStatsCollecting,
+                onChanged: (value) {
+                  if (value) {
+                    coordinator.startStatsCollection();
+                  } else {
+                    coordinator.stopStatsCollection();
+                  }
+                },
+              ),
+              _buildMenuToggle(
+                icon: Icons.fiber_manual_record,
+                title: 'Recording',
+                value: coordinator.isRecording,
+                onChanged: (value) async {
+                  await coordinator.toggleRecording();
+                },
+              ),
+              _buildMenuToggle(
+                icon: Icons.screen_share,
+                title: 'Screen Share',
+                value: coordinator.isScreenSharing,
+                onChanged: (value) async {
+                  await coordinator.toggleScreenShare();
+                },
+              ),
+              _buildMenuToggle(
+                icon: Icons.blur_on,
+                title: 'Background Blur',
+                value: coordinator.isBackgroundBlurEnabled,
+                onChanged: (value) async {
+                  await coordinator.toggleBackgroundBlur();
+                },
+              ),
+              _buildMenuToggle(
+                icon: Icons.face_retouching_natural,
+                title: 'Beauty Filter',
+                value: coordinator.isBeautyFilterEnabled,
+                onChanged: (value) {
+                  coordinator.toggleBeautyFilter();
+                },
+              ),
+              _buildMenuToggle(
+                icon: Icons.noise_control_off,
+                title: 'AI Noise Cancellation',
+                value: coordinator.isAiNoiseCancellationEnabled,
+                onChanged: (value) {
+                  coordinator.toggleAiNoiseCancellation();
+                },
+              ),
+              _buildMenuToggle(
+                icon: Icons.spatial_audio,
+                title: 'Spatial Audio',
+                value: coordinator.isSpatialAudioEnabled,
+                onChanged: (value) {
+                  coordinator.toggleSpatialAudio();
+                },
+              ),
+              
+              const SizedBox(height: 16),
+            ],
           ),
         ),
       ),
