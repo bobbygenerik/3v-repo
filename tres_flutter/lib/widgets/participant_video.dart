@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
+export 'package:livekit_client/livekit_client.dart';
 
 class ParticipantVideo extends StatefulWidget {
   final Participant participant;
@@ -36,16 +37,32 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
   }
   
   void _setupVideoTrack() {
-    // Get first video track
-    final track = widget.participant.videoTrackPublications
-        .where((pub) => pub.subscribed)
-        .map((pub) => pub.track as VideoTrack?)
-        .firstWhere((track) => track != null, orElse: () => null);
+    // Get first video track from publications
+    VideoTrack? track;
+    
+    for (final pub in widget.participant.videoTrackPublications) {
+      if (pub.subscribed && pub.track != null) {
+        track = pub.track as VideoTrack;
+        break;
+      }
+    }
+    
+    // If no subscribed track, try to subscribe to first available publication
+    if (track == null && !widget.isLocal) {
+      for (final pub in widget.participant.videoTrackPublications) {
+        if (!pub.subscribed && pub.track == null) {
+          debugPrint('📹 Auto-subscribing to video track: ${pub.sid}');
+          // Actually subscribe to the track
+          pub.subscribe();
+        }
+      }
+    }
     
     if (mounted && track != _videoTrack) {
       setState(() {
         _videoTrack = track;
       });
+      debugPrint('📹 Video track ${track != null ? "set" : "cleared"} for ${widget.participant.identity}');
     }
   }
   
@@ -55,55 +72,10 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
       return _buildNoVideoPlaceholder();
     }
     
-      return Stack(
-      children: [
-        // Video renderer
-        VideoTrackRenderer(
-          _videoTrack!,
-          fit: VideoViewFit.cover,
-        ),
-        
-        // Participant name overlay
-        Positioned(
-          bottom: 8,
-          left: 8,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              widget.participant.identity,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-        
-        // Microphone muted indicator
-        if (_isMicrophoneMuted())
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.mic_off,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-          ),
-      ],
-    );
+      return VideoTrackRenderer(
+        _videoTrack!,
+        fit: VideoViewFit.cover,
+      );
   }
   
   Widget _buildNoVideoPlaceholder() {
@@ -137,13 +109,6 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
         ),
       ),
     );
-  }
-  
-  bool _isMicrophoneMuted() {
-    final audioTracks = widget.participant.audioTrackPublications;
-    if (audioTracks.isEmpty) return true;
-    
-    return audioTracks.first.muted;
   }
   
   String _getInitials(String name) {

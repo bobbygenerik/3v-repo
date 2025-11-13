@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../config/app_theme.dart';
+import '../services/call_signaling_service.dart';
 import 'call_screen.dart';
 
 class IncomingCallScreen extends StatefulWidget {
+  final String invitationId;
   final String callerName;
   final String callerId;
   final String roomName;
+  final String token;
+  final String livekitUrl;
   final bool isVideoCall;
   final String? callerPhotoUrl;
 
   const IncomingCallScreen({
     super.key,
+    required this.invitationId,
     required this.callerName,
     required this.callerId,
     required this.roomName,
+    required this.token,
+    required this.livekitUrl,
     this.isVideoCall = true,
     this.callerPhotoUrl,
   });
@@ -26,6 +34,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  final CallSignalingService _signalingService = CallSignalingService();
+  bool _isAccepting = false;
 
   @override
   void initState() {
@@ -44,6 +54,13 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
       parent: _pulseController,
       curve: Curves.easeInOut,
     ));
+
+    // Auto-timeout after 60 seconds
+    Future.delayed(const Duration(seconds: 60), () {
+      if (mounted) {
+        _timeoutCall();
+      }
+    });
   }
 
   @override
@@ -52,22 +69,72 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     super.dispose();
   }
 
-  void _acceptCall() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CallScreen(
-          roomName: widget.roomName,
-          token: '', // TODO: Get token from backend
-          livekitUrl: '', // TODO: Get from Environment
+  Future<void> _acceptCall() async {
+    if (_isAccepting) return;
+    
+    setState(() => _isAccepting = true);
+
+    try {
+      // Generate our own LiveKit token for this room
+      debugPrint('🎫 Generating LiveKit token for recipient');
+      final functions = FirebaseFunctions.instance;
+      final callable = functions.httpsCallable('getLiveKitToken');
+      
+      final response = await callable.call({
+        'calleeId': widget.callerId, // Not actually used for token generation, just for logging
+        'roomName': widget.roomName,
+      });
+
+      final myToken = response.data['token'] as String;
+      debugPrint('✅ Got recipient token');
+      
+      // Mark invitation as accepted in Firestore
+      await _signalingService.acceptInvitation(widget.invitationId);
+
+      if (!mounted) return;
+
+      // Navigate to call screen with OUR token (not the caller's token)
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CallScreen(
+            roomName: widget.roomName,
+            token: myToken, // Use our own generated token
+            livekitUrl: widget.livekitUrl,
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      debugPrint('❌ Error accepting call: $e');
+      if (mounted) {
+        setState(() => _isAccepting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to accept call: $e')),
+        );
+      }
+    }
   }
 
-  void _declineCall() {
-    // TODO: Send decline signal to caller
-    Navigator.pop(context);
+  Future<void> _declineCall() async {
+    try {
+      // Mark invitation as declined in Firestore
+      await _signalingService.declineInvitation(widget.invitationId);
+      
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (e) {
+      debugPrint('❌ Error declining call: $e');
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  void _timeoutCall() {
+    if (mounted) {
+      debugPrint('⏰ Call timed out');
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -79,21 +146,28 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
           children: [
             const Spacer(flex: 2),
             
-            // Caller Avatar with Pulse Animation
+                        // Caller Avatar with pulse animation
             ScaleTransition(
               scale: _pulseAnimation,
               child: Container(
-                width: 150,
-                height: 150,
+                width: 160,
+                height: 160,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: AppColors.primaryBlue,
-                    width: 3,
+                    color: AppColors.primaryBlue.withOpacity(0.5),
+                    width: 4,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryBlue.withOpacity(0.3),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ],
                 ),
                 child: CircleAvatar(
-                  radius: 73,
+                  radius: 76,
                   backgroundColor: AppColors.primaryBlue,
                   backgroundImage: widget.callerPhotoUrl != null
                       ? NetworkImage(widget.callerPhotoUrl!)
@@ -104,7 +178,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                               ? widget.callerName[0].toUpperCase()
                               : '?',
                           style: const TextStyle(
-                            fontSize: 64,
+                            fontSize: 70,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -153,34 +227,43 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
             
             const SizedBox(height: 16),
             
-            // Room Name (if different from caller)
-            if (widget.roomName != widget.callerName)
-              Text(
-                'Room: ${widget.roomName}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.gray,
-                ),
-              ),
-            
             const Spacer(flex: 3),
             
             // Call Actions
             Padding(
-              padding: const EdgeInsets.all(32),
+              padding: const EdgeInsets.all(40),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   // Decline Button
                   Column(
                     children: [
-                      FloatingActionButton(
-                        heroTag: 'decline',
-                        onPressed: _declineCall,
-                        backgroundColor: Colors.red,
-                        child: const Icon(
-                          Icons.call_end,
-                          size: 32,
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _declineCall,
+                          customBorder: const CircleBorder(),
+                          splashColor: Colors.white.withOpacity(0.3),
+                          child: Container(
+                            width: 70,
+                            height: 70,
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade600,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.red.shade900.withOpacity(0.5),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.call_end,
+                              size: 34,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -188,7 +271,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                         'Decline',
                         style: TextStyle(
                           color: AppColors.textLight,
-                          fontSize: 14,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -197,21 +281,54 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                   // Accept Button
                   Column(
                     children: [
-                      FloatingActionButton(
-                        heroTag: 'accept',
-                        onPressed: _acceptCall,
-                        backgroundColor: Colors.green,
-                        child: Icon(
-                          widget.isVideoCall ? Icons.videocam : Icons.phone,
-                          size: 32,
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _isAccepting ? null : _acceptCall,
+                          customBorder: const CircleBorder(),
+                          splashColor: Colors.white.withOpacity(0.3),
+                          child: Container(
+                            width: 70,
+                            height: 70,
+                            decoration: BoxDecoration(
+                              color: _isAccepting 
+                                  ? Colors.grey.shade600 
+                                  : Colors.green.shade600,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _isAccepting
+                                      ? Colors.grey.shade900.withOpacity(0.5)
+                                      : Colors.green.shade900.withOpacity(0.5),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: _isAccepting
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      strokeWidth: 3,
+                                    ),
+                                  )
+                                : Icon(
+                                    widget.isVideoCall ? Icons.videocam : Icons.phone,
+                                    size: 34,
+                                    color: Colors.white,
+                                  ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'Accept',
-                        style: TextStyle(
+                      Text(
+                        _isAccepting ? 'Connecting...' : 'Accept',
+                        style: const TextStyle(
                           color: AppColors.textLight,
-                          fontSize: 14,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],

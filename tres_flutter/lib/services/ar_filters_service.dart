@@ -1,7 +1,5 @@
-import 'dart:typed_data';
 import 'dart:ui' show Size, Offset;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' hide Size, Offset;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
 

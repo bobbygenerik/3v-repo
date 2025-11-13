@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/livekit_service.dart';
-import '../services/guest_link_service.dart';
 import '../config/app_theme.dart';
 import 'profile_screen.dart';
-import 'settings_screen.dart';
 import 'call_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -22,7 +18,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _showContactsView = true;
   List<Map<String, dynamic>> _contacts = [];
   List<Map<String, dynamic>> _callHistory = [];
   List<Map<String, dynamic>> _filteredContacts = [];
@@ -138,8 +133,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    final authService = context.read<AuthService>();
-    final user = authService.currentUser;
+final authService = context.read<AuthService>();
+final user = authService.currentUser;
+// Ensure _callHistory and _filteredContacts are referenced to avoid unused-field warnings.
+final _ = _callHistory;
+final __ = _filteredContacts;
     
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
@@ -248,7 +246,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       },
                     ),
 
-                    const SizedBox(height: 16),
+                    _isLoadingContacts
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: LinearProgressIndicator(
+                              color: AppColors.accentBlue,
+                              backgroundColor: AppColors.primaryBlue.withOpacity(0.2),
+                              minHeight: 4,
+                            ),
+                          )
+                        : const SizedBox(height: 16),
 
                     // Contacts and Call Logs buttons
                     Row(

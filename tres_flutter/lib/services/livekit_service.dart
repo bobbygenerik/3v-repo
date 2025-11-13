@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
+export 'package:livekit_client/livekit_client.dart';
 
 /// LiveKit service managing room connections and participant tracks
 /// Mirrors functionality from Android LiveKitManager.kt
@@ -48,11 +49,11 @@ class LiveKitService extends ChangeNotifier {
         roomOptions: RoomOptions(
           defaultCameraCaptureOptions: CameraCaptureOptions(
             maxFrameRate: 30,
-            params: VideoParametersPresets.h720_169, // Reduced from 1080p for better performance
+            params: VideoParametersPresets.h1080_169, // Full HD for better quality
           ),
           defaultScreenShareCaptureOptions: ScreenShareCaptureOptions(
-            maxFrameRate: 15,
-            params: VideoParametersPresets.h720_169,
+            maxFrameRate: 30, // Increased from 15 for smoother screen share
+            params: VideoParametersPresets.h1080_169,
           ),
           defaultAudioCaptureOptions: AudioCaptureOptions(
             echoCancellation: true,
@@ -61,7 +62,7 @@ class LiveKitService extends ChangeNotifier {
           ),
           defaultVideoPublishOptions: VideoPublishOptions(
             videoEncoding: VideoEncoding(
-              maxBitrate: 1500 * 1000, // Reduced to 1.5 Mbps for less lag
+              maxBitrate: 3000 * 1000, // Increased to 3 Mbps for better quality
               maxFramerate: 30,
             ),
           ),
@@ -119,7 +120,7 @@ class LiveKitService extends ChangeNotifier {
         _localVideoTrack = await LocalVideoTrack.createCameraTrack(
           const CameraCaptureOptions(
             maxFrameRate: 30,
-            params: VideoParametersPresets.h720_169, // Reduced from 1080p
+            params: VideoParametersPresets.h1080_169, // Full HD for better quality
           ),
         );
         debugPrint('✅ Camera track created: ${_localVideoTrack?.sid}');

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../config/app_theme.dart';
 import '../main.dart';
 
@@ -17,7 +18,24 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   void initState() {
     super.initState();
     
-    // Setup fade animation
+    // Check if user is already signed in
+    _checkAuthAndNavigate();
+  }
+
+  Future<void> _checkAuthAndNavigate() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    
+    // If user is signed in, skip splash and go directly to home
+    if (currentUser != null) {
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const AuthWrapper()),
+        );
+      }
+      return;
+    }
+    
+    // User not signed in - show splash animation
     _controller = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
@@ -57,12 +75,25 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (FirebaseAuth.instance.currentUser == null) {
+      _controller.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // If user is signed in, show loading indicator while navigating
+    if (FirebaseAuth.instance.currentUser != null) {
+      return const Scaffold(
+        backgroundColor: AppColors.backgroundDark,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.accentBlue),
+        ),
+      );
+    }
+    
+    // Show splash animation for non-signed-in users
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
       body: Center(

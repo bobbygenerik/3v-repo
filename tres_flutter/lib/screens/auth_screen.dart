@@ -150,24 +150,33 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo
-                Image.asset(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: 32,
+            right: 32,
+            top: 32,
+            bottom: 32 + MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 20),
+              // Logo
+              Center(
+                child: Image.asset(
                   'assets/images/logo.png',
                   height: 150,
                   fit: BoxFit.contain,
                 ),
-                
-                const SizedBox(height: 48),
-                
-                // "Sign in to continue" text
-                const Text(
+              ),
+              
+              const SizedBox(height: 48),
+              
+              // "Sign in to continue" text
+              const Center(
+                child: Text(
                   'Sign in to continue',
                   style: TextStyle(
                     fontSize: 18,
@@ -175,14 +184,15 @@ class _AuthScreenState extends State<AuthScreen> {
                     fontWeight: FontWeight.w400,
                   ),
                 ),
-                
-                const SizedBox(height: 32),
-                
-                // Email or Phone field
-                Container(
+              ),
+              
+              const SizedBox(height: 32),
+              
+              // Email or Phone field
+              Container(
                   decoration: BoxDecoration(
                     color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: AppColors.primaryBlue.withOpacity(0.5),
                       width: 1,
@@ -192,7 +202,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     controller: _emailController,
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
-                      hintText: 'Email or Phone',
+                      hintText: 'Email',
                       hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                       prefixIcon: Padding(
                         padding: const EdgeInsets.only(left: 20, right: 16),
@@ -214,7 +224,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: AppColors.primaryBlue.withOpacity(0.5),
                       width: 1,
@@ -316,7 +326,6 @@ class _AuthScreenState extends State<AuthScreen> {
               ],
             ),
           ),
-        ),
       ),
     );
   }
@@ -393,46 +402,48 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
-      appBar: AppBar(
-        backgroundColor: AppColors.backgroundDark,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo
-                Image.asset(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: 32,
+            right: 32,
+            top: 32,
+            bottom: 32 + MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 20),
+              // Logo
+              Center(
+                child: Image.asset(
                   'assets/images/logo.png',
-                  height: 120,
+                  height: 150,
                   fit: BoxFit.contain,
                 ),
-                
-                const SizedBox(height: 32),
-                
-                const Text(
+              ),
+              
+              const SizedBox(height: 48),
+              
+              const Center(
+                child: Text(
                   'Create Account',
                   style: TextStyle(
-                    fontSize: 24,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 18,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
-                
-                const SizedBox(height: 32),
-                
-                // Email field
-                Container(
+              ),
+              
+              const SizedBox(height: 32),
+              
+              // Email field
+              Container(
                   decoration: BoxDecoration(
                     color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: AppColors.primaryBlue.withOpacity(0.5),
                       width: 1,
@@ -464,7 +475,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: AppColors.primaryBlue.withOpacity(0.5),
                       width: 1,
@@ -505,7 +516,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: AppColors.primaryBlue.withOpacity(0.5),
                       width: 1,
@@ -565,7 +576,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                             ),
                           )
                         : const Text(
-                            'Create Account',
+                            'Sign Up',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w500,
@@ -577,7 +588,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
               ],
             ),
           ),
-        ),
       ),
     );
   }

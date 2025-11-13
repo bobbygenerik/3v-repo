@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/guest_link_service.dart';
-import '../config/app_theme.dart';
+import '../services/call_listener_service.dart';
+import '../services/call_signaling_service.dart';
+import '../widgets/responsive_container.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 import 'call_screen.dart';
+import 'incoming_call_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,26 +21,58 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   bool _showContactsView = true;
   List<Map<String, dynamic>> _contacts = [];
   List<Map<String, dynamic>> _callHistory = [];
   List<Map<String, dynamic>> _filteredContacts = [];
   bool _isLoadingContacts = true;
   bool _isLoadingHistory = true;
+  bool _searchHasFocus = false;
+  
+  // Call services
+  final CallListenerService _callListener = CallListenerService();
+  final CallSignalingService _signalingService = CallSignalingService();
   
   // Ticker animation for search placeholder
   int _currentPlaceholderIndex = 0;
-  final List<String> _placeholders = ['Username', 'Email', 'Phone'];
+  final List<String> _placeholders = ['Display Name', 'Email']; // Changed from 'Username'
   late AnimationController _tickerController;
+  
+  // Welcome message
+  int _currentWelcomeIndex = 0;
+  final List<String> _welcomeMessages = [
+    'Welcome, ',
+    'Bienvenido, ',
+    'Bem-vindo, ',
+  ];
+  
+  // Cascading text animation - only plays once
+  late AnimationController _textAnimationController;
+  List<Animation<double>> _letterAnimations = [];
+  String _currentWelcomeText = '';
+  bool _hasAnimated = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadContacts();
     _loadCallHistory();
     _searchController.addListener(_filterContacts);
+    
+    // Listen to search focus changes
+    _searchFocusNode.addListener(() {
+      setState(() {
+        _searchHasFocus = _searchFocusNode.hasFocus;
+      });
+    });
+    
+    // Start listening for incoming calls
+    _callListener.startListening();
+    _callListener.addListener(_handleIncomingCall);
     
     // Ticker animation
     _tickerController = AnimationController(
@@ -45,6 +80,77 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       duration: const Duration(milliseconds: 300),
     );
     _startTickerAnimation();
+    
+    // Initialize text animation controller
+    _textAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+    
+    // Pick a random welcome message for this session
+    _currentWelcomeIndex = DateTime.now().millisecond % _welcomeMessages.length;
+    final user = context.read<AuthService>().currentUser;
+    _currentWelcomeText = '${_welcomeMessages[_currentWelcomeIndex]}${user?.displayName ?? user?.email?.split('@')[0] ?? 'Guest'}';
+    _setupLetterAnimations();
+    
+    // Play animation once
+    _textAnimationController.forward().then((_) {
+      setState(() => _hasAnimated = true);
+    });
+  }
+  
+  /// Handle incoming call notifications
+  void _handleIncomingCall() {
+    final incomingCall = _callListener.currentIncomingCall;
+    if (incomingCall != null && mounted) {
+      debugPrint('📞 Showing incoming call screen');
+      
+      // Show incoming call screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => IncomingCallScreen(
+            invitationId: incomingCall['id'],
+            callerName: incomingCall['callerName'],
+            callerId: incomingCall['callerId'],
+            roomName: incomingCall['roomName'],
+            token: incomingCall['token'],
+            livekitUrl: incomingCall['livekitUrl'],
+            isVideoCall: incomingCall['isVideoCall'],
+            callerPhotoUrl: incomingCall['callerPhotoUrl'],
+          ),
+        ),
+      ).then((_) {
+        // Clear the incoming call after screen is dismissed
+        _callListener.clearIncomingCall();
+      });
+    }
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Refresh UI when returning to screen
+      setState(() {});
+    }
+  }
+  
+  void _setupLetterAnimations() {
+    _letterAnimations = List.generate(_currentWelcomeText.length, (index) {
+      final start = index * 0.05; // Stagger each letter
+      final end = start + 0.3;
+      return Tween<double>(begin: -50.0, end: 0.0).animate(
+        CurvedAnimation(
+          parent: _textAnimationController,
+          curve: Interval(
+            start.clamp(0.0, 1.0),
+            end.clamp(0.0, 1.0),
+            curve: Curves.easeOut,
+          ),
+        ),
+      );
+    });
   }
 
   void _startTickerAnimation() {
@@ -59,9 +165,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   @override
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
+    _searchFocusNode.dispose();
     _tickerController.dispose();
+    _textAnimationController.dispose();
+    _callListener.removeListener(_handleIncomingCall);
+    _callListener.stopListening();
     super.dispose();
   }
 
@@ -70,22 +182,46 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       final currentUser = context.read<AuthService>().currentUser;
       if (currentUser == null) return;
 
-      final snapshot = await FirebaseFirestore.instance
+      // Load contacts from the user's contacts subcollection
+      final contactsSnapshot = await FirebaseFirestore.instance
           .collection('users')
-          .where(FieldPath.documentId, isNotEqualTo: currentUser.uid)
-          .limit(50)
+          .doc(currentUser.uid)
+          .collection('contacts')
           .get();
 
+      // Get full user data for each contact
+      final List<Map<String, dynamic>> loadedContacts = [];
+      
+      for (var contactDoc in contactsSnapshot.docs) {
+        final contactUid = contactDoc.id;
+        try {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(contactUid)
+              .get();
+          
+          if (userDoc.exists) {
+            final data = userDoc.data();
+            if (data != null) {
+              final photoURL = data['photoURL'];
+              debugPrint('📸 Contact ${data['displayName']}: photoURL = "$photoURL" (type: ${photoURL.runtimeType})');
+              loadedContacts.add({
+                'uid': contactUid,
+                'name': data['displayName'] ?? data['name'] ?? 'Unknown',
+                'email': data['email'] ?? '',
+                'photoURL': data['photoURL'],
+              });
+            } else {
+              debugPrint('⚠️ Contact $contactUid exists but has no data');
+            }
+          }
+        } catch (e) {
+          debugPrint('Error loading contact $contactUid: $e');
+        }
+      }
+
       setState(() {
-        _contacts = snapshot.docs.map((doc) {
-          final data = doc.data();
-          return {
-            'uid': doc.id,
-            'name': data['displayName'] ?? data['name'] ?? 'Unknown',
-            'email': data['email'] ?? '',
-            'photoURL': data['photoURL'],
-          };
-        }).toList();
+        _contacts = loadedContacts;
         _filteredContacts = _contacts;
         _isLoadingContacts = false;
       });
@@ -96,6 +232,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _loadCallHistory() async {
+    // Temporarily disabled until Firestore index builds
+    // The index for calls collection (participants + timestamp) is still building
+    // This typically takes 5-15 minutes after first deployment
+    setState(() => _isLoadingHistory = false);
+    return;
+    
+    /* 
     try {
       final currentUser = context.read<AuthService>().currentUser;
       if (currentUser == null) return;
@@ -124,6 +267,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       debugPrint('Error loading call history: $e');
       setState(() => _isLoadingHistory = false);
     }
+    */
   }
 
   void _filterContacts() {
@@ -154,33 +298,40 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     
     return Scaffold(
       backgroundColor: const Color(0xFF1C1C1E), // Dark background matching screenshot
-      body: SafeArea(
-        child: Column(
-          children: [
+      body: ResponsiveContainer(
+        maxWidth: 768,
+        child: SafeArea(
+          child: Column(
+            children: [
             // Header Row: Logo and Profile
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 0), // Added top padding to move logo down
+              padding: const EdgeInsets.fromLTRB(4, 8, 16, 0), // Very close to top (8px)
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start, // Align items at their top
                 children: [
-                  // Logo - left aligned with matching edge distance
+                  // Logo - left aligned very close to edge, lowered 8px
                   Padding(
-                    padding: const EdgeInsets.only(left: 0), // 16px from edge (same as profile from right)
+                    padding: const EdgeInsets.only(top: 8), // Lower logo by 8px
                     child: Image.asset(
                       'assets/images/logo.png',
                       height: 60,
                       fit: BoxFit.contain,
                     ),
                   ),
-                  // Profile button - right aligned with ring
-                  PopupMenuButton<String>(
+                  // Profile button - right aligned with ring, lowered 10px
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10), // Lower profile button by 10px
+                    child: PopupMenuButton<String>(
                     offset: const Offset(0, 50),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     color: const Color(0xFF2C2C2E),
-                    onSelected: (value) {
+                    onSelected: (value) async {
                       switch (value) {
                         case 'profile':
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+                          await Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+                          // Refresh UI after returning from profile screen
+                          setState(() {});
                           break;
                         case 'guest_link':
                           _showGuestLinkDialog();
@@ -246,9 +397,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                       child: CircleAvatar(
                         radius: 20,
-                        backgroundColor: const Color(0xFF6B7FB8),
-                        backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-                        child: user?.photoURL == null
+                        backgroundColor: const Color(0xFF2C2C2E),
+                        backgroundImage: (user?.photoURL != null && user!.photoURL!.isNotEmpty)
+                            ? NetworkImage(user.photoURL!)
+                            : null,
+                        child: (user?.photoURL == null || user!.photoURL!.isEmpty)
                             ? Text(
                                 _getUserInitial(user),
                                 style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
@@ -257,22 +410,53 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                     ),
                   ),
+                ), // Close Padding for profile button
                 ],
               ),
             ),
 
             const SizedBox(height: 80),
 
-            // Welcome Message - CENTERED
-            const Center(
-              child: Text(
-                'Welcome, Bobby Generik',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.white,
-                ),
-              ),
+            // Welcome Message - CENTERED with cascading animation (plays once)
+            AnimatedBuilder(
+              animation: _textAnimationController,
+              builder: (context, child) {
+                return Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(_currentWelcomeText.length, (index) {
+                      // If animation is complete, show text with no transform
+                      if (_hasAnimated) {
+                        return Text(
+                          _currentWelcomeText[index],
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white,
+                          ),
+                        );
+                      }
+                      // During animation, apply transforms
+                      return Transform.translate(
+                        offset: Offset(0, _letterAnimations.length > index ? _letterAnimations[index].value : 0),
+                        child: Opacity(
+                          opacity: _letterAnimations.length > index 
+                              ? ((_letterAnimations[index].value + 50) / 50).clamp(0.0, 1.0)
+                              : 1.0,
+                          child: Text(
+                            _currentWelcomeText[index],
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 32),
@@ -284,77 +468,94 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 height: 54,
                 decoration: BoxDecoration(
                   color: const Color(0xFF2C2C2E), // Charcoal gray
-                  borderRadius: BorderRadius.circular(12), // Less rounded
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF3A3A3C),
-                    width: 1,
+                    color: _searchHasFocus 
+                        ? const Color(0xFF6B7FB8) // Blue border when focused
+                        : const Color(0xFF3A3A3C), // Gray border when not focused
+                    width: _searchHasFocus ? 2 : 1,
                   ),
                 ),
                 child: Row(
                   children: [
-                    // @ symbol
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16, right: 8),
-                      child: Text(
-                        '@',
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Color(0xFF8E8E93), // Gray color
-                          fontWeight: FontWeight.w500,
+                      // @ symbol
+                      const Padding(
+                        padding: EdgeInsets.only(left: 16, right: 8),
+                        child: Text(
+                          '@',
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Color(0xFF8E8E93), // Gray color
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                    ),
-                    // Search text and placeholder
-                    Expanded(
-                      child: _searchController.text.isEmpty
-                          ? Row(
-                              children: [
-                                const Text(
-                                  'Search ',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
+                      // Search text field with placeholder
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            // Placeholder text
+                            if (_searchController.text.isEmpty)
+                              Positioned.fill(
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Row(
+                                    children: [
+                                      const Text(
+                                        'Search ',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      Text(
+                                        _placeholders[_currentPlaceholderIndex],
+                                        style: const TextStyle(
+                                          color: Color(0xFF8E8E93),
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                Text(
-                                  _placeholders[_currentPlaceholderIndex],
-                                  style: const TextStyle(
-                                    color: Color(0xFF8E8E93),
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : TextField(
+                              ),
+                            // Actual text field (always present, transparent when empty)
+                            TextField(
                               controller: _searchController,
+                              focusNode: _searchFocusNode,
                               style: const TextStyle(color: Colors.white, fontSize: 16),
+                              cursorColor: const Color(0xFF6B7FB8),
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                enabledBorder: InputBorder.none,
                                 isDense: true,
                                 contentPadding: EdgeInsets.zero,
+                                fillColor: Colors.transparent,
+                                filled: false,
                               ),
                             ),
-                    ),
-                    // Add person icon - opens add contact dialog
-                    GestureDetector(
-                      onTap: () => _showAddContactDialog(),
-                      child: Container(
-                        padding: const EdgeInsets.only(right: 12, left: 8),
-                        child: const Icon(
-                          Icons.person_add,
-                          color: Color(0xFF6B7FB8),
-                          size: 24,
+                          ],
                         ),
                       ),
+                      // Add person icon - opens add contact dialog
+                      GestureDetector(
+                        onTap: () => _showAddContactDialog(),
+                        child: Container(
+                          padding: const EdgeInsets.only(right: 12, left: 8),
+                          child: const Icon(
+                            Icons.person_add,
+                            color: Color(0xFF6B7FB8),
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
 
-            const SizedBox(height: 20),
-
-            // Contacts / History buttons
+            const SizedBox(height: 20),            // Contacts / History buttons
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -451,6 +652,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -493,8 +695,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               CircleAvatar(
                 radius: 28,
                 backgroundColor: const Color(0xFF6B7FB8),
-                backgroundImage: contact['photoURL'] != null ? NetworkImage(contact['photoURL']) : null,
-                child: contact['photoURL'] == null
+                backgroundImage: contact['photoURL'] != null && contact['photoURL'].toString().isNotEmpty
+                    ? NetworkImage(contact['photoURL'])
+                    : null,
+                child: contact['photoURL'] == null || contact['photoURL'].toString().isEmpty
                     ? Text(
                         contact['name'][0].toUpperCase(),
                         style: const TextStyle(
@@ -643,34 +847,98 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ),
       );
 
+      // Get recipient user ID from email
+      debugPrint('🔍 Looking up recipient by email: $recipientEmail');
+      final recipientQuery = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: recipientEmail.toLowerCase())
+          .limit(1)
+          .get();
+
+      if (recipientQuery.docs.isEmpty) {
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('User not found')),
+          );
+        }
+        return;
+      }
+
+      final recipientUserId = recipientQuery.docs.first.id;
+      debugPrint('✅ Found recipient: $recipientUserId');
+
       final roomName = 'call_${DateTime.now().millisecondsSinceEpoch}';
       final functions = FirebaseFunctions.instance;
       final callable = functions.httpsCallable('getLiveKitToken');
 
-      final response = await callable.call({
+      debugPrint('🎫 Getting LiveKit token for caller (room: $roomName)');
+      final callerResponse = await callable.call({
         'calleeId': recipientEmail,
         'roomName': roomName,
       });
 
-      final token = response.data['token'] as String;
-      final wsUrl = response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
+      final callerToken = callerResponse.data['token'] as String;
+      final wsUrl = callerResponse.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
+
+      debugPrint('✅ Got caller token');
+
+      // Get a separate token for the recipient
+      debugPrint('🎫 Getting LiveKit token for recipient');
+      // Note: We pass the recipientEmail as calleeId so the function creates token with recipient's identity
+      // This is a bit confusing - we should refactor the function to accept explicit userId parameter
+      // For now, we'll generate recipient token by having recipient call the function when they accept
+      
+      debugPrint('✅ Got LiveKit tokens and URL');
+
+      // Send call invitation to recipient (WITHOUT token - they'll generate it when accepting)
+      debugPrint('📤 Sending call invitation to recipient');
+      final invitationId = await _signalingService.sendCallInvitation(
+        recipientUserId: recipientUserId,
+        roomName: roomName,
+        token: '', // Empty - recipient will generate their own token
+        livekitUrl: wsUrl,
+        isVideoCall: true,
+      );
+
+      if (invitationId == null) {
+        if (mounted) Navigator.pop(context);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to send call invitation')),
+          );
+        }
+        return;
+      }
 
       if (mounted) Navigator.pop(context);
 
-      if (mounted) {
+      // Show calling dialog and wait for response
+      bool? callAccepted = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _CallingDialog(
+          invitationId: invitationId,
+          recipientEmail: recipientEmail,
+          signalingService: _signalingService,
+        ),
+      );
+
+      // Only navigate to call screen if call was accepted
+      if (callAccepted == true && mounted) {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => CallScreen(
               roomName: roomName,
-              token: token,
+              token: callerToken,
               livekitUrl: wsUrl,
             ),
           ),
         );
       }
     } catch (e) {
-      debugPrint('Error starting call: $e');
+      debugPrint('❌ Error starting call: $e');
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -745,17 +1013,54 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               Navigator.pop(context);
               
               try {
-                // Search for user by email
+                final currentUser = context.read<AuthService>().currentUser;
+                if (currentUser == null) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('You must be signed in to add contacts')),
+                    );
+                  }
+                  return;
+                }
+                
+                // Convert to lowercase for case-insensitive search
+                final searchEmail = email.toLowerCase();
+                debugPrint('🔍 Searching for user with email: $searchEmail');
+                
+                // Search for user by email (case-insensitive)
                 final snapshot = await FirebaseFirestore.instance
                     .collection('users')
-                    .where('email', isEqualTo: email)
+                    .where('email', isEqualTo: searchEmail)
                     .limit(1)
                     .get();
+                
+                debugPrint('🔍 Search results: ${snapshot.docs.length} users found');
+                if (snapshot.docs.isEmpty) {
+                  debugPrint('❌ No users found with email: $searchEmail');
+                  // Try to get all users to see what's in the database
+                  try {
+                    final allUsers = await FirebaseFirestore.instance
+                        .collection('users')
+                        .limit(10)
+                        .get();
+                    debugPrint('📋 Total users in database: ${allUsers.docs.length}');
+                    debugPrint('📋 Sample users in database:');
+                    for (var doc in allUsers.docs) {
+                      final data = doc.data();
+                      debugPrint('  - ${doc.id}: email="${data['email']}", displayName="${data['displayName']}"');
+                    }
+                  } catch (e) {
+                    debugPrint('❌ Error fetching sample users: $e');
+                  }
+                }
                 
                 if (snapshot.docs.isEmpty) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('No user found with that email')),
+                      const SnackBar(
+                        content: Text('No user found with that email. They may need to sign in first.'),
+                        duration: Duration(seconds: 3),
+                      ),
                     );
                   }
                   return;
@@ -764,18 +1069,64 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 final userData = snapshot.docs.first.data();
                 final contactUid = snapshot.docs.first.id;
                 
-                // Add to contacts list in UI (in real app, save to Firestore)
-                if (mounted) {
-                  setState(() {
-                    _contacts.add({
-                      'uid': contactUid,
-                      'name': userData['displayName'] ?? userData['name'] ?? 'Unknown',
-                      'email': userData['email'] ?? '',
-                      'photoURL': userData['photoURL'],
+                debugPrint('✅ Found user: $contactUid, data: $userData');
+                
+                // Don't add yourself as a contact
+                if (contactUid == currentUser.uid) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('You cannot add yourself as a contact')),
+                    );
+                  }
+                  return;
+                }
+                
+                // Check if contact already exists
+                final existingContact = await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser.uid)
+                    .collection('contacts')
+                    .doc(contactUid)
+                    .get();
+                
+                if (existingContact.exists) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Contact already added')),
+                    );
+                  }
+                  return;
+                }
+                
+                debugPrint('💾 Saving contact to Firestore (bidirectional)...');
+                
+                // Save to Firestore contacts subcollection (bidirectional)
+                // Add them to your contacts
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser.uid)
+                    .collection('contacts')
+                    .doc(contactUid)
+                    .set({
+                      'addedAt': FieldValue.serverTimestamp(),
                     });
-                    _filterContacts();
-                  });
-                  
+                
+                // Add yourself to their contacts
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(contactUid)
+                    .collection('contacts')
+                    .doc(currentUser.uid)
+                    .set({
+                      'addedAt': FieldValue.serverTimestamp(),
+                    });
+                
+                debugPrint('✅ Contact saved successfully (both ways)!');
+                
+                // Reload contacts to show the new one
+                await _loadContacts();
+                
+                if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Added ${userData['displayName'] ?? email} to contacts!')),
                   );
@@ -904,5 +1255,112 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (confirm == true) {
       await context.read<AuthService>().signOut();
     }
+  }
+}
+
+/// Dialog shown while waiting for recipient to accept/decline call
+class _CallingDialog extends StatefulWidget {
+  final String invitationId;
+  final String recipientEmail;
+  final CallSignalingService signalingService;
+
+  const _CallingDialog({
+    required this.invitationId,
+    required this.recipientEmail,
+    required this.signalingService,
+  });
+
+  @override
+  State<_CallingDialog> createState() => _CallingDialogState();
+}
+
+class _CallingDialogState extends State<_CallingDialog> {
+  late StreamSubscription<DocumentSnapshot> _invitationSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToInvitationStatus();
+  }
+
+  void _listenToInvitationStatus() {
+    _invitationSubscription = FirebaseFirestore.instance
+        .collection('call_invitations')
+        .doc(widget.invitationId)
+        .snapshots()
+        .listen((snapshot) {
+      if (!snapshot.exists || !mounted) return;
+
+      final data = snapshot.data();
+      if (data == null) return;
+
+      final status = data['status'] as String?;
+      debugPrint('📞 Invitation status: $status');
+
+      if (status == 'accepted') {
+        // Call accepted - close dialog with true
+        Navigator.of(context).pop(true);
+      } else if (status == 'declined') {
+        // Call declined - close dialog with false
+        Navigator.of(context).pop(false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Call declined')),
+          );
+        }
+      } else if (status == 'timeout' || status == 'cancelled') {
+        // Call timed out or cancelled - close dialog with false
+        Navigator.of(context).pop(false);
+      }
+    });
+
+    // Auto-cancel after 60 seconds
+    Future.delayed(const Duration(seconds: 60), () {
+      if (mounted) {
+        widget.signalingService.cancelInvitation(widget.invitationId);
+        Navigator.of(context).pop(false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Call not answered')),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _invitationSubscription.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF2C2C2E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+          const SizedBox(height: 24),
+          Text(
+            'Calling ${widget.recipientEmail}...',
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              widget.signalingService.cancelInvitation(widget.invitationId);
+              Navigator.of(context).pop(false);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('CANCEL', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 }

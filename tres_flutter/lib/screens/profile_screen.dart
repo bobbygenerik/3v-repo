@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:typed_data';
 import 'dart:html' as html;
-import '../config/app_theme.dart';
-import 'diagnostics_screen.dart';
+import 'dart:ui' as ui;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -83,13 +82,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      setState(() => _isLoading = true);
-
       // Read file as bytes
       final reader = html.FileReader();
       reader.readAsArrayBuffer(files[0]);
       await reader.onLoad.first;
       final bytes = reader.result as Uint8List;
+
+      // Show crop dialog
+      if (!mounted) return;
+      final croppedBytes = await _showCropDialog(bytes);
+      
+      if (croppedBytes == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Photo upload cancelled')),
+          );
+        }
+        return;
+      }
+
+      setState(() => _isLoading = true);
 
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -107,26 +119,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
         customMetadata: {'uploaded-by': user.uid},
       );
       
-      await storageRef.putData(bytes, metadata);
+      await storageRef.putData(croppedBytes, metadata);
 
       // Get download URL
       final photoURL = await storageRef.getDownloadURL();
 
-      // Update user profile
+      // Update user profile in Firebase Auth
       await user.updatePhotoURL(photoURL);
+      
+      // Update user document in Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .set({
+        'photoURL': photoURL,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      
+      // Force reload to get updated photoURL
       await user.reload();
+      final updatedUser = FirebaseAuth.instance.currentUser;
+      
+      debugPrint('✅ Updated photoURL in Firestore: $photoURL');
+      debugPrint('✅ Current user photoURL after reload: ${updatedUser?.photoURL}');
 
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✓ Photo updated successfully!'),
+            content: Text('✓ Photo updated successfully! Please go back to see changes.'),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+            duration: Duration(seconds: 3),
           ),
         );
-        // Trigger rebuild
-        setState(() {});
       }
     } catch (e) {
       debugPrint('Error uploading photo: $e');
@@ -134,12 +161,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text('Error uploading photo: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
     }
+  }
+
+  /// Show image crop dialog for web
+  Future<Uint8List?> _showCropDialog(Uint8List imageBytes) async {
+    return showDialog<Uint8List>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _ImageCropDialog(imageBytes: imageBytes),
+    );
   }
 
   @override
@@ -187,10 +223,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: CircleAvatar(
                           radius: 80,
                           backgroundColor: const Color(0xFF2C2C2E),
-                          backgroundImage: user?.photoURL != null 
-                              ? NetworkImage(user!.photoURL!) 
+                          backgroundImage: user?.photoURL != null && user!.photoURL!.isNotEmpty
+                              ? NetworkImage(user.photoURL!) 
                               : null,
-                          child: user?.photoURL == null
+                          child: user?.photoURL == null || user!.photoURL!.isEmpty
                               ? Text(
                                   (user?.displayName?.isNotEmpty == true
                                       ? user!.displayName![0].toUpperCase()
@@ -385,35 +421,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         
                         const Divider(color: Color(0xFF3A3A3C), height: 1),
                         
-                        // Diagnostics
-                        Container(
-                          color: const Color(0xFF2C2C2E),
-                          child: ListTile(
-                            leading: const Icon(
-                              Icons.bug_report,
-                              color: Color(0xFF6B7FB8),
-                              size: 20,
-                            ),
-                            title: const Text(
-                              'Diagnostics',
-                              style: TextStyle(color: Colors.white, fontSize: 14),
-                            ),
-                            trailing: const Icon(
-                              Icons.chevron_right,
-                              color: Color(0xFF8E8E93),
-                              size: 20,
-                            ),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const DiagnosticsScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        
                         // Change Password
                         Container(
                           color: const Color(0xFF2C2C2E),
@@ -549,6 +556,264 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Image Crop Dialog for Web
+class _ImageCropDialog extends StatefulWidget {
+  final Uint8List imageBytes;
+
+  const _ImageCropDialog({required this.imageBytes});
+
+  @override
+  State<_ImageCropDialog> createState() => _ImageCropDialogState();
+}
+
+class _ImageCropDialogState extends State<_ImageCropDialog> {
+  Offset _cropOffset = Offset.zero;
+  double _scale = 1.0;
+  ui.Image? _image;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  Offset _clampOffset(Offset offset, double scale, double cropSize) {
+    if (_image == null) return offset;
+    
+    // Calculate the scaled image dimensions
+    final scaledWidth = cropSize * scale;
+    final scaledHeight = cropSize * scale;
+    
+    // Calculate max offset (how far we can drag)
+    // The image can be dragged until its edge reaches the crop area edge
+    final maxOffsetX = (scaledWidth - cropSize) / 2;
+    final maxOffsetY = (scaledHeight - cropSize) / 2;
+    
+    return Offset(
+      offset.dx.clamp(-maxOffsetX, maxOffsetX),
+      offset.dy.clamp(-maxOffsetY, maxOffsetY),
+    );
+  }
+
+  Future<void> _loadImage() async {
+    final codec = await ui.instantiateImageCodec(widget.imageBytes);
+    final frame = await codec.getNextFrame();
+    setState(() {
+      _image = frame.image;
+      _isLoading = false;
+      // Center the image initially
+      _scale = 1.5; // Start zoomed in a bit
+    });
+  }
+
+  Future<Uint8List> _cropImage() async {
+    if (_image == null) return widget.imageBytes;
+
+    const cropSize = 400.0; // Square crop size
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+
+    // Calculate the source rectangle (what part of the image to crop)
+    final imageWidth = _image!.width.toDouble();
+    final imageHeight = _image!.height.toDouble();
+    
+    // Convert crop offset to image coordinates
+    final scaleX = imageWidth / cropSize;
+    final scaleY = imageHeight / cropSize;
+    
+    final srcLeft = (-_cropOffset.dx / _scale) * scaleX;
+    final srcTop = (-_cropOffset.dy / _scale) * scaleY;
+    final srcSize = cropSize / _scale * scaleX;
+
+    final srcRect = Rect.fromLTWH(
+      srcLeft.clamp(0, imageWidth - srcSize),
+      srcTop.clamp(0, imageHeight - srcSize),
+      srcSize,
+      srcSize,
+    );
+
+    final dstRect = const Rect.fromLTWH(0, 0, cropSize, cropSize);
+
+    // Draw the cropped portion
+    canvas.drawImageRect(_image!, srcRect, dstRect, Paint());
+
+    final picture = recorder.endRecording();
+    final img = await picture.toImage(cropSize.toInt(), cropSize.toInt());
+    final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+    
+    return byteData!.buffer.asUint8List();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: const Color(0xFF1C1C1E),
+      insetPadding: const EdgeInsets.all(16),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 500),
+        child: SingleChildScrollView(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Crop Profile Photo',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Drag to position, use slider to zoom',
+                  style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                
+                // Crop area
+                if (_isLoading)
+                  SizedBox(
+                    height: MediaQuery.of(context).size.width > 400 
+                      ? 400 
+                      : MediaQuery.of(context).size.width - 64,
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+                    ),
+                  )
+                else
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final cropSize = MediaQuery.of(context).size.width > 400 
+                        ? 400.0 
+                        : MediaQuery.of(context).size.width - 64;
+                      
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          width: cropSize,
+                          height: cropSize,
+                          color: Colors.black,
+                          child: GestureDetector(
+                            onPanUpdate: (details) {
+                              setState(() {
+                                final newOffset = _cropOffset + details.delta;
+                                _cropOffset = _clampOffset(newOffset, _scale, cropSize);
+                              });
+                            },
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                // Image
+                                if (_image != null)
+                                  Transform.translate(
+                                    offset: _cropOffset,
+                                    child: Transform.scale(
+                                      scale: _scale,
+                                      child: RawImage(
+                                        image: _image,
+                                        fit: BoxFit.cover,
+                                        width: cropSize,
+                                        height: cropSize,
+                                      ),
+                                    ),
+                                  ),
+                                
+                                // Circular crop guide
+                                Container(
+                                  width: cropSize * 0.75,
+                                  height: cropSize * 0.75,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.8),
+                                      width: 3,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                
+                const SizedBox(height: 16),
+                
+                // Zoom slider
+                Row(
+                  children: [
+                    const Icon(Icons.zoom_out, color: Color(0xFF8E8E93), size: 20),
+                    Expanded(
+                      child: Slider(
+                        value: _scale,
+                        min: 1.0,
+                        max: 3.0,
+                        activeColor: const Color(0xFF6B7FB8),
+                        onChanged: (value) {
+                          setState(() {
+                            _scale = value;
+                            // Re-clamp offset when scale changes
+                            final cropSize = MediaQuery.of(context).size.width > 400 
+                              ? 400.0 
+                              : MediaQuery.of(context).size.width - 64;
+                            _cropOffset = _clampOffset(_cropOffset, _scale, cropSize);
+                          });
+                        },
+                      ),
+                    ),
+                    const Icon(Icons.zoom_in, color: Color(0xFF8E8E93), size: 20),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Action buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, null),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(color: Color(0xFF8E8E93)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final croppedBytes = await _cropImage();
+                        if (context.mounted) {
+                          Navigator.pop(context, croppedBytes);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6B7FB8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: const Text(
+                        'Save',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

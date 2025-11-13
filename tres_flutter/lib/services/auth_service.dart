@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'web_auth_helper.dart' if (dart.library.io) 'web_auth_helper_stub.dart';
 
@@ -33,6 +34,12 @@ class AuthService extends ChangeNotifier {
       );
       
       debugPrint('✅ Sign in successful: ${credential.user?.uid}');
+      
+      // Ensure user document exists in Firestore
+      if (credential.user != null) {
+        await _ensureUserDocument(credential.user!);
+      }
+      
       return credential.user != null;
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ Firebase Auth Error: ${e.code} - ${e.message}');
@@ -61,6 +68,12 @@ class AuthService extends ChangeNotifier {
       );
       
       debugPrint('✅ Account created successfully: ${credential.user?.uid}');
+      
+      // Create user document in Firestore
+      if (credential.user != null) {
+        await _ensureUserDocument(credential.user!);
+      }
+      
       return credential.user != null;
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ Firebase Auth Error: ${e.code} - ${e.message}');
@@ -72,6 +85,50 @@ class AuthService extends ChangeNotifier {
       _errorMessage = 'An unexpected error occurred';
       notifyListeners();
       return false;
+    }
+  }
+  
+  /// Ensure user document exists in Firestore
+  Future<void> _ensureUserDocument(User user) async {
+    try {
+      final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final docSnapshot = await userDoc.get();
+      
+      // Always store email in lowercase for consistent searching
+      final email = user.email?.toLowerCase();
+      
+      debugPrint('🔧 Ensuring user document for ${user.uid}, email from auth: ${user.email}, lowercase: $email');
+      
+      if (email == null || email.isEmpty) {
+        debugPrint('⚠️ WARNING: User ${user.uid} has no email in Firebase Auth!');
+      }
+      
+      if (!docSnapshot.exists) {
+        // Create new user document
+        await userDoc.set({
+          'uid': user.uid,
+          'email': email ?? '',
+          'displayName': user.displayName ?? email?.split('@')[0] ?? 'User',
+          'photoURL': user.photoURL ?? '',
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastSeen': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        debugPrint('✅ Created Firestore user document for ${user.uid} with email: $email');
+      } else {
+        // Use set with merge to update fields without overwriting manually added ones
+        await userDoc.set({
+          'email': email ?? '',
+          'lastSeen': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+          // Add photoURL if it exists in Firebase Auth but not in Firestore
+          if (user.photoURL != null && user.photoURL!.isNotEmpty)
+            'photoURL': user.photoURL,
+        }, SetOptions(merge: true));
+        debugPrint('✅ Updated user document for ${user.uid} with email: $email');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ensuring user document: $e');
     }
   }
   

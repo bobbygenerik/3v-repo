@@ -332,7 +332,7 @@ class SignalingService extends ChangeNotifier {
         .listen(
       (snapshot) {
         if (snapshot.exists) {
-          final data = snapshot.data() as Map<String, dynamic>?;
+          final data = snapshot.data();
           final status = data?['status'];
           final endedBy = data?['endedBy'] ?? '';
           final endedByName = data?['endedByName'] ?? 'Other participant';

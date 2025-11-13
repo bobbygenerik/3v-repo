@@ -153,22 +153,35 @@ class ReactionService extends ChangeNotifier {
 
   /// Add reaction to active list
   void _addReaction(Reaction reaction) {
-    // Limit concurrent reactions
-    if (_activeReactions.length >= _maxConcurrentReactions) {
-      _activeReactions.removeAt(0);
+    // Create multiple particles for each reaction (3-5 particles for faster load)
+    final random = Random();
+    final particleCount = 3 + random.nextInt(3); // 3-5 particles (reduced from 5-8)
+    
+    for (int i = 0; i < particleCount; i++) {
+      // Limit concurrent reactions
+      if (_activeReactions.length >= _maxConcurrentReactions) {
+        _activeReactions.removeAt(0);
+      }
+
+      // Create slightly staggered reactions for better visual effect
+      final delayMs = i * 20; // Reduced to 20ms delay for faster appearance
+      
+      Future.delayed(Duration(milliseconds: delayMs), () {
+        if (_activeReactions.length < _maxConcurrentReactions) {
+          _activeReactions.add(reaction);
+          notifyListeners();
+
+          // Auto-remove after animation duration
+          Future.delayed(
+            Duration(milliseconds: _animationDurationMs),
+            () {
+              _activeReactions.remove(reaction);
+              notifyListeners();
+            },
+          );
+        }
+      });
     }
-
-    _activeReactions.add(reaction);
-    notifyListeners();
-
-    // Auto-remove after animation duration
-    Future.delayed(
-      Duration(milliseconds: _animationDurationMs),
-      () {
-        _activeReactions.remove(reaction);
-        notifyListeners();
-      },
-    );
   }
 
   /// Get all available reaction types

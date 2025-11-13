@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_theme.dart';
+import 'diagnostics_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -391,6 +391,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right, color: Colors.white70),
             onTap: () => _showVideoCodecDialog(),
           ),
+          ListTile(
+            title: const Text('Diagnostics', style: TextStyle(color: Colors.white)),
+            subtitle: const Text('View system diagnostics', style: TextStyle(color: Colors.white70)),
+            trailing: const Icon(Icons.chevron_right, color: Colors.white70),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DiagnosticsScreen(),
+                ),
+              );
+            },
+          ),
           
           const SizedBox(height: 24),
           
@@ -452,7 +465,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: Text(title, style: const TextStyle(color: Colors.white)),
       subtitle: Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)),
       value: value,
-      activeColor: AppColors.primaryBlue,
+      activeThumbColor: AppColors.primaryBlue,
       onChanged: onChanged,
     );
   }
