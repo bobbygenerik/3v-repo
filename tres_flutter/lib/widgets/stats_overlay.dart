@@ -65,14 +65,6 @@ class _StatsOverlayState extends State<StatsOverlay> {
               ),
             ),
             const SizedBox(width: 4),
-            Text(
-              '• ${stats.roundTripTimeFormatted}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-              ),
-            ),
-            const SizedBox(width: 4),
             const Icon(
               Icons.expand_more,
               color: Colors.white,
@@ -85,15 +77,14 @@ class _StatsOverlayState extends State<StatsOverlay> {
   }
 
   Widget _buildExpandedView() {
-    final stats = widget.statsService.currentStats;
     final quality = widget.statsService.currentQuality;
-    
+
     return Container(
-      width: 320,
-      padding: const EdgeInsets.all(16),
+      width: 280,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: _getQualityColor(quality),
           width: 2,
@@ -101,7 +92,7 @@ class _StatsOverlayState extends State<StatsOverlay> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.5),
-            blurRadius: 20,
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
@@ -110,20 +101,19 @@ class _StatsOverlayState extends State<StatsOverlay> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Icon(
                 _getQualityIcon(quality),
                 color: _getQualityColor(quality),
-                size: 20,
+                size: 18,
               ),
               const SizedBox(width: 8),
               Text(
                 'Call Quality: ${quality.label}',
                 style: TextStyle(
                   color: _getQualityColor(quality),
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -136,42 +126,9 @@ class _StatsOverlayState extends State<StatsOverlay> {
               ),
             ],
           ),
-          const Divider(color: Colors.white24, height: 24),
-          
-          // Video Stats
-          _buildSectionHeader('Video'),
-          const SizedBox(height: 8),
-          _buildStatRow('Resolution', stats.videoResolution),
-          _buildStatRow('FPS', '${stats.videoFps}'),
-          _buildStatRow('Send', stats.videoSendBitrateFormatted),
-          _buildStatRow('Receive', stats.videoRecvBitrateFormatted),
-          _buildStatRow('Packet Loss', stats.videoPacketLossFormatted, 
-            warning: stats.videoPacketLoss > 2),
-          
           const SizedBox(height: 12),
-          
-          // Audio Stats
-          _buildSectionHeader('Audio'),
-          const SizedBox(height: 8),
-          _buildStatRow('Send', stats.audioSendBitrateFormatted),
-          _buildStatRow('Receive', stats.audioRecvBitrateFormatted),
-          _buildStatRow('Packet Loss', stats.audioPacketLossFormatted,
-            warning: stats.audioPacketLoss > 2),
-          
-          const SizedBox(height: 12),
-          
-          // Network Stats
-          _buildSectionHeader('Network'),
-          const SizedBox(height: 8),
-          _buildStatRow('RTT', stats.roundTripTimeFormatted,
-            warning: stats.roundTripTime > 0.15), // > 150ms
-          _buildStatRow('Jitter', stats.jitterFormatted,
-            warning: stats.jitter > 0.005), // > 5ms
-          
-          const SizedBox(height: 12),
-          
-          // Quality Score
-          _buildQualityBar(quality.score),
+          // Only show overall quality score — network-specific rows removed per request
+          _buildQualityBar(widget.statsService.currentQuality.score),
         ],
       ),
     );

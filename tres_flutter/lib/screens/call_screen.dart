@@ -85,8 +85,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     );
     
     // Create staggered animations for 7 buttons
-    // LEFT to RIGHT for both rise and fall (0, 1, 2, 3, 4, 5, 6)
-    _buttonSlideAnimations = List.generate(7, (index) {
+    // Create staggered animations for buttons. Generate a few extra slots
+    // so dynamic button counts won't cause index errors.
+    _buttonSlideAnimations = List.generate(10, (index) {
       final start = index * 0.15; // Left button starts first (0.0, 0.15, 0.3, 0.45, 0.6)
       final end = start + 0.4; // Each animation duration
       return Tween<Offset>(
@@ -260,10 +261,36 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                           statsService: coordinator.statsService,
                         ),
                       ),
+
+                    // QA Banner (top-right): shows which ML features are active for quick verification
+                    if (coordinator.aiFeaturesService.isInitialized || coordinator.isBackgroundBlurEnabled || coordinator.isFaceAutoFramingEnabled || coordinator.isBeautyFilterEnabled)
+                      Positioned(
+                        top: 16,
+                        right: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.analytics, color: Colors.white, size: 14),
+                              const SizedBox(width: 8),
+                              Text(
+                                'ML: ${coordinator.isBackgroundBlurEnabled ? 'Blur' : ''}${coordinator.isBackgroundBlurEnabled && (coordinator.isFaceAutoFramingEnabled || coordinator.isBeautyFilterEnabled) ? ' • ' : ''}${coordinator.isFaceAutoFramingEnabled ? 'Auto-frame' : ''}${coordinator.isFaceAutoFramingEnabled && coordinator.isBeautyFilterEnabled ? ' • ' : ''}${coordinator.isBeautyFilterEnabled ? 'Beauty' : ''}',
+                                style: const TextStyle(color: Colors.white, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     
                     // Call controls (bottom) - always rendered, visibility controlled by animation
                     Positioned(
-                      bottom: 32,
+                      // Respect safe area so controls don't sit under system UI on tall devices
+                      bottom: MediaQuery.of(context).padding.bottom + 16,
                       left: 0,
                       right: 0,
                       child: _buildCallControls(livekit, coordinator),
@@ -826,31 +853,19 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   
   Widget _buildCallControls(LiveKitService livekit, CallFeaturesCoordinator coordinator) {
     // Button order: Add Person, Chat, Mic, END CALL (center), Camera, Flip, Menu
+    // New order: More (leftmost), Mic, END CALL (center), Camera, Flip
     final buttons = [
-      // 0: Add Person (leftmost)
+      // 0: More / Extra (moved to left)
       _buildAnimatedButton(
         index: 0,
-        icon: Icons.person_add,
-        onPressed: _showAddPersonDialog,
+        icon: Icons.more_vert,
+        onPressed: () => _showMoreMenu(coordinator),
         backgroundColor: Colors.white.withOpacity(0.2),
         size: 50,
       ),
-      // 1: Chat
+      // 1: Mic with pulse animation when muted
       _buildAnimatedButton(
         index: 1,
-        icon: Icons.chat_bubble,
-        onPressed: coordinator.toggleChat,
-        backgroundColor: coordinator.isChatOpen
-            ? const Color(0xFF6B7FB8)
-            : Colors.white.withOpacity(0.2),
-        size: 50,
-        badge: coordinator.unreadMessageCount > 0
-            ? coordinator.unreadMessageCount.toString()
-            : null,
-      ),
-      // 2: Mic with pulse animation when muted
-      _buildAnimatedButton(
-        index: 2,
         icon: livekit.isMicrophoneEnabled ? Icons.mic : Icons.mic_off,
         onPressed: livekit.toggleMicrophone,
         backgroundColor: livekit.isMicrophoneEnabled
@@ -859,9 +874,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         size: 50,
         pulse: !livekit.isMicrophoneEnabled,
       ),
-      // 3: END CALL (center - larger)
+      // 2: END CALL (center - larger)
       _buildAnimatedButton(
-        index: 3,
+        index: 2,
         icon: Icons.call_end,
         onPressed: () async {
           debugPrint('📞 End call button pressed');
@@ -887,9 +902,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         backgroundColor: Colors.red.shade600,
         size: 64, // Larger center button
       ),
-      // 4: Camera
+      // 3: Camera
       _buildAnimatedButton(
-        index: 4,
+        index: 3,
         icon: livekit.isCameraEnabled ? Icons.videocam : Icons.videocam_off,
         onPressed: livekit.toggleCamera,
         backgroundColor: livekit.isCameraEnabled
@@ -897,29 +912,28 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
             : Colors.red.shade600,
         size: 50,
       ),
-      // 5: Flip camera
+      // 4: Flip camera
       _buildAnimatedButton(
-        index: 5,
+        index: 4,
         icon: Icons.cameraswitch,
         onPressed: livekit.switchCamera,
         backgroundColor: Colors.white.withOpacity(0.2),
         size: 50,
       ),
-      // 6: Menu (rightmost)
-      _buildAnimatedButton(
-        index: 6,
-        icon: Icons.more_vert,
-        onPressed: () => _showMoreMenu(coordinator),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        size: 50,
-      ),
     ];
 
+    // Wrap controls in a horizontal scroll view so they never overflow on narrow devices.
+    // Keeps the centered row appearance on wide screens, but allows scrolling when space is limited.
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: buttons,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: buttons,
+        ),
       ),
     );
   }
@@ -1205,6 +1219,27 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+              // Add Person moved into the More menu
+              ListTile(
+                leading: const Icon(Icons.person_add, color: Color(0xFF6B7FB8)),
+                title: const Text('Add Person', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showAddPersonDialog();
+                },
+              ),
+              // Chat moved into the More menu
+              ListTile(
+                leading: const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8)),
+                title: const Text('Chat', style: TextStyle(color: Colors.white)),
+                trailing: Switch(
+                  value: coordinator.isChatOpen,
+                  onChanged: (value) {
+                    coordinator.toggleChat();
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
             const Text(
               'Call Options',
               style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
