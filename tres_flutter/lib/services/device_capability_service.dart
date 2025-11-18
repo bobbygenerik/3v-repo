@@ -76,7 +76,7 @@ class DeviceCapabilityService {
   static int getMaxVideoBitrate() {
     switch (_capability) {
       case DeviceCapability.highEnd:
-        return 4000 * 1000; // 4 Mbps - increased from 2.5
+        return 8000 * 1000; // 8 Mbps for high-end devices
       case DeviceCapability.midRange:
         return 2500 * 1000; // 2.5 Mbps - increased from 1.5
       case DeviceCapability.lowEnd:
@@ -100,7 +100,7 @@ class DeviceCapabilityService {
   static int getMaxFramerate() {
     switch (_capability) {
       case DeviceCapability.highEnd:
-        return 30; // Smooth 30fps
+        return 60; // Allow 60fps on high-end devices for very smooth video
       case DeviceCapability.midRange:
         return 30;
       case DeviceCapability.lowEnd:
