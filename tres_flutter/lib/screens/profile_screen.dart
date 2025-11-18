@@ -6,6 +6,7 @@ import 'dart:typed_data';
 // import 'dart:html' as html;
 import 'dart:ui' as ui;
 import 'package:image_picker/image_picker.dart';
+import '../widgets/avatar.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -218,25 +219,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             width: 4,
                           ),
                         ),
-                        child: CircleAvatar(
-                          radius: 80,
-                          backgroundColor: const Color(0xFF2C2C2E),
-                          backgroundImage: user?.photoURL != null && user!.photoURL!.isNotEmpty
-                              ? NetworkImage(user.photoURL!) 
-                              : null,
-                          child: user?.photoURL == null || user!.photoURL!.isEmpty
-                              ? Text(
-                                  (user?.displayName?.isNotEmpty == true
-                                      ? user!.displayName![0].toUpperCase()
-                                      : user?.email?[0].toUpperCase() ?? 'U'),
-                                  style: const TextStyle(
-                                    fontSize: 48,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : null,
-                        ),
+                        child: Avatar(
+                              url: user?.photoURL,
+                              radius: 80,
+                              initials: (user?.displayName?.isNotEmpty == true
+                                  ? user!.displayName![0].toUpperCase()
+                                  : user?.email?[0].toUpperCase() ?? 'U'),
+                              enableLogging: true,
+                            ),
                       ),
                     ),
                     

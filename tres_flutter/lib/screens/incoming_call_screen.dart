@@ -166,24 +166,13 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                     ),
                   ],
                 ),
-                child: CircleAvatar(
+                child: Avatar(
+                  url: widget.callerPhotoUrl,
                   radius: 76,
-                  backgroundColor: AppColors.primaryBlue,
-                  backgroundImage: widget.callerPhotoUrl != null
-                      ? NetworkImage(widget.callerPhotoUrl!)
-                      : null,
-                  child: widget.callerPhotoUrl == null
-                      ? Text(
-                          widget.callerName.isNotEmpty
-                              ? widget.callerName[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            fontSize: 70,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        )
-                      : null,
+                  initials: widget.callerName.isNotEmpty
+                      ? widget.callerName[0].toUpperCase()
+                      : '?',
+                  enableLogging: true,
                 ),
               ),
             ),

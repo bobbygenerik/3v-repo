@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/livekit_service.dart';
 import '../config/app_theme.dart';
 import 'profile_screen.dart';
+import '../widgets/avatar.dart';
 import 'call_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -152,24 +153,22 @@ final __ = _filteredContacts;
                 radius: 20,
                 backgroundColor: AppColors.primaryBlue,
                 child: user?.photoURL != null
-                    ? ClipOval(
-                        child: Image.network(
-                          user!.photoURL!,
-                          width: 40,
-                          height: 40,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Text(
-                              _getUserInitial(user),
-                              style: const TextStyle(fontSize: 18, color: Colors.white),
-                            );
-                          },
+                      ? ClipOval(
+                          child: SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: Avatar(
+                              url: user!.photoURL,
+                              radius: 20,
+                              initials: _getUserInitial(user),
+                              enableLogging: true,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          _getUserInitial(user),
+                          style: const TextStyle(fontSize: 18, color: Colors.white),
                         ),
-                      )
-                    : Text(
-                        _getUserInitial(user),
-                        style: const TextStyle(fontSize: 18, color: Colors.white),
-                      ),
               ),
               onPressed: () {
                 Navigator.push(

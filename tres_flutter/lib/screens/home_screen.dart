@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/avatar.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
@@ -443,18 +444,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           width: 2,
                         ),
                       ),
-                      child: CircleAvatar(
+                      child: Avatar(
+                        url: user?.photoURL,
                         radius: 20,
-                        backgroundColor: const Color(0xFF2C2C2E),
-                        backgroundImage: (user?.photoURL != null && user!.photoURL!.isNotEmpty)
-                            ? NetworkImage(user.photoURL!)
-                            : null,
-                        child: (user?.photoURL == null || user!.photoURL!.isEmpty)
-                            ? Text(
-                                _getUserInitial(user),
-                                style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
-                              )
-                            : null,
+                        initials: _getUserInitial(user),
+                        enableLogging: true,
                       ),
                     ),
                   ),
@@ -784,22 +778,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           child: Row(
             children: [
               // Large avatar
-              CircleAvatar(
+              Avatar(
+                url: contact['photoURL']?.toString(),
                 radius: 28,
-                backgroundColor: const Color(0xFF6B7FB8),
-                backgroundImage: contact['photoURL'] != null && contact['photoURL'].toString().isNotEmpty
-                    ? NetworkImage(contact['photoURL'])
-                    : null,
-                child: contact['photoURL'] == null || contact['photoURL'].toString().isEmpty
-                    ? Text(
-                        contact['name'][0].toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 24,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
+                initials: contact['name'][0].toUpperCase(),
+                enableLogging: true,
               ),
               const SizedBox(width: 16),
               // Name and email
