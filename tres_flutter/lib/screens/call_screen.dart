@@ -1503,6 +1503,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     
     // Disconnect LiveKit properly
     livekit.disconnect();
+    // Stop performance monitor explicitly to cancel its timer
+    _performanceMonitor?.stop();
     
     super.dispose();
   }
