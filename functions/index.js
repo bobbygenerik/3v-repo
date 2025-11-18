@@ -247,6 +247,56 @@ exports.cleanupOldCallSignals = functions.scheduler.onSchedule(
 );
 
 /**
+ * Cloud Function: Mark pending call signals older than 60 seconds as 'missed'
+ * Runs every 5 minutes to quickly mark short-lived invites as missed so
+ * clients don't show stale incoming call UI when users open the app.
+ */
+exports.markStaleCallSignals = functions.scheduler.onSchedule(
+  'every 5 minutes',
+  async (event) => {
+    try {
+      console.log('⌛ Running markStaleCallSignals to mark old pending invites as missed');
+      const db = admin.firestore();
+      const cutoff = new Date(Date.now() - 60 * 1000); // 60 seconds ago
+
+      // Iterate users in batches to avoid memory spikes
+      const usersSnapshot = await db.collection('users').get();
+      let totalMarked = 0;
+
+      for (const userDoc of usersSnapshot.docs) {
+        const pendingQuery = await db
+          .collection('users')
+          .doc(userDoc.id)
+          .collection('callSignals')
+          .where('status', '==', 'pending')
+          .where('timestamp', '<', cutoff)
+          .get();
+
+        if (pendingQuery.empty) continue;
+
+        const batch = db.batch();
+        pendingQuery.forEach(doc => {
+          batch.update(doc.ref, {
+            status: 'missed',
+            missedTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+            missedByCleanup: true
+          });
+          totalMarked++;
+        });
+
+        await batch.commit();
+      }
+
+      console.log(`✅ markStaleCallSignals complete: Marked ${totalMarked} pending call signals as missed`);
+      return null;
+    } catch (error) {
+      console.error('❌ Error in markStaleCallSignals:', error);
+      return null;
+    }
+  }
+);
+
+/**
  * Cloud Function: Generate guest call token for web users
  * Allows authenticated app users to create shareable links for non-app users
  */
