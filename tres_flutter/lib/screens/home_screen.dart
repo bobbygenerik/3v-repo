@@ -244,12 +244,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
       // Batch load user data for better performance
       final List<String> contactUids = contactsSnapshot.docs.map((doc) => doc.id).toList();
+      // Deduplicate contact UIDs in case duplicate docs/ids exist in Firestore
+      final List<String> uniqueContactUids = contactUids.toSet().toList();
       final List<Map<String, dynamic>> loadedContacts = [];
+      final Set<String> seenUids = <String>{};
       
       // Process in chunks to avoid overwhelming Firestore
       const chunkSize = 10;
-      for (int i = 0; i < contactUids.length; i += chunkSize) {
-        final chunk = contactUids.skip(i).take(chunkSize);
+      for (int i = 0; i < uniqueContactUids.length; i += chunkSize) {
+        final chunk = uniqueContactUids.skip(i).take(chunkSize);
         final futures = chunk.map((uid) => 
           FirebaseFirestore.instance.collection('users').doc(uid).get()
         );
@@ -260,9 +263,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           final userDoc = results[j];
           if (userDoc.exists) {
             final data = userDoc.data();
-            if (data != null) {
+            final uid = chunk.elementAt(j);
+            if (data != null && !seenUids.contains(uid)) {
+              seenUids.add(uid);
               loadedContacts.add({
-                'uid': chunk.elementAt(j),
+                'uid': uid,
                 'name': data['displayName'] ?? data['name'] ?? 'Unknown',
                 'email': data['email'] ?? '',
                 'photoURL': data['photoURL'],
