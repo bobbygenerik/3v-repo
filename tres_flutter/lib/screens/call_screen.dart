@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/livekit_service.dart';
 import '../services/call_features_coordinator.dart';
+import '../services/performance_monitor.dart';
 import '../services/call_session_service.dart';
 import '../services/reaction_service.dart';
 import '../services/chat_service.dart' as chat;
@@ -31,6 +32,7 @@ class CallScreen extends StatefulWidget {
 class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   bool _isConnecting = true;
   late CallFeaturesCoordinator _coordinator;
+  PerformanceMonitor? _performanceMonitor;
   final TextEditingController _chatController = TextEditingController();
   
   // Call timer
@@ -165,6 +167,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     if (success && livekit.room != null) {
       await _coordinator.initialize(livekit.room!);
       // Don't start stats collection automatically - let user enable it
+      // Start runtime performance monitor to adapt capture/ML settings
+      try {
+        _performanceMonitor = PerformanceMonitor(livekit, _coordinator, livekit.networkService);
+        _performanceMonitor?.start();
+      } catch (e) {
+        debugPrint('⚠️ Failed to start PerformanceMonitor: $e');
+      }
     }
     
     setState(() => _isConnecting = false);
@@ -1496,5 +1505,20 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     livekit.disconnect();
     
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Ensure monitor uses updated services if dependencies change
+    final livekit = context.read<LiveKitService>();
+    if (_performanceMonitor == null && !_isConnecting) {
+      try {
+        _performanceMonitor = PerformanceMonitor(livekit, _coordinator, livekit.networkService);
+        _performanceMonitor?.start();
+      } catch (e) {
+        debugPrint('⚠️ Failed to start PerformanceMonitor in didChangeDependencies: $e');
+      }
+    }
   }
 }

@@ -33,6 +33,9 @@ class LiveKitService extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   
   final NetworkQualityService _networkService = NetworkQualityService();
+
+  // Expose network service for external monitors
+  NetworkQualityService get networkService => _networkService;
   
   // Detect device capability on service creation
   LiveKitService() {
