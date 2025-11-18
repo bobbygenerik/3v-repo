@@ -9,33 +9,27 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/logo.png",
+      "src": "logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ],
   "categories": ["social", "utilities"],
-  "screenshots": [
-    {
-      "src": "/preview.html",
-      "sizes": "1080x1920",
-      "type": "image/png"
-    }
-  ],
+
   "shortcuts": [
     {
       "name": "Start Video Call",
       "short_name": "Call",
       "description": "Start a new video call",
       "url": "/home.html",
-      "icons": [{ "src": "/logo.png", "sizes": "96x96" }]
+      "icons": [{ "src": "logo.png", "sizes": "96x96" }]
     }
   ]
 }

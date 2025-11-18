@@ -18,12 +18,12 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="High-quality video calling app with advanced features">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="tres_flutter">
+  <meta name="apple-mobile-web-app-title" content="Três3">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
@@ -31,7 +31,7 @@
   <link rel="icon" type="image/png" sizes="512x512" href="icons/Icon-512.png"/>
   <link rel="shortcut icon" type="image/png" href="icons/Icon-192.png"/>
 
-  <title>Très³ Video Calls</title>
+  <title>Três3</title>
   <link rel="manifest" href="manifest.json">
   
   <style>
@@ -44,12 +44,31 @@
   </style>
   
   <script>
-    // Configure Flutter to not use service worker
-    window.flutterConfiguration = {
-      serviceWorkerSettings: {
-        serviceWorkerVersion: null
-      }
-    };
+    // Register Firebase messaging service worker for background notifications
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        scope: '/'
+      })
+        .then(function(registration) {
+          console.log('Service Worker registered:', registration);
+          // Ensure it's active
+          if (registration.active) {
+            console.log('Service Worker is active');
+          } else {
+            console.log('Service Worker is not active yet');
+          }
+        })
+        .catch(function(error) {
+          console.error('Service Worker registration failed:', error);
+        });
+      
+      // Listen for service worker messages
+      navigator.serviceWorker.addEventListener('message', function(event) {
+        console.log('Message from service worker:', event.data);
+      });
+    } else {
+      console.warn('Service Workers not supported');
+    }
   </script>
 </head>
 <body>
@@ -59,11 +78,7 @@
   <script src="flutter.js" defer></script>
   <script>
     window.addEventListener('load', function(ev) {
-      _flutter.loader.loadEntrypoint({
-        serviceWorker: {
-          serviceWorkerVersion: null,
-        },
-      }).then(function(engineInitializer) {
+      _flutter.loader.loadEntrypoint().then(function(engineInitializer) {
         return engineInitializer.initializeEngine();
       }).then(function(appRunner) {
         return appRunner.runApp();

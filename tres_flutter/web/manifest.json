@@ -1,35 +1,29 @@
 {
-    "name": "tres_flutter",
-    "short_name": "tres_flutter",
-    "start_url": ".",
+    "name": "Três3",
+    "short_name": "Três3",
+    "start_url": "./?pwa=tres3",
+    "scope": "./",
+    "id": "tres3-video-calls",
     "display": "standalone",
-    "background_color": "#0175C2",
+    "background_color": "#1C1C1E",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "High-quality video calling app with advanced features",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "permissions": ["notifications"],
+    "gcm_sender_id": "920237066671",
     "icons": [
         {
             "src": "icons/Icon-192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "icons/Icon-512.png",
             "sizes": "512x512",
-            "type": "image/png"
-        },
-        {
-            "src": "icons/Icon-maskable-192.png",
-            "sizes": "192x192",
             "type": "image/png",
-            "purpose": "maskable"
-        },
-        {
-            "src": "icons/Icon-maskable-512.png",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "maskable"
+            "purpose": "any"
         }
     ]
 }

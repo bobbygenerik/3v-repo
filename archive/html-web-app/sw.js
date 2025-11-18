@@ -22,6 +22,10 @@ self.addEventListener('install', event => {
         console.log('📦 Opened cache');
         return cache.addAll(urlsToCache);
       })
+      .catch(error => {
+        console.error('Failed to cache resources:', error);
+        // Continue installation even if caching fails
+      })
   );
   self.skipWaiting();
 });
@@ -51,9 +55,20 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_NAME)
             .then(cache => {
               cache.put(event.request, responseToCache);
+            })
+            .catch(cacheError => {
+              console.error('Failed to cache response:', cacheError);
             });
           
           return response;
+        })
+        .catch(fetchError => {
+          console.error('Fetch failed:', fetchError);
+          // Return offline page or basic error response
+          return new Response('Offline - Please check your connection', {
+            status: 503,
+            statusText: 'Service Unavailable'
+          });
         });
       })
   );
@@ -71,6 +86,9 @@ self.addEventListener('activate', event => {
           }
         })
       );
+    })
+    .catch(error => {
+      console.error('Failed to clean up caches:', error);
     })
   );
   self.clients.claim();

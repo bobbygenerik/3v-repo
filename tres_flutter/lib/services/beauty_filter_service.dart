@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
+import 'device_capability_service.dart';
 
 /// Beauty filter service for video calls
 /// 
@@ -71,8 +72,9 @@ class BeautyFilterService extends ChangeNotifier {
       return null;
     }
 
-    // Process only every Nth frame to reduce CPU load
-    if (_frameCount % _processEveryNFrames != 0) {
+    // Dynamic frame skipping based on device capability
+    final skipFrames = _getFrameSkipCount();
+    if (_frameCount % skipFrames != 0) {
       return null;
     }
 
@@ -210,6 +212,19 @@ class BeautyFilterService extends ChangeNotifier {
     return output;
   }
 
+  /// Get frame skip count based on device capability
+  int _getFrameSkipCount() {
+    // Optimize ML processing frequency based on device
+    final capability = DeviceCapabilityService.capability;
+    if (capability == DeviceCapability.highEnd) {
+      return 2; // Process every 2nd frame
+    } else if (capability == DeviceCapability.lowEnd) {
+      return 5; // Process every 5th frame (lighter load)
+    } else {
+      return 3; // Process every 3rd frame (default)
+    }
+  }
+  
   /// Get processing statistics
   String getStats() {
     if (_frameCount == 0) return 'No frames processed';

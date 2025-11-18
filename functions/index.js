@@ -6,11 +6,11 @@ const { onRequest } = require('firebase-functions/v2/https');
 
 admin.initializeApp();
 
-// Load environment variables
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
-const LIVEKIT_WS_URL = process.env.LIVEKIT_WS_URL || 'wss://tres3-l25y6pxz.livekit.cloud';
-const WEB_URL = process.env.WEB_URL || 'https://vchat-46b32.web.app';
+// Load environment variables (check both .env and Firebase config)
+const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || functions.config().livekit?.api_key;
+const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || functions.config().livekit?.api_secret;
+const LIVEKIT_WS_URL = process.env.LIVEKIT_URL || functions.config().livekit?.url || 'wss://livekit.iptvsubz.fun';
+const WEB_URL = process.env.WEB_URL || 'https://tres3.web.app';
 
 exports.getLiveKitToken = functions.https.onCall(async (request) => {
   console.log('=== getLiveKitToken Function Called ===');
@@ -86,10 +86,13 @@ exports.getLiveKitToken = functions.https.onCall(async (request) => {
 
     const token = await at.toJwt();
     console.log('SUCCESS: Token generated for user', userId);
+    console.log('Token preview (first 50 chars):', token.substring(0, 50));
+    console.log('Room name:', roomName);
+    console.log('WSS URL:', 'wss://livekit.iptvsubz.fun');
 
     return {
       token: token,
-      url: 'wss://tres3-l25y6pxz.livekit.cloud'
+      wsUrl: 'wss://livekit.iptvsubz.fun'
     };
 
   } catch (error) {
@@ -160,10 +163,13 @@ exports.sendCallNotification = functions.firestore.onDocumentCreated(
       
       console.log(`Sending push notification to FCM token: ${fcmToken.substring(0, 20)}...`);
       
-      // Send data-only message to ensure MyFirebaseMessagingService.onMessageReceived() is called
-      // even when app is in background/killed. This allows us to show full-screen intent.
+      // Optimized message for fastest delivery
       const message = {
         token: fcmToken,
+        notification: {
+          title: `${callData.fromUserName} is calling`,
+          body: 'Tap to answer'
+        },
         data: {
           type: 'call_invite',
           invitationId: signalId,
@@ -172,19 +178,36 @@ exports.sendCallNotification = functions.firestore.onDocumentCreated(
           roomName: callData.roomName,
           url: callData.url,
           token: callData.token,
-          timestamp: (callData.timestamp || new Date()).toString()
+          timestamp: Date.now().toString()
         },
         android: {
           priority: 'high',
-          // Data messages with high priority are delivered immediately
-          // even when device is in Doze mode
-          ttl: 60 * 1000 // 60 seconds TTL for call invitations
+          ttl: 30000, // 30 seconds
+          notification: {
+            channel_id: 'call_notifications',
+            priority: 'max',
+            visibility: 'public'
+          }
+        },
+        webpush: {
+          headers: {
+            Urgency: 'high'
+          },
+          notification: {
+            requireInteraction: true,
+            tag: 'incoming-call'
+          }
         }
       };
       
-      // Send the notification
-      const response = await admin.messaging().send(message);
-      console.log(`✅ Push notification sent successfully: ${response}`);
+      // Send notification with timeout for faster failure detection
+      const response = await Promise.race([
+        admin.messaging().send(message),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('FCM timeout')), 5000)
+        )
+      ]);
+      console.log(`✅ Push notification sent: ${response}`);
       
       return response;
       
@@ -209,26 +232,31 @@ exports.cleanupOldCallSignals = functions.scheduler.onSchedule(
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
       const db = admin.firestore();
       
-      // Get all users
-      const usersSnapshot = await db.collection('users').get();
-      let totalDeleted = 0;
+      // Use collection group query for better performance
+      const oldSignalsQuery = db.collectionGroup('callSignals')
+        .where('timestamp', '<', oneHourAgo)
+        .limit(500);
       
-      for (const userDoc of usersSnapshot.docs) {
-        const oldSignals = await db
-          .collection('users')
-          .doc(userDoc.id)
-          .collection('callSignals')
-          .where('timestamp', '<', oneHourAgo)
-          .get();
+      let totalDeleted = 0;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const oldSignals = await oldSignalsQuery.get();
+        hasMore = oldSignals.size === 500;
         
-        // Delete old signals in batches
-        const batch = db.batch();
-        oldSignals.forEach(doc => {
-          batch.delete(doc.ref);
-          totalDeleted++;
-        });
+        if (oldSignals.empty) break;
         
-        if (oldSignals.size > 0) {
+        // Delete in smaller batches to avoid timeout
+        const batchSize = 100;
+        for (let i = 0; i < oldSignals.docs.length; i += batchSize) {
+          const batch = db.batch();
+          const batchDocs = oldSignals.docs.slice(i, i + batchSize);
+          
+          batchDocs.forEach(doc => {
+            batch.delete(doc.ref);
+            totalDeleted++;
+          });
+          
           await batch.commit();
         }
       }

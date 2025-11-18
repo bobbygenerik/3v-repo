@@ -19,10 +19,19 @@ service cloud.firestore {
       // Anyone authenticated can read other user profiles (for contacts/calling)
       allow read: if isSignedIn();
       
+      // Allow any authenticated user to create their own user document
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      
       // Contacts subcollection - NEW: User contacts
       match /contacts/{contactId} {
-        // Users can read/write their own contacts
-        allow read, write: if isOwner(userId);
+        // Users can read their own contacts
+        allow read: if isOwner(userId);
+        
+        // Users can write to their own contacts
+        allow write: if isOwner(userId);
+        
+        // Allow authenticated users to add themselves to others' contacts (bidirectional)
+        allow create: if isSignedIn() && contactId == request.auth.uid;
       }
       
       // Call history subcollection - NEW: Support for your app's call history
@@ -107,6 +116,20 @@ service cloud.firestore {
          request.resource.data.userId == request.auth.uid);
     }
     
+    // Calls collection - for call history
+    match /calls/{callId} {
+      // Users can read calls they participated in
+      allow read: if isSignedIn() && 
+        request.auth.uid in resource.data.participants;
+      
+      // Users can create calls
+      allow create: if isSignedIn();
+      
+      // Participants can update call data
+      allow update: if isSignedIn() && 
+        request.auth.uid in resource.data.participants;
+    }
+    
     // Contacts
     match /contacts/{userId} {
       // Users can only manage their own contacts
@@ -137,6 +160,26 @@ service cloud.firestore {
       
       // Allow public read for guests with the invitation link (token validation happens in client)
       allow read: if true;
+    }
+    
+    // Call invitations - for incoming call notifications
+    match /call_invitations/{invitationId} {
+      // Authenticated users can create call invitations
+      allow create: if isSignedIn();
+      
+      // Recipients can read invitations sent to them
+      allow read: if isSignedIn() && 
+        (resource.data.recipientId == request.auth.uid || 
+         resource.data.callerId == request.auth.uid);
+      
+      // Both caller and recipient can update invitation status
+      allow update: if isSignedIn() && 
+        (resource.data.recipientId == request.auth.uid || 
+         resource.data.callerId == request.auth.uid);
+      
+      // Only creator can delete
+      allow delete: if isSignedIn() && 
+        resource.data.callerId == request.auth.uid;
     }
   }
 }

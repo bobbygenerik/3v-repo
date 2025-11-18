@@ -8,6 +8,8 @@ import '../services/auth_service.dart';
 import '../services/guest_link_service.dart';
 import '../services/call_listener_service.dart';
 import '../services/call_signaling_service.dart';
+import '../services/call_session_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/responsive_container.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
@@ -31,10 +33,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   bool _isLoadingContacts = true;
   bool _isLoadingHistory = true;
   bool _searchHasFocus = false;
+  bool _showNotificationPrompt = false;
   
   // Call services
   final CallListenerService _callListener = CallListenerService();
   final CallSignalingService _signalingService = CallSignalingService();
+  final CallSessionService _sessionService = CallSessionService();
   
   // Ticker animation for search placeholder
   int _currentPlaceholderIndex = 0;
@@ -97,6 +101,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _textAnimationController.forward().then((_) {
       setState(() => _hasAnimated = true);
     });
+    
+    // Check notification permissions
+    _checkNotificationPermissions();
+    
+    // Ensure FCM token is saved
+    _ensureFCMToken();
   }
   
   /// Handle incoming call notifications
@@ -164,7 +174,48 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
   }
 
-  @override
+  Future<void> _checkNotificationPermissions() async {
+    final enabled = await NotificationService.areNotificationsEnabled();
+    if (!enabled && mounted) {
+      setState(() {
+        _showNotificationPrompt = true;
+      });
+    }
+  }
+  
+  Future<void> _enableNotifications() async {
+    final enabled = await NotificationService.enableNotifications();
+    if (enabled) {
+      setState(() {
+        _showNotificationPrompt = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notifications enabled!')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enable notifications in your browser settings')),
+        );
+      }
+    }
+  }
+  
+  Future<void> _ensureFCMToken() async {
+    try {
+      final enabled = await NotificationService.areNotificationsEnabled();
+      if (enabled) {
+        // Force refresh FCM token
+        await NotificationService.enableNotifications();
+        debugPrint('✅ FCM token refreshed on startup');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error refreshing FCM token: $e');
+    }
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -187,61 +238,59 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           .collection('users')
           .doc(currentUser.uid)
           .collection('contacts')
+          .limit(50) // Limit initial load
           .get();
 
-      // Get full user data for each contact
+      // Batch load user data for better performance
+      final List<String> contactUids = contactsSnapshot.docs.map((doc) => doc.id).toList();
       final List<Map<String, dynamic>> loadedContacts = [];
       
-      for (var contactDoc in contactsSnapshot.docs) {
-        final contactUid = contactDoc.id;
-        try {
-          final userDoc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(contactUid)
-              .get();
-          
+      // Process in chunks to avoid overwhelming Firestore
+      const chunkSize = 10;
+      for (int i = 0; i < contactUids.length; i += chunkSize) {
+        final chunk = contactUids.skip(i).take(chunkSize);
+        final futures = chunk.map((uid) => 
+          FirebaseFirestore.instance.collection('users').doc(uid).get()
+        );
+        
+        final results = await Future.wait(futures, eagerError: false);
+        
+        for (int j = 0; j < results.length; j++) {
+          final userDoc = results[j];
           if (userDoc.exists) {
             final data = userDoc.data();
             if (data != null) {
-              final photoURL = data['photoURL'];
-              debugPrint('📸 Contact ${data['displayName']}: photoURL = "$photoURL" (type: ${photoURL.runtimeType})');
               loadedContacts.add({
-                'uid': contactUid,
+                'uid': chunk.elementAt(j),
                 'name': data['displayName'] ?? data['name'] ?? 'Unknown',
                 'email': data['email'] ?? '',
                 'photoURL': data['photoURL'],
               });
-            } else {
-              debugPrint('⚠️ Contact $contactUid exists but has no data');
             }
           }
-        } catch (e) {
-          debugPrint('Error loading contact $contactUid: $e');
         }
       }
 
-      setState(() {
-        _contacts = loadedContacts;
-        _filteredContacts = _contacts;
-        _isLoadingContacts = false;
-      });
+      if (mounted) {
+        setState(() {
+          _contacts = loadedContacts;
+          _filteredContacts = _contacts;
+          _isLoadingContacts = false;
+        });
+      }
     } catch (e) {
       debugPrint('Error loading contacts: $e');
-      setState(() => _isLoadingContacts = false);
+      if (mounted) setState(() => _isLoadingContacts = false);
     }
   }
 
   Future<void> _loadCallHistory() async {
-    // Temporarily disabled until Firestore index builds
-    // The index for calls collection (participants + timestamp) is still building
-    // This typically takes 5-15 minutes after first deployment
-    setState(() => _isLoadingHistory = false);
-    return;
-    
-    /* 
     try {
       final currentUser = context.read<AuthService>().currentUser;
-      if (currentUser == null) return;
+      if (currentUser == null) {
+        setState(() => _isLoadingHistory = false);
+        return;
+      }
 
       final snapshot = await FirebaseFirestore.instance
           .collection('calls')
@@ -267,7 +316,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       debugPrint('Error loading call history: $e');
       setState(() => _isLoadingHistory = false);
     }
-    */
   }
 
   void _filterContacts() {
@@ -461,7 +509,51 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
             const SizedBox(height: 32),
 
-            // Search Box - EXACT match to screenshot
+            // Notification Permission Prompt
+            if (_showNotificationPrompt)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2C2C2E),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF6B7FB8), width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.notifications, color: Color(0xFF6B7FB8), size: 24),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Enable Notifications',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                            ),
+                            Text(
+                              'Get notified when someone calls you',
+                              style: TextStyle(color: Color(0xFF8E8E93), fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _enableNotifications,
+                        child: const Text('Enable', style: TextStyle(color: Color(0xFF6B7FB8))),
+                      ),
+                      IconButton(
+                        onPressed: () => setState(() => _showNotificationPrompt = false),
+                        icon: const Icon(Icons.close, color: Color(0xFF8E8E93), size: 20),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            if (_showNotificationPrompt) const SizedBox(height: 16),
+
+            // Search Box
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Container(
@@ -893,32 +985,58 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
       // Send call invitation to recipient (WITHOUT token - they'll generate it when accepting)
       debugPrint('📤 Sending call invitation to recipient');
-      final invitationId = await _signalingService.sendCallInvitation(
-        recipientUserId: recipientUserId,
-        roomName: roomName,
-        token: '', // Empty - recipient will generate their own token
-        livekitUrl: wsUrl,
-        isVideoCall: true,
-      );
-
-      if (invitationId == null) {
+      String? invitationId;
+      try {
+        invitationId = await _signalingService.sendCallInvitation(
+          recipientUserId: recipientUserId,
+          roomName: roomName,
+          token: '', // Empty - recipient will generate their own token
+          livekitUrl: wsUrl,
+          isVideoCall: true,
+        );
+        debugPrint('📤 Call invitation result: $invitationId');
+      } catch (signalError) {
+        debugPrint('❌ Error in sendCallInvitation: $signalError');
         if (mounted) Navigator.pop(context);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to send call invitation')),
+            SnackBar(content: Text('Failed to send invitation: $signalError')),
           );
         }
         return;
       }
 
+      if (invitationId == null) {
+        debugPrint('❌ sendCallInvitation returned null');
+        if (mounted) Navigator.pop(context);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to send call invitation - please try again')),
+          );
+        }
+        return;
+      }
+      
+      debugPrint('✅ Call invitation sent successfully: $invitationId');
+
       if (mounted) Navigator.pop(context);
+      
+      // Show immediate feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Calling $recipientEmail...'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
 
       // Show calling dialog and wait for response
       bool? callAccepted = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (context) => _CallingDialog(
-          invitationId: invitationId,
+          invitationId: invitationId!,
           recipientEmail: recipientEmail,
           signalingService: _signalingService,
         ),
@@ -926,6 +1044,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
       // Only navigate to call screen if call was accepted
       if (callAccepted == true && mounted) {
+        // Start call session
+        await _sessionService.startSession(roomName, [currentUser.uid, recipientUserId]);
+        
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -933,12 +1054,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               roomName: roomName,
               token: callerToken,
               livekitUrl: wsUrl,
+              sessionService: _sessionService,
             ),
           ),
-        );
+        ).then((_) {
+          // End session when returning from call
+          _sessionService.endSession();
+        });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('❌ Error starting call: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1289,7 +1415,13 @@ class _CallingDialogState extends State<_CallingDialog> {
         .doc(widget.invitationId)
         .snapshots()
         .listen((snapshot) {
-      if (!snapshot.exists || !mounted) return;
+      if (!mounted) return;
+      
+      if (!snapshot.exists) {
+        debugPrint('📞 Invitation document deleted');
+        Navigator.of(context).pop(false);
+        return;
+      }
 
       final data = snapshot.data();
       if (data == null) return;
@@ -1310,6 +1442,16 @@ class _CallingDialogState extends State<_CallingDialog> {
         }
       } else if (status == 'timeout' || status == 'cancelled') {
         // Call timed out or cancelled - close dialog with false
+        Navigator.of(context).pop(false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Call cancelled')),
+          );
+        }
+      }
+    }, onError: (error) {
+      debugPrint('❌ Error listening to invitation: $error');
+      if (mounted) {
         Navigator.of(context).pop(false);
       }
     });
@@ -1349,9 +1491,16 @@ class _CallingDialogState extends State<_CallingDialog> {
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () {
-              widget.signalingService.cancelInvitation(widget.invitationId);
-              Navigator.of(context).pop(false);
+            onPressed: () async {
+              try {
+                await widget.signalingService.cancelInvitation(widget.invitationId);
+                debugPrint('✅ Call cancelled by caller');
+              } catch (e) {
+                debugPrint('❌ Error cancelling call: $e');
+              }
+              if (mounted) {
+                Navigator.of(context).pop(false);
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,

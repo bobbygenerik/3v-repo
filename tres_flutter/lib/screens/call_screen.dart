@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/livekit_service.dart';
 import '../services/call_features_coordinator.dart';
+import '../services/call_session_service.dart';
 import '../services/reaction_service.dart';
 import '../services/chat_service.dart' as chat;
 import '../widgets/participant_video.dart';
@@ -12,12 +14,14 @@ class CallScreen extends StatefulWidget {
   final String roomName;
   final String token;
   final String livekitUrl;
+  final CallSessionService? sessionService;
   
   const CallScreen({
     super.key,
     required this.roomName,
     required this.token,
     required this.livekitUrl,
+    this.sessionService,
   });
 
   @override
@@ -48,11 +52,19 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   bool _pipExpanded = false;
   bool _pipSwapped = false;
   
+  // Performance optimizations
+  Timer? _switchDebounce;
+  int _mainSpeakerIndex = 0;
+  final int _maxPips = 6;
+  
   @override
   void initState() {
     super.initState();
     _coordinator = CallFeaturesCoordinator();
     _connectToRoom();
+    
+    // Listen for session end
+    widget.sessionService?.addListener(_handleSessionEnd);
     
     // Start call timer
     Future.doWhile(() async {
@@ -72,9 +84,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       vsync: this,
     );
     
-    // Create staggered animations for 5 buttons
-    // LEFT to RIGHT for both rise and fall (0, 1, 2, 3, 4)
-    _buttonSlideAnimations = List.generate(5, (index) {
+    // Create staggered animations for 7 buttons
+    // LEFT to RIGHT for both rise and fall (0, 1, 2, 3, 4, 5, 6)
+    _buttonSlideAnimations = List.generate(7, (index) {
       final start = index * 0.15; // Left button starts first (0.0, 0.15, 0.3, 0.45, 0.6)
       final end = start + 0.4; // Each animation duration
       return Tween<Offset>(
@@ -105,6 +117,16 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     
     // Start auto-hide timer for controls
     _startControlsHideTimer();
+  }
+  
+  /// Handle session end by other participant
+  void _handleSessionEnd() {
+    debugPrint('📞 Session end event triggered');
+    if (widget.sessionService?.isInCall == false && mounted) {
+      debugPrint('📞 Call ended by another participant - exiting call screen');
+      // Call ended by another participant
+      Navigator.of(context).pop();
+    }
   }
   
   void _startControlsHideTimer() {
@@ -141,8 +163,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     // Initialize coordinator with room (now async)
     if (success && livekit.room != null) {
       await _coordinator.initialize(livekit.room!);
-      // Start collecting stats automatically
-      _coordinator.startStatsCollection();
+      // Don't start stats collection automatically - let user enable it
     }
     
     setState(() => _isConnecting = false);
@@ -218,12 +239,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                     // Reactions panel (slide from left)
                     _buildReactionsPanel(coordinator),
                     
-                    // Local video preview (PIP - repositionable, starts at fixed top-right)
-                    Positioned(
-                      left: _pipPosition?.dx ?? (MediaQuery.of(context).size.width - (_pipExpanded ? 169 : 135) - 16),
-                      top: _pipPosition?.dy ?? 16,
-                      child: _buildLocalVideoPreview(livekit),
-                    ),
+                    // Multiple PIPs for all non-main participants
+                    ..._buildMultiplePIPs(livekit),
                     
                     // Room info (top-left)
                     Positioned(
@@ -232,12 +249,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                       child: _buildRoomInfo(coordinator),
                     ),
                     
-                    // 3-dot menu button (top-right, below local video)
-                    Positioned(
-                      top: 196,
-                      right: 16,
-                      child: _buildMenuButton(coordinator),
-                    ),
+
                     
                     // Stats overlay (if enabled) - positioned below quality pill on left side
                     if (coordinator.isStatsCollecting)
@@ -383,7 +395,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     final livekit = context.read<LiveKitService>();
     final remoteParticipants = livekit.remoteParticipants;
     final callerName = remoteParticipants.isNotEmpty 
-        ? (remoteParticipants.first.name.isNotEmpty ? remoteParticipants.first.name : widget.roomName)
+        ? (remoteParticipants.first.name.isNotEmpty ? remoteParticipants.first.name : remoteParticipants.first.identity)
         : widget.roomName;
     
     return Column(
@@ -474,10 +486,16 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     
     // If PIP is swapped, show local participant in main view
     if (_pipSwapped && livekit.localParticipant != null) {
-      return ParticipantVideo(
-        key: const ValueKey('main-local-swapped'),
-        participant: livekit.localParticipant!,
-        isLocal: true,
+      return GestureDetector(
+        onDoubleTap: _switchToNextParticipant,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: ParticipantVideo(
+            key: const ValueKey('main-local-swapped'),
+            participant: livekit.localParticipant!,
+            isLocal: true,
+          ),
+        ),
       );
     }
     
@@ -497,26 +515,166 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       );
     }
     
-    // For single participant, use full screen without aspect ratio constraint
-    if (remoteParticipants.length == 1) {
-      return ParticipantVideo(
-        key: const ValueKey('main-remote-normal'),
-        participant: remoteParticipants[0],
+    // Show main speaker with smooth transitions
+    return GestureDetector(
+      onDoubleTap: _switchToNextParticipant,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: ParticipantVideo(
+          key: ValueKey('main-speaker-$_mainSpeakerIndex'),
+          participant: remoteParticipants[_mainSpeakerIndex % remoteParticipants.length],
+        ),
+      ),
+    );
+  }
+  
+  void _switchToNextParticipant() {
+    _switchDebounce?.cancel();
+    _switchDebounce = Timer(const Duration(milliseconds: 300), () {
+      final livekit = context.read<LiveKitService>();
+      if (livekit.remoteParticipants.isNotEmpty) {
+        setState(() {
+          _mainSpeakerIndex = (_mainSpeakerIndex + 1) % livekit.remoteParticipants.length;
+        });
+      }
+    });
+  }
+  
+  List<Widget> _buildMultiplePIPs(LiveKitService livekit) {
+    final List<Widget> pips = [];
+    final remoteParticipants = livekit.remoteParticipants;
+    
+    // Always add local participant PIP (smallest)
+    if (livekit.localParticipant != null && !_pipSwapped) {
+      pips.add(
+        Positioned(
+          right: 16,
+          top: 16,
+          child: RepaintBoundary(
+            child: _buildPIPWindow(
+              participant: livekit.localParticipant!,
+              isLocal: true,
+              size: 140, // increased so self-view is more visible
+              showName: false,
+              index: -1,
+            ),
+          ),
+        ),
       );
     }
     
-    // For multiple participants, use grid layout
-    return GridView.builder(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 16 / 9,
-      ),
-      itemCount: remoteParticipants.length,
-      itemBuilder: (context, index) {
-        return ParticipantVideo(
-          participant: remoteParticipants[index],
-        );
+    // Add other remote participants as PIPs (limit to maxPips, skip main speaker)
+    int pipCount = 0;
+    for (int i = 0; i < remoteParticipants.length && pipCount < _maxPips; i++) {
+      if (i == _mainSpeakerIndex) continue; // Skip main speaker
+      
+      final participant = remoteParticipants[i];
+      pips.add(
+        Positioned(
+          right: 16,
+          top: 16 + ((pipCount + (_pipSwapped ? 0 : 1)) * 110),
+          child: RepaintBoundary(
+            child: _buildPIPWindow(
+              participant: participant,
+              isLocal: false,
+              size: 120,
+              showName: true,
+              index: i,
+            ),
+          ),
+        ),
+      );
+      pipCount++;
+    }
+    
+    return pips;
+  }
+  
+  Widget _buildPIPWindow({
+    required dynamic participant,
+    required bool isLocal,
+    required double size,
+    required bool showName,
+    required int index,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        if (isLocal) {
+          setState(() {
+            _pipSwapped = !_pipSwapped;
+          });
+        } else {
+          setState(() {
+            _mainSpeakerIndex = index;
+          });
+        }
       },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: size,
+        height: size * 1.5,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: Colors.white.withOpacity(0.3),
+            width: 2,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            ParticipantVideo(
+              participant: participant,
+              isLocal: isLocal,
+            ),
+            // Enhanced gradient overlay for better text readability
+            if (showName && !isLocal)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.9),
+                        Colors.black.withOpacity(0.6),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
+                  ),
+                  child: Text(
+                    participant.name.isNotEmpty ? participant.name : participant.identity,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black,
+                          offset: Offset(0, 1),
+                          blurRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
   
@@ -537,20 +695,20 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     if (isLandscape) {
       // Landscape: 16:9 ratio (wider than tall)
       if (_pipExpanded) {
-        width = 267; // 16:9 landscape - extra large
-        height = 150;
+        width = 360; // 16:9 landscape - extra large (increased)
+        height = 220;
       } else {
-        width = 213; // 16:9 landscape - default
-        height = 120;
+        width = 300; // 16:9 landscape - default (increased)
+        height = 170;
       }
     } else {
       // Portrait: 9:16 ratio (taller than wide) - DEFAULT
       if (_pipExpanded) {
-        width = 169; // 9:16 portrait - extra large
-        height = 300;
+        width = 220; // 9:16 portrait - extra large (increased)
+        height = 420;
       } else {
-        width = 135; // 9:16 portrait - default
-        height = 240;
+        width = 180; // 9:16 portrait - default (increased)
+        height = 320;
       }
     }
 
@@ -622,43 +780,44 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                 participant: localParticipant,
                 isLocal: true,
               ),
-            // Label at bottom
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.8),
-                      Colors.transparent,
-                    ],
+            // Label at bottom - only show for remote participant when swapped
+            if (_pipSwapped && livekit.remoteParticipants.isNotEmpty)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.8),
+                        Colors.transparent,
+                      ],
+                    ),
                   ),
-                ),
-                child: Text(
-                  _pipSwapped && livekit.remoteParticipants.isNotEmpty
-                      ? (livekit.remoteParticipants.first.name.isNotEmpty ? livekit.remoteParticipants.first.name : 'Remote')
-                      : 'You',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black,
-                        offset: Offset(0, 1),
-                        blurRadius: 2,
-                      ),
-                    ],
+                  child: Text(
+                    livekit.remoteParticipants.first.name.isNotEmpty 
+                        ? livekit.remoteParticipants.first.name 
+                        : livekit.remoteParticipants.first.identity,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black,
+                          offset: Offset(0, 1),
+                          blurRadius: 2,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -666,11 +825,19 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   }
   
   Widget _buildCallControls(LiveKitService livekit, CallFeaturesCoordinator coordinator) {
-    // Button order: Chat, Mic, END CALL (center), Camera, Flip
+    // Button order: Add Person, Chat, Mic, END CALL (center), Camera, Flip, Menu
     final buttons = [
-      // 0: Chat (leftmost)
+      // 0: Add Person (leftmost)
       _buildAnimatedButton(
         index: 0,
+        icon: Icons.person_add,
+        onPressed: _showAddPersonDialog,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        size: 50,
+      ),
+      // 1: Chat
+      _buildAnimatedButton(
+        index: 1,
         icon: Icons.chat_bubble,
         onPressed: coordinator.toggleChat,
         backgroundColor: coordinator.isChatOpen
@@ -681,22 +848,38 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
             ? coordinator.unreadMessageCount.toString()
             : null,
       ),
-      // 1: Mic (left of center)
+      // 2: Mic with pulse animation when muted
       _buildAnimatedButton(
-        index: 1,
+        index: 2,
         icon: livekit.isMicrophoneEnabled ? Icons.mic : Icons.mic_off,
         onPressed: livekit.toggleMicrophone,
         backgroundColor: livekit.isMicrophoneEnabled
             ? Colors.white.withOpacity(0.2)
             : Colors.red.shade600,
         size: 50,
+        pulse: !livekit.isMicrophoneEnabled,
       ),
-      // 2: END CALL (center - larger)
+      // 3: END CALL (center - larger)
       _buildAnimatedButton(
-        index: 2,
+        index: 3,
         icon: Icons.call_end,
         onPressed: () async {
-          await livekit.disconnect();
+          debugPrint('📞 End call button pressed');
+          try {
+            // End session for all participants
+            await widget.sessionService?.endSession();
+            debugPrint('📞 Session ended successfully');
+          } catch (e) {
+            debugPrint('❌ Error ending session: $e');
+          }
+          
+          try {
+            await livekit.disconnect();
+            debugPrint('📞 LiveKit disconnected');
+          } catch (e) {
+            debugPrint('❌ Error disconnecting LiveKit: $e');
+          }
+          
           if (mounted) {
             Navigator.of(context).pop();
           }
@@ -704,9 +887,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         backgroundColor: Colors.red.shade600,
         size: 64, // Larger center button
       ),
-      // 3: Camera (right of center)
+      // 4: Camera
       _buildAnimatedButton(
-        index: 3,
+        index: 4,
         icon: livekit.isCameraEnabled ? Icons.videocam : Icons.videocam_off,
         onPressed: livekit.toggleCamera,
         backgroundColor: livekit.isCameraEnabled
@@ -714,11 +897,19 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
             : Colors.red.shade600,
         size: 50,
       ),
-      // 4: Flip camera (rightmost)
+      // 5: Flip camera
       _buildAnimatedButton(
-        index: 4,
+        index: 5,
         icon: Icons.cameraswitch,
         onPressed: livekit.switchCamera,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        size: 50,
+      ),
+      // 6: Menu (rightmost)
+      _buildAnimatedButton(
+        index: 6,
+        icon: Icons.more_vert,
+        onPressed: () => _showMoreMenu(coordinator),
         backgroundColor: Colors.white.withOpacity(0.2),
         size: 50,
       ),
@@ -740,7 +931,41 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     required Color backgroundColor,
     required double size,
     String? badge,
+    bool pulse = false,
   }) {
+    Widget button = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Icon(
+        icon,
+        color: Colors.white,
+        size: size * 0.5,
+      ),
+    );
+    
+    if (pulse) {
+      button = AnimatedBuilder(
+        animation: _controlsAnimationController,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: 1.0 + (0.1 * (1.0 + math.sin(_controlsAnimationController.value * 2 * math.pi)) / 2),
+            child: child,
+          );
+        },
+        child: button,
+      );
+    }
     return SlideTransition(
       position: _buttonSlideAnimations[index],
       child: Padding(
@@ -755,26 +980,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                 customBorder: const CircleBorder(),
                 splashColor: Colors.white.withOpacity(0.3),
                 highlightColor: Colors.white.withOpacity(0.1),
-                child: Container(
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    color: backgroundColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    icon,
-                    color: Colors.white,
-                    size: size * 0.5,
-                  ),
-                ),
+                child: button,
               ),
             ),
             if (badge != null)
@@ -989,54 +1195,92 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   void _showMoreMenu(CallFeaturesCoordinator coordinator) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFF1C1C1E),
       isScrollControlled: true,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF1C1C1E),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
+        padding: const EdgeInsets.all(16),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
         ),
-        padding: const EdgeInsets.only(bottom: 16),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: Colors.white24, width: 1),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.tune, color: Colors.white),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'More Options',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Call Options',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            
+            // Screen Share
+            ListTile(
+              leading: const Icon(Icons.screen_share, color: Color(0xFF6B7FB8)),
+              title: const Text('Share Screen', style: TextStyle(color: Colors.white)),
+              trailing: Switch(
+                value: coordinator.isScreenSharing,
+                onChanged: (value) async {
+                  await coordinator.toggleScreenShare();
+                  Navigator.pop(context);
+                },
               ),
-              
-              // Feature toggles
-              _buildMenuToggle(
-                icon: Icons.monitor_heart,
-                title: 'Call Health Overlay',
+            ),
+            
+            // Recording
+            ListTile(
+              leading: Icon(
+                coordinator.isRecording ? Icons.stop : Icons.fiber_manual_record,
+                color: coordinator.isRecording ? Colors.red : const Color(0xFF6B7FB8),
+              ),
+              title: Text(
+                coordinator.isRecording ? 'Stop Recording' : 'Start Recording',
+                style: const TextStyle(color: Colors.white),
+              ),
+              onTap: () async {
+                await coordinator.toggleRecording();
+                Navigator.pop(context);
+              },
+            ),
+            
+            // Background Blur
+            ListTile(
+              leading: const Icon(Icons.blur_on, color: Color(0xFF6B7FB8)),
+              title: const Text('Background Blur', style: TextStyle(color: Colors.white)),
+              trailing: Switch(
+                value: coordinator.isBackgroundBlurEnabled,
+                onChanged: (value) async {
+                  await coordinator.toggleBackgroundBlur();
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            
+            // Beauty Filter
+            ListTile(
+              leading: const Icon(Icons.face_retouching_natural, color: Color(0xFF6B7FB8)),
+              title: const Text('Beauty Filter', style: TextStyle(color: Colors.white)),
+              trailing: Switch(
+                value: coordinator.isBeautyFilterEnabled,
+                onChanged: (value) async {
+                  coordinator.toggleBeautyFilter();
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            
+            // AR Filters
+            ListTile(
+              leading: const Icon(Icons.face, color: Color(0xFF6B7FB8)),
+              title: const Text('AR Filters', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _showARFiltersDialog(coordinator);
+              },
+            ),
+            
+            // Call Health Overlay
+            ListTile(
+              leading: const Icon(Icons.monitor_heart, color: Color(0xFF6B7FB8)),
+              title: const Text('Call Health Overlay', style: TextStyle(color: Colors.white)),
+              trailing: Switch(
                 value: coordinator.isStatsCollecting,
                 onChanged: (value) {
                   if (value) {
@@ -1044,185 +1288,178 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                   } else {
                     coordinator.stopStatsCollection();
                   }
-                },
-              ),
-              _buildMenuToggle(
-                icon: Icons.fiber_manual_record,
-                title: 'Recording',
-                value: coordinator.isRecording,
-                onChanged: (value) async {
-                  await coordinator.toggleRecording();
-                },
-              ),
-              _buildMenuToggle(
-                icon: Icons.screen_share,
-                title: 'Screen Share',
-                value: coordinator.isScreenSharing,
-                onChanged: (value) async {
-                  await coordinator.toggleScreenShare();
-                },
-              ),
-              _buildMenuToggle(
-                icon: Icons.blur_on,
-                title: 'Background Blur',
-                value: coordinator.isBackgroundBlurEnabled,
-                onChanged: (value) async {
-                  await coordinator.toggleBackgroundBlur();
-                },
-              ),
-              _buildMenuToggle(
-                icon: Icons.face_retouching_natural,
-                title: 'Beauty Filter',
-                value: coordinator.isBeautyFilterEnabled,
-                onChanged: (value) {
-                  coordinator.toggleBeautyFilter();
-                },
-              ),
-              _buildMenuToggle(
-                icon: Icons.noise_control_off,
-                title: 'AI Noise Cancellation',
-                value: coordinator.isAiNoiseCancellationEnabled,
-                onChanged: (value) {
-                  coordinator.toggleAiNoiseCancellation();
-                },
-              ),
-              _buildMenuToggle(
-                icon: Icons.spatial_audio,
-                title: 'Spatial Audio',
-                value: coordinator.isSpatialAudioEnabled,
-                onChanged: (value) {
-                  coordinator.toggleSpatialAudio();
-                },
-              ),
-              
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildMenuToggle({
-    required IconData icon,
-    required String title,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return SwitchListTile(
-      secondary: Icon(icon, color: Colors.white),
-      title: Text(title, style: const TextStyle(color: Colors.white)),
-      value: value,
-      onChanged: onChanged,
-      activeThumbColor: Colors.blue,
-    );
-  }
-  
-  void _showArFilterPicker(CallFeaturesCoordinator coordinator) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.black87,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'AR Filters',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            ...ArFilters.all.map((filter) {
-              return ListTile(
-                title: Text(
-                  ArFilters.getDisplayName(filter),
-                  style: const TextStyle(color: Colors.white),
-                ),
-                trailing: coordinator.activeArFilter == filter
-                    ? const Icon(Icons.check, color: Colors.blue)
-                    : null,
-                onTap: () {
-                  coordinator.setArFilter(filter);
                   Navigator.pop(context);
                 },
-              );
-            }),
-            const SizedBox(height: 16),
+              ),
+            ),
+            
+
+            
+
           ],
         ),
       ),
     );
   }
   
-  void _showLayoutModePicker(CallFeaturesCoordinator coordinator) {
-    showModalBottomSheet(
+  String _getQualityText(int score) {
+    if (score >= 80) return 'Excellent';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Fair';
+    return 'Poor';
+  }
+  
+  void _showAddPersonDialog() {
+    final TextEditingController emailController = TextEditingController();
+    
+    showDialog(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.black87,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        title: const Text('Add Person to Call', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: emailController,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Enter email address',
+            hintStyle: TextStyle(color: Colors.white60),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF6B7FB8)),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF6B7FB8)),
+            ),
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'Layout Mode',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            ...LayoutMode.values.map((mode) {
-              return ListTile(
-                title: Text(
-                  mode.name.toUpperCase(),
-                  style: const TextStyle(color: Colors.white),
-                ),
-                trailing: coordinator.layoutMode == mode
-                    ? const Icon(Icons.check, color: Colors.blue)
-                    : null,
-                onTap: () {
-                  coordinator.setLayoutMode(mode);
-                  Navigator.pop(context);
-                },
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          TextButton(
+            onPressed: () {
+              // TODO: Implement add person functionality
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Add person feature coming soon')),
               );
-            }),
-            const SizedBox(height: 16),
-          ],
-        ),
+            },
+            child: const Text('Add', style: TextStyle(color: Color(0xFF6B7FB8))),
+          ),
+        ],
       ),
     );
   }
+  
+  void _showARFiltersDialog(CallFeaturesCoordinator coordinator) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        title: const Text('AR Filters', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Choose an AR filter to apply to your video',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('AR filters coming soon')),
+              );
+            },
+            child: const Text('Apply', style: TextStyle(color: Color(0xFF6B7FB8))),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showGridLayoutOptions(CallFeaturesCoordinator coordinator) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        title: const Text('Grid Layout', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Adjust how participants are displayed',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close', style: TextStyle(color: Color(0xFF6B7FB8))),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showNetworkInfo(CallFeaturesCoordinator coordinator) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        title: const Text('Network Quality', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Quality Score: ${coordinator.qualityScore}%',
+              style: const TextStyle(color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Status: ${_getQualityText(coordinator.qualityScore)}',
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close', style: TextStyle(color: Color(0xFF6B7FB8))),
+          ),
+        ],
+      ),
+    );
+  }
+  
+
   
   @override
   void dispose() {
     _controlsHideTimer?.cancel();
-    _coordinator.cleanup(); // Fire and forget async cleanup
+    _switchDebounce?.cancel();
+    widget.sessionService?.removeListener(_handleSessionEnd);
+    
+    // Dispose video tracks for memory management
+    final livekit = context.read<LiveKitService>();
+    livekit.remoteParticipants.forEach((participant) {
+      participant.videoTrackPublications.forEach((pub) {
+        pub.track?.dispose();
+      });
+    });
+    livekit.localParticipant?.videoTrackPublications.forEach((pub) {
+      pub.track?.dispose();
+    });
+    
+    // Proper async cleanup
+    _coordinator.cleanup().catchError((e) => debugPrint('Cleanup error: $e'));
+    
     _chatController.dispose();
     _controlsAnimationController.dispose();
     _reactionsAnimationController.dispose();
-    final livekit = context.read<LiveKitService>();
+    
+    // Disconnect LiveKit properly
     livekit.disconnect();
+    
     super.dispose();
   }
 }

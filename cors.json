@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://tres3.web.app", "https://tres3.firebaseapp.com", "http://localhost:*"],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Access-Control-Allow-Origin"]
+  }
+]

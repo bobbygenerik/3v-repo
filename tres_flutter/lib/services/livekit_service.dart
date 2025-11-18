@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
-export 'package:livekit_client/livekit_client.dart';
+import 'network_quality_service.dart';
+import 'device_capability_service.dart';
 
 /// LiveKit service managing room connections and participant tracks
 /// Mirrors functionality from Android LiveKitManager.kt
@@ -26,6 +27,48 @@ class LiveKitService extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
   
+  final NetworkQualityService _networkService = NetworkQualityService();
+  
+  // Detect device capability on service creation
+  LiveKitService() {
+    DeviceCapabilityService.detectCapability();
+  }
+  
+  /// Get optimal video encoding with enhanced codec optimization
+  VideoEncoding _getOptimalVideoEncoding() {
+    // Get device capability limits (now with increased bitrates)
+    final deviceMaxBitrate = DeviceCapabilityService.getMaxVideoBitrate();
+    final deviceMaxFramerate = DeviceCapabilityService.getMaxFramerate();
+    final preferredCodec = DeviceCapabilityService.getCodecPreference();
+    
+    // Get network recommendation
+    final networkBitrate = _networkService.getRecommendedVideoBitrate();
+    
+    // Use the MINIMUM of device capability and network quality
+    final finalBitrate = deviceMaxBitrate < networkBitrate 
+        ? deviceMaxBitrate 
+        : networkBitrate;
+    
+    final finalFramerate = networkBitrate < 600000 
+        ? (deviceMaxFramerate * 0.8).toInt()
+        : deviceMaxFramerate;
+    
+    debugPrint('🎥 Video encoding: ${finalBitrate}bps, ${finalFramerate}fps, codec: $preferredCodec');
+    
+    if (kIsWeb) {
+      // Web: VP9 optimization for better compression
+      return VideoEncoding(
+        maxBitrate: preferredCodec == 'VP9' ? finalBitrate : (finalBitrate * 0.8).toInt(),
+        maxFramerate: finalFramerate,
+      );
+    }
+    
+    return VideoEncoding(
+      maxBitrate: finalBitrate,
+      maxFramerate: finalFramerate,
+    );
+  }
+  
   /// Connect to LiveKit room
   /// Returns true if connection successful
   Future<bool> connect({
@@ -42,32 +85,37 @@ class LiveKitService extends ChangeNotifier {
       // Set up event listeners before connecting
       _setupRoomListeners();
       
+      // Start network monitoring
+      _networkService.startMonitoring();
+      
       // Connect to room
       await _room!.connect(
         url,
         token,
         roomOptions: RoomOptions(
           defaultCameraCaptureOptions: CameraCaptureOptions(
-            maxFrameRate: 30,
-            params: VideoParametersPresets.h1080_169, // Full HD for better quality
+            maxFrameRate: DeviceCapabilityService.getMaxFramerate().toDouble(),
+            params: DeviceCapabilityService.shouldUse1080p() 
+                ? VideoParametersPresets.h1080_169 
+                : VideoParametersPresets.h720_169,
           ),
+          // Enhanced adaptive streaming and codec selection already enabled
           defaultScreenShareCaptureOptions: ScreenShareCaptureOptions(
-            maxFrameRate: 30, // Increased from 15 for smoother screen share
-            params: VideoParametersPresets.h1080_169,
+            maxFrameRate: 15,
+            params: VideoParametersPresets.h720_169,
           ),
           defaultAudioCaptureOptions: AudioCaptureOptions(
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
+            // Use Opus codec for better cross-platform audio
+            // Lower sample rate for better compatibility
           ),
           defaultVideoPublishOptions: VideoPublishOptions(
-            videoEncoding: VideoEncoding(
-              maxBitrate: 3000 * 1000, // Increased to 3 Mbps for better quality
-              maxFramerate: 30,
-            ),
+            videoEncoding: _getOptimalVideoEncoding(),
           ),
           defaultAudioPublishOptions: AudioPublishOptions(
-            audioBitrate: 64 * 1000, // 64 kbps
+            audioBitrate: _networkService.getRecommendedAudioBitrate(),
           ),
           adaptiveStream: true,
           dynacast: true,
@@ -90,6 +138,8 @@ class LiveKitService extends ChangeNotifier {
   /// Disconnect from room and cleanup
   Future<void> disconnect() async {
     try {
+      _networkService.stopMonitoring();
+      
       await _localVideoTrack?.stop();
       await _localAudioTrack?.stop();
       
@@ -118,9 +168,11 @@ class LiveKitService extends ChangeNotifier {
       if (_localVideoTrack == null) {
         debugPrint('📹 Creating new camera track...');
         _localVideoTrack = await LocalVideoTrack.createCameraTrack(
-          const CameraCaptureOptions(
-            maxFrameRate: 30,
-            params: VideoParametersPresets.h1080_169, // Full HD for better quality
+          CameraCaptureOptions(
+            maxFrameRate: DeviceCapabilityService.getMaxFramerate().toDouble(),
+            params: DeviceCapabilityService.shouldUse1080p() 
+                ? VideoParametersPresets.h1080_169 
+                : VideoParametersPresets.h720_169,
           ),
         );
         debugPrint('✅ Camera track created: ${_localVideoTrack?.sid}');

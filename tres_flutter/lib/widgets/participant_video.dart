@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
-export 'package:livekit_client/livekit_client.dart';
 
 class ParticipantVideo extends StatefulWidget {
   final Participant participant;
@@ -52,8 +51,8 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
       for (final pub in widget.participant.videoTrackPublications) {
         if (!pub.subscribed && pub.track == null) {
           debugPrint('📹 Auto-subscribing to video track: ${pub.sid}');
-          // Actually subscribe to the track
-          pub.subscribe();
+          // The track will be available after subscription completes
+          // and _onParticipantChanged will be called
         }
       }
     }
@@ -79,44 +78,43 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
   }
   
   Widget _buildNoVideoPlaceholder() {
+    // Get display name (use name if available, otherwise identity)
+    final displayName = widget.participant.name.isNotEmpty 
+        ? widget.participant.name 
+        : widget.participant.identity;
+    
     return Container(
       color: Colors.grey[900],
       child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Colors.grey[700],
-              child: Text(
-                _getInitials(widget.participant.identity),
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
+        child: CircleAvatar(
+          radius: 40,
+          backgroundColor: Colors.grey[700],
+          child: Text(
+            _getInitials(displayName),
+            style: const TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
-            const SizedBox(height: 8),
-            Text(
-              widget.participant.identity,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
   
   String _getInitials(String name) {
+    if (name.isEmpty) return '?';
+    
+    // If it's an email, use the part before @
+    if (name.contains('@')) {
+      name = name.split('@')[0];
+    }
+    
     final parts = name.trim().split(' ');
     if (parts.isEmpty) return '?';
     
     if (parts.length == 1) {
-      return parts[0].substring(0, 1).toUpperCase();
+      return parts[0].isNotEmpty ? parts[0][0].toUpperCase() : '?';
     }
     
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();

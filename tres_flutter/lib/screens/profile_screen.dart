@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:typed_data';
-import 'dart:html' as html;
+// import 'dart:html' as html;
 import 'dart:ui' as ui;
 
 class ProfileScreen extends StatefulWidget {
@@ -65,28 +65,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _uploadPhoto() async {
     try {
-      // Use native HTML file picker for web
-      final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
-      uploadInput.accept = 'image/*';
-      uploadInput.click();
-
-      await uploadInput.onChange.first;
-      final files = uploadInput.files;
+      // Mobile image upload not implemented
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Image upload not available on mobile')),
+      );
+      return;
       
-      if (files == null || files.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No image selected')),
-          );
-        }
-        return;
-      }
-
-      // Read file as bytes
-      final reader = html.FileReader();
-      reader.readAsArrayBuffer(files[0]);
-      await reader.onLoad.first;
-      final bytes = reader.result as Uint8List;
+      final bytes = Uint8List(0); // Placeholder
 
       // Show crop dialog
       if (!mounted) return;

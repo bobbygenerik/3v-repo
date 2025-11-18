@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart' as widgets;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'config/environment.dart';
 import 'config/app_theme.dart';
-import 'screens/splash_screen.dart';
+
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
 import 'services/livekit_service.dart';
 import 'services/guest_link_service.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +21,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize notifications (non-blocking)
+  NotificationService.initialize();
   
   // Print environment configuration in debug mode
   Environment.printConfig();
@@ -44,9 +49,9 @@ class TresApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GuestLinkService()),
       ],
       child: MaterialApp(
-        title: 'Tres',
+        title: 'Três3',
         theme: AppTheme.darkTheme,
-        home: const SplashScreen(),
+        home: const AuthWrapper(),
         debugShowCheckedModeBanner: false,
       ),
     );
@@ -62,7 +67,7 @@ class AuthWrapper extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         // Show loading while checking auth state
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == widgets.ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: AppColors.backgroundDark,
             body: Center(
