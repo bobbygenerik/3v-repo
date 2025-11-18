@@ -3,10 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:typed_data';
-// import 'dart:html' as html;
+import 'dart:html' as html;
 import 'dart:ui' as ui;
-import 'package:image_picker/image_picker.dart';
-import '../widgets/avatar.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -67,30 +65,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _uploadPhoto() async {
     try {
-      // Mobile image upload flow
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 2000,
-        maxHeight: 2000,
-        imageQuality: 85,
-      );
+      // Use native HTML file picker for web
+      final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+      uploadInput.accept = 'image/*';
+      uploadInput.click();
 
-      if (picked == null) {
+      await uploadInput.onChange.first;
+      final files = uploadInput.files;
+      
+      if (files == null || files.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Photo upload cancelled')),
+            const SnackBar(content: Text('No image selected')),
           );
         }
         return;
       }
 
-      final bytes = await picked.readAsBytes();
+      // Read file as bytes
+      final reader = html.FileReader();
+      reader.readAsArrayBuffer(files[0]);
+      await reader.onLoad.first;
+      final bytes = reader.result as Uint8List;
 
-      // Allow user to crop (reuses web crop dialog)
+      // Show crop dialog
       if (!mounted) return;
       final croppedBytes = await _showCropDialog(bytes);
-
+      
       if (croppedBytes == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -219,14 +220,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             width: 4,
                           ),
                         ),
-                        child: Avatar(
-                              url: user?.photoURL,
-                              radius: 80,
-                              initials: (user?.displayName?.isNotEmpty == true
-                                  ? user!.displayName![0].toUpperCase()
-                                  : user?.email?[0].toUpperCase() ?? 'U'),
-                              enableLogging: true,
-                            ),
+                        child: CircleAvatar(
+                          radius: 80,
+                          backgroundColor: const Color(0xFF2C2C2E),
+                          backgroundImage: user?.photoURL != null && user!.photoURL!.isNotEmpty
+                              ? NetworkImage(user.photoURL!) 
+                              : null,
+                          child: user?.photoURL == null || user!.photoURL!.isEmpty
+                              ? Text(
+                                  (user?.displayName?.isNotEmpty == true
+                                      ? user!.displayName![0].toUpperCase()
+                                      : user?.email?[0].toUpperCase() ?? 'U'),
+                                  style: const TextStyle(
+                                    fontSize: 48,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : null,
+                        ),
                       ),
                     ),
                     

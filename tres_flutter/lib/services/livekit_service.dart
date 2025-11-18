@@ -1,12 +1,7 @@
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
-import 'package:livekit_client/livekit_client.dart' show VideoParametersPresets;
 import 'package:livekit_client/livekit_client.dart';
 import 'network_quality_service.dart';
 import 'device_capability_service.dart';
-
-/// Capture profile enum for runtime adaptation
-enum CaptureProfile { high, medium, low }
 
 /// LiveKit service managing room connections and participant tracks
 /// Mirrors functionality from Android LiveKitManager.kt
@@ -33,59 +28,10 @@ class LiveKitService extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   
   final NetworkQualityService _networkService = NetworkQualityService();
-
-  // Expose network service for external monitors
-  NetworkQualityService get networkService => _networkService;
   
   // Detect device capability on service creation
   LiveKitService() {
-    // Start async detection (non-blocking) to refine capability
     DeviceCapabilityService.detectCapability();
-    DeviceCapabilityService.detectCapabilityAsync();
-  }
-
-  /// Capture profiles for adaptive switching
-  /// High: high resolution/framerate/bitrate
-  /// Medium: balanced
-  /// Low: lowest for stability
-  ///
-  /// Note: applyCaptureProfile will re-create local camera track when possible.
-  Future<void> applyCaptureProfile(CaptureProfile profile) async {
-    try {
-      if (_room == null) return;
-
-      CameraCaptureOptions options;
-      switch (profile) {
-        case CaptureProfile.high:
-          options = CameraCaptureOptions(
-            maxFrameRate: DeviceCapabilityService.getMaxFramerate().toDouble(),
-            params: DeviceCapabilityService.shouldUse1080p()
-                ? VideoParametersPresets.h1080_169
-                : VideoParametersPresets.h720_169,
-          );
-          break;
-        case CaptureProfile.medium:
-          options = CameraCaptureOptions(
-            maxFrameRate: math.min(30, DeviceCapabilityService.getMaxFramerate()).toDouble(),
-            params: VideoParametersPresets.h720_169,
-          );
-          break;
-        case CaptureProfile.low:
-          options = CameraCaptureOptions(
-            maxFrameRate: math.min(18, DeviceCapabilityService.getMaxFramerate()).toDouble(),
-            params: VideoParametersPresets.h360_169,
-          );
-      }
-
-      // Recreate track with new options
-      await _localVideoTrack?.stop();
-      _localVideoTrack = await LocalVideoTrack.createCameraTrack(options);
-      await _room!.localParticipant?.publishVideoTrack(_localVideoTrack!);
-      notifyListeners();
-      debugPrint('🎯 Applied capture profile: $profile');
-    } catch (e) {
-      debugPrint('❌ Failed to apply capture profile: $e');
-    }
   }
   
   /// Get optimal video encoding with enhanced codec optimization
@@ -99,17 +45,13 @@ class LiveKitService extends ChangeNotifier {
     final networkBitrate = _networkService.getRecommendedVideoBitrate();
     
     // Use the MINIMUM of device capability and network quality
-    // Choose the minimum of device capability and network recommendation
-    var finalBitrate = deviceMaxBitrate < networkBitrate ? deviceMaxBitrate : networkBitrate;
-    var finalFramerate = networkBitrate < 600000
-      ? (deviceMaxFramerate * 0.8).toInt()
-      : deviceMaxFramerate;
-
-    // Be more conservative on low-end devices
-    if (DeviceCapabilityService.capability == DeviceCapability.lowEnd) {
-      finalBitrate = (finalBitrate * 0.5).toInt(); // reduce bitrate further
-      finalFramerate = math.min(finalFramerate, 18); // cap framerate for CPU savings
-    }
+    final finalBitrate = deviceMaxBitrate < networkBitrate 
+        ? deviceMaxBitrate 
+        : networkBitrate;
+    
+    final finalFramerate = networkBitrate < 600000 
+        ? (deviceMaxFramerate * 0.8).toInt()
+        : deviceMaxFramerate;
     
     debugPrint('🎥 Video encoding: ${finalBitrate}bps, ${finalFramerate}fps, codec: $preferredCodec');
     
@@ -153,11 +95,9 @@ class LiveKitService extends ChangeNotifier {
         roomOptions: RoomOptions(
           defaultCameraCaptureOptions: CameraCaptureOptions(
             maxFrameRate: DeviceCapabilityService.getMaxFramerate().toDouble(),
-            params: DeviceCapabilityService.capability == DeviceCapability.lowEnd
-                ? VideoParametersPresets.h360_169
-                : (DeviceCapabilityService.shouldUse1080p()
-                    ? VideoParametersPresets.h1080_169
-                    : VideoParametersPresets.h720_169),
+            params: DeviceCapabilityService.shouldUse1080p() 
+                ? VideoParametersPresets.h1080_169 
+                : VideoParametersPresets.h720_169,
           ),
           // Enhanced adaptive streaming and codec selection already enabled
           defaultScreenShareCaptureOptions: ScreenShareCaptureOptions(

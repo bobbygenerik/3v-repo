@@ -13,6 +13,9 @@ import 'services/auth_service.dart';
 import 'services/livekit_service.dart';
 import 'services/guest_link_service.dart';
 import 'services/notification_service.dart';
+import 'firebase_background_handler.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,8 +25,29 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   
+  // Register background message handler BEFORE calling runApp
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
   // Initialize notifications (non-blocking)
   NotificationService.initialize();
+
+  // Ensure local notification plugin has a channel for calls (Android)
+  try {
+    final flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'call_channel',
+      'Calls',
+      description: 'Incoming call notifications',
+      importance: Importance.high,
+    );
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+  } catch (e) {
+    // ignore
+  }
   
   // Print environment configuration in debug mode
   Environment.printConfig();

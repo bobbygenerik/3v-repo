@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import '../config/app_theme.dart';
 import '../services/call_signaling_service.dart';
-import '../services/call_session_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../widgets/avatar.dart';
 import 'call_screen.dart';
 
 class IncomingCallScreen extends StatefulWidget {
@@ -91,21 +88,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
       final myToken = response.data['token'] as String;
       debugPrint('✅ Got recipient token');
       
-
       // Mark invitation as accepted in Firestore
       await _signalingService.acceptInvitation(widget.invitationId);
-
-      // Start or join the call session so we listen for session end events
-      CallSessionService? sessionService;
-      try {
-        final currentUser = FirebaseAuth.instance.currentUser;
-        if (currentUser != null) {
-          sessionService = CallSessionService();
-          await sessionService.startSession(widget.roomName, [currentUser.uid, widget.callerId]);
-        }
-      } catch (sessionErr) {
-        debugPrint('❌ Error starting/joining session on accept: $sessionErr');
-      }
 
       if (!mounted) return;
 
@@ -117,7 +101,6 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
             roomName: widget.roomName,
             token: myToken, // Use our own generated token
             livekitUrl: widget.livekitUrl,
-            sessionService: sessionService,
           ),
         ),
       );
@@ -183,13 +166,24 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                     ),
                   ],
                 ),
-                child: Avatar(
-                  url: widget.callerPhotoUrl,
+                child: CircleAvatar(
                   radius: 76,
-                  initials: widget.callerName.isNotEmpty
-                      ? widget.callerName[0].toUpperCase()
-                      : '?',
-                  enableLogging: true,
+                  backgroundColor: AppColors.primaryBlue,
+                  backgroundImage: widget.callerPhotoUrl != null
+                      ? NetworkImage(widget.callerPhotoUrl!)
+                      : null,
+                  child: widget.callerPhotoUrl == null
+                      ? Text(
+                          widget.callerName.isNotEmpty
+                              ? widget.callerName[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            fontSize: 70,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        )
+                      : null,
                 ),
               ),
             ),

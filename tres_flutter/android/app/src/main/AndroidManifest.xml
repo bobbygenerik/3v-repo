@@ -33,7 +33,7 @@
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:usesCleartextTraffic="false">
+            android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -71,6 +71,24 @@
                     android:host="join"/>
             </intent-filter>
         </activity>
+            
+            <activity
+                android:name="com.example.tres3.tres_flutter.FullScreenCallActivity"
+                android:exported="true"
+                android:showWhenLocked="true"
+                android:turnScreenOn="true"
+                android:excludeFromRecents="true"
+                android:theme="@style/Theme.Tres_FullScreenCall" />
+            
+            <service
+                android:name="com.example.tres3.tres_flutter.MyFirebaseMessagingService"
+                android:exported="false">
+                <intent-filter>
+                    <action android:name="com.google.firebase.MESSAGING_EVENT" />
+                </intent-filter>
+            </service>
+
+            <receiver android:name="com.example.tres3.tres_flutter.CallActionReceiver" android:exported="false" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

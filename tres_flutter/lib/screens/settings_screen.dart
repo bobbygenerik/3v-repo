@@ -38,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // AI Features
   bool _handGestures = false;
   bool _emotionDetection = false;
+  bool _liveCaptions = false;
   
   // UI & Interaction
   String _defaultGridLayout = 'auto';
@@ -85,6 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // AI Features
           _handGestures = _prefs.getBool('hand_gestures') ?? false;
           _emotionDetection = _prefs.getBool('emotion_detection') ?? false;
+          _liveCaptions = _prefs.getBool('live_captions') ?? false;
           
           // UI & Interaction
           _defaultGridLayout = _prefs.getString('default_grid_layout') ?? 'auto';
@@ -320,7 +322,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _saveSetting('emotion_detection', value);
             },
           ),
-          // Live captions removed — transcription feature disabled to avoid external API costs
+          _buildSwitchTile(
+            title: 'Live Captions (Auto-enable)',
+            subtitle: 'Real-time speech-to-text (requires OpenAI key)',
+            value: _liveCaptions,
+            onChanged: (value) {
+              setState(() => _liveCaptions = value);
+              _saveSetting('live_captions', value);
+            },
+          ),
           
           // UI & Interaction
           _buildSectionHeader('UI & Interaction'),

@@ -163,13 +163,10 @@ exports.sendCallNotification = functions.firestore.onDocumentCreated(
       
       console.log(`Sending push notification to FCM token: ${fcmToken.substring(0, 20)}...`);
       
-      // Optimized message for fastest delivery
+      // Send data-only message to ensure MyFirebaseMessagingService.onMessageReceived() is called
+      // even when app is in background/killed. This allows us to show full-screen intent.
       const message = {
         token: fcmToken,
-        notification: {
-          title: `${callData.fromUserName} is calling`,
-          body: 'Tap to answer'
-        },
         data: {
           type: 'call_invite',
           invitationId: signalId,
@@ -178,36 +175,19 @@ exports.sendCallNotification = functions.firestore.onDocumentCreated(
           roomName: callData.roomName,
           url: callData.url,
           token: callData.token,
-          timestamp: Date.now().toString()
+          timestamp: (callData.timestamp || new Date()).toString()
         },
         android: {
           priority: 'high',
-          ttl: 30000, // 30 seconds
-          notification: {
-            channel_id: 'call_notifications',
-            priority: 'max',
-            visibility: 'public'
-          }
-        },
-        webpush: {
-          headers: {
-            Urgency: 'high'
-          },
-          notification: {
-            requireInteraction: true,
-            tag: 'incoming-call'
-          }
+          // Data messages with high priority are delivered immediately
+          // even when device is in Doze mode
+          ttl: 60 * 1000 // 60 seconds TTL for call invitations
         }
       };
       
-      // Send notification with timeout for faster failure detection
-      const response = await Promise.race([
-        admin.messaging().send(message),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('FCM timeout')), 5000)
-        )
-      ]);
-      console.log(`✅ Push notification sent: ${response}`);
+      // Send the notification
+      const response = await admin.messaging().send(message);
+      console.log(`✅ Push notification sent successfully: ${response}`);
       
       return response;
       
@@ -232,31 +212,26 @@ exports.cleanupOldCallSignals = functions.scheduler.onSchedule(
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
       const db = admin.firestore();
       
-      // Use collection group query for better performance
-      const oldSignalsQuery = db.collectionGroup('callSignals')
-        .where('timestamp', '<', oneHourAgo)
-        .limit(500);
-      
+      // Get all users
+      const usersSnapshot = await db.collection('users').get();
       let totalDeleted = 0;
-      let hasMore = true;
       
-      while (hasMore) {
-        const oldSignals = await oldSignalsQuery.get();
-        hasMore = oldSignals.size === 500;
+      for (const userDoc of usersSnapshot.docs) {
+        const oldSignals = await db
+          .collection('users')
+          .doc(userDoc.id)
+          .collection('callSignals')
+          .where('timestamp', '<', oneHourAgo)
+          .get();
         
-        if (oldSignals.empty) break;
+        // Delete old signals in batches
+        const batch = db.batch();
+        oldSignals.forEach(doc => {
+          batch.delete(doc.ref);
+          totalDeleted++;
+        });
         
-        // Delete in smaller batches to avoid timeout
-        const batchSize = 100;
-        for (let i = 0; i < oldSignals.docs.length; i += batchSize) {
-          const batch = db.batch();
-          const batchDocs = oldSignals.docs.slice(i, i + batchSize);
-          
-          batchDocs.forEach(doc => {
-            batch.delete(doc.ref);
-            totalDeleted++;
-          });
-          
+        if (oldSignals.size > 0) {
           await batch.commit();
         }
       }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../widgets/avatar.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
@@ -10,7 +9,6 @@ import '../services/guest_link_service.dart';
 import '../services/call_listener_service.dart';
 import '../services/call_signaling_service.dart';
 import '../services/call_session_service.dart';
-import '../services/notification_service.dart';
 import '../widgets/responsive_container.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
@@ -34,7 +32,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   bool _isLoadingContacts = true;
   bool _isLoadingHistory = true;
   bool _searchHasFocus = false;
-  bool _showNotificationPrompt = false;
   
   // Call services
   final CallListenerService _callListener = CallListenerService();
@@ -102,12 +99,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _textAnimationController.forward().then((_) {
       setState(() => _hasAnimated = true);
     });
-    
-    // Check notification permissions
-    _checkNotificationPermissions();
-    
-    // Ensure FCM token is saved
-    _ensureFCMToken();
   }
   
   /// Handle incoming call notifications
@@ -175,48 +166,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
   }
 
-  Future<void> _checkNotificationPermissions() async {
-    final enabled = await NotificationService.areNotificationsEnabled();
-    if (!enabled && mounted) {
-      setState(() {
-        _showNotificationPrompt = true;
-      });
-    }
-  }
-  
-  Future<void> _enableNotifications() async {
-    final enabled = await NotificationService.enableNotifications();
-    if (enabled) {
-      setState(() {
-        _showNotificationPrompt = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notifications enabled!')),
-        );
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enable notifications in your browser settings')),
-        );
-      }
-    }
-  }
-  
-  Future<void> _ensureFCMToken() async {
-    try {
-      final enabled = await NotificationService.areNotificationsEnabled();
-      if (enabled) {
-        // Force refresh FCM token
-        await NotificationService.enableNotifications();
-        debugPrint('✅ FCM token refreshed on startup');
-      }
-    } catch (e) {
-      debugPrint('⚠️ Error refreshing FCM token: $e');
-    }
-  }
-
+  @override
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -239,54 +189,47 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           .collection('users')
           .doc(currentUser.uid)
           .collection('contacts')
-          .limit(50) // Limit initial load
           .get();
 
-      // Batch load user data for better performance
-      final List<String> contactUids = contactsSnapshot.docs.map((doc) => doc.id).toList();
-      // Deduplicate contact UIDs in case duplicate docs/ids exist in Firestore
-      final List<String> uniqueContactUids = contactUids.toSet().toList();
+      // Get full user data for each contact
       final List<Map<String, dynamic>> loadedContacts = [];
-      final Set<String> seenUids = <String>{};
       
-      // Process in chunks to avoid overwhelming Firestore
-      const chunkSize = 10;
-      for (int i = 0; i < uniqueContactUids.length; i += chunkSize) {
-        final chunk = uniqueContactUids.skip(i).take(chunkSize);
-        final futures = chunk.map((uid) => 
-          FirebaseFirestore.instance.collection('users').doc(uid).get()
-        );
-        
-        final results = await Future.wait(futures, eagerError: false);
-        
-        for (int j = 0; j < results.length; j++) {
-          final userDoc = results[j];
+      for (var contactDoc in contactsSnapshot.docs) {
+        final contactUid = contactDoc.id;
+        try {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(contactUid)
+              .get();
+          
           if (userDoc.exists) {
             final data = userDoc.data();
-            final uid = chunk.elementAt(j);
-            if (data != null && !seenUids.contains(uid)) {
-              seenUids.add(uid);
+            if (data != null) {
+              final photoURL = data['photoURL'];
+              debugPrint('📸 Contact ${data['displayName']}: photoURL = "$photoURL" (type: ${photoURL.runtimeType})');
               loadedContacts.add({
-                'uid': uid,
+                'uid': contactUid,
                 'name': data['displayName'] ?? data['name'] ?? 'Unknown',
                 'email': data['email'] ?? '',
                 'photoURL': data['photoURL'],
               });
+            } else {
+              debugPrint('⚠️ Contact $contactUid exists but has no data');
             }
           }
+        } catch (e) {
+          debugPrint('Error loading contact $contactUid: $e');
         }
       }
 
-      if (mounted) {
-        setState(() {
-          _contacts = loadedContacts;
-          _filteredContacts = _contacts;
-          _isLoadingContacts = false;
-        });
-      }
+      setState(() {
+        _contacts = loadedContacts;
+        _filteredContacts = _contacts;
+        _isLoadingContacts = false;
+      });
     } catch (e) {
       debugPrint('Error loading contacts: $e');
-      if (mounted) setState(() => _isLoadingContacts = false);
+      setState(() => _isLoadingContacts = false);
     }
   }
 
@@ -449,11 +392,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           width: 2,
                         ),
                       ),
-                      child: Avatar(
-                        url: user?.photoURL,
+                      child: CircleAvatar(
                         radius: 20,
-                        initials: _getUserInitial(user),
-                        enableLogging: true,
+                        backgroundColor: const Color(0xFF2C2C2E),
+                        backgroundImage: (user?.photoURL != null && user!.photoURL!.isNotEmpty)
+                            ? NetworkImage(user.photoURL!)
+                            : null,
+                        child: (user?.photoURL == null || user!.photoURL!.isEmpty)
+                            ? Text(
+                                _getUserInitial(user),
+                                style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                              )
+                            : null,
                       ),
                     ),
                   ),
@@ -508,51 +458,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
             const SizedBox(height: 32),
 
-            // Notification Permission Prompt
-            if (_showNotificationPrompt)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2C2C2E),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF6B7FB8), width: 1),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.notifications, color: Color(0xFF6B7FB8), size: 24),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Enable Notifications',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-                            ),
-                            Text(
-                              'Get notified when someone calls you',
-                              style: TextStyle(color: Color(0xFF8E8E93), fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _enableNotifications,
-                        child: const Text('Enable', style: TextStyle(color: Color(0xFF6B7FB8))),
-                      ),
-                      IconButton(
-                        onPressed: () => setState(() => _showNotificationPrompt = false),
-                        icon: const Icon(Icons.close, color: Color(0xFF8E8E93), size: 20),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            if (_showNotificationPrompt) const SizedBox(height: 16),
-
-            // Search Box
+            // Search Box - EXACT match to screenshot
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Container(
@@ -783,11 +689,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           child: Row(
             children: [
               // Large avatar
-              Avatar(
-                url: contact['photoURL']?.toString(),
+              CircleAvatar(
                 radius: 28,
-                initials: contact['name'][0].toUpperCase(),
-                enableLogging: true,
+                backgroundColor: const Color(0xFF6B7FB8),
+                backgroundImage: contact['photoURL'] != null && contact['photoURL'].toString().isNotEmpty
+                    ? NetworkImage(contact['photoURL'])
+                    : null,
+                child: contact['photoURL'] == null || contact['photoURL'].toString().isEmpty
+                    ? Text(
+                        contact['name'][0].toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : null,
               ),
               const SizedBox(width: 16),
               // Name and email
@@ -973,58 +890,32 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
       // Send call invitation to recipient (WITHOUT token - they'll generate it when accepting)
       debugPrint('📤 Sending call invitation to recipient');
-      String? invitationId;
-      try {
-        invitationId = await _signalingService.sendCallInvitation(
-          recipientUserId: recipientUserId,
-          roomName: roomName,
-          token: '', // Empty - recipient will generate their own token
-          livekitUrl: wsUrl,
-          isVideoCall: true,
-        );
-        debugPrint('📤 Call invitation result: $invitationId');
-      } catch (signalError) {
-        debugPrint('❌ Error in sendCallInvitation: $signalError');
-        if (mounted) Navigator.pop(context);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to send invitation: $signalError')),
-          );
-        }
-        return;
-      }
+      final invitationId = await _signalingService.sendCallInvitation(
+        recipientUserId: recipientUserId,
+        roomName: roomName,
+        token: '', // Empty - recipient will generate their own token
+        livekitUrl: wsUrl,
+        isVideoCall: true,
+      );
 
       if (invitationId == null) {
-        debugPrint('❌ sendCallInvitation returned null');
         if (mounted) Navigator.pop(context);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to send call invitation - please try again')),
+            const SnackBar(content: Text('Failed to send call invitation')),
           );
         }
         return;
       }
-      
-      debugPrint('✅ Call invitation sent successfully: $invitationId');
 
       if (mounted) Navigator.pop(context);
-      
-      // Show immediate feedback
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Calling $recipientEmail...'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
 
       // Show calling dialog and wait for response
       bool? callAccepted = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (context) => _CallingDialog(
-          invitationId: invitationId!,
+          invitationId: invitationId,
           recipientEmail: recipientEmail,
           signalingService: _signalingService,
         ),
@@ -1050,9 +941,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _sessionService.endSession();
         });
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       debugPrint('❌ Error starting call: $e');
-      debugPrint('❌ Stack trace: $stackTrace');
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1403,13 +1293,7 @@ class _CallingDialogState extends State<_CallingDialog> {
         .doc(widget.invitationId)
         .snapshots()
         .listen((snapshot) {
-      if (!mounted) return;
-      
-      if (!snapshot.exists) {
-        debugPrint('📞 Invitation document deleted');
-        Navigator.of(context).pop(false);
-        return;
-      }
+      if (!snapshot.exists || !mounted) return;
 
       final data = snapshot.data();
       if (data == null) return;
@@ -1430,16 +1314,6 @@ class _CallingDialogState extends State<_CallingDialog> {
         }
       } else if (status == 'timeout' || status == 'cancelled') {
         // Call timed out or cancelled - close dialog with false
-        Navigator.of(context).pop(false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Call cancelled')),
-          );
-        }
-      }
-    }, onError: (error) {
-      debugPrint('❌ Error listening to invitation: $error');
-      if (mounted) {
         Navigator.of(context).pop(false);
       }
     });
@@ -1479,16 +1353,9 @@ class _CallingDialogState extends State<_CallingDialog> {
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () async {
-              try {
-                await widget.signalingService.cancelInvitation(widget.invitationId);
-                debugPrint('✅ Call cancelled by caller');
-              } catch (e) {
-                debugPrint('❌ Error cancelling call: $e');
-              }
-              if (mounted) {
-                Navigator.of(context).pop(false);
-              }
+            onPressed: () {
+              widget.signalingService.cancelInvitation(widget.invitationId);
+              Navigator.of(context).pop(false);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
