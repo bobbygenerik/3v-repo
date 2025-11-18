@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:typed_data';
 // import 'dart:html' as html;
 import 'dart:ui' as ui;
+import 'package:image_picker/image_picker.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -65,18 +66,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _uploadPhoto() async {
     try {
-      // Mobile image upload not implemented
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Image upload not available on mobile')),
+      // Mobile image upload flow
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 2000,
+        maxHeight: 2000,
+        imageQuality: 85,
       );
-      return;
-      
-      final bytes = Uint8List(0); // Placeholder
 
-      // Show crop dialog
+      if (picked == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Photo upload cancelled')),
+          );
+        }
+        return;
+      }
+
+      final bytes = await picked.readAsBytes();
+
+      // Allow user to crop (reuses web crop dialog)
       if (!mounted) return;
       final croppedBytes = await _showCropDialog(bytes);
-      
+
       if (croppedBytes == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
