@@ -51,10 +51,25 @@ class DeviceCapabilityService {
   
   /// Detect Android device capability
   static void _detectAndroidCapability() {
-    // Simple heuristic - in production, use MediaCodecInfo API
-    // For now, assume lower-end Android devices benefit from VP9
-    _capability = DeviceCapability.midRange;
-    _preferredCodec = PreferredCodec.vp9; // VP9 better for lower-end Android
+    // Heuristic using number of processors to better detect low-end devices.
+    // In the future we can add `device_info_plus` checks (RAM, model) for more accuracy.
+    try {
+      final processors = Platform.numberOfProcessors;
+      if (processors <= 2) {
+        _capability = DeviceCapability.lowEnd;
+        _preferredCodec = PreferredCodec.vp9;
+      } else if (processors <= 4) {
+        _capability = DeviceCapability.midRange;
+        _preferredCodec = PreferredCodec.vp9;
+      } else {
+        _capability = DeviceCapability.highEnd;
+        _preferredCodec = PreferredCodec.h264;
+      }
+    } catch (e) {
+      // Fallback
+      _capability = DeviceCapability.midRange;
+      _preferredCodec = PreferredCodec.vp9;
+    }
   }
   
   /// Get max video bitrate for device (increased as recommended)

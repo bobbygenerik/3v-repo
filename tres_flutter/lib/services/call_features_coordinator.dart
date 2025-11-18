@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ai_features_service.dart';
+import 'device_capability_service.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'chat_service.dart' as chat;
 import 'reaction_service.dart';
@@ -129,6 +130,27 @@ class CallFeaturesCoordinator extends ChangeNotifier {
       _isFaceAutoFramingEnabled = faceAuto;
       if (faceAuto) {
         aiFeaturesService.setAutoFraming(true);
+      }
+      
+      // If device is low-end, disable expensive ML features regardless of saved prefs
+      try {
+        if (DeviceCapabilityService.capability == DeviceCapability.lowEnd) {
+          debugPrint('⚠️ Low-end device detected — disabling ML-heavy features for performance');
+          if (_isBackgroundBlurEnabled) {
+            _isBackgroundBlurEnabled = false;
+            await backgroundBlurService.setEnabled(false);
+          }
+          if (_isBeautyFilterEnabled) {
+            _isBeautyFilterEnabled = false;
+            beautyFilterService.setEnabled(false);
+          }
+          if (_isFaceAutoFramingEnabled) {
+            _isFaceAutoFramingEnabled = false;
+            aiFeaturesService.setAutoFraming(false);
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ Error applying low-end device ML fallback: $e');
       }
     } catch (e) {
       debugPrint('⚠️ Failed to apply saved preferences: $e');
