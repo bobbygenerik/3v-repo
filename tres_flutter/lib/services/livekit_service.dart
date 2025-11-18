@@ -88,7 +88,7 @@ class LiveKitService extends ChangeNotifier {
       // Start network monitoring
       _networkService.startMonitoring();
       
-      // Connect to room
+      // Connect to room (fail fast with timeout to avoid long hangs)
       await _room!.connect(
         url,
         token,
@@ -121,6 +121,14 @@ class LiveKitService extends ChangeNotifier {
           dynacast: true,
         ),
       );
+
+      // Wrap enabling tracks in a timeout as well
+      await Future.wait([
+        enableCamera(),
+        enableMicrophone(),
+      ]).timeout(const Duration(seconds: 12), onTimeout: () {
+        throw Exception('Timed out while enabling local media tracks');
+      });
       
       // Enable local tracks
       await enableCamera();

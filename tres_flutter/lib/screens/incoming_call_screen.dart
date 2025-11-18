@@ -81,9 +81,14 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
       final functions = FirebaseFunctions.instance;
       final callable = functions.httpsCallable('getLiveKitToken');
       
-      final response = await callable.call({
+      // Call cloud function with a timeout to avoid hanging the UI if functions are slow
+      final response = await callable
+          .call({
         'calleeId': widget.callerId, // Not actually used for token generation, just for logging
         'roomName': widget.roomName,
+      })
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+        throw Exception('Token request timed out');
       });
 
       final myToken = response.data['token'] as String;
