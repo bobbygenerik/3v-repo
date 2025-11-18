@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'ai_features_service.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'chat_service.dart' as chat;
 import 'reaction_service.dart';
@@ -23,6 +25,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   final BackgroundBlurService backgroundBlurService = BackgroundBlurService();
   final BeautyFilterService beautyFilterService = BeautyFilterService();
   final ARFiltersService arFiltersService = ARFiltersService();
+  final AIFeaturesService aiFeaturesService = AIFeaturesService();
   final CloudRecordingService recordingService = CloudRecordingService();
   final E2EEncryptionService encryptionService = E2EEncryptionService();
   final ScreenShareService screenShareService = ScreenShareService();
@@ -54,6 +57,10 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   bool get isBeautyFilterEnabled => _isBeautyFilterEnabled;
   bool get isArFilterEnabled => _isArFilterEnabled;
   bool get isAiNoiseCancellationEnabled => _isAiNoiseCancellationEnabled;
+
+  // AI features
+  bool _isFaceAutoFramingEnabled = false;
+  bool get isFaceAutoFramingEnabled => _isFaceAutoFramingEnabled;
 
   String get activeArFilter => _activeArFilter;
   LayoutMode get layoutMode => _layoutMode;
@@ -97,9 +104,34 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     try {
       await backgroundBlurService.initialize();
       await arFiltersService.initialize();
+      await aiFeaturesService.initialize();
       debugPrint('✅ ML services initialized');
     } catch (e) {
       debugPrint('⚠️ ML services initialization failed: $e');
+    }
+
+    // Apply user preferences (if present) so features the user enabled in Settings
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bgBlur = prefs.getBool('background_blur') ?? false;
+      _isBackgroundBlurEnabled = bgBlur;
+      if (bgBlur) {
+        await backgroundBlurService.setEnabled(true);
+      }
+
+      final beauty = prefs.getBool('beauty_filter') ?? false;
+      _isBeautyFilterEnabled = beauty;
+      if (beauty) {
+        beautyFilterService.setEnabled(true);
+      }
+
+      final faceAuto = prefs.getBool('face_auto_framing') ?? false;
+      _isFaceAutoFramingEnabled = faceAuto;
+      if (faceAuto) {
+        aiFeaturesService.setAutoFraming(true);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to apply saved preferences: $e');
     }
 
     // Initialize Phase 4 services
