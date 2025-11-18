@@ -142,6 +142,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
   Widget build(BuildContext context) {
     // Respect system bottom inset (navigation bar / gesture area) explicitly
     final double bottomInset = MediaQuery.of(context).viewPadding.bottom;
+    // Pixel distance to move the action row offscreen; includes bottom inset
+    final double offscreenDy = 220.0 + bottomInset;
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
       body: SafeArea(
@@ -246,11 +248,13 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
             ),
 
             // Call Actions — include extra bottom padding to avoid system UI
-            // AnimatedSlide moves the actions fully offscreen when hidden
-            AnimatedSlide(
-              offset: _showActions ? Offset.zero : const Offset(0, 2.0),
+            // Use an AnimatedContainer with a vertical transform (pixels) so
+            // the action row always translates straight down (no horizontal shift)
+            AnimatedContainer(
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeInOut,
+              transform: Matrix4.translationValues(0, _showActions ? 0 : offscreenDy, 0),
+              alignment: Alignment.center,
               child: Padding(
                 padding: EdgeInsets.fromLTRB(40, 0, 40, 40 + bottomInset),
                 child: Row(
