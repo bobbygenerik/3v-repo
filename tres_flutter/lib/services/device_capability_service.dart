@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
 
 enum DeviceCapability { highEnd, midRange, lowEnd }
 enum PreferredCodec { vp9, h264, h265 }
@@ -40,6 +41,44 @@ class DeviceCapabilityService {
       _capability = DeviceCapability.midRange;
       _preferredCodec = PreferredCodec.vp9;
     }
+  }
+
+  /// Async detection using device_info_plus for more accurate classification.
+  static Future<void> detectCapabilityAsync() async {
+    try {
+      final deviceInfo = DeviceInfoPlugin();
+      if (Platform.isAndroid) {
+        final info = await deviceInfo.androidInfo;
+        final sdk = info.version.sdkInt ?? 0;
+        final processors = Platform.numberOfProcessors;
+        // Heuristic: newer Android SDK + more CPUs -> higher capability
+        if (processors >= 8 && sdk >= 29) {
+          _capability = DeviceCapability.highEnd;
+          _preferredCodec = PreferredCodec.h264;
+        } else if (processors <= 2) {
+          _capability = DeviceCapability.lowEnd;
+          _preferredCodec = PreferredCodec.vp9;
+        } else {
+          _capability = DeviceCapability.midRange;
+          _preferredCodec = PreferredCodec.vp9;
+        }
+      } else if (Platform.isIOS) {
+        final info = await deviceInfo.iosInfo;
+        // Assume modern iOS devices are high-end; older ones mid-range
+        final systemVersion = double.tryParse(info.systemVersion ?? '0') ?? 0;
+        if (systemVersion >= 14) {
+          _capability = DeviceCapability.highEnd;
+          _preferredCodec = PreferredCodec.h264;
+        } else {
+          _capability = DeviceCapability.midRange;
+          _preferredCodec = PreferredCodec.h264;
+        }
+      }
+    } catch (e) {
+      // fallback to synchronous detection
+      detectCapability();
+    }
+    debugPrint('📱 (async) Device: ${_capability.name}, Codec: ${_preferredCodec.name}');
   }
   
   /// Detect web browser capability

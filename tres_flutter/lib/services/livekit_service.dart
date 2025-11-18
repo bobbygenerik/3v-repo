@@ -1,8 +1,12 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:livekit_client/livekit_client.dart' show VideoParametersPresets;
 import 'package:livekit_client/livekit_client.dart';
 import 'network_quality_service.dart';
 import 'device_capability_service.dart';
+
+/// Capture profile enum for runtime adaptation
+enum CaptureProfile { high, medium, low }
 
 /// LiveKit service managing room connections and participant tracks
 /// Mirrors functionality from Android LiveKitManager.kt
@@ -32,7 +36,53 @@ class LiveKitService extends ChangeNotifier {
   
   // Detect device capability on service creation
   LiveKitService() {
+    // Start async detection (non-blocking) to refine capability
     DeviceCapabilityService.detectCapability();
+    DeviceCapabilityService.detectCapabilityAsync();
+  }
+
+  /// Capture profiles for adaptive switching
+  /// High: high resolution/framerate/bitrate
+  /// Medium: balanced
+  /// Low: lowest for stability
+  ///
+  /// Note: applyCaptureProfile will re-create local camera track when possible.
+  Future<void> applyCaptureProfile(CaptureProfile profile) async {
+    try {
+      if (_room == null) return;
+
+      CameraCaptureOptions options;
+      switch (profile) {
+        case CaptureProfile.high:
+          options = CameraCaptureOptions(
+            maxFrameRate: DeviceCapabilityService.getMaxFramerate().toDouble(),
+            params: DeviceCapabilityService.shouldUse1080p()
+                ? VideoParametersPresets.h1080_169
+                : VideoParametersPresets.h720_169,
+          );
+          break;
+        case CaptureProfile.medium:
+          options = CameraCaptureOptions(
+            maxFrameRate: math.min(30, DeviceCapabilityService.getMaxFramerate()).toDouble(),
+            params: VideoParametersPresets.h720_169,
+          );
+          break;
+        case CaptureProfile.low:
+          options = CameraCaptureOptions(
+            maxFrameRate: math.min(18, DeviceCapabilityService.getMaxFramerate()).toDouble(),
+            params: VideoParametersPresets.h360_169,
+          );
+      }
+
+      // Recreate track with new options
+      await _localVideoTrack?.stop();
+      _localVideoTrack = await LocalVideoTrack.createCameraTrack(options);
+      await _room!.localParticipant?.publishVideoTrack(_localVideoTrack!);
+      notifyListeners();
+      debugPrint('🎯 Applied capture profile: $profile');
+    } catch (e) {
+      debugPrint('❌ Failed to apply capture profile: $e');
+    }
   }
   
   /// Get optimal video encoding with enhanced codec optimization
