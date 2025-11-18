@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/livekit_service.dart';
 import '../services/call_features_coordinator.dart';
 import '../services/performance_monitor.dart';
@@ -33,6 +34,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   bool _isConnecting = true;
   late CallFeaturesCoordinator _coordinator;
   PerformanceMonitor? _performanceMonitor;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _sessionDocSubscription;
   final TextEditingController _chatController = TextEditingController();
   
   // Call timer
@@ -67,6 +69,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     
     // Listen for session end
     widget.sessionService?.addListener(_handleSessionEnd);
+    // Also ensure we subscribe directly to the call_sessions document if available
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureSessionDocListener());
     
     // Start call timer
     Future.doWhile(() async {
@@ -128,7 +132,42 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     if (widget.sessionService?.isInCall == false && mounted) {
       debugPrint('📞 Call ended by another participant - exiting call screen');
       // Call ended by another participant
-      Navigator.of(context).pop();
+      if (Navigator.canPop(context)) Navigator.of(context).pop();
+    }
+  }
+
+  void _ensureSessionDocListener() {
+    try {
+      final sessionId = widget.sessionService?.currentSessionId;
+      if (sessionId == null) return;
+      if (_sessionDocSubscription != null) return;
+
+      debugPrint('🔔 Subscribing to call_sessions/$sessionId for direct updates');
+      _sessionDocSubscription = FirebaseFirestore.instance
+          .collection('call_sessions')
+          .doc(sessionId)
+          .snapshots()
+          .listen((snapshot) {
+        if (!mounted) return;
+        if (!snapshot.exists) {
+          debugPrint('🔔 call_sessions/$sessionId deleted -> pop');
+          if (Navigator.canPop(context)) Navigator.of(context).pop();
+          return;
+        }
+        final data = snapshot.data();
+        if (data == null) return;
+        final status = data['status'] as String?;
+        final endedBy = data['endedBy'] as String?;
+        debugPrint('🔔 call_sessions/$sessionId update status=$status endedBy=$endedBy');
+        if (status == 'ended') {
+          // If session ended, leave screen (other side should already have cleaned up locally)
+          if (Navigator.canPop(context)) Navigator.of(context).pop();
+        }
+      }, onError: (e) {
+        debugPrint('🔔 Error listening to session doc: $e');
+      });
+    } catch (e) {
+      debugPrint('🔔 Failed to ensure session doc listener: $e');
     }
   }
   
@@ -938,10 +977,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: buttons,
+        // Wrap the row in a Center so that on wide screens/tablets
+        // the controls are visually centered while still allowing
+        // horizontal scrolling on narrow devices.
+        child: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: buttons,
+          ),
         ),
       ),
     );
@@ -1500,6 +1544,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     _chatController.dispose();
     _controlsAnimationController.dispose();
     _reactionsAnimationController.dispose();
+    // Cancel direct session document listener
+    _sessionDocSubscription?.cancel();
     
     // Disconnect LiveKit properly
     livekit.disconnect();

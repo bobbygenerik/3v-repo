@@ -96,10 +96,11 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
       await _signalingService.acceptInvitation(widget.invitationId);
 
       // Start or join the call session so we listen for session end events
+      CallSessionService? sessionService;
       try {
         final currentUser = FirebaseAuth.instance.currentUser;
         if (currentUser != null) {
-          final sessionService = CallSessionService();
+          sessionService = CallSessionService();
           await sessionService.startSession(widget.roomName, [currentUser.uid, widget.callerId]);
         }
       } catch (sessionErr) {
@@ -116,6 +117,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
             roomName: widget.roomName,
             token: myToken, // Use our own generated token
             livekitUrl: widget.livekitUrl,
+            sessionService: sessionService,
           ),
         ),
       );
