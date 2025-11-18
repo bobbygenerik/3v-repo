@@ -139,6 +139,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Respect system bottom inset (navigation bar / gesture area) explicitly
+    final double bottomInset = MediaQuery.of(context).viewPadding.bottom;
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
       body: SafeArea(
@@ -229,9 +231,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
             
             const Spacer(flex: 3),
             
-            // Call Actions
+            // Call Actions — include extra bottom padding to avoid system UI
             Padding(
-              padding: const EdgeInsets.all(40),
+              padding: EdgeInsets.fromLTRB(40, 0, 40, 40 + bottomInset),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
