@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "firebase-admin": "^11.11.1",
+    "minimist": "^1.2.8"
+  }
+}
