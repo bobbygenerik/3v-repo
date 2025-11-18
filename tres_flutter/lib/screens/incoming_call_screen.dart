@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import '../config/app_theme.dart';
 import '../services/call_signaling_service.dart';
+import '../services/call_session_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../widgets/avatar.dart';
 import 'call_screen.dart';
 
 class IncomingCallScreen extends StatefulWidget {
@@ -88,8 +91,20 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
       final myToken = response.data['token'] as String;
       debugPrint('✅ Got recipient token');
       
+
       // Mark invitation as accepted in Firestore
       await _signalingService.acceptInvitation(widget.invitationId);
+
+      // Start or join the call session so we listen for session end events
+      try {
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser != null) {
+          final sessionService = CallSessionService();
+          await sessionService.startSession(widget.roomName, [currentUser.uid, widget.callerId]);
+        }
+      } catch (sessionErr) {
+        debugPrint('❌ Error starting/joining session on accept: $sessionErr');
+      }
 
       if (!mounted) return;
 

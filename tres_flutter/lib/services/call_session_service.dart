@@ -21,8 +21,35 @@ class CallSessionService extends ChangeNotifier {
     try {
       final currentUser = _auth.currentUser;
       if (currentUser == null) return;
-      
-      // Create call session document
+      // First, check if a session already exists for this room (join if present)
+      final existingQuery = await _firestore
+          .collection('call_sessions')
+          .where('roomName', isEqualTo: roomName)
+          .where('status', isEqualTo: 'active')
+          .limit(1)
+          .get();
+
+      if (existingQuery.docs.isNotEmpty) {
+        final doc = existingQuery.docs.first;
+        final data = doc.data();
+        debugPrint('🔁 Joining existing call session: ${doc.id} for room $roomName');
+
+        // Ensure participants array includes current user and any passed participants
+        await _firestore.collection('call_sessions').doc(doc.id).update({
+          'participants': FieldValue.arrayUnion(participants),
+          'participantStatus.${currentUser.uid}': 'connected',
+          'lastHeartbeat': FieldValue.serverTimestamp(),
+        });
+
+        _currentSessionId = doc.id;
+        _sessionSubscription = _firestore.collection('call_sessions').doc(_currentSessionId).snapshots().listen(_handleSessionUpdate);
+        _startHeartbeat();
+        debugPrint('📞 Joined call session: $_currentSessionId');
+        notifyListeners();
+        return;
+      }
+
+      // No existing session found - create a new one
       final sessionRef = await _firestore.collection('call_sessions').add({
         'roomName': roomName,
         'participants': participants,
@@ -34,15 +61,15 @@ class CallSessionService extends ChangeNotifier {
           for (String uid in participants) uid: 'connected'
         },
       });
-      
+
       _currentSessionId = sessionRef.id;
-      
+
       // Listen for session changes
       _sessionSubscription = sessionRef.snapshots().listen(_handleSessionUpdate);
-      
+
       // Start heartbeat
       _startHeartbeat();
-      
+
       debugPrint('📞 Call session started: $_currentSessionId');
       notifyListeners();
     } catch (e) {
