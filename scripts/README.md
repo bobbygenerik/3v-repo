@@ -20,13 +20,26 @@ cd scripts
 npm install firebase-admin minimist
 ```
 
-3. Dry-run (report only):
+
+3. Dry run (report only):
 
 ```bash
 node cleanup-duplicate-contacts.js
 ```
 
-4. To actually delete duplicates (keeps earliest entry):
+4. To backup duplicates (copy to `backup/duplicate_contacts/{userId}`) without deleting:
+
+```bash
+node cleanup-duplicate-contacts.js --backup
+```
+
+5. To backup and delete duplicates (safe mode):
+
+```bash
+node cleanup-duplicate-contacts.js --backup --fix
+```
+
+6. To delete without backup (less safe):
 
 ```bash
 node cleanup-duplicate-contacts.js --fix

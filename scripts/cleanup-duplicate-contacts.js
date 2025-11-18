@@ -22,6 +22,7 @@ const admin = require('firebase-admin');
 const argv = require('minimist')(process.argv.slice(2));
 
 const FIX = argv.fix || argv.f || false;
+const BACKUP = argv.backup || argv.b || false;
 
 async function main() {
   if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.FIREBASE_CONFIG) {
@@ -99,14 +100,39 @@ async function main() {
 
       console.log(`  Keeping: ${keep}. Will delete: ${toDelete.join(', ')}`);
 
-      if (FIX && toDelete.length > 0) {
-        const batch = db.batch();
-        for (const delId of toDelete) {
-          batch.delete(contactsRef.doc(delId));
+      if (toDelete.length > 0) {
+        if (BACKUP) {
+          // Copy duplicates to backup collection before deleting
+          const backupBase = db.collection('backup').doc('duplicate_contacts').collection(userId);
+          const batchBackup = db.batch();
+          for (const delId of toDelete) {
+            const srcRef = contactsRef.doc(delId);
+            const destRef = backupBase.doc(delId);
+            // Read doc and write to backup (batch can't read, so read individually)
+            const snap = await srcRef.get();
+            if (snap.exists) {
+              batchBackup.set(destRef, {
+                _originalPath: srcRef.path,
+                _backedUpAt: admin.firestore.FieldValue.serverTimestamp(),
+                ...snap.data(),
+              });
+            }
+          }
+          await batchBackup.commit();
+          console.log(`  Backed up ${toDelete.length} duplicate(s) for user ${userId} to backup/duplicate_contacts/${userId}`);
         }
-        await batch.commit();
-        console.log(`  Deleted ${toDelete.length} duplicate(s) for user ${userId}`);
-        totalDeleted += toDelete.length;
+
+        if (FIX) {
+          const batch = db.batch();
+          for (const delId of toDelete) {
+            batch.delete(contactsRef.doc(delId));
+          }
+          await batch.commit();
+          console.log(`  Deleted ${toDelete.length} duplicate(s) for user ${userId}`);
+          totalDeleted += toDelete.length;
+        } else {
+          console.log('  (dry-run) Not deleting — run with --fix to remove duplicates');
+        }
       }
     }
   }
