@@ -116,6 +116,9 @@ class SignalingService extends ChangeNotifier {
     debugPrint('🎧 Starting to listen for call invitations for user: ${currentUser.uid}');
     debugPrint('   Listening path: users/${currentUser.uid}/callSignals');
 
+    // Cleanup any old call signals on startup to avoid showing stale invitations
+    cleanupOldCallSignals().catchError((e) => debugPrint('❌ cleanupOldCallSignals error: $e'));
+
     _callSignalSubscription = _firestore
         .collection('users')
         .doc(currentUser.uid)
@@ -145,8 +148,18 @@ class SignalingService extends ChangeNotifier {
               debugPrint('📞 Incoming call from: ${invitation.fromUserName}');
               debugPrint('   Room: ${invitation.roomName}');
 
+              // If the invitation is already old (e.g. older than 60s), mark it as missed
+              final now = DateTime.now();
+              final ts = invitation.timestamp;
+              if (ts == null || now.difference(ts) > const Duration(seconds: 60)) {
+                debugPrint('⏳ Ignoring stale call signal ${doc.id} (timestamp: $ts)');
+                // Mark as missed so it won't reappear
+                doc.reference.update({'status': 'missed'}).catchError((e) => debugPrint('❌ Failed to mark stale signal missed: $e'));
+                continue;
+              }
+
               // Mark as received (not pending anymore)
-              doc.reference.update({'status': 'ringing'});
+              doc.reference.update({'status': 'ringing'}).catchError((e) => debugPrint('❌ Failed to mark ringing: $e'));
 
               onCallReceived(invitation);
             } catch (e) {
