@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_theme.dart';
+import '../services/notification_service.dart';
 import 'diagnostics_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -145,9 +146,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'Notifications',
             subtitle: 'Receive call notifications',
             value: _notificationsEnabled,
-            onChanged: (value) {
-              setState(() => _notificationsEnabled = value);
-              _saveSetting('notifications_enabled', value);
+            onChanged: (value) async {
+              if (value) {
+                // Request system permissions
+                final granted = await NotificationService.enableNotifications();
+                if (granted) {
+                  setState(() => _notificationsEnabled = true);
+                  _saveSetting('notifications_enabled', true);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('✅ Notifications enabled'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } else {
+                  setState(() => _notificationsEnabled = false);
+                  _saveSetting('notifications_enabled', false);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('⚠️ Notification permission denied. Check device settings.'),
+                        backgroundColor: Colors.orange,
+                        duration: Duration(seconds: 4),
+                      ),
+                    );
+                  }
+                }
+              } else {
+                setState(() => _notificationsEnabled = false);
+                _saveSetting('notifications_enabled', false);
+              }
             },
           ),
           _buildSwitchTile(

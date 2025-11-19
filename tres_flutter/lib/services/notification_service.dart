@@ -10,6 +10,7 @@ class NotificationService {
   
   static Future<bool> requestPermissions() async {
     try {
+      debugPrint('🔔 Requesting notification permissions...');
       NotificationSettings settings = await _messaging.requestPermission(
         alert: true,
         badge: true,
@@ -18,7 +19,12 @@ class NotificationService {
         criticalAlert: false,
       );
       
-      return settings.authorizationStatus == AuthorizationStatus.authorized;
+      final granted = settings.authorizationStatus == AuthorizationStatus.authorized;
+      debugPrint(granted 
+        ? '✅ Notification permissions GRANTED' 
+        : '❌ Notification permissions DENIED (status: ${settings.authorizationStatus})');
+      
+      return granted;
     } catch (e) {
       debugPrint('⚠️ Permission request failed: $e');
       return false;
@@ -32,8 +38,12 @@ class NotificationService {
     NotificationSettings settings = await _messaging.getNotificationSettings();
     
     if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
-      // Don't auto-request on initialization - let user trigger it
-      debugPrint('📱 Notifications not determined - waiting for user action');
+      // Auto-request permissions for better UX
+      debugPrint('📱 Requesting notification permissions...');
+      final granted = await requestPermissions();
+      if (granted) {
+        await _setupToken();
+      }
       _initialized = true;
       return;
     }

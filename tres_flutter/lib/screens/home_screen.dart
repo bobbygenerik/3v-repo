@@ -9,6 +9,7 @@ import '../services/guest_link_service.dart';
 import '../services/call_listener_service.dart';
 import '../services/call_signaling_service.dart';
 import '../services/call_session_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/responsive_container.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
@@ -99,6 +100,101 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _textAnimationController.forward().then((_) {
       setState(() => _hasAnimated = true);
     });
+    
+    // Request notification permissions after a short delay
+    Future.delayed(const Duration(seconds: 2), () {
+      _requestNotificationPermissions();
+    });
+  }
+  
+  Future<void> _requestNotificationPermissions() async {
+    try {
+      // Check if already granted
+      final alreadyEnabled = await NotificationService.areNotificationsEnabled();
+      if (alreadyEnabled) {
+        debugPrint('✅ Notifications already enabled');
+        return;
+      }
+      
+      // Show explanation dialog first for better UX
+      if (!mounted) return;
+      
+      final shouldRequest = await showDialog<bool>(
+        context: context,
+        barrierDismissible: true,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1C1C1E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.notifications_active, color: Color(0xFF0175C2), size: 28),
+              SizedBox(width: 12),
+              Text('Enable Notifications', style: TextStyle(color: Colors.white, fontSize: 20)),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Stay connected and never miss a call!',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              SizedBox(height: 16),
+              Text(
+                '• Receive instant call notifications\n'
+                '• Get notified even when app is closed\n'
+                '• See who\'s calling before answering',
+                style: TextStyle(color: Colors.white70, height: 1.5),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Later', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0175C2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Enable', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      
+      if (shouldRequest == true) {
+        final granted = await NotificationService.enableNotifications();
+        if (granted) {
+          debugPrint('✅ Notification permissions granted');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Notifications enabled successfully!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
+          debugPrint('⚠️ Notification permissions denied');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('⚠️ Notifications were not enabled. You can enable them later in Settings.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error requesting notification permissions: $e');
+    }
   }
   
   /// Handle incoming call notifications
