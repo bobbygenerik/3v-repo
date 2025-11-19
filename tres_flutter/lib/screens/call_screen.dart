@@ -64,6 +64,14 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     // Listen for session end
     widget.sessionService?.addListener(_handleSessionEnd);
     
+    // Listen for LiveKit room changes (participant disconnect) after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final livekit = context.read<LiveKitService>();
+        livekit.addListener(_handleLiveKitUpdate);
+      }
+    });
+    
     // Start call timer
     Future.doWhile(() async {
       await Future.delayed(const Duration(seconds: 1));
@@ -121,7 +129,34 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   void _handleSessionEnd() {
     if (widget.sessionService?.isInCall == false && mounted) {
       // Call ended by another participant
+      debugPrint('📞 Session ended - navigating back');
       Navigator.of(context).pop();
+    }
+  }
+  
+  /// Handle LiveKit updates - check if all participants left
+  void _handleLiveKitUpdate() {
+    final livekit = context.read<LiveKitService>();
+    
+    // If we're connected but there are no remote participants, end the call
+    if (livekit.isConnected && livekit.remoteParticipants.isEmpty && mounted) {
+      debugPrint('📞 All remote participants left - ending call');
+      
+      // Show a brief message before closing
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Other participant left the call'),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      
+      // End call after a short delay
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      });
     }
   }
   
@@ -1148,11 +1183,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   void dispose() {
     _controlsHideTimer?.cancel();
     widget.sessionService?.removeListener(_handleSessionEnd);
+    final livekit = context.read<LiveKitService>();
+    livekit.removeListener(_handleLiveKitUpdate);
     _coordinator.cleanup(); // Fire and forget async cleanup
     _chatController.dispose();
     _controlsAnimationController.dispose();
     _reactionsAnimationController.dispose();
-    final livekit = context.read<LiveKitService>();
     livekit.disconnect();
     super.dispose();
   }
