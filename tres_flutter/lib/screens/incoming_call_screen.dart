@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import '../config/app_theme.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/call_signaling_service.dart';
+import '../services/call_session_service.dart';
 import 'call_screen.dart';
 
 class IncomingCallScreen extends StatefulWidget {
@@ -99,6 +101,17 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
 
       if (!mounted) return;
 
+      // Start a call session for the recipient so the session is recorded
+      final sessionService = CallSessionService();
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        try {
+          await sessionService.startSession(widget.roomName, [currentUser.uid, widget.callerId]);
+        } catch (e) {
+          debugPrint('❌ Failed to start session for recipient: $e');
+        }
+      }
+
       // Navigate to call screen with OUR token (not the caller's token)
       Navigator.pushReplacement(
         context,
@@ -108,6 +121,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
             token: myToken, // Use our own generated token
             livekitUrl: widget.livekitUrl,
             signalingService: _signalingService,
+            sessionService: sessionService,
           ),
         ),
       );

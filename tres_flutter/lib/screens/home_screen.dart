@@ -393,6 +393,77 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       });
     } catch (e) {
       debugPrint('Error loading call history: $e');
+
+      // Firestore may require a composite index for the "where + orderBy" query above.
+      // Try a fallback query (no orderBy) and sort client-side so the UI still shows history.
+      try {
+        final currentUser2 = context.read<AuthService>().currentUser;
+        if (currentUser2 == null) throw Exception('No current user for fallback');
+
+        final fallbackSnapshot = await FirebaseFirestore.instance
+            .collection('call_sessions')
+            .where('participants', arrayContains: currentUser2.uid)
+            .where('status', isEqualTo: 'ended')
+            .limit(50)
+            .get();
+
+        final List<Map<String, dynamic>> fallbackHistory = [];
+          for (var doc in fallbackSnapshot.docs) {
+          final data = doc.data();
+          final participants = List<String>.from(data['participants'] ?? []);
+
+          String otherParticipantName = 'Unknown';
+          for (final participantId in participants) {
+            if (participantId != currentUser2.uid) {
+              try {
+                final userDoc = await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(participantId)
+                    .get();
+                if (userDoc.exists) {
+                  final userData = userDoc.data();
+                  otherParticipantName = userData?['displayName'] ??
+                      userData?['name'] ??
+                      userData?['email']?.split('@')[0] ??
+                      'Unknown User';
+                }
+              } catch (e) {
+                debugPrint('Error loading participant data in fallback: $e');
+              }
+              break;
+            }
+          }
+
+          fallbackHistory.add({
+            'id': doc.id,
+            'roomName': data['roomName'] ?? 'Unknown',
+            'participantName': otherParticipantName,
+            'timestamp': (data['endTime'] as Timestamp?)?.toDate() ??
+                (data['startTime'] as Timestamp?)?.toDate(),
+            'duration': _calculateDuration(data['startTime'], data['endTime']),
+            'participants': participants,
+          });
+        }
+
+        // Sort by timestamp descending
+        fallbackHistory.sort((a, b) {
+          final ta = a['timestamp'] as DateTime?;
+          final tb = b['timestamp'] as DateTime?;
+          if (ta == null && tb == null) return 0;
+          if (ta == null) return 1;
+          if (tb == null) return -1;
+          return tb.compareTo(ta);
+        });
+
+        setState(() {
+          _callHistory = fallbackHistory;
+          _isLoadingHistory = false;
+        });
+        return;
+      } catch (e2) {
+        debugPrint('Fallback call history query failed: $e2');
+      }
+
       setState(() => _isLoadingHistory = false);
     }
   }
