@@ -16,6 +16,7 @@ class CallScreen extends StatefulWidget {
   final String token;
   final String livekitUrl;
   final CallSessionService? sessionService;
+  final CallSignalingService signalingService;
   
   const CallScreen({
     super.key,
@@ -23,6 +24,7 @@ class CallScreen extends StatefulWidget {
     required this.token,
     required this.livekitUrl,
     this.sessionService,
+    required this.signalingService,
   });
 
   @override
@@ -270,8 +272,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                       ),
                     
                     // Call controls (bottom) - always rendered, visibility controlled by animation
-                    Positioned(
-                      bottom: 32,
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                      bottom: _controlsVisible ? 32 : -120,
                       left: 0,
                       right: 0,
                       child: _buildCallControls(livekit, coordinator),
@@ -411,37 +415,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
             ],
           ),
         ),
-        // Quality indicator - only show when stats overlay is on
-        if (coordinator.isStatsCollecting) ...[
-          const SizedBox(height: 8),
-          // Quality indicator (yellow box)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: _getQualityColor(coordinator.qualityScore).withOpacity(0.8),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  _getQualityIcon(coordinator.qualityScore),
-                  color: Colors.white,
-                  size: 14,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${coordinator.qualityScore}%',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -548,7 +521,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     }
 
     return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+      behavior: HitTestBehavior.deferToChild,
       onTap: () {
         // Single tap: toggle size
         setState(() {
@@ -587,10 +560,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         width: width,
         height: height,
         decoration: BoxDecoration(
-          border: Border.all(
-            color: Colors.white.withOpacity(0.3),
-            width: 2,
-          ),
           borderRadius: BorderRadius.circular(20), // Rounder corners
           boxShadow: [
             BoxShadow(
@@ -684,7 +653,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         index: 2,
         icon: Icons.call_end,
         onPressed: () async {
-          // End session for all participants
+          // Notify other participant the call is ending
+          await widget.signalingService.endCall(widget.roomName);
+          // End local session
           await widget.sessionService?.endSession();
           await livekit.disconnect();
           if (mounted) {
@@ -998,13 +969,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
               ListTile(
                 leading: const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8)),
                 title: const Text('Chat', style: TextStyle(color: Colors.white)),
-                trailing: Switch(
-                  value: coordinator.isChatOpen,
-                  onChanged: (value) {
-                    coordinator.toggleChat();
-                    Navigator.pop(context);
-                  },
-                ),
+                onTap: () {
+                  coordinator.toggleChat();
+                  Navigator.pop(context);
+                },
               ),
             const Text(
               'More Options',
@@ -1016,13 +984,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
             ListTile(
               leading: const Icon(Icons.screen_share, color: Color(0xFF6B7FB8)),
               title: const Text('Share Screen', style: TextStyle(color: Colors.white)),
-              trailing: Switch(
-                value: coordinator.isScreenSharing,
-                onChanged: (value) async {
-                  await coordinator.toggleScreenShare();
-                  Navigator.pop(context);
-                },
-              ),
+              onTap: () async {
+                await coordinator.toggleScreenShare();
+                Navigator.pop(context);
+              },
             ),
             
             // Recording
@@ -1038,42 +1003,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
               onTap: () async {
                 await coordinator.toggleRecording();
                 Navigator.pop(context);
-              },
-            ),
-            
-            // Background Blur
-            ListTile(
-              leading: const Icon(Icons.blur_on, color: Color(0xFF6B7FB8)),
-              title: const Text('Background Blur', style: TextStyle(color: Colors.white)),
-              trailing: Switch(
-                value: coordinator.isBackgroundBlurEnabled,
-                onChanged: (value) async {
-                  await coordinator.toggleBackgroundBlur();
-                  Navigator.pop(context);
-                },
-              ),
-            ),
-            
-            // Beauty Filter
-            ListTile(
-              leading: const Icon(Icons.face_retouching_natural, color: Color(0xFF6B7FB8)),
-              title: const Text('Beauty Filter', style: TextStyle(color: Colors.white)),
-              trailing: Switch(
-                value: coordinator.isBeautyFilterEnabled,
-                onChanged: (value) async {
-                  coordinator.toggleBeautyFilter();
-                  Navigator.pop(context);
-                },
-              ),
-            ),
-            
-            // AR Filters
-            ListTile(
-              leading: const Icon(Icons.face, color: Color(0xFF6B7FB8)),
-              title: const Text('AR Filters', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                _showARFiltersDialog(coordinator);
               },
             ),
             
@@ -1191,35 +1120,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
               }
             },
             child: const Text('Add', style: TextStyle(color: Color(0xFF6B7FB8))),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  void _showARFiltersDialog(CallFeaturesCoordinator coordinator) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2E),
-        title: const Text('AR Filters', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Choose an AR filter to apply to your video',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('AR filters coming soon')),
-              );
-            },
-            child: const Text('Apply', style: TextStyle(color: Color(0xFF6B7FB8))),
           ),
         ],
       ),

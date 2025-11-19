@@ -107,56 +107,55 @@ exports.getLiveKitToken = functions.https.onCall(async (request) => {
 
 /**
  * Cloud Function: Send push notification when call invitation is created
- * Triggers when a new document is added to users/{userId}/callSignals
+ * Triggers when a new document is added to call_invitations collection
  */
 exports.sendCallNotification = functions.firestore.onDocumentCreated(
-  'users/{userId}/callSignals/{signalId}',
+  'call_invitations/{invitationId}',
   async (event) => {
     const snap = event.data;
     try {
-      const userId = event.params.userId;
-      const signalId = event.params.signalId;
+      const invitationId = event.params.invitationId;
       const callData = snap.data();
       
-      console.log(`📞 New call signal for user ${userId} from ${callData.fromUserName}`);
+      console.log(`📞 New call invitation ${invitationId} from ${callData.callerName} to ${callData.recipientId}`);
       
       // Only send notification for pending call invitations
-      if (callData.type !== 'call_invite' || callData.status !== 'pending') {
-        console.log('Skipping notification - not a pending call invite');
+      if (callData.status !== 'pending') {
+        console.log('Skipping notification - not a pending invitation');
         return null;
       }
+      
+      const recipientId = callData.recipientId;
       
       // Get recipient's FCM token
       const userDoc = await admin.firestore()
         .collection('users')
-        .doc(userId)
+        .doc(recipientId)
         .get();
       
       if (!userDoc.exists) {
-        console.error(`User ${userId} not found`);
+        console.error(`Recipient user ${recipientId} not found`);
         return null;
       }
       
       const fcmToken = userDoc.data().fcmToken;
       
       if (!fcmToken) {
-        console.log(`❌ User ${userId} has no FCM token registered`);
+        console.log(`❌ Recipient ${recipientId} has no FCM token registered`);
         
-        // Update call signal status so caller knows the notification failed
+        // Update call invitation status so caller knows the notification failed
         try {
           await admin.firestore()
-            .collection('users')
-            .doc(userId)
-            .collection('callSignals')
-            .doc(signalId)
+            .collection('call_invitations')
+            .doc(invitationId)
             .update({ 
               status: 'failed',
               failureReason: 'no_fcm_token',
               failureTimestamp: admin.firestore.FieldValue.serverTimestamp()
             });
-          console.log(`✅ Marked call signal as failed (no FCM token)`);
+          console.log(`✅ Marked call invitation as failed (no FCM token)`);
         } catch (updateError) {
-          console.error(`Failed to update call signal status: ${updateError}`);
+          console.error(`Failed to update call invitation status: ${updateError}`);
         }
         
         return null;
@@ -169,13 +168,16 @@ exports.sendCallNotification = functions.firestore.onDocumentCreated(
       const message = {
         token: fcmToken,
         data: {
-          type: 'call_invite',
-          invitationId: signalId,
-          fromUserId: callData.fromUserId,
-          fromUserName: callData.fromUserName,
+          type: 'call_invitation',
+          invitationId: invitationId,
+          callerId: callData.callerId,
+          callerName: callData.callerName,
+          callerEmail: callData.callerEmail || '',
+          callerPhotoUrl: callData.callerPhotoUrl || '',
           roomName: callData.roomName,
-          url: callData.url,
+          livekitUrl: callData.livekitUrl,
           token: callData.token,
+          isVideoCall: (callData.isVideoCall || true).toString(),
           timestamp: (callData.timestamp || new Date()).toString()
         },
         android: {
@@ -183,6 +185,22 @@ exports.sendCallNotification = functions.firestore.onDocumentCreated(
           // Data messages with high priority are delivered immediately
           // even when device is in Doze mode
           ttl: 60 * 1000 // 60 seconds TTL for call invitations
+        },
+        apns: {
+          headers: {
+            'apns-priority': '10',
+            'apns-push-type': 'alert'
+          },
+          payload: {
+            aps: {
+              alert: {
+                title: `Incoming call from ${callData.callerName}`,
+                body: 'Tap to answer'
+              },
+              sound: 'default',
+              badge: 1
+            }
+          }
         }
       };
       

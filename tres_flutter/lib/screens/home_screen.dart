@@ -241,30 +241,71 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         return;
       }
 
+      // Load from call_sessions instead of calls
       final snapshot = await FirebaseFirestore.instance
-          .collection('calls')
+          .collection('call_sessions')
           .where('participants', arrayContains: currentUser.uid)
-          .orderBy('timestamp', descending: true)
+          .where('status', isEqualTo: 'ended')
+          .orderBy('endTime', descending: true)
           .limit(20)
           .get();
 
+      final List<Map<String, dynamic>> history = [];
+      
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final participants = List<String>.from(data['participants'] ?? []);
+        
+        // Get the other participant's name
+        String otherParticipantName = 'Unknown';
+        for (final participantId in participants) {
+          if (participantId != currentUser.uid) {
+            try {
+              final userDoc = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(participantId)
+                  .get();
+              
+              if (userDoc.exists) {
+                final userData = userDoc.data();
+                otherParticipantName = userData?['displayName'] ?? 
+                                      userData?['name'] ?? 
+                                      userData?['email']?.split('@')[0] ?? 
+                                      'Unknown User';
+              }
+            } catch (e) {
+              debugPrint('Error loading participant data: $e');
+            }
+            break;
+          }
+        }
+        
+        history.add({
+          'id': doc.id,
+          'roomName': data['roomName'] ?? 'Unknown',
+          'participantName': otherParticipantName,
+          'timestamp': (data['endTime'] as Timestamp?)?.toDate() ?? 
+                      (data['startTime'] as Timestamp?)?.toDate(),
+          'duration': _calculateDuration(data['startTime'], data['endTime']),
+          'participants': participants,
+        });
+      }
+
       setState(() {
-        _callHistory = snapshot.docs.map((doc) {
-          final data = doc.data();
-          return {
-            'id': doc.id,
-            'roomName': data['roomName'] ?? 'Unknown',
-            'timestamp': (data['timestamp'] as Timestamp?)?.toDate(),
-            'duration': data['duration'] ?? 0,
-            'participants': data['participants'] ?? [],
-          };
-        }).toList();
+        _callHistory = history;
         _isLoadingHistory = false;
       });
     } catch (e) {
       debugPrint('Error loading call history: $e');
       setState(() => _isLoadingHistory = false);
     }
+  }
+
+  int _calculateDuration(Timestamp? startTime, Timestamp? endTime) {
+    if (startTime == null || endTime == null) return 0;
+    final start = startTime.toDate();
+    final end = endTime.toDate();
+    return end.difference(start).inSeconds;
   }
 
   void _filterContacts() {
@@ -774,6 +815,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       itemCount: _callHistory.length,
       itemBuilder: (context, index) {
         final call = _callHistory[index];
+        final duration = call['duration'] as int;
+        final durationText = duration > 0 
+            ? '${(duration / 60).floor()}m ${duration % 60}s'
+            : 'No duration';
+        
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
@@ -783,10 +829,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
           child: Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 24,
-                backgroundColor: Color(0xFF6B7FB8),
-                child: Icon(Icons.phone, color: Colors.white, size: 24),
+                backgroundColor: const Color(0xFF6B7FB8),
+                child: Text(
+                  _getInitials(call['participantName']),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -794,12 +847,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      call['roomName'],
+                      call['participantName'],
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _formatTimestamp(call['timestamp']),
+                      '${_formatTimestamp(call['timestamp'])} • $durationText',
                       style: const TextStyle(fontSize: 14, color: Color(0xFF8E8E93)),
                     ),
                   ],
@@ -807,13 +860,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
               IconButton(
                 icon: const Icon(Icons.phone, color: Color(0xFF6B7FB8), size: 20),
-                onPressed: () {},
+                onPressed: () {
+                  // Find contact and call them
+                  final participants = call['participants'] as List<String>;
+                  final currentUser = context.read<AuthService>().currentUser;
+                  if (currentUser != null && participants.isNotEmpty) {
+                    final otherUserId = participants.firstWhere(
+                      (id) => id != currentUser.uid,
+                      orElse: () => '',
+                    );
+                    if (otherUserId.isNotEmpty) {
+                      _startCall('', recipientUid: otherUserId);
+                    }
+                  }
+                },
               ),
             ],
           ),
         );
       },
     );
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty || name == 'Unknown') return '?';
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
   }
 
   String _formatTimestamp(DateTime? timestamp) {
@@ -943,6 +1018,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               token: callerToken,
               livekitUrl: defaultWsUrl,
               sessionService: _sessionService,
+              signalingService: _signalingService,
             ),
           ),
         ).then((_) {

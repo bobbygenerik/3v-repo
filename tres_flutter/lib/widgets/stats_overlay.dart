@@ -77,6 +77,7 @@ class _StatsOverlayState extends State<StatsOverlay> {
   }
 
   Widget _buildExpandedView() {
+    final stats = widget.statsService.currentStats;
     final quality = widget.statsService.currentQuality;
 
     return Container(
@@ -127,8 +128,40 @@ class _StatsOverlayState extends State<StatsOverlay> {
             ],
           ),
           const SizedBox(height: 12),
-          // Only show overall quality score — network-specific rows removed per request
-          _buildQualityBar(widget.statsService.currentQuality.score),
+          _buildQualityBar(quality.score),
+          const SizedBox(height: 12),
+          const Divider(color: Colors.white24, height: 1),
+          const SizedBox(height: 12),
+          
+          // Video Stats
+          _buildSectionHeader('VIDEO'),
+          const SizedBox(height: 8),
+          _buildStatRow('Send', stats.videoSendBitrateFormatted),
+          _buildStatRow('Receive', stats.videoRecvBitrateFormatted),
+          _buildStatRow('FPS', '${stats.videoFps}'),
+          _buildStatRow('Resolution', stats.videoResolution),
+          _buildStatRow('Packet Loss', stats.videoPacketLossFormatted, warning: stats.videoPacketLoss > 5.0),
+          
+          const SizedBox(height: 12),
+          const Divider(color: Colors.white24, height: 1),
+          const SizedBox(height: 12),
+          
+          // Audio Stats
+          _buildSectionHeader('AUDIO'),
+          const SizedBox(height: 8),
+          _buildStatRow('Send', stats.audioSendBitrateFormatted),
+          _buildStatRow('Receive', stats.audioRecvBitrateFormatted),
+          _buildStatRow('Packet Loss', stats.audioPacketLossFormatted, warning: stats.audioPacketLoss > 3.0),
+          
+          const SizedBox(height: 12),
+          const Divider(color: Colors.white24, height: 1),
+          const SizedBox(height: 12),
+          
+          // Network Stats
+          _buildSectionHeader('NETWORK'),
+          const SizedBox(height: 8),
+          _buildStatRow('RTT', stats.roundTripTimeFormatted, warning: stats.roundTripTime > 0.15),
+          _buildStatRow('Jitter', stats.jitterFormatted, warning: stats.jitter > 0.03),
         ],
       ),
     );

@@ -67,7 +67,10 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
   
   @override
   Widget build(BuildContext context) {
-    if (_videoTrack == null) {
+    // Check if video is muted (camera off) or track doesn't exist
+    final videoMuted = _videoTrack?.muted ?? true;
+    
+    if (_videoTrack == null || videoMuted) {
       return _buildNoVideoPlaceholder();
     }
     

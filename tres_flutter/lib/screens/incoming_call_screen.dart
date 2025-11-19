@@ -107,6 +107,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
             roomName: widget.roomName,
             token: myToken, // Use our own generated token
             livekitUrl: widget.livekitUrl,
+            signalingService: _signalingService,
           ),
         ),
       );

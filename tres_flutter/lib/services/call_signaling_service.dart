@@ -211,4 +211,62 @@ class CallSignalingService {
       debugPrint('❌ Error deleting invitation: $e');
     }
   }
+
+  /// End an active call and notify all participants
+  Future<void> endCall(String roomName, {String? otherUserId}) async {
+    try {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        debugPrint('❌ Cannot end call: not authenticated');
+        return;
+      }
+
+      debugPrint('🔚 Ending call - Room: $roomName, OtherUser: $otherUserId');
+
+      // Mark the call as ended in a shared location
+      final callEndData = {
+        'roomName': roomName,
+        'endedBy': currentUser.uid,
+        'endedByName': currentUser.displayName ?? currentUser.email ?? 'Unknown',
+        'endedAt': FieldValue.serverTimestamp(),
+        'status': 'ended',
+      };
+
+      // Use set with merge to ensure the document is created if it doesn't exist
+      await _firestore
+          .collection('activeCallRooms')
+          .doc(roomName)
+          .set(callEndData, SetOptions(merge: true));
+
+      debugPrint('✅ Call end signal written to activeCallRooms/$roomName');
+
+      // Notify the other user if we know their ID
+      if (otherUserId != null &&
+          otherUserId.isNotEmpty &&
+          otherUserId != currentUser.uid) {
+        final notificationData = {
+          'type': 'call_ended',
+          'roomName': roomName,
+          'endedBy': currentUser.uid,
+          'endedByName': currentUser.displayName ?? currentUser.email ?? 'Unknown',
+          'timestamp': FieldValue.serverTimestamp(),
+          'status': 'pending', // Will be processed by recipient
+        };
+
+        await _firestore
+            .collection('users')
+            .doc(otherUserId)
+            .collection('callSignals')
+            .add(notificationData);
+
+        debugPrint('✅ Notified other participant ($otherUserId) via callSignals');
+      } else {
+        debugPrint('⚠️ No other participant ID provided - only using activeCallRooms');
+      }
+
+      debugPrint('✅ Call end signaling completed successfully');
+    } catch (e) {
+      debugPrint('❌ Error ending call: $e');
+    }
+  }
 }
