@@ -163,10 +163,14 @@ exports.sendCallNotification = functions.firestore.onDocumentCreated(
       
       console.log(`Sending push notification to FCM token: ${fcmToken.substring(0, 20)}...`);
       
-      // Send data-only message to ensure MyFirebaseMessagingService.onMessageReceived() is called
-      // even when app is in background/killed. This allows us to show full-screen intent.
+      // Send notification with both data and notification payload
+      // Android needs notification payload to wake app when killed
       const message = {
         token: fcmToken,
+        notification: {
+          title: `Incoming call from ${callData.callerName}`,
+          body: 'Tap to answer'
+        },
         data: {
           type: 'call_invitation',
           invitationId: invitationId,
@@ -182,9 +186,13 @@ exports.sendCallNotification = functions.firestore.onDocumentCreated(
         },
         android: {
           priority: 'high',
-          // Data messages with high priority are delivered immediately
-          // even when device is in Doze mode
-          ttl: 60 * 1000 // 60 seconds TTL for call invitations
+          // High priority ensures delivery even in Doze mode
+          ttl: 60 * 1000, // 60 seconds TTL for call invitations
+          notification: {
+            channelId: 'call_channel',
+            sound: 'default',
+            priority: 'high'
+          }
         },
         apns: {
           headers: {

@@ -77,13 +77,13 @@ class CallStatsService extends ChangeNotifier {
     }
   }
 
-  /// Start collecting statistics periodically (1s) and notify listeners.
+  /// Start collecting statistics periodically (3s) and notify listeners.
   void startCollecting() {
     if (_isCollecting) return;
     if (_room == null) return;
 
     _isCollecting = true;
-    _statsTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+    _statsTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
       _flushCurrentStats();
     });
     notifyListeners();

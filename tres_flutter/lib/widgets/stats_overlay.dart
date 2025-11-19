@@ -20,6 +20,26 @@ class _StatsOverlayState extends State<StatsOverlay> {
   bool _isExpanded = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Listen to stats updates
+    widget.statsService.addListener(_onStatsUpdate);
+  }
+
+  @override
+  void dispose() {
+    widget.statsService.removeListener(_onStatsUpdate);
+    super.dispose();
+  }
+
+  void _onStatsUpdate() {
+    // Only rebuild if widget is mounted and expanded
+    if (mounted && _isExpanded) {
+      setState(() {});
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),

@@ -5,6 +5,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/guest_link_service.dart';
+import '../services/call_signaling_service.dart';
 import '../config/app_theme.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
@@ -20,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final CallSignalingService _signalingService = CallSignalingService();
   bool _showContactsView = true; // true = Contacts, false = History
   List<Map<String, dynamic>> _contacts = [];
   List<Map<String, dynamic>> _callHistory = [];
@@ -708,6 +710,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               roomName: roomName,
               token: token,
               livekitUrl: wsUrl,
+              signalingService: _signalingService,
             ),
           ),
         );

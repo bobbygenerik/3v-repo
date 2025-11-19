@@ -129,11 +129,9 @@ class LiveKitService extends ChangeNotifier {
         roomOptions: RoomOptions(
           defaultCameraCaptureOptions: CameraCaptureOptions(
             maxFrameRate: DeviceCapabilityService.getMaxFramerate().toDouble(),
-            params: DeviceCapabilityService.shouldUse1080p() 
-                ? VideoParametersPresets.h1080_169 
-                : VideoParametersPresets.h720_169,
+            // Force minimum 720p for all devices
+            params: VideoParametersPresets.h720_169,
           ),
-          // Enhanced adaptive streaming and codec selection already enabled
           defaultScreenShareCaptureOptions: ScreenShareCaptureOptions(
             maxFrameRate: 15,
             params: VideoParametersPresets.h720_169,
@@ -142,15 +140,16 @@ class LiveKitService extends ChangeNotifier {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
-            // Use Opus codec for better cross-platform audio
-            // Lower sample rate for better compatibility
           ),
           defaultVideoPublishOptions: VideoPublishOptions(
             videoEncoding: _getOptimalVideoEncoding(),
+            // Disable adaptive streaming to maintain quality
+            simulcast: false,
           ),
           defaultAudioPublishOptions: AudioPublishOptions(
             audioBitrate: _networkService.getRecommendedAudioBitrate(),
           ),
+          // Enable adaptive streaming with higher baseline quality
           adaptiveStream: true,
           dynacast: true,
         ),
@@ -212,14 +211,11 @@ class LiveKitService extends ChangeNotifier {
         _localVideoTrack = await LocalVideoTrack.createCameraTrack(
           CameraCaptureOptions(
             maxFrameRate: DeviceCapabilityService.getMaxFramerate().toDouble(),
-            params: DeviceCapabilityService.shouldUse1080p() 
-                ? VideoParametersPresets.h1080_169 
-                : VideoParametersPresets.h720_169,
+            // Force minimum 720p
+            params: VideoParametersPresets.h720_169,
           ),
         );
-        _currentVideoPreset = DeviceCapabilityService.shouldUse1080p()
-            ? VideoParametersPresets.h1080_169
-            : VideoParametersPresets.h720_169;
+        _currentVideoPreset = VideoParametersPresets.h720_169;
         debugPrint('✅ Camera track created: ${_localVideoTrack?.sid}');
         
         // Publish to room
@@ -246,52 +242,35 @@ class LiveKitService extends ChangeNotifier {
     try {
       if (_room == null) return;
       // Use multiple signals (bitrate, packet loss, RTT, jitter, device) to
-      // decide whether to lower/raise resolution or reduce FPS.
+      // decide whether to adjust FPS, but keep resolution at 720p minimum.
       final int bitrate = stats.videoSendBitrate.toInt();
       final double packetLossPct = stats.videoPacketLoss; // percent
       final double rttMs = stats.roundTripTime * 1000.0; // convert seconds->ms
       final double jitterMs = stats.jitter * 1000.0;
 
-      // Default desired preset from current
-      dynamic desired = _currentVideoPreset ?? VideoParametersPresets.h720_169;
+      // Always use 720p minimum
+      dynamic desired = VideoParametersPresets.h720_169;
       double? maxFpsOverride;
 
-      // If device is low-end, prefer conservative defaults
-      if (DeviceCapabilityService.capability == DeviceCapability.lowEnd) {
-        desired = VideoParametersPresets.h360_169;
-        maxFpsOverride = 18.0;
+      // Adjust FPS based on network conditions, but keep 720p resolution
+      if (packetLossPct > 5.0 || rttMs > 300.0 || jitterMs > 80.0 || bitrate < 500000) {
+        // Very poor conditions: reduce FPS significantly
+        maxFpsOverride = 15.0;
+      } else if (packetLossPct > 3.0 || rttMs > 200.0 || jitterMs > 50.0 || bitrate < 1000000) {
+        // Poor conditions: reduce FPS moderately
+        maxFpsOverride = 20.0;
+      } else if (bitrate <= 2000000) {
+        // Medium conditions: slightly reduce FPS
+        maxFpsOverride = DeviceCapabilityService.getMaxFramerate() * 0.8;
       } else {
-        // Poor network conditions: prioritize resolution decrease first
-        if (packetLossPct > 3.0 || rttMs > 250.0 || jitterMs > 50.0 || bitrate < 300000) {
-          desired = VideoParametersPresets.h360_169;
-          maxFpsOverride = 15.0;
-        } else if (bitrate <= 400000) {
-          desired = VideoParametersPresets.h360_169;
-          maxFpsOverride = 20.0;
-        } else if (bitrate <= 1200000) {
-          desired = VideoParametersPresets.h720_169;
-          // Slightly reduce fps under medium bandwidth
-          maxFpsOverride = DeviceCapabilityService.getMaxFramerate() * 0.8;
-        } else {
-          desired = VideoParametersPresets.h1080_169;
-          // Under good/high bandwidth conditions we don't need to force a
-          // specific FPS override — leave it null so we only recreate the
-          // track when resolution/preset changes. This avoids the analyzer
-          // warning about the null-check being always true.
-          maxFpsOverride = null;
-        }
+        // Good conditions: use max FPS
+        maxFpsOverride = null;
       }
 
-      // Respect device capability: don't upgrade beyond device support
-      if (!DeviceCapabilityService.shouldUse1080p() && desired == VideoParametersPresets.h1080_169) {
-        desired = VideoParametersPresets.h720_169;
-      }
-
-      // If we need to change either preset or FPS, recreate track
-      final bool presetChanged = desired != _currentVideoPreset;
+      // If we need to change FPS, recreate track
       final bool fpsChangeRequested = maxFpsOverride != null;
-      if (presetChanged || fpsChangeRequested) {
-        debugPrint('🔧 Adjusting video preset from $_currentVideoPreset to $desired (bitrate=$bitrate, loss=${packetLossPct.toStringAsFixed(1)}%, rtt=${rttMs.toStringAsFixed(0)}ms, jitter=${jitterMs.toStringAsFixed(0)}ms)');
+      if (fpsChangeRequested && _currentVideoPreset != desired) {
+        debugPrint('🔧 Adjusting video FPS (bitrate=$bitrate, loss=${packetLossPct.toStringAsFixed(1)}%, rtt=${rttMs.toStringAsFixed(0)}ms, jitter=${jitterMs.toStringAsFixed(0)}ms)');
         await _recreateAndPublishVideoTrack(desired, maxFrameRateOverride: maxFpsOverride);
       }
     } catch (e) {

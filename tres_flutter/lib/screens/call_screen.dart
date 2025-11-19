@@ -261,10 +261,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                       child: _buildRoomInfo(coordinator),
                     ),
                     
-                    // Stats overlay (if enabled) - positioned below quality pill on left side
+                    // Stats overlay (if enabled) - positioned just below time elapsed
                     if (coordinator.isStatsCollecting)
                       Positioned(
-                        top: 130, // More spacing from quality pill
+                        top: 70, // Just below caller name (18px + 4px gap) + time (14px + 8px padding)
                         left: 16, // Aligned with room info on left
                         child: StatsOverlay(
                           statsService: coordinator.statsService,
