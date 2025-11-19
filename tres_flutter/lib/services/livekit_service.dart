@@ -91,9 +91,11 @@ class LiveKitService extends ChangeNotifier {
     debugPrint('🎥 Video encoding: $finalBitrate bps, $finalFramerate fps, codec: $preferredCodec');
     
     if (kIsWeb) {
-      // Web: VP9 optimization for better compression
+      // Web: Force H.264 for maximum iOS/Safari compatibility
+      // VP9 is not well supported on iPhone browsers
+      debugPrint('🌐 Web platform: Using H.264 codec for iOS compatibility');
       return VideoEncoding(
-        maxBitrate: preferredCodec == 'VP9' ? finalBitrate : (finalBitrate * 0.8).toInt(),
+        maxBitrate: finalBitrate, // Use full bitrate for H.264 on web
         maxFramerate: finalFramerate,
       );
     }
@@ -144,8 +146,8 @@ class LiveKitService extends ChangeNotifier {
           ),
           defaultVideoPublishOptions: VideoPublishOptions(
             videoEncoding: _getOptimalVideoEncoding(),
-            // Disable adaptive streaming to maintain quality
-            simulcast: false,
+            // Enable simulcast for better quality adaptation across platforms
+            simulcast: true,
           ),
           defaultAudioPublishOptions: AudioPublishOptions(
             audioBitrate: _networkService.getRecommendedAudioBitrate(),
@@ -258,9 +260,9 @@ class LiveKitService extends ChangeNotifier {
 
       // Determine target bitrate and FPS based on network conditions
       if (packetLossPct > 5.0 || rttMs > 300.0 || jitterMs > 80.0 || bitrate < 500000) {
-        // Very poor conditions: reduce both FPS and bitrate significantly
+        // Very poor conditions: reduce FPS but maintain acceptable bitrate
         maxFpsOverride = 15.0;
-        maxBitrateOverride = 2000 * 1000; // 2 Mbps
+        maxBitrateOverride = 4000 * 1000; // 4 Mbps (increased from 2 Mbps)
       } else if (packetLossPct > 3.0 || rttMs > 200.0 || jitterMs > 50.0 || bitrate < 1000000) {
         // Poor conditions: reduce FPS and bitrate moderately
         maxFpsOverride = 20.0;
@@ -268,7 +270,7 @@ class LiveKitService extends ChangeNotifier {
       } else if (bitrate <= 2000000) {
         // Medium conditions: slightly reduce FPS, allow higher bitrate
         maxFpsOverride = DeviceCapabilityService.getMaxFramerate() * 0.8;
-        maxBitrateOverride = 8000 * 1000; // 8 Mbps
+        maxBitrateOverride = 10000 * 1000; // 10 Mbps (increased from 8 Mbps)
       } else {
         // Good conditions: use optimal encoding from network quality
         maxFpsOverride = null;
@@ -280,7 +282,14 @@ class LiveKitService extends ChangeNotifier {
                                    (maxBitrateOverride != _currentMaxBitrate);
       
       if (needsAdjustment) {
-        debugPrint('🔧 Adjusting video encoding (bitrate=${maxBitrateOverride ?? optimalEncoding.maxBitrate} bps, fps=${maxFpsOverride ?? DeviceCapabilityService.getMaxFramerate()}, loss=${packetLossPct.toStringAsFixed(1)}%, rtt=${rttMs.toStringAsFixed(0)}ms)');
+        final codec = DeviceCapabilityService.getCodecPreference();
+      debugPrint('🔧 Video Quality Adjustment:');
+      debugPrint('   📊 Bitrate: ${maxBitrateOverride ?? optimalEncoding.maxBitrate} bps (${((maxBitrateOverride ?? optimalEncoding.maxBitrate) / 1000000).toStringAsFixed(1)} Mbps)');
+      debugPrint('   🎬 FPS: ${maxFpsOverride ?? DeviceCapabilityService.getMaxFramerate()}');
+      debugPrint('   📡 Codec: $codec');
+      debugPrint('   📉 Packet Loss: ${packetLossPct.toStringAsFixed(1)}%');
+      debugPrint('   ⏱️ RTT: ${rttMs.toStringAsFixed(0)}ms');
+      debugPrint('   📶 Jitter: ${jitterMs.toStringAsFixed(0)}ms');
         await _recreateAndPublishVideoTrack(
           desired, 
           maxFrameRateOverride: maxFpsOverride,
