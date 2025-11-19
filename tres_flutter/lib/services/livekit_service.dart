@@ -2,13 +2,18 @@ import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'network_quality_service.dart';
 import 'device_capability_service.dart';
+import 'call_stats_service.dart';
+// `CallStats` and `CallConnectionQuality` are exported via `call_stats_service.dart`
 
 /// LiveKit service managing room connections and participant tracks
 /// Mirrors functionality from Android LiveKitManager.kt
+enum CaptureProfile { low, medium, high }
+
 class LiveKitService extends ChangeNotifier {
   Room? _room;
   LocalVideoTrack? _localVideoTrack;
   LocalAudioTrack? _localAudioTrack;
+  dynamic _currentVideoPreset;
   CameraPosition _currentCameraPosition = CameraPosition.front; // Track current camera
   
   Room? get room => _room;
@@ -28,10 +33,39 @@ class LiveKitService extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   
   final NetworkQualityService _networkService = NetworkQualityService();
+  CallStatsService? _internalStatsService;
   
   // Detect device capability on service creation
   LiveKitService() {
+    // Perform async detection to get a more accurate capability and codec preference
     DeviceCapabilityService.detectCapability();
+    // Also attempt async detection (non-blocking) for finer-grained heuristics
+    DeviceCapabilityService.detectCapabilityAsync();
+  }
+
+  /// Collect call stats from local tracks using LiveKit SDK where available.
+  /// Returns a [CallStats] instance. This method does not fall back to
+  /// simulated data — if stats are unavailable the returned [CallStats]
+  /// will contain zero/unknown values and `quality` set to `unknown`.
+  Future<CallStats> collectCallStats() async {
+    try {
+      // Prefer real stats from the CallStatsService which listens to LiveKit events.
+      if (_room == null) return const CallStats();
+
+      _internalStatsService ??= CallStatsService();
+      try {
+        await _internalStatsService!.initialize(_room!);
+      } catch (_) {}
+      if (!_internalStatsService!.isCollecting) {
+        _internalStatsService!.startCollecting();
+      }
+
+      // Return the latest collected stats (may be empty if called immediately)
+      return _internalStatsService!.currentStats;
+    } catch (e) {
+      debugPrint('collectCallStats fatal: $e');
+      return const CallStats();
+    }
   }
   
   /// Get optimal video encoding with enhanced codec optimization
@@ -53,7 +87,7 @@ class LiveKitService extends ChangeNotifier {
         ? (deviceMaxFramerate * 0.8).toInt()
         : deviceMaxFramerate;
     
-    debugPrint('🎥 Video encoding: ${finalBitrate}bps, ${finalFramerate}fps, codec: $preferredCodec');
+    debugPrint('🎥 Video encoding: $finalBitrate bps, $finalFramerate fps, codec: $preferredCodec');
     
     if (kIsWeb) {
       // Web: VP9 optimization for better compression
@@ -183,6 +217,9 @@ class LiveKitService extends ChangeNotifier {
                 : VideoParametersPresets.h720_169,
           ),
         );
+        _currentVideoPreset = DeviceCapabilityService.shouldUse1080p()
+            ? VideoParametersPresets.h1080_169
+            : VideoParametersPresets.h720_169;
         debugPrint('✅ Camera track created: ${_localVideoTrack?.sid}');
         
         // Publish to room
@@ -200,6 +237,148 @@ class LiveKitService extends ChangeNotifier {
       debugPrint('❌ Failed to enable camera: $e');
       _errorMessage = 'Failed to enable camera: ${e.toString()}';
       notifyListeners();
+    }
+  }
+
+  /// Adjust published video quality based on observed network/device stats.
+  /// This will recreate and publish a lower/higher resolution track when needed.
+  Future<void> _maybeAdjustVideoForStats(CallStats stats) async {
+    try {
+      if (_room == null) return;
+      // Use multiple signals (bitrate, packet loss, RTT, jitter, device) to
+      // decide whether to lower/raise resolution or reduce FPS.
+      final int bitrate = stats.videoSendBitrate.toInt();
+      final double packetLossPct = stats.videoPacketLoss; // percent
+      final double rttMs = stats.roundTripTime * 1000.0; // convert seconds->ms
+      final double jitterMs = stats.jitter * 1000.0;
+
+      // Default desired preset from current
+      dynamic desired = _currentVideoPreset ?? VideoParametersPresets.h720_169;
+      double? maxFpsOverride;
+
+      // If device is low-end, prefer conservative defaults
+      if (DeviceCapabilityService.capability == DeviceCapability.lowEnd) {
+        desired = VideoParametersPresets.h360_169;
+        maxFpsOverride = 18.0;
+      } else {
+        // Poor network conditions: prioritize resolution decrease first
+        if (packetLossPct > 3.0 || rttMs > 250.0 || jitterMs > 50.0 || bitrate < 300000) {
+          desired = VideoParametersPresets.h360_169;
+          maxFpsOverride = 15.0;
+        } else if (bitrate <= 400000) {
+          desired = VideoParametersPresets.h360_169;
+          maxFpsOverride = 20.0;
+        } else if (bitrate <= 1200000) {
+          desired = VideoParametersPresets.h720_169;
+          // Slightly reduce fps under medium bandwidth
+          maxFpsOverride = DeviceCapabilityService.getMaxFramerate() * 0.8;
+        } else {
+          desired = VideoParametersPresets.h1080_169;
+          // Under good/high bandwidth conditions we don't need to force a
+          // specific FPS override — leave it null so we only recreate the
+          // track when resolution/preset changes. This avoids the analyzer
+          // warning about the null-check being always true.
+          maxFpsOverride = null;
+        }
+      }
+
+      // Respect device capability: don't upgrade beyond device support
+      if (!DeviceCapabilityService.shouldUse1080p() && desired == VideoParametersPresets.h1080_169) {
+        desired = VideoParametersPresets.h720_169;
+      }
+
+      // If we need to change either preset or FPS, recreate track
+      final bool presetChanged = desired != _currentVideoPreset;
+      final bool fpsChangeRequested = maxFpsOverride != null;
+      if (presetChanged || fpsChangeRequested) {
+        debugPrint('🔧 Adjusting video preset from $_currentVideoPreset to $desired (bitrate=$bitrate, loss=${packetLossPct.toStringAsFixed(1)}%, rtt=${rttMs.toStringAsFixed(0)}ms, jitter=${jitterMs.toStringAsFixed(0)}ms)');
+        await _recreateAndPublishVideoTrack(desired, maxFrameRateOverride: maxFpsOverride);
+      }
+    } catch (e) {
+      debugPrint('Error adjusting video for stats: $e');
+    }
+  }
+
+  /// Recreate and publish local camera track for a requested preset.
+  /// Optionally pass `maxFrameRateOverride` to cap capture FPS (useful when
+  /// reducing frame rate under poor conditions).
+  Future<void> _recreateAndPublishVideoTrack(dynamic preset, {double? maxFrameRateOverride}) async {
+    try {
+      final wasMuted = !isCameraEnabled;
+
+      // Stop old track if exists
+      await _localVideoTrack?.stop();
+
+      // Create new track with requested preset
+      _localVideoTrack = await LocalVideoTrack.createCameraTrack(
+        CameraCaptureOptions(
+          maxFrameRate: (maxFrameRateOverride ?? DeviceCapabilityService.getMaxFramerate()).toDouble(),
+          params: preset,
+        ),
+      );
+      _currentVideoPreset = preset;
+
+      // Publish new track
+      await _room?.localParticipant?.publishVideoTrack(_localVideoTrack!);
+
+      // Restore mute state
+      if (wasMuted) {
+        await _localVideoTrack?.mute();
+      } else {
+        await _localVideoTrack?.unmute();
+      }
+      debugPrint('🔁 Recreated and published new video track with preset $preset');
+    } catch (e) {
+      debugPrint('Failed to recreate video track: $e');
+    }
+  }
+
+  /// External entrypoint: apply observed stats (from CallStatsService)
+  /// so LiveKitService can decide to adapt publish settings.
+  Future<void> applyObservedStats(CallStats stats) async {
+    await _maybeAdjustVideoForStats(stats);
+  }
+
+  /// Apply a high-level capture profile (low/medium/high) immediately.
+  /// This is used by `PerformanceMonitor` to quickly lower capture
+  /// resolution/fps when device or network conditions demand it.
+  Future<void> applyCaptureProfile(CaptureProfile profile) async {
+    try {
+      if (_room == null) return;
+
+      dynamic preset = VideoParametersPresets.h720_169;
+      double? fpsOverride;
+
+      switch (profile) {
+        case CaptureProfile.low:
+          preset = VideoParametersPresets.h360_169;
+          fpsOverride = 15.0;
+          break;
+        case CaptureProfile.medium:
+          preset = VideoParametersPresets.h720_169;
+          fpsOverride = DeviceCapabilityService.getMaxFramerate() * 0.8;
+          break;
+        case CaptureProfile.high:
+          preset = DeviceCapabilityService.shouldUse1080p()
+              ? VideoParametersPresets.h1080_169
+              : VideoParametersPresets.h720_169;
+          fpsOverride = null; // don't force fps change for high
+          break;
+      }
+
+      // Respect device capability
+      if (!DeviceCapabilityService.shouldUse1080p() && preset == VideoParametersPresets.h1080_169) {
+        preset = VideoParametersPresets.h720_169;
+      }
+
+      // Only recreate if preset or fps differs
+      final bool presetChanged = preset != _currentVideoPreset;
+      final bool fpsChangeRequested = fpsOverride != null;
+      if (presetChanged || fpsChangeRequested) {
+        await _recreateAndPublishVideoTrack(preset, maxFrameRateOverride: fpsOverride);
+      }
+    } catch (e) {
+      debugPrint('applyCaptureProfile error: $e');
     }
   }
   

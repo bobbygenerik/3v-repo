@@ -8,6 +8,7 @@ class NetworkQualityService extends ChangeNotifier {
   NetworkQuality _currentQuality = NetworkQuality.good;
   Timer? _qualityTimer;
   bool _isMonitoring = false;
+  int _lastLatencyMs = 0;
   
   NetworkQuality get currentQuality => _currentQuality;
   bool get isMonitoring => _isMonitoring;
@@ -44,6 +45,7 @@ class NetworkQualityService extends ChangeNotifier {
       
       stopwatch.stop();
       final latency = stopwatch.elapsedMilliseconds;
+      _lastLatencyMs = latency;
       
       NetworkQuality newQuality;
       if (response.statusCode == 204) {
@@ -89,6 +91,9 @@ class NetworkQualityService extends ChangeNotifier {
         return 0;
     }
   }
+
+  /// Return last measured latency in milliseconds (may be 0 if not measured)
+  int getLastMeasuredLatencyMs() => _lastLatencyMs;
   
   /// Get recommended audio bitrate
   int getRecommendedAudioBitrate() {

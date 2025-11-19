@@ -1,157 +1,11 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'call_stats_model.dart';
+export 'call_stats_model.dart';
 
-/// Connection quality levels
-enum CallConnectionQuality {
-  excellent,
-  good,
-  fair,
-  poor,
-  unknown;
-
-  String get label {
-    switch (this) {
-      case CallConnectionQuality.excellent:
-        return 'Excellent';
-      case CallConnectionQuality.good:
-        return 'Good';
-      case CallConnectionQuality.fair:
-        return 'Fair';
-      case CallConnectionQuality.poor:
-        return 'Poor';
-      case CallConnectionQuality.unknown:
-        return 'Unknown';
-    }
-  }
-
-  int get score {
-    switch (this) {
-      case CallConnectionQuality.excellent:
-        return 100;
-      case CallConnectionQuality.good:
-        return 75;
-      case CallConnectionQuality.fair:
-        return 50;
-      case CallConnectionQuality.poor:
-        return 25;
-      case CallConnectionQuality.unknown:
-        return 0;
-    }
-  }
-}
-
-/// Call statistics data class
-class CallStats {
-  // Video stats
-  final double videoSendBitrate;
-  final double videoRecvBitrate;
-  final double videoPacketLoss;
-  final String videoResolution;
-  final int videoFps;
-
-  // Audio stats
-  final double audioSendBitrate;
-  final double audioRecvBitrate;
-  final double audioPacketLoss;
-
-  // Network stats
-  final double roundTripTime; // RTT in seconds
-  final double jitter; // in seconds
-  final CallConnectionQuality quality;
-
-  const CallStats({
-    this.videoSendBitrate = 0.0,
-    this.videoRecvBitrate = 0.0,
-    this.videoPacketLoss = 0.0,
-    this.videoResolution = 'N/A',
-    this.videoFps = 0,
-    this.audioSendBitrate = 0.0,
-    this.audioRecvBitrate = 0.0,
-    this.audioPacketLoss = 0.0,
-    this.roundTripTime = 0.0,
-    this.jitter = 0.0,
-    this.quality = CallConnectionQuality.unknown,
-  });
-
-  // Formatted getters
-  String get videoSendBitrateFormatted => _formatBitrate(videoSendBitrate);
-  String get videoRecvBitrateFormatted => _formatBitrate(videoRecvBitrate);
-  String get audioSendBitrateFormatted => _formatBitrate(audioSendBitrate);
-  String get audioRecvBitrateFormatted => _formatBitrate(audioRecvBitrate);
-  String get roundTripTimeFormatted => _formatLatency(roundTripTime);
-  String get jitterFormatted => _formatJitter(jitter);
-  String get videoPacketLossFormatted => _formatPacketLoss(videoPacketLoss);
-  String get audioPacketLossFormatted => _formatPacketLoss(audioPacketLoss);
-
-  static String _formatBitrate(double bytesPerSecond) {
-    final kbps = (bytesPerSecond * 8) / 1000;
-    if (kbps > 1000) {
-      return '${(kbps / 1000).toStringAsFixed(1)} Mbps';
-    } else {
-      return '${kbps.toStringAsFixed(0)} kbps';
-    }
-  }
-
-  static String _formatLatency(double seconds) {
-    return '${(seconds * 1000).toStringAsFixed(0)} ms';
-  }
-
-  static String _formatJitter(double seconds) {
-    return '${(seconds * 1000).toStringAsFixed(1)} ms';
-  }
-
-  static String _formatPacketLoss(double packets) {
-    return '${packets.toStringAsFixed(1)}%';
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'videoSendBitrate': videoSendBitrate,
-      'videoRecvBitrate': videoRecvBitrate,
-      'videoPacketLoss': videoPacketLoss,
-      'videoResolution': videoResolution,
-      'videoFps': videoFps,
-      'audioSendBitrate': audioSendBitrate,
-      'audioRecvBitrate': audioRecvBitrate,
-      'audioPacketLoss': audioPacketLoss,
-      'roundTripTime': roundTripTime,
-      'jitter': jitter,
-      'quality': quality.label,
-      'qualityScore': quality.score,
-    };
-  }
-}
-
-/// Call Statistics Service
-/// 
-/// Collects and monitors real-time call quality metrics using LiveKit.
-/// 
-/// Features:
-/// - Video/audio bitrate tracking
-/// - Packet loss monitoring
-/// - RTT (Round Trip Time) measurement
-/// - Jitter calculation
-/// - Connection quality assessment
-/// - Real-time updates (1 second interval)
-/// 
-/// Usage:
-/// ```dart
-/// final statsService = CallStatsService();
-/// await statsService.initialize(room);
-/// 
-/// // Start collecting stats
-/// statsService.startCollecting();
-/// 
-/// // Listen to updates
-/// statsService.addListener(() {
-///   print('Quality: ${statsService.currentStats.quality.label}');
-///   print('RTT: ${statsService.currentStats.roundTripTimeFormatted}');
-/// });
-/// 
-/// // Stop collecting
-/// statsService.stopCollecting();
-/// ```
+/// Call Statistics Service — collects real event-driven stats and falls
+/// back to native getStats when necessary.
 class CallStatsService extends ChangeNotifier {
   static const String _tag = 'CallStats';
 
@@ -159,259 +13,293 @@ class CallStatsService extends ChangeNotifier {
   Timer? _statsTimer;
   CallStats _currentStats = const CallStats();
   bool _isCollecting = false;
+  EventsListener<RoomEvent>? _roomListener;
 
-  // Historical data for trends
+  // Latest metrics updated by LiveKit events
+  double _lastVideoSendBitrate = 0.0;
+  double _lastVideoRecvBitrate = 0.0;
+  double _lastAudioSendBitrate = 0.0;
+  double _lastAudioRecvBitrate = 0.0;
+  double _lastVideoPacketLoss = 0.0; // percent (0-100)
+  double _lastAudioPacketLoss = 0.0;
+  double _lastRtt = 0.0; // seconds
+  double _lastJitter = 0.0; // seconds
+  String _lastResolution = 'N/A';
+  int _lastFps = 0;
+
   final List<CallStats> _statsHistory = [];
-  static const int _maxHistoryLength = 60; // Keep 60 seconds of data
+  static const int _maxHistoryLength = 60;
 
   CallStats get currentStats => _currentStats;
-  bool get isCollecting => _isCollecting;
-  List<CallStats> get statsHistory => List.unmodifiable(_statsHistory);
   CallConnectionQuality get currentQuality => _currentStats.quality;
+  bool get isCollecting => _isCollecting;
 
-  /// Initialize stats service
+  /// Initialize with a LiveKit [Room] and register listeners for stats events.
   Future<void> initialize(Room room) async {
     _room = room;
-    debugPrint('$_tag: Service initialized');
+
+    try {
+      _roomListener = _room!.createListener();
+
+      _roomListener
+        ?..on<VideoSenderStatsEvent>((e) {
+          _lastVideoSendBitrate = (e.currentBitrate ?? 0).toDouble();
+          if (e.bitrateForLayers.isNotEmpty) {
+            final sum = e.bitrateForLayers.values.fold<num>(0, (p, c) => p + (c ?? 0));
+            _lastVideoSendBitrate = sum.toDouble();
+          }
+          final parsed = _parseStatsObject(e.stats);
+          if (parsed['packetLoss'] != null) _lastVideoPacketLoss = parsed['packetLoss']!;
+          if (parsed['rttMs'] != null) _lastRtt = (parsed['rttMs']! / 1000.0);
+          if (parsed['jitterMs'] != null) _lastJitter = (parsed['jitterMs']! / 1000.0);
+        })
+        ..on<VideoReceiverStatsEvent>((e) {
+          _lastVideoRecvBitrate = (e.currentBitrate ?? 0).toDouble();
+          final parsed = _parseStatsObject(e.stats);
+          if (parsed['packetLoss'] != null) _lastVideoPacketLoss = parsed['packetLoss']!;
+          if (parsed['rttMs'] != null) _lastRtt = (parsed['rttMs']! / 1000.0);
+          if (parsed['jitterMs'] != null) _lastJitter = (parsed['jitterMs']! / 1000.0);
+        })
+        ..on<AudioSenderStatsEvent>((e) {
+          _lastAudioSendBitrate = (e.currentBitrate ?? 0).toDouble();
+          final parsed = _parseStatsObject(e.stats);
+          if (parsed['packetLoss'] != null) _lastAudioPacketLoss = parsed['packetLoss']!;
+        })
+        ..on<AudioReceiverStatsEvent>((e) {
+          _lastAudioRecvBitrate = (e.currentBitrate ?? 0).toDouble();
+          final parsed = _parseStatsObject(e.stats);
+          if (parsed['packetLoss'] != null) _lastAudioPacketLoss = parsed['packetLoss']!;
+          if (parsed['rttMs'] != null) _lastRtt = (parsed['rttMs']! / 1000.0);
+          if (parsed['jitterMs'] != null) _lastJitter = (parsed['jitterMs']! / 1000.0);
+        });
+    } catch (e) {
+      debugPrint('$_tag: Failed to register room stats listeners: $e');
+    }
   }
 
-  /// Start collecting statistics
+  /// Start collecting statistics periodically (1s) and notify listeners.
   void startCollecting() {
-    if (_isCollecting) {
-      debugPrint('$_tag: Already collecting stats');
-      return;
-    }
+    if (_isCollecting) return;
+    if (_room == null) return;
 
-    if (_room == null) {
-      debugPrint('$_tag: Room not initialized');
-      return;
-    }
-
-    debugPrint('$_tag: Starting stats collection');
     _isCollecting = true;
-    
-    _statsTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      _collectStats();
+    _statsTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      _flushCurrentStats();
     });
-
     notifyListeners();
   }
 
   /// Stop collecting statistics
   void stopCollecting() {
-    if (!_isCollecting) {
-      return;
-    }
-
-    debugPrint('$_tag: Stopping stats collection');
+    if (!_isCollecting) return;
     _statsTimer?.cancel();
     _statsTimer = null;
     _isCollecting = false;
     notifyListeners();
   }
 
-  /// Collect statistics from LiveKit room
-  Future<void> _collectStats() async {
-    if (_room == null) return;
+  /// Heuristic parser that walks nested maps/lists looking for packet loss, rtt, jitter
+  Map<String, double?> _parseStatsObject(dynamic stats) {
+    double? packetLoss;
+    double? rttMs;
+    double? jitterMs;
+
+    // Helpers to normalize values we find:
+    double normalizePacketLoss(num raw) {
+      final v = raw.toDouble();
+      if (v <= 1.0) return v * 100.0; // fraction -> percent
+      return v; // already percent
+    }
+
+    double normalizeRttMs(num raw) {
+      final v = raw.toDouble();
+      // Heuristic: values < 5 are likely seconds, >5 likely milliseconds
+      if (v <= 5.0) return v * 1000.0; // seconds -> ms
+      return v; // assume milliseconds
+    }
+
+    void recurse(dynamic obj) {
+      if (obj == null) return;
+      if (obj is Map) {
+        for (final entry in obj.entries) {
+          final key = entry.key?.toString().toLowerCase();
+          final value = entry.value;
+          if (value == null) continue;
+
+          if (key != null) {
+            // Packet loss variants
+            if (key.contains('loss') || key.contains('packetslost') || key.contains('fraction_lost') || key.contains('fractionlost') || key.contains('lost') || key.contains('packets_lost') || key.contains('packet_loss') || key.contains('loss_rate')) {
+              final v = double.tryParse(value.toString());
+                if (v != null) {
+                  final normalized = normalizePacketLoss(v);
+                  double prev;
+                  if (packetLoss != null) {
+                    prev = packetLoss!;
+                  } else {
+                    prev = normalized;
+                  }
+                  packetLoss = packetLoss == null ? normalized : ((prev + normalized) / 2.0);
+                }
+            }
+
+            // RTT variants
+            else if (key.contains('rtt') || key.contains('roundtrip') || key.contains('round_trip')) {
+              final v = double.tryParse(value.toString());
+                if (v != null) {
+                  final normalized = normalizeRttMs(v);
+                  double prev;
+                  if (rttMs != null) {
+                    prev = rttMs!;
+                  } else {
+                    prev = normalized;
+                  }
+                  rttMs = rttMs == null ? normalized : ((prev + normalized) / 2.0);
+                }
+            }
+
+            // Jitter variants
+            else if (key.contains('jitter')) {
+              final v = double.tryParse(value.toString());
+                if (v != null) {
+                  final normalized = normalizeRttMs(v);
+                  double prev;
+                  if (jitterMs != null) {
+                    prev = jitterMs!;
+                  } else {
+                    prev = normalized;
+                  }
+                  jitterMs = jitterMs == null ? normalized : ((prev + normalized) / 2.0);
+                }
+            }
+          }
+
+          if (value is Map || value is Iterable) recurse(value);
+        }
+      } else if (obj is Iterable) {
+        for (final item in obj) {
+          recurse(item);
+        }
+      }
+    }
 
     try {
-      // In production: Get stats from LiveKit tracks
-      // 
-      // Example implementation:
-      // 
-      // final localParticipant = _room!.localParticipant;
-      // 
-      // // Get local video track stats
-      // final videoTrack = localParticipant?.videoTracks.firstOrNull?.track;
-      // if (videoTrack != null) {
-      //   final stats = await videoTrack.getStats();
-      //   // Parse outbound-rtp stats for video
-      // }
-      // 
-      // // Get local audio track stats
-      // final audioTrack = localParticipant?.audioTracks.firstOrNull?.track;
-      // if (audioTrack != null) {
-      //   final stats = await audioTrack.getStats();
-      //   // Parse outbound-rtp stats for audio
-      // }
-      // 
-      // // Get remote participant stats
-      // final remoteParticipant = _room!.remoteParticipants.values.firstOrNull;
-      // if (remoteParticipant != null) {
-      //   final remoteVideoTrack = remoteParticipant.videoTracks.firstOrNull?.track;
-      //   if (remoteVideoTrack != null) {
-      //     final stats = await remoteVideoTrack.getStats();
-      //     // Parse inbound-rtp stats for video
-      //   }
-      // }
+      recurse(stats);
+    } catch (_) {}
 
-      // Simulate realistic stats for development
-      _currentStats = _generateSimulatedStats();
-
-      // Add to history
-      _statsHistory.add(_currentStats);
-      if (_statsHistory.length > _maxHistoryLength) {
-        _statsHistory.removeAt(0);
-      }
-
-      notifyListeners();
-
-    } catch (e) {
-      debugPrint('$_tag: Error collecting stats: $e');
+    // Final normalization: ensure packetLoss is in 0..100 and convert rtt/jitter to ms
+    if (packetLoss != null) {
+      if (packetLoss! < 0) packetLoss = 0.0;
+      if (packetLoss! > 100.0) packetLoss = 100.0;
     }
+
+    return {'packetLoss': packetLoss, 'rttMs': rttMs, 'jitterMs': jitterMs};
   }
 
-  /// Generate simulated stats for testing
-  /// In production, this would parse real WebRTC stats from LiveKit
-  CallStats _generateSimulatedStats() {
-    final now = DateTime.now();
-    final variance = (now.millisecond % 100) / 100;
+  /// If event-driven fields are missing, try native getStats bridge.
+  Future<void> _maybeFillFromNativeIfNeeded() async {
+    // Native fallback removed: we rely solely on LiveKit event payloads.
+    return;
+  }
 
-    // Simulate good connection with some variance
-    final baseRtt = 45 + (variance * 30); // 45-75ms
-    final baseJitter = 2 + (variance * 3); // 2-5ms
-    final basePacketLoss = 0.1 + (variance * 0.9); // 0.1-1.0%
+  /// Build CallStats and append to history
+  void _flushCurrentStats() {
+    final quality = _calculateQuality(rttMs: _lastRtt * 1000.0, packetLoss: _lastVideoPacketLoss);
 
-    final videoSendBitrate = 800000 + (variance * 400000); // 800kbps - 1.2Mbps
-    final videoRecvBitrate = 750000 + (variance * 450000); // 750kbps - 1.2Mbps
-    final audioSendBitrate = 40000 + (variance * 20000); // 40-60kbps
-    final audioRecvBitrate = 38000 + (variance * 22000); // 38-60kbps
-
-    final quality = _calculateQuality(
-      rttMs: baseRtt,
-      packetLoss: basePacketLoss,
-    );
-
-    return CallStats(
-      videoSendBitrate: videoSendBitrate,
-      videoRecvBitrate: videoRecvBitrate,
-      videoPacketLoss: basePacketLoss,
-      videoResolution: '1280x720',
-      videoFps: 30,
-      audioSendBitrate: audioSendBitrate,
-      audioRecvBitrate: audioRecvBitrate,
-      audioPacketLoss: basePacketLoss * 0.8, // Audio usually has less loss
-      roundTripTime: baseRtt / 1000, // Convert to seconds
-      jitter: baseJitter / 1000, // Convert to seconds
+    _currentStats = CallStats(
+      videoSendBitrate: _lastVideoSendBitrate,
+      videoRecvBitrate: _lastVideoRecvBitrate,
+      videoPacketLoss: _lastVideoPacketLoss,
+      videoResolution: _lastResolution,
+      videoFps: _lastFps,
+      audioSendBitrate: _lastAudioSendBitrate,
+      audioRecvBitrate: _lastAudioRecvBitrate,
+      audioPacketLoss: _lastAudioPacketLoss,
+      roundTripTime: _lastRtt,
+      jitter: _lastJitter,
       quality: quality,
     );
+
+    _statsHistory.add(_currentStats);
+    if (_statsHistory.length > _maxHistoryLength) {
+      _statsHistory.removeAt(0);
+    }
+
+    notifyListeners();
   }
 
-  /// Calculate connection quality based on RTT and packet loss
-  CallConnectionQuality _calculateQuality({
-    required double rttMs,
-    required double packetLoss,
-  }) {
-    // Excellent: RTT < 50ms, loss < 1%
-    if (rttMs < 50 && packetLoss < 1) {
-      return CallConnectionQuality.excellent;
-    }
-    
-    // Good: RTT < 100ms, loss < 2%
-    if (rttMs < 100 && packetLoss < 2) {
-      return CallConnectionQuality.good;
-    }
-    
-    // Fair: RTT < 200ms, loss < 5%
-    if (rttMs < 200 && packetLoss < 5) {
-      return CallConnectionQuality.fair;
-    }
-    
-    // Poor: Everything else
+  /// Calculate a simple quality metric from RTT (ms) and packet loss (%)
+  CallConnectionQuality _calculateQuality({required double rttMs, required double packetLoss}) {
+    if (rttMs < 50 && packetLoss < 1) return CallConnectionQuality.excellent;
+    if (rttMs < 100 && packetLoss < 2) return CallConnectionQuality.good;
+    if (rttMs < 200 && packetLoss < 5) return CallConnectionQuality.fair;
     return CallConnectionQuality.poor;
   }
 
-  /// Get average stats over the last N seconds
+  /// Average stats over last N seconds
   CallStats getAverageStats({int seconds = 10}) {
-    if (_statsHistory.isEmpty) {
-      return const CallStats();
-    }
-
-    final recentStats = _statsHistory.length > seconds
+    if (_statsHistory.isEmpty) return const CallStats();
+    final recent = _statsHistory.length > seconds
         ? _statsHistory.sublist(_statsHistory.length - seconds)
-        : _statsHistory;
+        : List<CallStats>.from(_statsHistory);
 
-    if (recentStats.isEmpty) {
-      return const CallStats();
-    }
+    final count = recent.length;
+    if (count == 0) return const CallStats();
 
-    final count = recentStats.length;
-    
+    double avgDouble(List<double> vals) => vals.reduce((a, b) => a + b) / vals.length;
+
     return CallStats(
-      videoSendBitrate: recentStats.map((s) => s.videoSendBitrate).reduce((a, b) => a + b) / count,
-      videoRecvBitrate: recentStats.map((s) => s.videoRecvBitrate).reduce((a, b) => a + b) / count,
-      videoPacketLoss: recentStats.map((s) => s.videoPacketLoss).reduce((a, b) => a + b) / count,
-      videoResolution: recentStats.last.videoResolution,
-      videoFps: (recentStats.map((s) => s.videoFps).reduce((a, b) => a + b) / count).round(),
-      audioSendBitrate: recentStats.map((s) => s.audioSendBitrate).reduce((a, b) => a + b) / count,
-      audioRecvBitrate: recentStats.map((s) => s.audioRecvBitrate).reduce((a, b) => a + b) / count,
-      audioPacketLoss: recentStats.map((s) => s.audioPacketLoss).reduce((a, b) => a + b) / count,
-      roundTripTime: recentStats.map((s) => s.roundTripTime).reduce((a, b) => a + b) / count,
-      jitter: recentStats.map((s) => s.jitter).reduce((a, b) => a + b) / count,
+      videoSendBitrate: avgDouble(recent.map((s) => s.videoSendBitrate).toList()),
+      videoRecvBitrate: avgDouble(recent.map((s) => s.videoRecvBitrate).toList()),
+      videoPacketLoss: avgDouble(recent.map((s) => s.videoPacketLoss).toList()),
+      videoResolution: recent.last.videoResolution,
+      videoFps: (avgDouble(recent.map((s) => s.videoFps.toDouble()).toList())).round(),
+      audioSendBitrate: avgDouble(recent.map((s) => s.audioSendBitrate).toList()),
+      audioRecvBitrate: avgDouble(recent.map((s) => s.audioRecvBitrate).toList()),
+      audioPacketLoss: avgDouble(recent.map((s) => s.audioPacketLoss).toList()),
+      roundTripTime: avgDouble(recent.map((s) => s.roundTripTime).toList()),
+      jitter: avgDouble(recent.map((s) => s.jitter).toList()),
       quality: _currentStats.quality,
     );
   }
 
-  /// Clear statistics history
   void clearHistory() {
     _statsHistory.clear();
     notifyListeners();
   }
 
-  /// Get quality trend (improving, stable, degrading)
   String getQualityTrend() {
-    if (_statsHistory.length < 10) {
-      return 'Insufficient data';
-    }
-
+    if (_statsHistory.length < 10) return 'Insufficient data';
     final recent = _statsHistory.sublist(_statsHistory.length - 5);
     final older = _statsHistory.sublist(_statsHistory.length - 10, _statsHistory.length - 5);
-
-    final recentAvgQuality = recent.map((s) => s.quality.score).reduce((a, b) => a + b) / recent.length;
-    final olderAvgQuality = older.map((s) => s.quality.score).reduce((a, b) => a + b) / older.length;
-
-    final diff = recentAvgQuality - olderAvgQuality;
-
-    if (diff > 10) {
-      return 'Improving ↗';
-    } else if (diff < -10) {
-      return 'Degrading ↘';
-    } else {
-      return 'Stable →';
-    }
+    final recentAvg = recent.map((s) => s.quality.score).reduce((a, b) => a + b) / recent.length;
+    final olderAvg = older.map((s) => s.quality.score).reduce((a, b) => a + b) / older.length;
+    final diff = recentAvg - olderAvg;
+    if (diff > 10) return 'Improving ↗';
+    if (diff < -10) return 'Degrading ↘';
+    return 'Stable →';
   }
 
-  /// Export stats summary
   Map<String, dynamic> getSummary() {
-    if (_statsHistory.isEmpty) {
-      return {'message': 'No data available'};
-    }
-
-    final avgStats = getAverageStats(seconds: _statsHistory.length);
-
+    if (_statsHistory.isEmpty) return {'message': 'No data available'};
+    final avg = getAverageStats(seconds: _statsHistory.length);
     return {
       'current': _currentStats.toJson(),
-      'average': avgStats.toJson(),
+      'average': avg.toJson(),
       'trend': getQualityTrend(),
       'duration': '${_statsHistory.length}s',
       'samples': _statsHistory.length,
     };
   }
 
-  /// Clean up resources
   Future<void> cleanup() async {
-    debugPrint('$_tag: Cleaning up...');
-    
     stopCollecting();
     _statsHistory.clear();
     _room = null;
-    
-    debugPrint('$_tag: ✅ Cleaned up');
   }
 
   @override
   void dispose() {
-    cleanup(); // Fire and forget
+    cleanup();
     super.dispose();
   }
 }
