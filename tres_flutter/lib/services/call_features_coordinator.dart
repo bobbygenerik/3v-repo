@@ -1,13 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'ai_features_service.dart';
 import 'device_capability_service.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'chat_service.dart' as chat;
 import 'reaction_service.dart';
-import 'background_blur_service.dart';
-import 'beauty_filter_service.dart';
-import 'ar_filters_service.dart';
 import 'cloud_recording_service.dart';
 import 'e2e_encryption_service.dart';
 import 'screen_share_service.dart';
@@ -23,10 +19,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   // Services
   final chat.ChatService chatService = chat.ChatService();
   final ReactionService reactionService = ReactionService();
-  final BackgroundBlurService backgroundBlurService = BackgroundBlurService();
-  final BeautyFilterService beautyFilterService = BeautyFilterService();
-  final ARFiltersService arFiltersService = ARFiltersService();
-  final AIFeaturesService aiFeaturesService = AIFeaturesService();
   final CloudRecordingService recordingService = CloudRecordingService();
   final E2EEncryptionService encryptionService = E2EEncryptionService();
   final ScreenShareService screenShareService = ScreenShareService();
@@ -72,11 +64,11 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   List<Reaction> get activeReactions => reactionService.activeReactions;
   int get unreadMessageCount => chatService.getUnreadCount();
 
-  // ML Services status
-  bool get isBlurProcessing => backgroundBlurService.isProcessing;
-  bool get isBeautyProcessing => beautyFilterService.isProcessing;
-  bool get isArProcessing => arFiltersService.isProcessing;
-  double get beautyIntensity => beautyFilterService.intensity;
+  // ML Services status (stubs)
+  bool get isBlurProcessing => false;
+  bool get isBeautyProcessing => false;
+  bool get isArProcessing => false;
+  double get beautyIntensity => 0.0;
 
   // Recording & Encryption status
   RecordingStatus get recordingStatus => recordingService.status;
@@ -101,36 +93,23 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     chatService.initialize(room);
     reactionService.initialize(room);
 
-    // Initialize ML services
-    try {
-      await backgroundBlurService.initialize();
-      await arFiltersService.initialize();
-      await aiFeaturesService.initialize();
-      debugPrint('✅ ML services initialized');
-    } catch (e) {
-      debugPrint('⚠️ ML services initialization failed: $e');
-    }
+    // ML services removed - stubs only
+    debugPrint('⚠️ ML services not available');
 
     // Apply user preferences (if present) so features the user enabled in Settings
     try {
       final prefs = await SharedPreferences.getInstance();
       final bgBlur = prefs.getBool('background_blur') ?? false;
       _isBackgroundBlurEnabled = bgBlur;
-      if (bgBlur) {
-        await backgroundBlurService.setEnabled(true);
-      }
+      // Background blur service removed - stub only
 
       final beauty = prefs.getBool('beauty_filter') ?? false;
       _isBeautyFilterEnabled = beauty;
-      if (beauty) {
-        beautyFilterService.setEnabled(true);
-      }
+      // Beauty filter service removed - stub only
 
       final faceAuto = prefs.getBool('face_auto_framing') ?? false;
       _isFaceAutoFramingEnabled = faceAuto;
-      if (faceAuto) {
-        aiFeaturesService.setAutoFraming(true);
-      }
+      // AI features service removed - stub only
       
       // If device is low-end, disable expensive ML features regardless of saved prefs
       try {
@@ -138,15 +117,12 @@ class CallFeaturesCoordinator extends ChangeNotifier {
           debugPrint('⚠️ Low-end device detected — disabling ML-heavy features for performance');
           if (_isBackgroundBlurEnabled) {
             _isBackgroundBlurEnabled = false;
-            await backgroundBlurService.setEnabled(false);
           }
           if (_isBeautyFilterEnabled) {
             _isBeautyFilterEnabled = false;
-            beautyFilterService.setEnabled(false);
           }
           if (_isFaceAutoFramingEnabled) {
             _isFaceAutoFramingEnabled = false;
-            aiFeaturesService.setAutoFraming(false);
           }
         }
       } catch (e) {
@@ -177,9 +153,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     // Listen to service changes
     chatService.addListener(_onChatChanged);
     reactionService.addListener(_onReactionChanged);
-    backgroundBlurService.addListener(_onMlServiceChanged);
-    beautyFilterService.addListener(_onMlServiceChanged);
-    arFiltersService.addListener(_onMlServiceChanged);
+    // ML service listeners removed
     recordingService.addListener(_onRecordingChanged);
     encryptionService.addListener(_onEncryptionChanged);
     screenShareService.addListener(_onScreenShareChanged);
@@ -360,67 +334,37 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     // TODO: Implement spatial audio logic
   }
 
-  /// Toggle background blur
+  /// Toggle background blur (stub - service removed)
   Future<void> toggleBackgroundBlur() async {
     _isBackgroundBlurEnabled = !_isBackgroundBlurEnabled;
-    await backgroundBlurService.setEnabled(_isBackgroundBlurEnabled);
+    // Background blur service removed - stub only
     notifyListeners();
-    debugPrint('Background blur ${_isBackgroundBlurEnabled ? "enabled" : "disabled"}');
+    debugPrint('Background blur ${_isBackgroundBlurEnabled ? "enabled" : "disabled"} (stub)');
   }
 
-  /// Toggle beauty filter
+  /// Toggle beauty filter (stub - service removed)
   void toggleBeautyFilter() {
     _isBeautyFilterEnabled = !_isBeautyFilterEnabled;
-    beautyFilterService.setEnabled(_isBeautyFilterEnabled);
+    // Beauty filter service removed - stub only
     notifyListeners();
-    debugPrint('Beauty filter ${_isBeautyFilterEnabled ? "enabled" : "disabled"}');
+    debugPrint('Beauty filter ${_isBeautyFilterEnabled ? "enabled" : "disabled"} (stub)');
   }
 
-  /// Set beauty filter intensity (0.0 - 1.0)
+  /// Set beauty filter intensity (0.0 - 1.0) (stub - service removed)
   void setBeautyIntensity(double intensity) {
-    beautyFilterService.setIntensity(intensity);
+    // Beauty filter service removed - stub only
     notifyListeners();
   }
 
-  /// Set AR filter
+  /// Set AR filter (stub - service removed)
   void setArFilter(String filterName) {
     _activeArFilter = filterName;
     _isArFilterEnabled = filterName != 'none';
     
-    // Convert string filter name to ARFilterType enum
-    final filterType = _stringToArFilterType(filterName);
-    arFiltersService.applyFilter(filterType);
+    // AR filters service removed - stub only
     
     notifyListeners();
-    debugPrint('AR filter set to: $filterName');
-  }
-
-  /// Convert string filter name to ARFilterType
-  ARFilterType _stringToArFilterType(String filterName) {
-    switch (filterName) {
-      case ArFilters.glasses:
-        return ARFilterType.glasses;
-      case ArFilters.hat:
-        return ARFilterType.hat;
-      case ArFilters.mask:
-        return ARFilterType.mask;
-      case ArFilters.bunnyEars:
-        return ARFilterType.bunnyEars;
-      case ArFilters.catEars:
-        return ARFilterType.catEars;
-      case ArFilters.crown:
-        return ARFilterType.crown;
-      case ArFilters.monocle:
-        return ARFilterType.monocle;
-      case ArFilters.piratePatch:
-        return ARFilterType.piratePatch;
-      case ArFilters.santaHat:
-        return ARFilterType.santaHat;
-      case ArFilters.sparkles:
-        return ARFilterType.sparkles;
-      default:
-        return ARFilterType.none;
-    }
+    debugPrint('AR filter set to: $filterName (stub)');
   }
 
   /// Toggle AI noise cancellation
@@ -486,9 +430,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
     chatService.removeListener(_onChatChanged);
     reactionService.removeListener(_onReactionChanged);
-    backgroundBlurService.removeListener(_onMlServiceChanged);
-    beautyFilterService.removeListener(_onMlServiceChanged);
-    arFiltersService.removeListener(_onMlServiceChanged);
+    // ML service listeners removed
     recordingService.removeListener(_onRecordingChanged);
     encryptionService.removeListener(_onEncryptionChanged);
     screenShareService.removeListener(_onScreenShareChanged);
@@ -498,10 +440,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     chatService.cleanup();
     reactionService.cleanup();
     
-    // Dispose ML services
-    await backgroundBlurService.dispose();
-    beautyFilterService.dispose();
-    await arFiltersService.dispose();
+    // ML services removed - no disposal needed
 
     // Dispose Phase 4 services
     recordingService.dispose();
