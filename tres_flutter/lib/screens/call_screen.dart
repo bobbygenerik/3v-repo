@@ -55,6 +55,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   bool _pipExpanded = false;
   bool _pipSwapped = false;
   
+  // Track if we've ever had a remote participant (to avoid false disconnect on call start)
+  bool _hadRemoteParticipant = false;
+  
   @override
   void initState() {
     super.initState();
@@ -138,8 +141,17 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   void _handleLiveKitUpdate() {
     final livekit = context.read<LiveKitService>();
     
-    // If we're connected but there are no remote participants, end the call
-    if (livekit.isConnected && livekit.remoteParticipants.isEmpty && mounted) {
+    // Track if we've ever had a remote participant join
+    if (livekit.remoteParticipants.isNotEmpty) {
+      _hadRemoteParticipant = true;
+    }
+    
+    // Only trigger disconnect if we HAD a participant and now they're gone
+    // This prevents false triggers when the call is just starting
+    if (livekit.isConnected && 
+        _hadRemoteParticipant && 
+        livekit.remoteParticipants.isEmpty && 
+        mounted) {
       debugPrint('📞 All remote participants left - ending call');
       
       // Show a brief message before closing

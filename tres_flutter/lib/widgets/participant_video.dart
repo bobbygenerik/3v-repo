@@ -35,24 +35,36 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
     _setupVideoTrack();
   }
   
-  void _setupVideoTrack() {
+  void _setupVideoTrack() async {
     // Get first video track from publications
     VideoTrack? track;
     
+    debugPrint('📹 Setting up video track for ${widget.participant.identity}...');
+    debugPrint('📹 Video publications: ${widget.participant.videoTrackPublications.length}');
+    
     for (final pub in widget.participant.videoTrackPublications) {
+      debugPrint('📹 Publication ${pub.sid}: subscribed=${pub.subscribed}, track=${pub.track != null}, muted=${pub.muted}');
+      
       if (pub.subscribed && pub.track != null) {
         track = pub.track as VideoTrack;
+        debugPrint('📹 Using subscribed track: ${pub.sid}');
         break;
       }
     }
     
-    // If no subscribed track, try to subscribe to first available publication
+    // If no subscribed track, explicitly subscribe to first available publication
     if (track == null && !widget.isLocal) {
+      debugPrint('📹 No subscribed track found, checking for unsubscribed publications...');
       for (final pub in widget.participant.videoTrackPublications) {
-        if (!pub.subscribed && pub.track == null) {
-          debugPrint('📹 Auto-subscribing to video track: ${pub.sid}');
-          // The track will be available after subscription completes
-          // and _onParticipantChanged will be called
+        if (!pub.subscribed && pub is RemoteTrackPublication) {
+          try {
+            debugPrint('📹 Subscribing to video track: ${pub.sid}');
+            await pub.subscribe();
+            // The track will be available after subscription completes
+            // and _onParticipantChanged will be called
+          } catch (e) {
+            debugPrint('❌ Failed to subscribe to track: $e');
+          }
         }
       }
     }
@@ -61,7 +73,7 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
       setState(() {
         _videoTrack = track;
       });
-      debugPrint('📹 Video track ${track != null ? "set" : "cleared"} for ${widget.participant.identity}');
+      debugPrint('📹 Video track ${track != null ? "ACTIVE" : "CLEARED"} for ${widget.participant.identity}');
     }
   }
   
@@ -77,7 +89,7 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
     return RepaintBoundary(
       child: VideoTrackRenderer(
         _videoTrack!,
-        fit: VideoViewFit.cover,
+        fit: VideoViewFit.contain, // Use contain to show full video without cropping
       ),
     );
   }

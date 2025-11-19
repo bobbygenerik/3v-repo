@@ -129,6 +129,9 @@ class LiveKitService extends ChangeNotifier {
       await _room!.connect(
         url,
         token,
+        connectOptions: ConnectOptions(
+          autoSubscribe: true, // Automatically subscribe to all remote tracks
+        ),
         roomOptions: RoomOptions(
           defaultCameraCaptureOptions: CameraCaptureOptions(
             maxFrameRate: DeviceCapabilityService.getMaxFramerate().toDouble(),
