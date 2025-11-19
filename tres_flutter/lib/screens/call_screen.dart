@@ -275,10 +275,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                     AnimatedPositioned(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeOut,
-                      bottom: _controlsVisible ? 32 : -120,
+                      bottom: _controlsVisible ? 0 : -120,
                       left: 0,
                       right: 0,
-                      child: _buildCallControls(livekit, coordinator),
+                      child: SafeArea(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _buildCallControls(livekit, coordinator),
+                        ),
+                      ),
                     ),
                     
                     // Chat panel (bottom sheet)
@@ -628,6 +633,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   }
   
   Widget _buildCallControls(LiveKitService livekit, CallFeaturesCoordinator coordinator) {
+    // Calculate responsive button sizes based on screen width
+    final screenWidth = MediaQuery.of(context).size.width;
+    final buttonSize = screenWidth < 360 ? 45.0 : 50.0;
+    final centerButtonSize = screenWidth < 360 ? 56.0 : 64.0;
+    final horizontalPadding = screenWidth < 360 ? 12.0 : 16.0;
+    final buttonSpacing = screenWidth < 400 ? 4.0 : 8.0;
+    
     // Button order: More (leftmost), Mic, END CALL (center), Camera, Flip
     final buttons = [
       // 0: More / Extra (moved to left)
@@ -636,7 +648,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         icon: Icons.more_vert,
         onPressed: () => _showMoreMenu(coordinator),
         backgroundColor: Colors.white.withOpacity(0.2),
-        size: 50,
+        size: buttonSize,
+        spacing: buttonSpacing,
       ),
       // 1: Mic (left of center)
       _buildAnimatedButton(
@@ -646,7 +659,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         backgroundColor: livekit.isMicrophoneEnabled
             ? Colors.white.withOpacity(0.2)
             : Colors.red.shade600,
-        size: 50,
+        size: buttonSize,
+        spacing: buttonSpacing,
       ),
       // 2: END CALL (center - larger)
       _buildAnimatedButton(
@@ -663,7 +677,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
           }
         },
         backgroundColor: Colors.red.shade600,
-        size: 64, // Larger center button
+        size: centerButtonSize, // Larger center button
+        spacing: buttonSpacing,
       ),
       // 3: Camera (right of center)
       _buildAnimatedButton(
@@ -673,7 +688,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         backgroundColor: livekit.isCameraEnabled
             ? Colors.white.withOpacity(0.2)
             : Colors.red.shade600,
-        size: 50,
+        size: buttonSize,
+        spacing: buttonSpacing,
       ),
       // 4: Flip camera (rightmost)
       _buildAnimatedButton(
@@ -681,12 +697,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         icon: Icons.cameraswitch,
         onPressed: livekit.switchCamera,
         backgroundColor: Colors.white.withOpacity(0.2),
-        size: 50,
+        size: buttonSize,
+        spacing: buttonSpacing,
       ),
     ];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: buttons,
@@ -700,12 +717,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     required VoidCallback onPressed,
     required Color backgroundColor,
     required double size,
+    required double spacing,
     String? badge,
   }) {
     return SlideTransition(
       position: _buttonSlideAnimations[index],
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: EdgeInsets.symmetric(horizontal: spacing),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
