@@ -14,6 +14,7 @@ class LiveKitService extends ChangeNotifier {
   LocalVideoTrack? _localVideoTrack;
   LocalAudioTrack? _localAudioTrack;
   dynamic _currentVideoPreset;
+  int? _currentMaxBitrate;
   CameraPosition _currentCameraPosition = CameraPosition.front; // Track current camera
   
   Room? get room => _room;
@@ -237,41 +238,54 @@ class LiveKitService extends ChangeNotifier {
   }
 
   /// Adjust published video quality based on observed network/device stats.
-  /// This will recreate and publish a lower/higher resolution track when needed.
+  /// Adjusts both bitrate and FPS based on network conditions.
   Future<void> _maybeAdjustVideoForStats(CallStats stats) async {
     try {
       if (_room == null) return;
-      // Use multiple signals (bitrate, packet loss, RTT, jitter, device) to
-      // decide whether to adjust FPS, but keep resolution at 720p minimum.
+      
       final int bitrate = stats.videoSendBitrate.toInt();
       final double packetLossPct = stats.videoPacketLoss; // percent
       final double rttMs = stats.roundTripTime * 1000.0; // convert seconds->ms
       final double jitterMs = stats.jitter * 1000.0;
 
-      // Always use 720p minimum
+      // Get current optimal encoding based on network quality
+      final optimalEncoding = _getOptimalVideoEncoding();
+      
+      // Always use 720p minimum resolution
       dynamic desired = VideoParametersPresets.h720_169;
       double? maxFpsOverride;
+      int? maxBitrateOverride;
 
-      // Adjust FPS based on network conditions, but keep 720p resolution
+      // Determine target bitrate and FPS based on network conditions
       if (packetLossPct > 5.0 || rttMs > 300.0 || jitterMs > 80.0 || bitrate < 500000) {
-        // Very poor conditions: reduce FPS significantly
+        // Very poor conditions: reduce both FPS and bitrate significantly
         maxFpsOverride = 15.0;
+        maxBitrateOverride = 2000 * 1000; // 2 Mbps
       } else if (packetLossPct > 3.0 || rttMs > 200.0 || jitterMs > 50.0 || bitrate < 1000000) {
-        // Poor conditions: reduce FPS moderately
+        // Poor conditions: reduce FPS and bitrate moderately
         maxFpsOverride = 20.0;
+        maxBitrateOverride = 5000 * 1000; // 5 Mbps
       } else if (bitrate <= 2000000) {
-        // Medium conditions: slightly reduce FPS
+        // Medium conditions: slightly reduce FPS, allow higher bitrate
         maxFpsOverride = DeviceCapabilityService.getMaxFramerate() * 0.8;
+        maxBitrateOverride = 8000 * 1000; // 8 Mbps
       } else {
-        // Good conditions: use max FPS
+        // Good conditions: use optimal encoding from network quality
         maxFpsOverride = null;
+        maxBitrateOverride = optimalEncoding.maxBitrate;
       }
 
-      // If we need to change FPS, recreate track
-      final bool fpsChangeRequested = maxFpsOverride != null;
-      if (fpsChangeRequested && _currentVideoPreset != desired) {
-        debugPrint('🔧 Adjusting video FPS (bitrate=$bitrate, loss=${packetLossPct.toStringAsFixed(1)}%, rtt=${rttMs.toStringAsFixed(0)}ms, jitter=${jitterMs.toStringAsFixed(0)}ms)');
-        await _recreateAndPublishVideoTrack(desired, maxFrameRateOverride: maxFpsOverride);
+      // Check if we need to adjust encoding
+      final bool needsAdjustment = maxFpsOverride != null || 
+                                   (maxBitrateOverride != _currentMaxBitrate);
+      
+      if (needsAdjustment) {
+        debugPrint('🔧 Adjusting video encoding (bitrate=${maxBitrateOverride ?? optimalEncoding.maxBitrate} bps, fps=${maxFpsOverride ?? DeviceCapabilityService.getMaxFramerate()}, loss=${packetLossPct.toStringAsFixed(1)}%, rtt=${rttMs.toStringAsFixed(0)}ms)');
+        await _recreateAndPublishVideoTrack(
+          desired, 
+          maxFrameRateOverride: maxFpsOverride,
+          maxBitrateOverride: maxBitrateOverride,
+        );
       }
     } catch (e) {
       debugPrint('Error adjusting video for stats: $e');
@@ -279,9 +293,13 @@ class LiveKitService extends ChangeNotifier {
   }
 
   /// Recreate and publish local camera track for a requested preset.
-  /// Optionally pass `maxFrameRateOverride` to cap capture FPS (useful when
-  /// reducing frame rate under poor conditions).
-  Future<void> _recreateAndPublishVideoTrack(dynamic preset, {double? maxFrameRateOverride}) async {
+  /// Optionally pass `maxFrameRateOverride` to cap capture FPS and
+  /// `maxBitrateOverride` to set encoding bitrate.
+  Future<void> _recreateAndPublishVideoTrack(
+    dynamic preset, {
+    double? maxFrameRateOverride,
+    int? maxBitrateOverride,
+  }) async {
     try {
       final wasMuted = !isCameraEnabled;
 
@@ -297,8 +315,21 @@ class LiveKitService extends ChangeNotifier {
       );
       _currentVideoPreset = preset;
 
-      // Publish new track
-      await _room?.localParticipant?.publishVideoTrack(_localVideoTrack!);
+      // Publish new track with updated encoding if bitrate override provided
+      if (maxBitrateOverride != null) {
+        await _room?.localParticipant?.publishVideoTrack(
+          _localVideoTrack!,
+          publishOptions: VideoPublishOptions(
+            videoEncoding: VideoEncoding(
+              maxBitrate: maxBitrateOverride,
+              maxFramerate: (maxFrameRateOverride ?? DeviceCapabilityService.getMaxFramerate()).toInt(),
+            ),
+          ),
+        );
+        _currentMaxBitrate = maxBitrateOverride;
+      } else {
+        await _room?.localParticipant?.publishVideoTrack(_localVideoTrack!);
+      }
 
       // Restore mute state
       if (wasMuted) {
@@ -350,12 +381,7 @@ class LiveKitService extends ChangeNotifier {
         preset = VideoParametersPresets.h720_169;
       }
 
-      // Only recreate if preset or fps differs
-      final bool presetChanged = preset != _currentVideoPreset;
-      final bool fpsChangeRequested = fpsOverride != null;
-      if (presetChanged || fpsChangeRequested) {
-        await _recreateAndPublishVideoTrack(preset, maxFrameRateOverride: fpsOverride);
-      }
+      await _recreateAndPublishVideoTrack(preset, maxFrameRateOverride: fpsOverride);
     } catch (e) {
       debugPrint('applyCaptureProfile error: $e');
     }
