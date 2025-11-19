@@ -1,4 +1,4 @@
-package com.example.tres3.tres_flutter
+package com.tres3.videochat
 
 import android.app.KeyguardManager
 import android.content.Intent
@@ -11,7 +11,6 @@ class FullScreenCallActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Ensure we show on lock screen and turn screen on
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
@@ -25,7 +24,6 @@ class FullScreenCallActivity : AppCompatActivity() {
             )
         }
 
-        // Forward to MainActivity (Flutter) so the existing Flutter incoming-call UI shows
         val invitationId = intent.getStringExtra("invitationId") ?: ""
         val fromName = intent.getStringExtra("fromName") ?: ""
 
@@ -36,7 +34,6 @@ class FullScreenCallActivity : AppCompatActivity() {
         }
         startActivity(i)
 
-        // Finish quickly - MainActivity will take over UI
         finish()
     }
 }

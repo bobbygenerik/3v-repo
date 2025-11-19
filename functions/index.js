@@ -1,6 +1,6 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const { AccessToken } = require('livekit-server-sdk');
+const { AccessToken, EgressClient, EncodedFileOutput, RoomCompositeEgressRequest } = require('livekit-server-sdk');
 const { onRequest } = require('firebase-functions/v2/https');
 // const { queueFailedNotification } = require('./retryQueue');  // Temporarily disabled - needs firebase-functions upgrade
 
@@ -10,6 +10,7 @@ admin.initializeApp();
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || functions.config().livekit?.api_key;
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || functions.config().livekit?.api_secret;
 const LIVEKIT_WS_URL = process.env.LIVEKIT_URL || functions.config().livekit?.url || 'wss://livekit.iptvsubz.fun';
+const LIVEKIT_HTTP_URL = process.env.LIVEKIT_HTTP_URL || 'https://livekit.iptvsubz.fun';
 const WEB_URL = process.env.WEB_URL || 'https://tres3.web.app';
 
 exports.getLiveKitToken = functions.https.onCall(async (request) => {
@@ -749,3 +750,151 @@ exports.debugSendTestNotification = onRequest(async (req, res) => {
 // exports.retryFailedNotifications = retryQueue.retryFailedNotifications;
 // exports.cleanupOldNotifications = retryQueue.cleanupOldNotifications;
 
+/**
+ * Cloud Function: Start LiveKit Egress recording
+ * Called by client to start server-side recording of a room
+ */
+exports.startRecording = functions.https.onCall(async (request) => {
+  console.log('=== startRecording Function Called ===');
+  
+  // Verify user is authenticated
+  if (!request.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'User must be authenticated to start recording'
+    );
+  }
+
+  const { roomName, fileName, callId } = request.data;
+  console.log('Parameters - roomName:', roomName, 'fileName:', fileName, 'callId:', callId);
+
+  if (!roomName || !fileName || !callId) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'roomName, fileName, and callId are required'
+    );
+  }
+
+  try {
+    const apiKey = LIVEKIT_API_KEY;
+    const apiSecret = LIVEKIT_API_SECRET;
+    const httpUrl = LIVEKIT_HTTP_URL;
+
+    if (!apiKey || !apiSecret) {
+      throw new Error('LiveKit credentials not configured');
+    }
+
+    console.log('Creating Egress client...');
+    const egressClient = new EgressClient(httpUrl, apiKey, apiSecret);
+
+    // Start room composite egress (records entire room)
+    const fileOutput = new EncodedFileOutput({
+      fileType: 'MP4',
+      filepath: `recordings/${fileName}`,
+    });
+
+    const request = new RoomCompositeEgressRequest({
+      roomName,
+      layout: 'grid',
+      output: fileOutput,
+    });
+
+    console.log('Starting room composite egress...');
+    const egress = await egressClient.startRoomCompositeEgress(request);
+    
+    console.log('✅ Recording started, egress ID:', egress.egressId);
+
+    // Save metadata to Firestore
+    await admin.firestore().collection('recordings').add({
+      callId,
+      egressId: egress.egressId,
+      roomName,
+      fileName,
+      userId: request.auth.uid,
+      status: 'recording',
+      startedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return {
+      success: true,
+      egressId: egress.egressId,
+    };
+
+  } catch (error) {
+    console.error('ERROR starting recording:', error.message);
+    throw new functions.https.HttpsError(
+      'internal',
+      `Failed to start recording: ${error.message}`
+    );
+  }
+});
+
+/**
+ * Cloud Function: Stop LiveKit Egress recording
+ * Called by client to stop an ongoing recording
+ */
+exports.stopRecording = functions.https.onCall(async (request) => {
+  console.log('=== stopRecording Function Called ===');
+  
+  // Verify user is authenticated
+  if (!request.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'User must be authenticated to stop recording'
+    );
+  }
+
+  const { egressId } = request.data;
+  console.log('Parameters - egressId:', egressId);
+
+  if (!egressId) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'egressId is required'
+    );
+  }
+
+  try {
+    const apiKey = LIVEKIT_API_KEY;
+    const apiSecret = LIVEKIT_API_SECRET;
+    const httpUrl = LIVEKIT_HTTP_URL;
+
+    if (!apiKey || !apiSecret) {
+      throw new Error('LiveKit credentials not configured');
+    }
+
+    console.log('Creating Egress client...');
+    const egressClient = new EgressClient(httpUrl, apiKey, apiSecret);
+
+    console.log('Stopping egress...');
+    const egress = await egressClient.stopEgress(egressId);
+    
+    console.log('✅ Recording stopped, egress ID:', egress.egressId);
+
+    // Update Firestore metadata
+    const recordingQuery = await admin.firestore()
+      .collection('recordings')
+      .where('egressId', '==', egressId)
+      .limit(1)
+      .get();
+
+    if (!recordingQuery.empty) {
+      await recordingQuery.docs[0].ref.update({
+        status: 'stopped',
+        stoppedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    return {
+      success: true,
+      egressId: egress.egressId,
+    };
+
+  } catch (error) {
+    console.error('ERROR stopping recording:', error.message);
+    throw new functions.https.HttpsError(
+      'internal',
+      `Failed to stop recording: ${error.message}`
+    );
+  }
+});

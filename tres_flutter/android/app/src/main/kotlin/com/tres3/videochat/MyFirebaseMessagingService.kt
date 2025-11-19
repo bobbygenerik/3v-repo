@@ -1,4 +1,4 @@
-package com.example.tres3.tres_flutter
+package com.tres3.videochat
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -25,7 +25,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 nm.createNotificationChannel(ch)
             }
 
-            // Intent that will be used as full-screen intent. Launches FullScreenCallActivity
             val fullScreenIntent = Intent(this, FullScreenCallActivity::class.java).apply {
                 putExtra("invitationId", invitationId)
                 putExtra("fromName", fromName)
@@ -39,7 +38,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
             val fullScreenPendingIntent = PendingIntent.getActivity(this, 1001, fullScreenIntent, flags)
 
-            // Accept/Decline actions as Broadcasts
             val acceptIntent = Intent(this, CallActionReceiver::class.java).apply {
                 action = "ACTION_ACCEPT"
                 putExtra("invitationId", invitationId)

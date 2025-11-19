@@ -1,4 +1,4 @@
-package com.example.tres3.tres_flutter
+package com.tres3.videochat
 
 import android.content.BroadcastReceiver
 import android.content.Context

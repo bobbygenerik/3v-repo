@@ -71,10 +71,12 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
       return _buildNoVideoPlaceholder();
     }
     
-      return VideoTrackRenderer(
+    return RepaintBoundary(
+      child: VideoTrackRenderer(
         _videoTrack!,
         fit: VideoViewFit.cover,
-      );
+      ),
+    );
   }
   
   Widget _buildNoVideoPlaceholder() {

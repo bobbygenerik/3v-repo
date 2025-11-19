@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/livekit_service.dart';
 import '../services/call_features_coordinator.dart';
 import '../services/call_session_service.dart';
+import '../services/call_signaling_service.dart';
 import '../services/reaction_service.dart';
 import '../services/chat_service.dart' as chat;
 import '../widgets/participant_video.dart';
@@ -257,13 +259,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                       child: _buildRoomInfo(coordinator),
                     ),
                     
-                    // 3-dot menu button (top-right, below local video)
-                    Positioned(
-                      top: 196,
-                      right: 16,
-                      child: _buildMenuButton(coordinator),
-                    ),
-                    
                     // Stats overlay (if enabled) - positioned below quality pill on left side
                     if (coordinator.isStatsCollecting)
                       Positioned(
@@ -366,37 +361,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                 ),
               );
             }).toList(),
-          ),
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildMenuButton(CallFeaturesCoordinator coordinator) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _showMoreMenu(coordinator),
-        customBorder: const CircleBorder(),
-        splashColor: Colors.white.withOpacity(0.3),
-        child: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.more_vert,
-            color: Colors.white,
-            size: 24,
           ),
         ),
       ),
@@ -524,9 +488,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     
     // For single participant, use full screen without aspect ratio constraint
     if (remoteParticipants.length == 1) {
-      return ParticipantVideo(
-        key: const ValueKey('main-remote-normal'),
-        participant: remoteParticipants[0],
+      return RepaintBoundary(
+        child: ParticipantVideo(
+          key: const ValueKey('main-remote-normal'),
+          participant: remoteParticipants[0],
+        ),
       );
     }
     
@@ -538,8 +504,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       ),
       itemCount: remoteParticipants.length,
       itemBuilder: (context, index) {
-        return ParticipantVideo(
-          participant: remoteParticipants[index],
+        return RepaintBoundary(
+          child: ParticipantVideo(
+            participant: remoteParticipants[index],
+          ),
         );
       },
     );
@@ -691,20 +659,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   }
   
   Widget _buildCallControls(LiveKitService livekit, CallFeaturesCoordinator coordinator) {
-    // Button order: Chat, Mic, END CALL (center), Camera, Flip
+    // Button order: More (leftmost), Mic, END CALL (center), Camera, Flip
     final buttons = [
-      // 0: Chat (leftmost)
+      // 0: More / Extra (moved to left)
       _buildAnimatedButton(
         index: 0,
-        icon: Icons.chat_bubble,
-        onPressed: coordinator.toggleChat,
-        backgroundColor: coordinator.isChatOpen
-            ? const Color(0xFF6B7FB8)
-            : Colors.white.withOpacity(0.2),
+        icon: Icons.more_vert,
+        onPressed: () => _showMoreMenu(coordinator),
+        backgroundColor: Colors.white.withOpacity(0.2),
         size: 50,
-        badge: coordinator.unreadMessageCount > 0
-            ? coordinator.unreadMessageCount.toString()
-            : null,
       ),
       // 1: Mic (left of center)
       _buildAnimatedButton(
@@ -1022,13 +985,101 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+              // Add Person moved into the More menu
+              ListTile(
+                leading: const Icon(Icons.person_add, color: Color(0xFF6B7FB8)),
+                title: const Text('Add Person', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showAddPersonDialog();
+                },
+              ),
+              // Chat moved into the More menu
+              ListTile(
+                leading: const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8)),
+                title: const Text('Chat', style: TextStyle(color: Colors.white)),
+                trailing: Switch(
+                  value: coordinator.isChatOpen,
+                  onChanged: (value) {
+                    coordinator.toggleChat();
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
             const Text(
               'More Options',
               style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
+            
+            // Screen Share
             ListTile(
-              leading: const Icon(Icons.monitor_heart, color: Colors.white),
+              leading: const Icon(Icons.screen_share, color: Color(0xFF6B7FB8)),
+              title: const Text('Share Screen', style: TextStyle(color: Colors.white)),
+              trailing: Switch(
+                value: coordinator.isScreenSharing,
+                onChanged: (value) async {
+                  await coordinator.toggleScreenShare();
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            
+            // Recording
+            ListTile(
+              leading: Icon(
+                coordinator.isRecording ? Icons.stop : Icons.fiber_manual_record,
+                color: coordinator.isRecording ? Colors.red : const Color(0xFF6B7FB8),
+              ),
+              title: Text(
+                coordinator.isRecording ? 'Stop Recording' : 'Start Recording',
+                style: const TextStyle(color: Colors.white),
+              ),
+              onTap: () async {
+                await coordinator.toggleRecording();
+                Navigator.pop(context);
+              },
+            ),
+            
+            // Background Blur
+            ListTile(
+              leading: const Icon(Icons.blur_on, color: Color(0xFF6B7FB8)),
+              title: const Text('Background Blur', style: TextStyle(color: Colors.white)),
+              trailing: Switch(
+                value: coordinator.isBackgroundBlurEnabled,
+                onChanged: (value) async {
+                  await coordinator.toggleBackgroundBlur();
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            
+            // Beauty Filter
+            ListTile(
+              leading: const Icon(Icons.face_retouching_natural, color: Color(0xFF6B7FB8)),
+              title: const Text('Beauty Filter', style: TextStyle(color: Colors.white)),
+              trailing: Switch(
+                value: coordinator.isBeautyFilterEnabled,
+                onChanged: (value) async {
+                  coordinator.toggleBeautyFilter();
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            
+            // AR Filters
+            ListTile(
+              leading: const Icon(Icons.face, color: Color(0xFF6B7FB8)),
+              title: const Text('AR Filters', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _showARFiltersDialog(coordinator);
+              },
+            ),
+            
+            // Call Health Overlay
+            ListTile(
+              leading: const Icon(Icons.monitor_heart, color: Color(0xFF6B7FB8)),
               title: const Text('Call Health Overlay', style: TextStyle(color: Colors.white)),
               trailing: Switch(
                 value: coordinator.isStatsCollecting,
@@ -1042,24 +1093,138 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                 },
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.blur_on, color: Colors.white),
-              title: const Text('Background Blur', style: TextStyle(color: Colors.white)),
-              trailing: Switch(
-                value: coordinator.isBackgroundBlurEnabled,
-                onChanged: (value) async {
-                  await coordinator.toggleBackgroundBlur();
-                  Navigator.pop(context);
-                },
-              ),
-            ),
           ],
         ),
       ),
     );
   }
   
-
+  void _showAddPersonDialog() {
+    final TextEditingController emailController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        title: const Text('Add Person to Call', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: emailController,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Enter email address',
+            hintStyle: TextStyle(color: Colors.white60),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF6B7FB8)),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF6B7FB8)),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final email = emailController.text.trim();
+              if (email.isEmpty) {
+                return;
+              }
+              
+              Navigator.pop(context);
+              
+              // Show loading
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+                ),
+              );
+              
+              try {
+                // Look up user by email
+                final userQuery = await FirebaseFirestore.instance
+                    .collection('users')
+                    .where('email', isEqualTo: email.toLowerCase())
+                    .limit(1)
+                    .get();
+                
+                if (userQuery.docs.isEmpty) {
+                  if (mounted) Navigator.pop(context);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('User not found')),
+                    );
+                  }
+                  return;
+                }
+                
+                final recipientUserId = userQuery.docs.first.id;
+                final livekit = context.read<LiveKitService>();
+                
+                // Send call invitation
+                final signalingService = CallSignalingService();
+                await signalingService.sendCallInvitation(
+                  recipientUserId: recipientUserId,
+                  roomName: widget.roomName,
+                  token: '', // They'll generate their own
+                  livekitUrl: widget.livekitUrl,
+                  isVideoCall: true,
+                );
+                
+                if (mounted) Navigator.pop(context);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Invitation sent to $email')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) Navigator.pop(context);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to send invitation: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Add', style: TextStyle(color: Color(0xFF6B7FB8))),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showARFiltersDialog(CallFeaturesCoordinator coordinator) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        title: const Text('AR Filters', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Choose an AR filter to apply to your video',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('AR filters coming soon')),
+              );
+            },
+            child: const Text('Apply', style: TextStyle(color: Color(0xFF6B7FB8))),
+          ),
+        ],
+      ),
+    );
+  }
   
   @override
   void dispose() {

@@ -3,8 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:typed_data';
-import 'dart:html' as html;
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -44,7 +45,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
     try {
       final user = FirebaseAuth.instance.currentUser;
-      await user?.updateDisplayName(_nameController.text);
+      if (user == null) return;
+
+      final newName = _nameController.text.trim();
+      
+      // 1. Update Firebase Auth (Login profile)
+      await user.updateDisplayName(newName);
+
+      // 2. Update Firestore (Public profile for contacts/calls)
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .set({
+        'displayName': newName,
+        'name': newName, // Keep both fields synced for compatibility
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -65,32 +81,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _uploadPhoto() async {
     try {
-      // Use native HTML file picker for web
-      final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
-      uploadInput.accept = 'image/*';
-      uploadInput.click();
+      Uint8List? bytes;
 
-      await uploadInput.onChange.first;
-      final files = uploadInput.files;
-      
-      if (files == null || files.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No image selected')),
-          );
+      if (kIsWeb) {
+        // On web, ImagePicker should be supported via image_picker_for_web
+        final XFile? picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+        if (picked == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No image selected')),
+            );
+          }
+          return;
         }
-        return;
+        bytes = await picked.readAsBytes();
+      } else {
+        // Mobile platforms: use native image picker
+        final XFile? picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+        if (picked == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No image selected')),
+            );
+          }
+          return;
+        }
+        bytes = await picked.readAsBytes();
       }
-
-      // Read file as bytes
-      final reader = html.FileReader();
-      reader.readAsArrayBuffer(files[0]);
-      await reader.onLoad.first;
-      final bytes = reader.result as Uint8List;
 
       // Show crop dialog
       if (!mounted) return;
-      final croppedBytes = await _showCropDialog(bytes);
+      final croppedBytes = await _showCropDialog(bytes!);
       
       if (croppedBytes == null) {
         if (mounted) {

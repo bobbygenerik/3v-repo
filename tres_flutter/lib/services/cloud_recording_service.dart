@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 /// Recording status enum
 enum RecordingStatus {
@@ -114,20 +115,6 @@ class CloudRecordingService extends ChangeNotifier {
   }
 
   /// Start recording a call
-  /// 
-  /// In production, this should call your backend API which then calls
-  /// LiveKit Egress API to start server-side recording:
-  /// 
-  /// POST /v1/egress/room_composite
-  /// {
-  ///   "room_name": "room-name",
-  ///   "layout": "grid",
-  ///   "output": {
-  ///     "file": {
-  ///       "filepath": "recording.mp4"
-  ///     }
-  ///   }
-  /// }
   Future<bool> startRecording(String callId, {String? roomName}) async {
     if (isRecording) {
       debugPrint('$_tag: Recording already in progress');
@@ -149,26 +136,23 @@ class CloudRecordingService extends ChangeNotifier {
       _syncStatus();
       notifyListeners();
 
-      // In production: Call backend API to start LiveKit Egress recording
-      // Example:
-      // final response = await http.post(
-      //   Uri.parse('$backendUrl/api/recording/start'),
-      //   body: json.encode({
-      //     'callId': callId,
-      //     'roomName': roomName,
-      //     'fileName': fileName,
-      //   }),
-      // );
-      // final recordingId = json.decode(response.body)['egressId'];
+      debugPrint('$_tag: Calling Cloud Function to start recording...');
 
-      // For now, simulate starting
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Call Cloud Function to start LiveKit Egress recording
+      final functions = FirebaseFunctions.instance;
+      final callable = functions.httpsCallable('startRecording');
       
-      // Simulate getting recording ID from LiveKit
-      final recordingId = 'EG_${DateTime.now().millisecondsSinceEpoch}';
+      final response = await callable.call({
+        'roomName': roomName ?? callId,
+        'fileName': fileName,
+        'callId': callId,
+      });
+
+      final egressId = response.data['egressId'] as String;
+      debugPrint('$_tag: Got egress ID from server: $egressId');
 
       _currentRecording = metadata.copyWith(
-        recordingId: recordingId,
+        recordingId: egressId,
         status: RecordingStatus.recording,
       );
       _recordings[callId] = _currentRecording!;
@@ -212,16 +196,15 @@ class CloudRecordingService extends ChangeNotifier {
       );
       notifyListeners();
 
-      // In production: Call backend API to stop LiveKit Egress
-      // Example:
-      // await http.post(
-      //   Uri.parse('$backendUrl/api/recording/stop'),
-      //   body: json.encode({
-      //     'egressId': metadata.recordingId,
-      //   }),
-      // );
+      debugPrint('$_tag: Calling Cloud Function to stop recording...');
 
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Call Cloud Function to stop LiveKit Egress recording
+      final functions = FirebaseFunctions.instance;
+      final callable = functions.httpsCallable('stopRecording');
+      
+      await callable.call({
+        'egressId': metadata.recordingId,
+      });
 
       final endTime = DateTime.now();
       final duration = endTime.difference(metadata.startTime);
@@ -236,11 +219,14 @@ class CloudRecordingService extends ChangeNotifier {
 
       debugPrint('$_tag: ✅ Recording stopped: ${metadata.callId} (${duration.inSeconds}s)');
 
-      // Upload to Firebase Storage (in production, LiveKit can upload directly)
-      await _uploadToStorage(_currentRecording!);
+      // Note: In production, configure LiveKit Egress to upload directly to Firebase Storage
+      // For now, the recording file will be stored on the LiveKit server
 
       final finalMetadata = _currentRecording;
       _currentRecording = null; // Clear current recording
+      
+      // Save final metadata to Firestore
+      await _saveMetadataToFirestore(finalMetadata!);
       
       return finalMetadata;
     } catch (e) {

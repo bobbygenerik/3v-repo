@@ -828,10 +828,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   void _startCallWithContact(Map<String, dynamic> contact) async {
     final email = contact['email'] as String;
-    await _startCall(email);
+    final uid = contact['uid'] as String?;
+    await _startCall(email, recipientUid: uid);
   }
 
-  Future<void> _startCall(String recipientEmail) async {
+  Future<void> _startCall(String recipientEmail, {String? recipientUid}) async {
     try {
       final currentUser = context.read<AuthService>().currentUser;
       if (currentUser == null) return;
@@ -844,59 +845,67 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ),
       );
 
-      // Get recipient user ID from email
-      debugPrint('🔍 Looking up recipient by email: $recipientEmail');
-      final recipientQuery = await FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: recipientEmail.toLowerCase())
-          .limit(1)
-          .get();
+      String recipientUserId;
 
-      if (recipientQuery.docs.isEmpty) {
-        if (mounted) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User not found')),
-          );
+      // 1. Get Recipient ID (Use provided UID or lookup by email)
+      if (recipientUid != null) {
+        recipientUserId = recipientUid;
+        debugPrint('✅ Using provided recipient UID: $recipientUserId');
+      } else {
+        debugPrint('🔍 Looking up recipient by email: $recipientEmail');
+        final recipientQuery = await FirebaseFirestore.instance
+            .collection('users')
+            .where('email', isEqualTo: recipientEmail.toLowerCase())
+            .limit(1)
+            .get();
+
+        if (recipientQuery.docs.isEmpty) {
+          if (mounted) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('User not found')),
+            );
+          }
+          return;
         }
-        return;
+        recipientUserId = recipientQuery.docs.first.id;
+        debugPrint('✅ Found recipient: $recipientUserId');
       }
-
-      final recipientUserId = recipientQuery.docs.first.id;
-      debugPrint('✅ Found recipient: $recipientUserId');
 
       final roomName = 'call_${DateTime.now().millisecondsSinceEpoch}';
       final functions = FirebaseFunctions.instance;
       final callable = functions.httpsCallable('getLiveKitToken');
+      
+      // Use constant URL to avoid waiting for Cloud Function
+      const defaultWsUrl = 'wss://livekit.iptvsubz.fun';
 
-      debugPrint('🎫 Getting LiveKit token for caller (room: $roomName)');
-      final callerResponse = await callable.call({
-        'calleeId': recipientEmail,
-        'roomName': roomName,
-      });
+      debugPrint('🚀 Starting parallel initialization (Token + Invitation)');
+
+      // 2. Run Token Generation and Invitation in Parallel
+      final results = await Future.wait([
+        // Task A: Get Token from Cloud Function
+        callable.call({
+          'calleeId': recipientEmail,
+          'roomName': roomName,
+        }),
+        // Task B: Send Invitation via Firestore
+        _signalingService.sendCallInvitation(
+          recipientUserId: recipientUserId,
+          roomName: roomName,
+          token: '', // Recipient generates their own
+          livekitUrl: defaultWsUrl,
+          isVideoCall: true,
+        ),
+      ]);
+
+      final callerResponse = results[0] as HttpsCallableResult;
+      final invitationId = results[1] as String?;
 
       final callerToken = callerResponse.data['token'] as String;
-      final wsUrl = callerResponse.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
+      // We can use the returned URL if we want, but we already used the default for the invite
+      // final wsUrl = callerResponse.data['wsUrl'] as String? ?? defaultWsUrl;
 
-      debugPrint('✅ Got caller token');
-
-      // Get a separate token for the recipient
-      debugPrint('🎫 Getting LiveKit token for recipient');
-      // Note: We pass the recipientEmail as calleeId so the function creates token with recipient's identity
-      // This is a bit confusing - we should refactor the function to accept explicit userId parameter
-      // For now, we'll generate recipient token by having recipient call the function when they accept
-      
-      debugPrint('✅ Got LiveKit tokens and URL');
-
-      // Send call invitation to recipient (WITHOUT token - they'll generate it when accepting)
-      debugPrint('📤 Sending call invitation to recipient');
-      final invitationId = await _signalingService.sendCallInvitation(
-        recipientUserId: recipientUserId,
-        roomName: roomName,
-        token: '', // Empty - recipient will generate their own token
-        livekitUrl: wsUrl,
-        isVideoCall: true,
-      );
+      debugPrint('✅ Parallel initialization complete');
 
       if (invitationId == null) {
         if (mounted) Navigator.pop(context);
@@ -932,7 +941,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             builder: (context) => CallScreen(
               roomName: roomName,
               token: callerToken,
-              livekitUrl: wsUrl,
+              livekitUrl: defaultWsUrl,
               sessionService: _sessionService,
             ),
           ),

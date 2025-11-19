@@ -129,44 +129,22 @@ class ScreenShareService extends ChangeNotifier {
 
       debugPrint('$_tag: Starting screen share ${_resolution.label} @ ${_fps}fps');
 
-      // In production: Create screen share track with LiveKit
-      // 
-      // Android implementation:
-      // 1. Request MediaProjection permission
-      // 2. Create screen capture track
-      // 3. Publish to room
-      //
-      // iOS implementation:
-      // 1. Use ReplayKit (RPScreenRecorder)
-      // 2. Capture screen buffer
-      // 3. Convert to video frames
-      // 4. Publish to room
-      //
-      // Web implementation:
-      // 1. Call navigator.mediaDevices.getDisplayMedia()
-      // 2. Create track from media stream
-      // 3. Publish to room
+      // Create screen share track with LiveKit
+      _screenShareTrack = await LocalVideoTrack.createScreenShareTrack(
+        ScreenShareCaptureOptions(
+          maxFrameRate: _fps.toDouble(),
+          captureScreenAudio: false,
+          params: VideoParameters(
+            dimensions: VideoDimensions(
+              _resolution.width > 0 ? _resolution.width : 1920,
+              _resolution.height > 0 ? _resolution.height : 1080,
+            ),
+          ),
+        ),
+      );
 
-      // Simulate track creation
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Example LiveKit implementation:
-      // _screenShareTrack = await LocalVideoTrack.createScreenShareTrack(
-      //   ScreenShareCaptureOptions(
-      //     maxFrameRate: _fps,
-      //     params: VideoParameters(
-      //       dimensions: VideoDimensions(
-      //         _resolution.width > 0 ? _resolution.width : 1920,
-      //         _resolution.height > 0 ? _resolution.height : 1080,
-      //       ),
-      //       maxBitrate: 3000000, // 3 Mbps
-      //       maxFramerate: _fps,
-      //     ),
-      //   ),
-      // );
-
-      // Publish track
-      // await _room!.localParticipant?.publishVideoTrack(_screenShareTrack!);
+      // Publish screen share track to room
+      await _room!.localParticipant?.publishVideoTrack(_screenShareTrack!);
 
       _status = ScreenShareStatus.sharing;
       _shareStartTime = DateTime.now();
@@ -204,9 +182,6 @@ class ScreenShareService extends ChangeNotifier {
 
       // Unpublish and dispose track
       if (_screenShareTrack != null) {
-        // In production: Unpublish from room
-        // await _room!.localParticipant?.unpublishTrack(_screenShareTrack!.sid);
-        
         await _screenShareTrack!.stop();
         await _screenShareTrack!.dispose();
         _screenShareTrack = null;

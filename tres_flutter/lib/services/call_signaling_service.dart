@@ -26,18 +26,34 @@ class CallSignalingService {
       }
       
       // Check for recent calls between these users (prevent spam)
-      final recentCalls = await _firestore
-          .collection('call_invitations')
-          .where('callerId', whereIn: [currentUser.uid, recipientUserId])
-          .where('recipientId', whereIn: [currentUser.uid, recipientUserId])
-          .where('timestamp', isGreaterThan: Timestamp.fromDate(
-            DateTime.now().subtract(const Duration(seconds: 10))
-          ))
-          .get();
-      
-      if (recentCalls.docs.isNotEmpty) {
-        debugPrint('⏰ Recent call found, waiting before allowing new call');
-        return null;
+      try {
+        final tenSecondsAgo = Timestamp.fromDate(
+          DateTime.now().subtract(const Duration(seconds: 10))
+        );
+
+        // Check outgoing calls (Me -> Them)
+        final outgoingCalls = await _firestore
+            .collection('call_invitations')
+            .where('callerId', isEqualTo: currentUser.uid)
+            .where('recipientId', isEqualTo: recipientUserId)
+            .where('timestamp', isGreaterThan: tenSecondsAgo)
+            .get();
+
+        // Check incoming calls (Them -> Me)
+        final incomingCalls = await _firestore
+            .collection('call_invitations')
+            .where('callerId', isEqualTo: recipientUserId)
+            .where('recipientId', isEqualTo: currentUser.uid)
+            .where('timestamp', isGreaterThan: tenSecondsAgo)
+            .get();
+        
+        if (outgoingCalls.docs.isNotEmpty || incomingCalls.docs.isNotEmpty) {
+          debugPrint('⏰ Recent call found, waiting before allowing new call');
+          return null;
+        }
+      } catch (e) {
+        // If index is missing or other error, log it but allow the call to proceed
+        debugPrint('⚠️ Error checking recent calls (likely missing index), proceeding anyway: $e');
       }
 
       // Get caller info from Firestore

@@ -1,4 +1,4 @@
-package com.example.tres3.tres_flutter
+package com.tres3.videochat
 
 import android.os.Bundle
 import android.view.WindowManager
@@ -9,11 +9,7 @@ import io.flutter.embedding.android.FlutterActivity
 class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Keep screen on during calls
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        
-        // Handle incoming call intents
         handleIncomingCallIntent()
     }
     
@@ -25,15 +21,12 @@ class MainActivity : FlutterActivity() {
     
     private fun handleIncomingCallIntent() {
         intent?.let { itIntent ->
-            // If intent has data URI, keep existing behavior
             itIntent.data?.let { uri ->
                 if (uri.scheme == "tresvideo" && uri.host == "join") {
-                    // Flutter deep link (existing behavior)
                     return
                 }
             }
 
-            // If intent has extras from notification (invitationId/fromName/callAction), convert to URI
             val invitationId = itIntent.getStringExtra("invitationId")
             val fromName = itIntent.getStringExtra("fromName")
             val callAction = itIntent.getStringExtra("callAction")
