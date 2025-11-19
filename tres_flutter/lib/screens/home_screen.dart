@@ -1121,6 +1121,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           // End session when returning from call
           _sessionService.endSession();
         });
+      } else if (callAccepted == false && mounted) {
+        // Call was cancelled or declined - show feedback
+        debugPrint('📞 Call cancelled or declined by caller');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Call cancelled'),
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
     } catch (e) {
       debugPrint('❌ Error starting call: $e');
@@ -1484,18 +1493,23 @@ class _CallingDialogState extends State<_CallingDialog> {
 
       if (status == 'accepted') {
         // Call accepted - close dialog with true
-        Navigator.of(context).pop(true);
+        Navigator.of(context, rootNavigator: false).pop(true);
       } else if (status == 'declined') {
         // Call declined - close dialog with false
-        Navigator.of(context).pop(false);
+        Navigator.of(context, rootNavigator: false).pop(false);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Call declined')),
-          );
+          // Use a post-frame callback to show snackbar after navigation completes
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Call declined')),
+              );
+            }
+          });
         }
       } else if (status == 'timeout' || status == 'cancelled') {
         // Call timed out or cancelled - close dialog with false
-        Navigator.of(context).pop(false);
+        Navigator.of(context, rootNavigator: false).pop(false);
       }
     });
 
@@ -1503,10 +1517,15 @@ class _CallingDialogState extends State<_CallingDialog> {
     Future.delayed(const Duration(seconds: 60), () {
       if (mounted) {
         widget.signalingService.cancelInvitation(widget.invitationId);
-        Navigator.of(context).pop(false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Call not answered')),
-        );
+        Navigator.of(context, rootNavigator: false).pop(false);
+        // Use a post-frame callback to show snackbar after navigation completes
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Call not answered')),
+            );
+          }
+        });
       }
     });
   }
@@ -1519,32 +1538,39 @@ class _CallingDialogState extends State<_CallingDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF2C2C2E),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(color: Color(0xFF6B7FB8)),
-          const SizedBox(height: 24),
-          Text(
-            'Calling ${widget.recipientEmail}...',
-            style: const TextStyle(color: Colors.white, fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              widget.signalingService.cancelInvitation(widget.invitationId);
-              Navigator.of(context).pop(false);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    return WillPopScope(
+      onWillPop: () async {
+        // Cancel invitation if user tries to go back
+        widget.signalingService.cancelInvitation(widget.invitationId);
+        return true;
+      },
+      child: AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+            const SizedBox(height: 24),
+            Text(
+              'Calling ${widget.recipientEmail}...',
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+              textAlign: TextAlign.center,
             ),
-            child: const Text('CANCEL', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                widget.signalingService.cancelInvitation(widget.invitationId);
+                Navigator.of(context, rootNavigator: false).pop(false);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('CANCEL', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
   }
