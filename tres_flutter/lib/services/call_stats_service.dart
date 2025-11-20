@@ -52,6 +52,10 @@ class CallStatsService extends ChangeNotifier {
           if (parsed['packetLoss'] != null) _lastVideoPacketLoss = parsed['packetLoss']!;
           if (parsed['rttMs'] != null) _lastRtt = (parsed['rttMs']! / 1000.0);
           if (parsed['jitterMs'] != null) _lastJitter = (parsed['jitterMs']! / 1000.0);
+          if (parsed['width'] != null && parsed['height'] != null) {
+            _lastResolution = '${parsed['width']!.toInt()}x${parsed['height']!.toInt()}';
+          }
+          if (parsed['fps'] != null) _lastFps = parsed['fps']!.toInt();
         })
         ..on<VideoReceiverStatsEvent>((e) {
           _lastVideoRecvBitrate = (e.currentBitrate ?? 0).toDouble();
@@ -59,6 +63,10 @@ class CallStatsService extends ChangeNotifier {
           if (parsed['packetLoss'] != null) _lastVideoPacketLoss = parsed['packetLoss']!;
           if (parsed['rttMs'] != null) _lastRtt = (parsed['rttMs']! / 1000.0);
           if (parsed['jitterMs'] != null) _lastJitter = (parsed['jitterMs']! / 1000.0);
+          if (parsed['width'] != null && parsed['height'] != null) {
+            _lastResolution = '${parsed['width']!.toInt()}x${parsed['height']!.toInt()}';
+          }
+          if (parsed['fps'] != null) _lastFps = parsed['fps']!.toInt();
         })
         ..on<AudioSenderStatsEvent>((e) {
           _lastAudioSendBitrate = (e.currentBitrate ?? 0).toDouble();
@@ -103,6 +111,9 @@ class CallStatsService extends ChangeNotifier {
     double? packetLoss;
     double? rttMs;
     double? jitterMs;
+    double? width;
+    double? height;
+    double? fps;
 
     // Helpers to normalize values we find:
     double normalizePacketLoss(num raw) {
@@ -171,6 +182,24 @@ class CallStatsService extends ChangeNotifier {
                   jitterMs = jitterMs == null ? normalized : ((prev + normalized) / 2.0);
                 }
             }
+
+            // Video width
+            else if (key == 'framewidth' || key == 'frame_width' || key == 'width') {
+              final v = double.tryParse(value.toString());
+              if (v != null && v > 0) width = v;
+            }
+
+            // Video height
+            else if (key == 'frameheight' || key == 'frame_height' || key == 'height') {
+              final v = double.tryParse(value.toString());
+              if (v != null && v > 0) height = v;
+            }
+
+            // FPS
+            else if (key == 'framespersecond' || key == 'frames_per_second' || key == 'framerate' || key == 'frame_rate' || key == 'fps') {
+              final v = double.tryParse(value.toString());
+              if (v != null && v > 0) fps = v;
+            }
           }
 
           if (value is Map || value is Iterable) recurse(value);
@@ -192,7 +221,14 @@ class CallStatsService extends ChangeNotifier {
       if (packetLoss! > 100.0) packetLoss = 100.0;
     }
 
-    return {'packetLoss': packetLoss, 'rttMs': rttMs, 'jitterMs': jitterMs};
+    return {
+      'packetLoss': packetLoss,
+      'rttMs': rttMs,
+      'jitterMs': jitterMs,
+      'width': width,
+      'height': height,
+      'fps': fps,
+    };
   }
 
   /// If event-driven fields are missing, try native getStats bridge.
