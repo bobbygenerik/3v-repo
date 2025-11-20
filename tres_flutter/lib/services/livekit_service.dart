@@ -4,6 +4,8 @@ import 'network_quality_service.dart';
 import 'device_capability_service.dart';
 import 'call_stats_service.dart';
 import 'web_pip_helper.dart';
+import 'web_pip_bridge_stub.dart'
+    if (dart.library.html) 'web_pip_bridge.dart';
 // `CallStats` and `CallConnectionQuality` are exported via `call_stats_service.dart`
 
 /// LiveKit service managing room connections and participant tracks
@@ -535,6 +537,30 @@ class LiveKitService extends ChangeNotifier {
   
   void _onRoomDidUpdate() {
     notifyListeners();
+  }
+  
+  /// Update the PiP video stream with the specified participant's video track
+  /// This should be called when the main participant changes on web
+  Future<void> updatePipStream(VideoTrack? track) async {
+    if (!kIsWeb) return;
+    
+    try {
+      final mediaStream = WebPipBridge.getMediaStreamFromTrack(track);
+      if (mediaStream != null) {
+        _pipService.updateStream(mediaStream);
+        debugPrint('✅ Updated PiP stream for main participant');
+      } else {
+        debugPrint('⚠️ Could not extract MediaStream from track');
+      }
+    } catch (e) {
+      debugPrint('❌ Failed to update PiP stream: $e');
+    }
+  }
+  
+  /// Setup auto PiP when user switches tabs (web only)
+  void setupAutoPip() {
+    if (!kIsWeb) return;
+    _pipService.setupAutoEnterPip();
   }
   
   @override

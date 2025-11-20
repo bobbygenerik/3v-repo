@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:livekit_client/livekit_client.dart';
 import '../services/livekit_service.dart';
 import '../services/call_features_coordinator.dart';
 import '../services/call_session_service.dart';
@@ -78,6 +79,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       if (mounted) {
         final livekit = context.read<LiveKitService>();
         livekit.addListener(_handleLiveKitUpdate);
+        
+        // Setup auto PiP for web
+        livekit.setupAutoPip();
       }
     });
     
@@ -143,13 +147,45 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     }
   }
   
+  /// Update PiP stream with current main participant's video (web only)
+  void _updatePipForMainParticipant() {
+    final livekit = context.read<LiveKitService>();
+    final remoteParticipants = livekit.remoteParticipants;
+    
+    if (remoteParticipants.isEmpty || _mainParticipantIndex >= remoteParticipants.length) {
+      return;
+    }
+    
+    final mainParticipant = remoteParticipants[_mainParticipantIndex];
+    
+    // Get the video track from the main participant
+    VideoTrack? videoTrack;
+    for (final pub in mainParticipant.videoTrackPublications) {
+      if (pub.subscribed && pub.track != null) {
+        videoTrack = pub.track as VideoTrack;
+        break;
+      }
+    }
+    
+    // Update the PiP service with this track
+    livekit.updatePipStream(videoTrack);
+  }
+  
   /// Handle LiveKit updates - check if all participants left
   void _handleLiveKitUpdate() {
     final livekit = context.read<LiveKitService>();
     
     // Track if we've ever had a remote participant join
+    final hadParticipants = _hadRemoteParticipant;
     if (livekit.remoteParticipants.isNotEmpty) {
       _hadRemoteParticipant = true;
+      
+      // If this is the first participant joining, update PiP stream
+      if (!hadParticipants) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _updatePipForMainParticipant();
+        });
+      }
     }
     
     // Clean up positions for disconnected participants
@@ -163,6 +199,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         // Switch to first available participant
         _mainParticipantIndex = 0;
         _mainParticipantSid = livekit.remoteParticipants[0].sid;
+        
+        // Update PiP to show new main participant
+        _updatePipForMainParticipant();
       } else {
         _mainParticipantSid = null;
       }
@@ -639,6 +678,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                 _mainParticipantIndex = participantIndex;
                 _mainParticipantSid = participant.sid;
               });
+              
+              // Update PiP stream to show new main participant (web only)
+              _updatePipForMainParticipant();
             },
             onPanUpdate: (details) {
               setState(() {
