@@ -149,6 +149,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   
   /// Update PiP stream with current main participant's video (web only)
   void _updatePipForMainParticipant() {
+    if (!mounted) return;
+    
     final livekit = context.read<LiveKitService>();
     final remoteParticipants = livekit.remoteParticipants;
     
