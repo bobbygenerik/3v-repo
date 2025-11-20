@@ -59,6 +59,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   // Remote PIPs state
   final Map<String, Offset?> _remotePipPositions = {}; // Track position for each remote PIP
   final Map<String, bool> _remotePipExpanded = {}; // Track expanded state for each remote PIP
+  int _mainParticipantIndex = 0; // Index of participant shown in main view (0 = first remote)
   
   // Track if we've ever had a remote participant (to avoid false disconnect on call start)
   bool _hadRemoteParticipant = false;
@@ -523,11 +524,16 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       );
     }
     
-    // Show first remote participant in main view
+    // Ensure main participant index is valid
+    if (_mainParticipantIndex >= remoteParticipants.length) {
+      _mainParticipantIndex = 0;
+    }
+    
+    // Show selected remote participant in main view
     return RepaintBoundary(
       child: ParticipantVideo(
-        key: ValueKey('main-remote-${remoteParticipants[0].sid}'),
-        participant: remoteParticipants[0],
+        key: ValueKey('main-remote-${remoteParticipants[_mainParticipantIndex].sid}'),
+        participant: remoteParticipants[_mainParticipantIndex],
       ),
     );
   }
@@ -540,12 +546,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       return [];
     }
     
-    // Show additional remote participants (skip first one as it's in main view)
+    // Show additional remote participants (skip the one in main view)
     final List<Widget> pips = [];
     final screenSize = MediaQuery.of(context).size;
     final isLandscape = screenSize.width > screenSize.height && screenSize.width > 800;
     
-    for (int i = 1; i < remoteParticipants.length; i++) {
+    int pipIndex = 0; // Track position index for PIPs (for stacking calculation)
+    for (int i = 0; i < remoteParticipants.length; i++) {
+      // Skip the participant currently in main view
+      if (i == _mainParticipantIndex) continue;
       final participant = remoteParticipants[i];
       final pipKey = participant.sid;
       
@@ -574,10 +583,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       
       // Calculate default position: bottom-left, stacked vertically
       // Start 16px from bottom, stack upward with 8px gap between PIPs
-      final defaultBottom = 16.0 + (i - 1) * (height + 8);
+      final defaultBottom = 16.0 + pipIndex * (height + 8);
       final defaultPosition = Offset(16, screenSize.height - defaultBottom - height);
       
       final position = _remotePipPositions[pipKey] ?? defaultPosition;
+      
+      final participantIndex = i; // Capture for closure
       
       pips.add(
         Positioned(
@@ -588,6 +599,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
             onTap: () {
               setState(() {
                 _remotePipExpanded[pipKey] = !isExpanded;
+              });
+            },
+            onDoubleTap: () {
+              // Swap this participant to main view
+              setState(() {
+                _mainParticipantIndex = participantIndex;
               });
             },
             onPanUpdate: (details) {
@@ -625,6 +642,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
           ),
         ),
       );
+      
+      pipIndex++; // Increment for next PIP's stacking position
     }
     
     return pips;
