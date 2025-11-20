@@ -3,6 +3,7 @@ import 'package:livekit_client/livekit_client.dart';
 import 'network_quality_service.dart';
 import 'device_capability_service.dart';
 import 'call_stats_service.dart';
+import 'web_pip_helper.dart';
 // `CallStats` and `CallConnectionQuality` are exported via `call_stats_service.dart`
 
 /// LiveKit service managing room connections and participant tracks
@@ -35,6 +36,10 @@ class LiveKitService extends ChangeNotifier {
   
   final NetworkQualityService _networkService = NetworkQualityService();
   CallStatsService? _internalStatsService;
+  final WebPipService _pipService = WebPipService();
+  
+  /// Get the PiP service for web platforms
+  WebPipService get pipService => _pipService;
   
   // Detect device capability on service creation
   LiveKitService() {
@@ -182,6 +187,7 @@ class LiveKitService extends ChangeNotifier {
   Future<void> disconnect() async {
     try {
       _networkService.stopMonitoring();
+      _pipService.dispose();
       
       await _localVideoTrack?.stop();
       await _localAudioTrack?.stop();
