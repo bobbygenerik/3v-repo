@@ -716,13 +716,30 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
         index: 2,
         icon: Icons.call_end,
         onPressed: () async {
-          // Notify other participant the call is ending
-          await widget.signalingService.endCall(widget.roomName);
-          // End local session
-          await widget.sessionService?.endSession();
-          await livekit.disconnect();
-          if (mounted) {
-            Navigator.of(context).pop();
+          if (!mounted) return;
+          
+          try {
+            // Notify other participant the call is ending (fire and forget)
+            widget.signalingService.endCall(widget.roomName);
+            
+            // End session (fire and forget)
+            widget.sessionService?.endSession();
+            
+            // Disconnect from LiveKit (fire and forget)
+            livekit.disconnect();
+            
+            // Small delay to allow cleanup to start before navigation
+            await Future.delayed(const Duration(milliseconds: 100));
+            
+            // Pop to previous screen
+            if (mounted) {
+              Navigator.of(context).pop();
+            }
+          } catch (e) {
+            debugPrint('Error ending call: $e');
+            if (mounted) {
+              Navigator.of(context).pop();
+            }
           }
         },
         backgroundColor: Colors.red.shade600,
@@ -1197,13 +1214,27 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   void dispose() {
     _controlsHideTimer?.cancel();
     widget.sessionService?.removeListener(_handleSessionEnd);
-    final livekit = context.read<LiveKitService>();
-    livekit.removeListener(_handleLiveKitUpdate);
-    _coordinator.cleanup(); // Fire and forget async cleanup
+    
+    // Remove listeners safely
+    try {
+      final livekit = context.read<LiveKitService>();
+      livekit.removeListener(_handleLiveKitUpdate);
+      // Disconnect if not already disconnected (fire and forget)
+      if (livekit.isConnected) {
+        livekit.disconnect();
+      }
+    } catch (e) {
+      debugPrint('Error during LiveKit cleanup: $e');
+    }
+    
+    // Cleanup coordinator (fire and forget)
+    _coordinator.cleanup();
+    
+    // Dispose controllers
     _chatController.dispose();
     _controlsAnimationController.dispose();
     _reactionsAnimationController.dispose();
-    livekit.disconnect();
+    
     super.dispose();
   }
 }
