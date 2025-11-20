@@ -58,8 +58,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   
   // Remote PIPs state
   final Map<String, Offset?> _remotePipPositions = {}; // Track position for each remote PIP
-  final Map<String, bool> _remotePipExpanded = {}; // Track expanded state for each remote PIP
   int _mainParticipantIndex = 0; // Index of participant shown in main view (0 = first remote)
+  String? _mainParticipantSid; // Track SID of participant in main view for stability
   
   // Track if we've ever had a remote participant (to avoid false disconnect on call start)
   bool _hadRemoteParticipant = false;
@@ -150,6 +150,22 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     // Track if we've ever had a remote participant join
     if (livekit.remoteParticipants.isNotEmpty) {
       _hadRemoteParticipant = true;
+    }
+    
+    // Clean up positions for disconnected participants
+    final activeSids = livekit.remoteParticipants.map((p) => p.sid).toSet();
+    _remotePipPositions.removeWhere((sid, _) => !activeSids.contains(sid));
+    
+    // Update main participant tracking if current one disconnected
+    if (_mainParticipantSid != null && !activeSids.contains(_mainParticipantSid)) {
+      // Current main participant left - find their index and adjust
+      if (livekit.remoteParticipants.isNotEmpty) {
+        // Switch to first available participant
+        _mainParticipantIndex = 0;
+        _mainParticipantSid = livekit.remoteParticipants[0].sid;
+      } else {
+        _mainParticipantSid = null;
+      }
     }
     
     // Only trigger disconnect if we HAD a participant and now they're gone
@@ -524,16 +540,29 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       );
     }
     
-    // Ensure main participant index is valid
-    if (_mainParticipantIndex >= remoteParticipants.length) {
-      _mainParticipantIndex = 0;
+    // Find participant by SID, or use index as fallback
+    int mainIndex = _mainParticipantIndex;
+    if (_mainParticipantSid != null) {
+      final foundIndex = remoteParticipants.indexWhere((p) => p.sid == _mainParticipantSid);
+      if (foundIndex != -1) {
+        mainIndex = foundIndex;
+      }
     }
+    
+    // Ensure index is valid
+    if (mainIndex >= remoteParticipants.length) {
+      mainIndex = 0;
+    }
+    
+    // Update tracking
+    _mainParticipantIndex = mainIndex;
+    _mainParticipantSid = remoteParticipants[mainIndex].sid;
     
     // Show selected remote participant in main view
     return RepaintBoundary(
       child: ParticipantVideo(
-        key: ValueKey('main-remote-${remoteParticipants[_mainParticipantIndex].sid}'),
-        participant: remoteParticipants[_mainParticipantIndex],
+        key: ValueKey('main-remote-${remoteParticipants[mainIndex].sid}'),
+        participant: remoteParticipants[mainIndex],
       ),
     );
   }
@@ -608,6 +637,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
               // Swap this participant to main view
               setState(() {
                 _mainParticipantIndex = participantIndex;
+                _mainParticipantSid = participant.sid;
               });
             },
             onPanUpdate: (details) {
