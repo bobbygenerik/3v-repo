@@ -39,7 +39,7 @@ jobs:
           echo "OK: No APK/AAB or large files committed."
 
   build:
-    name: Build (Gradle)
+    name: Build (Flutter)
     needs: guard
     runs-on: ubuntu-latest
     steps:
@@ -52,57 +52,32 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Detect compileSdk and buildTools
-        id: detect
-        shell: bash
-        run: |
-          set -euo pipefail
-          CS="$(grep -RhoE 'compileSdk\s*=?\s*[0-9]+' app build.gradle* 2>/dev/null | grep -Eo '[0-9]+' | head -n1 || true)"
-          if [ -z "${CS:-}" ]; then CS=34; fi
-          echo "compileSdk=$CS" >> "$GITHUB_OUTPUT"
-          echo "buildTools=${CS}.0.0" >> "$GITHUB_OUTPUT"
-          echo "Detected compileSdk=$CS"
-
-      - name: Install SDK packages
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Accept licenses; 'yes' can exit with SIGPIPE causing non-zero under pipefail, so tolerate it
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-${{ steps.detect.outputs.compileSdk }}" "build-tools;${{ steps.detect.outputs.buildTools }}"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
-          # Disable caching/cleanup to avoid post-step failures with older Gradle wrappers
-          cache-disabled: true
-          gradle-home-cache-cleanup: false
+          flutter-version: '3.24.5'
+          channel: 'stable'
 
-      - name: Make Gradle wrapper executable
-        run: chmod +x ./gradlew
+      - name: Flutter doctor
+        working-directory: tres_flutter
+        run: flutter doctor -v
 
-      - name: Assemble debug APK
-        run: ./gradlew --no-daemon --stacktrace assembleDebug
-      - name: Print APK signing certificate (SHA-256)
-        shell: bash
-        run: |
-          set -euo pipefail
-          APK_PATH=$(ls -1 app/build/outputs/apk/debug/*.apk | head -n1)
-          echo "APK: $APK_PATH"
-          APKSIGNER="$ANDROID_HOME/build-tools/${{ steps.detect.outputs.buildTools }}/apksigner"
-          if [ -x "$APKSIGNER" ]; then
-            echo "Signing cert info:" | tee -a "$GITHUB_STEP_SUMMARY"
-            "$APKSIGNER" verify --print-certs "$APK_PATH" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
-          else
-            echo "apksigner not found at $APKSIGNER" | tee -a "$GITHUB_STEP_SUMMARY"
-          fi
+      - name: Get dependencies
+        working-directory: tres_flutter
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: tres_flutter
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build Android APK
+        working-directory: tres_flutter
+        run: flutter build apk --debug
+
       - name: Upload debug APK
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
-          path: app/build/outputs/apk/**/*.apk
+          path: tres_flutter/build/app/outputs/flutter-apk/*.apk
           if-no-files-found: warn
