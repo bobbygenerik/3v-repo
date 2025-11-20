@@ -157,7 +157,8 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     recordingService.addListener(_onRecordingChanged);
     encryptionService.addListener(_onEncryptionChanged);
     screenShareService.addListener(_onScreenShareChanged);
-    statsService.addListener(_onStatsChanged);
+    // Stats overlay handles its own updates directly from statsService
+    // No need to propagate through coordinator to avoid unnecessary rebuilds
     layoutManager.addListener(_onLayoutChanged);
 
     debugPrint('✅ CallFeaturesCoordinator initialized');
@@ -197,11 +198,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   }
 
   /// Stats callback
-  void _onStatsChanged() {
-    _qualityScore = statsService.currentQuality.score;
-    notifyListeners();
-  }
-
   /// Layout callback
   void _onLayoutChanged() {
     notifyListeners();
@@ -434,7 +430,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     recordingService.removeListener(_onRecordingChanged);
     encryptionService.removeListener(_onEncryptionChanged);
     screenShareService.removeListener(_onScreenShareChanged);
-    statsService.removeListener(_onStatsChanged);
+    // Stats listener removed to prevent unnecessary rebuilds
     layoutManager.removeListener(_onLayoutChanged);
 
     chatService.cleanup();

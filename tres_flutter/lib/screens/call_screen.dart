@@ -313,8 +313,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                       Positioned(
                         top: 70, // Just below caller name (18px + 4px gap) + time (14px + 8px padding)
                         left: 16, // Aligned with room info on left
-                        child: StatsOverlay(
-                          statsService: coordinator.statsService,
+                        child: RepaintBoundary(
+                          child: StatsOverlay(
+                            statsService: coordinator.statsService,
+                          ),
                         ),
                       ),
                     
