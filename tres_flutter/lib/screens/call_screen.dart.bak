@@ -56,10 +56,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   bool _pipExpanded = false;
   bool _pipSwapped = false;
   
-  // Remote PIPs state
-  final Map<String, Offset?> _remotePipPositions = {}; // Track position for each remote PIP
-  final Map<String, bool> _remotePipExpanded = {}; // Track expanded state for each remote PIP
-  
   // Track if we've ever had a remote participant (to avoid false disconnect on call start)
   bool _hadRemoteParticipant = false;
   
@@ -290,17 +286,14 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
               builder: (context, livekit, coordinator, child) {
                 return Stack(
                   children: [
-                    // Main participant view
-                    _buildMainParticipantView(livekit),
+                    // Remote participants grid
+                    _buildParticipantsGrid(livekit),
                     
                     // Reaction overlay (floating emojis)
                     ReactionOverlay(reactions: coordinator.activeReactions),
                     
                     // Reactions panel (slide from left)
                     _buildReactionsPanel(coordinator),
-                    
-                    // Remote participant PIPs (bottom-left, stacked vertically)
-                    ..._buildRemotePips(livekit),
                     
                     // Local video preview (PIP - repositionable, starts at fixed top-right)
                     Positioned(
@@ -493,17 +486,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     return Icons.signal_cellular_alt_1_bar;
   }
   
-  Widget _buildMainParticipantView(LiveKitService livekit) {
+  Widget _buildParticipantsGrid(LiveKitService livekit) {
     final remoteParticipants = livekit.remoteParticipants;
     
     // If PIP is swapped, show local participant in main view
     if (_pipSwapped && livekit.localParticipant != null) {
-      return RepaintBoundary(
-        child: ParticipantVideo(
-          key: const ValueKey('main-local-swapped'),
-          participant: livekit.localParticipant!,
-          isLocal: true,
-        ),
+      return ParticipantVideo(
+        key: const ValueKey('main-local-swapped'),
+        participant: livekit.localParticipant!,
+        isLocal: true,
       );
     }
     
@@ -523,111 +514,31 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       );
     }
     
-    // Show first remote participant in main view
-    return RepaintBoundary(
-      child: ParticipantVideo(
-        key: ValueKey('main-remote-${remoteParticipants[0].sid}'),
-        participant: remoteParticipants[0],
-      ),
-    );
-  }
-  
-  List<Widget> _buildRemotePips(LiveKitService livekit) {
-    final remoteParticipants = livekit.remoteParticipants;
-    
-    // If swapped or only one participant, no remote PIPs needed
-    if (_pipSwapped || remoteParticipants.length <= 1) {
-      return [];
-    }
-    
-    // Show additional remote participants (skip first one as it's in main view)
-    final List<Widget> pips = [];
-    final screenSize = MediaQuery.of(context).size;
-    final isLandscape = screenSize.width > screenSize.height && screenSize.width > 800;
-    
-    for (int i = 1; i < remoteParticipants.length; i++) {
-      final participant = remoteParticipants[i];
-      final pipKey = participant.sid;
-      
-      // Get or initialize expanded state
-      final isExpanded = _remotePipExpanded[pipKey] ?? false;
-      
-      // Calculate dimensions (same as local PIP)
-      double width, height;
-      if (isLandscape) {
-        if (isExpanded) {
-          width = 267;
-          height = 150;
-        } else {
-          width = 213;
-          height = 120;
-        }
-      } else {
-        if (isExpanded) {
-          width = 169;
-          height = 300;
-        } else {
-          width = 135;
-          height = 240;
-        }
-      }
-      
-      // Calculate default position: bottom-left, stacked vertically
-      // Start 16px from bottom, stack upward with 8px gap between PIPs
-      final defaultBottom = 16.0 + (i - 1) * (height + 8);
-      final defaultPosition = Offset(16, screenSize.height - defaultBottom - height);
-      
-      final position = _remotePipPositions[pipKey] ?? defaultPosition;
-      
-      pips.add(
-        Positioned(
-          left: position.dx,
-          top: position.dy,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () {
-              setState(() {
-                _remotePipExpanded[pipKey] = !isExpanded;
-              });
-            },
-            onPanUpdate: (details) {
-              setState(() {
-                _remotePipPositions[pipKey] = Offset(
-                  (position.dx + details.delta.dx).clamp(16.0, screenSize.width - width - 16),
-                  (position.dy + details.delta.dy).clamp(16.0, screenSize.height - height - 16),
-                );
-              });
-            },
-            child: Container(
-              width: width,
-              height: height,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white, width: 2),
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.5),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: RepaintBoundary(
-                  child: ParticipantVideo(
-                    key: ValueKey('remote-pip-$pipKey'),
-                    participant: participant,
-                  ),
-                ),
-              ),
-            ),
-          ),
+    // For single participant, use full screen without aspect ratio constraint
+    if (remoteParticipants.length == 1) {
+      return RepaintBoundary(
+        child: ParticipantVideo(
+          key: const ValueKey('main-remote-normal'),
+          participant: remoteParticipants[0],
         ),
       );
     }
     
-    return pips;
+    // For multiple participants, use grid layout
+    return GridView.builder(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 16 / 9,
+      ),
+      itemCount: remoteParticipants.length,
+      itemBuilder: (context, index) {
+        return RepaintBoundary(
+          child: ParticipantVideo(
+            participant: remoteParticipants[index],
+          ),
+        );
+      },
+    );
   }
   
   Widget _buildLocalVideoPreview(LiveKitService livekit) {
@@ -1222,6 +1133,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
             
             setDialogState(() => isLoading = true);
             
+            // Load contacts from current user's contacts
             final currentUser = FirebaseAuth.instance.currentUser;
             if (currentUser == null) {
               setDialogState(() => isLoading = false);
@@ -1255,6 +1167,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                 }
               }
               
+              // Filter contacts based on query
               final filtered = contacts.where((contact) {
                 final name = (contact['name'] as String).toLowerCase();
                 final email = (contact['email'] as String).toLowerCase();
@@ -1364,8 +1277,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                   final email = emailController.text.trim();
                   if (email.isEmpty) return;
                   
-                  Navigator.pop(dialogContext);
+                  Navigator.pop(dialogContext); // Close the add person dialog first
                   
+                  // Show loading
                   showDialog(
                     context: context,
                     barrierDismissible: false,
@@ -1375,6 +1289,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                   );
                   
                   try {
+                    // Look up user by email
                     final userQuery = await FirebaseFirestore.instance
                         .collection('users')
                         .where('email', isEqualTo: email.toLowerCase())
@@ -1382,7 +1297,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                         .get();
                     
                     if (userQuery.docs.isEmpty) {
-                      if (mounted) Navigator.pop(context);
+                      if (mounted) Navigator.pop(context); // Close loading dialog
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('User not found')),
@@ -1392,24 +1307,26 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                     }
                     
                     final recipientUserId = userQuery.docs.first.id;
+                    final livekit = context.read<LiveKitService>();
                     
+                    // Send call invitation
                     final signalingService = CallSignalingService();
                     await signalingService.sendCallInvitation(
                       recipientUserId: recipientUserId,
                       roomName: widget.roomName,
-                      token: '',
+                      token: '', // They'll generate their own
                       livekitUrl: widget.livekitUrl,
                       isVideoCall: true,
                     );
                     
-                    if (mounted) Navigator.pop(context);
+                    if (mounted) Navigator.pop(context); // Close loading dialog
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Invitation sent to $email')),
                       );
                     }
                   } catch (e) {
-                    if (mounted) Navigator.pop(context);
+                    if (mounted) Navigator.pop(context); // Close loading dialog
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Failed to send invitation: $e')),
@@ -1420,8 +1337,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                 child: const Text('Add', style: TextStyle(color: Color(0xFF6B7FB8))),
               ),
             ],
-          );
-        },
+          ),
+        }
       ),
     );
   }
