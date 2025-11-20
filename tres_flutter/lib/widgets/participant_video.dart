@@ -17,11 +17,12 @@ class ParticipantVideo extends StatefulWidget {
 
 class _ParticipantVideoState extends State<ParticipantVideo> {
   VideoTrack? _videoTrack;
+  AudioTrack? _audioTrack;
   
   @override
   void initState() {
     super.initState();
-    _setupVideoTrack();
+    _setupTracks();
     widget.participant.addListener(_onParticipantChanged);
   }
   
@@ -32,7 +33,56 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
   }
   
   void _onParticipantChanged() {
+    _setupTracks();
+  }
+  
+  void _setupTracks() async {
     _setupVideoTrack();
+    _setupAudioTrack();
+  }
+  
+  void _setupAudioTrack() async {
+    // Get first audio track from publications
+    AudioTrack? track;
+    
+    debugPrint('🔊 Setting up audio track for ${widget.participant.identity}...');
+    debugPrint('🔊 Audio publications: ${widget.participant.audioTrackPublications.length}');
+    
+    for (final pub in widget.participant.audioTrackPublications) {
+      debugPrint('🔊 Publication ${pub.sid}: subscribed=${pub.subscribed}, track=${pub.track != null}, muted=${pub.muted}');
+      
+      if (pub.subscribed && pub.track != null) {
+        track = pub.track as AudioTrack;
+        debugPrint('🔊 Using subscribed audio track: ${pub.sid}');
+        break;
+      }
+    }
+    
+    // If no subscribed track, explicitly subscribe to first available publication
+    if (track == null && !widget.isLocal) {
+      debugPrint('🔊 No subscribed audio track found, checking for unsubscribed publications...');
+      for (final pub in widget.participant.audioTrackPublications) {
+        if (!pub.subscribed && pub is RemoteTrackPublication) {
+          try {
+            debugPrint('🔊 Subscribing to audio track: ${pub.sid}');
+            await pub.subscribe();
+            if (pub.track != null) {
+              track = pub.track as AudioTrack;
+              debugPrint('🔊 Audio track subscribed');
+            }
+          } catch (e) {
+            debugPrint('❌ Failed to subscribe to audio track: $e');
+          }
+        }
+      }
+    }
+    
+    if (mounted && track != _audioTrack) {
+      setState(() {
+        _audioTrack = track;
+      });
+      debugPrint('🔊 Audio track ${track != null ? "ACTIVE" : "CLEARED"} for ${widget.participant.identity}');
+    }
   }
   
   void _setupVideoTrack() async {

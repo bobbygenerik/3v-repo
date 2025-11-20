@@ -161,7 +161,7 @@ class LiveKitService extends ChangeNotifier {
         ),
       );
 
-      // Wrap enabling tracks in a timeout as well
+      // Enable local tracks with timeout
       await Future.wait([
         enableCamera(),
         enableMicrophone(),
@@ -169,11 +169,7 @@ class LiveKitService extends ChangeNotifier {
         throw Exception('Timed out while enabling local media tracks');
       });
       
-      // Enable local tracks
-      await enableCamera();
-      await enableMicrophone();
-      
-      notifyListeners();
+      debugPrint('✅ Connected to LiveKit room: $roomName');
       return true;
     } catch (e) {
       _errorMessage = 'Failed to connect: ${e.toString()}';
