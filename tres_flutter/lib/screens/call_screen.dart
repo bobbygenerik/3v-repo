@@ -551,6 +551,35 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     final screenSize = MediaQuery.of(context).size;
     final isLandscape = screenSize.width > screenSize.height && screenSize.width > 800;
     
+    // Count PIPs that will be displayed (excluding main participant)
+    final pipCount = remoteParticipants.length - 1;
+    
+    // Calculate available vertical space (screen height minus margins and controls)
+    // Leave space for: top margin (16), bottom margin (16), and controls at bottom (~120)
+    final availableHeight = screenSize.height - 16 - 16 - 120;
+    
+    // Calculate dimensions based on available space
+    double width, height;
+    if (isLandscape) {
+      width = 213;
+      height = 120;
+    } else {
+      width = 135;
+      height = 240;
+    }
+    
+    // Calculate spacing between PIPs to fit them all on screen
+    final totalPipHeight = pipCount * height;
+    final totalGapHeight = availableHeight - totalPipHeight;
+    final gap = pipCount > 1 ? (totalGapHeight / (pipCount - 1)).clamp(4.0, 8.0) : 8.0;
+    
+    // If PIPs won't fit with minimum spacing, shrink them proportionally
+    if (totalPipHeight + (pipCount - 1) * 4 > availableHeight && pipCount > 1) {
+      final scale = (availableHeight - (pipCount - 1) * 4) / totalPipHeight;
+      width *= scale;
+      height *= scale;
+    }
+    
     int pipIndex = 0; // Track position index for PIPs (for stacking calculation)
     for (int i = 0; i < remoteParticipants.length; i++) {
       // Skip the participant currently in main view
@@ -558,32 +587,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
       final participant = remoteParticipants[i];
       final pipKey = participant.sid;
       
-      // Get or initialize expanded state
-      final isExpanded = _remotePipExpanded[pipKey] ?? false;
-      
-      // Calculate dimensions (same as local PIP)
-      double width, height;
-      if (isLandscape) {
-        if (isExpanded) {
-          width = 267;
-          height = 150;
-        } else {
-          width = 213;
-          height = 120;
-        }
-      } else {
-        if (isExpanded) {
-          width = 169;
-          height = 300;
-        } else {
-          width = 135;
-          height = 240;
-        }
-      }
-      
-      // Calculate default position: bottom-left, stacked vertically
-      // Start 16px from bottom, stack upward with 8px gap between PIPs
-      final defaultBottom = 16.0 + pipIndex * (height + 8);
+      // Calculate default position: bottom-left, stacked vertically with dynamic spacing
+      final defaultBottom = 16.0 + pipIndex * (height + gap);
       final defaultPosition = Offset(16, screenSize.height - defaultBottom - height);
       
       final position = _remotePipPositions[pipKey] ?? defaultPosition;
@@ -597,9 +602,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () {
-              setState(() {
-                _remotePipExpanded[pipKey] = !isExpanded;
-              });
+              // Tapping does nothing now - removed expand/collapse to keep consistent sizing
             },
             onDoubleTap: () {
               // Swap this participant to main view
