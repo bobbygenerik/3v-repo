@@ -1,21 +1,20 @@
 import 'package:flutter/foundation.dart';
-import 'dart:html' as html;
-import 'dart:js_util' as js_util;
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
 
 /// Service to handle Picture-in-Picture for web platform
 /// Shows the main participant's video in a floating PiP window when user switches tabs
 class WebPipService {
-  html.VideoElement? _pipVideoElement;
+  web.HTMLVideoElement? _pipVideoElement;
   bool _isPipActive = false;
   bool _autoEnterPipEnabled = true;
-  html.MediaStream? _currentStream;
+  web.MediaStream? _currentStream;
   
   /// Check if PiP is supported in this browser
   bool get isPipSupported {
     if (!kIsWeb) return false;
     try {
-      // Check if document.pictureInPictureEnabled exists
-      return js_util.getProperty(html.document, 'pictureInPictureEnabled') == true;
+      return web.document.pictureInPictureEnabled;
     } catch (e) {
       return false;
     }
@@ -30,7 +29,7 @@ class WebPipService {
   }
   
   /// Update the video stream being displayed in PiP
-  void updateStream(html.MediaStream? stream) {
+  void updateStream(web.MediaStream? stream) {
     _currentStream = stream;
     if (_pipVideoElement != null && stream != null) {
       _pipVideoElement!.srcObject = stream;
@@ -53,32 +52,32 @@ class WebPipService {
     try {
       // Create video element if it doesn't exist
       if (_pipVideoElement == null) {
-        _pipVideoElement = html.VideoElement()
+        _pipVideoElement = web.HTMLVideoElement()
           ..autoplay = true
-          ..muted = false
-          ..style.display = 'none'; // Hidden from page but available for PiP
+          ..muted = false;
         
-        html.document.body?.append(_pipVideoElement!);
+        // Hide from page but available for PiP
+        _pipVideoElement!.style.display = 'none';
+        
+        web.document.body?.append(_pipVideoElement!);
       }
       
       // Set the stream
       _pipVideoElement!.srcObject = _currentStream;
-      await _pipVideoElement!.play();
+      await _pipVideoElement!.play().toDart;
       
       // Request PiP
-      await js_util.promiseToFuture(
-        js_util.callMethod(_pipVideoElement!, 'requestPictureInPicture', []),
-      );
+      await _pipVideoElement!.requestPictureInPicture().toDart;
       
       _isPipActive = true;
       
       // Listen for PiP exit
-      _pipVideoElement!.addEventListener('leavepictureinpicture', _handlePipExit);
+      _pipVideoElement!.addEventListener('leavepictureinpicture', _handlePipExit.toJS);
       
-      debugPrint('Entered PiP mode');
+      debugPrint('✅ Entered PiP mode');
       return true;
     } catch (e) {
-      debugPrint('Failed to enter PiP: $e');
+      debugPrint('❌ Failed to enter PiP: $e');
       return false;
     }
   }
@@ -89,9 +88,7 @@ class WebPipService {
     
     try {
       // Exit PiP
-      await js_util.promiseToFuture(
-        js_util.callMethod(html.document, 'exitPictureInPicture', []),
-      );
+      await web.document.exitPictureInPicture().toDart;
       
       debugPrint('Exited PiP mode');
     } catch (e) {
@@ -99,9 +96,9 @@ class WebPipService {
     }
   }
   
-  void _handlePipExit(html.Event event) {
+  void _handlePipExit(web.Event event) {
     _isPipActive = false;
-    _pipVideoElement?.removeEventListener('leavepictureinpicture', _handlePipExit);
+    _pipVideoElement?.removeEventListener('leavepictureinpicture', _handlePipExit.toJS);
     debugPrint('PiP mode exited');
   }
   
@@ -110,13 +107,13 @@ class WebPipService {
     if (!isPipSupported || !_autoEnterPipEnabled) return;
     
     // Listen for visibility change (user switching tabs)
-    html.document.addEventListener('visibilitychange', (event) {
+    web.document.addEventListener('visibilitychange', (web.Event event) {
       _handleVisibilityChange();
-    });
+    }.toJS);
   }
   
   void _handleVisibilityChange() async {
-    if (html.document.hidden ?? false) {
+    if (web.document.hidden) {
       // User switched away from tab - enter PiP
       if (!_isPipActive && _autoEnterPipEnabled && _currentStream != null) {
         await enterPip();

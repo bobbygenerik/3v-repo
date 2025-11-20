@@ -1,34 +1,34 @@
-import 'dart:html' as html;
-import 'dart:js' as js;
+import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'package:web/web.dart' as web;
+// ignore: implementation_imports
+import 'package:dart_webrtc/src/media_stream_track_impl.dart';
 
 /// Bridge to access LiveKit's underlying web video elements for PiP
 class WebPipBridge {
   
   /// Extract the MediaStream from a LiveKit VideoTrack on web
-  /// This accesses the internal mediaStreamTrack property
-  static html.MediaStream? getMediaStreamFromTrack(VideoTrack? track) {
+  /// This accesses the underlying MediaStreamTrack from flutter_webrtc
+  static web.MediaStream? getMediaStreamFromTrack(VideoTrack? track) {
     if (!kIsWeb || track == null) return null;
     
     try {
-      // Access the underlying mediaStreamTrack from LiveKit's VideoTrack
-      // LiveKit's VideoTrack wraps a MediaStreamTrack
-      final jsTrack = js.JsObject.fromBrowserObject(track);
-      final mediaStreamTrack = jsTrack['mediaStreamTrack'];
+      // Get the flutter_webrtc MediaStreamTrack
+      final webrtcTrack = track.mediaStreamTrack;
       
-      if (mediaStreamTrack == null) {
-        debugPrint('No mediaStreamTrack found on VideoTrack');
+      // Cast to MediaStreamTrackWeb to access the jsTrack
+      if (webrtcTrack is MediaStreamTrackWeb) {
+        // Create a new web MediaStream and add the track
+        final mediaStream = web.MediaStream();
+        mediaStream.addTrack(webrtcTrack.jsTrack);
+        
+        debugPrint('✅ Successfully extracted MediaStream from VideoTrack');
+        return mediaStream;
+      } else {
+        debugPrint('⚠️ MediaStreamTrack is not MediaStreamTrackWeb');
         return null;
       }
-      
-      // Create a MediaStream from the track
-      final mediaStream = html.MediaStream();
-      final jsMediaStream = js.JsObject.fromBrowserObject(mediaStream);
-      jsMediaStream.callMethod('addTrack', [mediaStreamTrack]);
-      
-      debugPrint('✅ Successfully extracted MediaStream from VideoTrack');
-      return mediaStream;
     } catch (e) {
       debugPrint('❌ Failed to extract MediaStream: $e');
       return null;
@@ -36,12 +36,19 @@ class WebPipBridge {
   }
   
   /// Find all video elements on the page (LiveKit creates these for VideoTrackRenderer)
-  static List<html.VideoElement> findLiveKitVideoElements() {
+  static List<web.HTMLVideoElement> findLiveKitVideoElements() {
     if (!kIsWeb) return [];
     
     try {
-      final videos = html.document.querySelectorAll('video');
-      return videos.whereType<html.VideoElement>().toList();
+      final videos = web.document.querySelectorAll('video');
+      final result = <web.HTMLVideoElement>[];
+      for (var i = 0; i < videos.length; i++) {
+        final element = videos.item(i);
+        if (element is web.HTMLVideoElement) {
+          result.add(element);
+        }
+      }
+      return result;
     } catch (e) {
       debugPrint('Failed to find video elements: $e');
       return [];
@@ -49,7 +56,7 @@ class WebPipBridge {
   }
   
   /// Get the MediaStream from the first playing video element (main participant)
-  static html.MediaStream? getMainVideoStream() {
+  static web.MediaStream? getMainVideoStream() {
     if (!kIsWeb) return null;
     
     try {
@@ -59,7 +66,7 @@ class WebPipBridge {
       for (final video in videos) {
         if (video.srcObject != null && !video.paused) {
           final srcObject = video.srcObject;
-          if (srcObject is html.MediaStream) {
+          if (srcObject is web.MediaStream) {
             debugPrint('✅ Found main video MediaStream');
             return srcObject;
           }
