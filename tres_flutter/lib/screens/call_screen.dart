@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/livekit_service.dart';
 import '../services/call_features_coordinator.dart';
 import '../services/call_session_service.dart';
@@ -1114,98 +1115,224 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   
   void _showAddPersonDialog() {
     final TextEditingController emailController = TextEditingController();
+    List<Map<String, dynamic>> filteredContacts = [];
+    bool isLoading = false;
     
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2E),
-        title: const Text('Add Person to Call', style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: emailController,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'Enter email address',
-            hintStyle: TextStyle(color: Colors.white60),
-            enabledBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Color(0xFF6B7FB8)),
-            ),
-            focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Color(0xFF6B7FB8)),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
-          ),
-          TextButton(
-            onPressed: () async {
-              final email = emailController.text.trim();
-              if (email.isEmpty) {
-                return;
-              }
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          void updateContacts(String query) async {
+            if (query.isEmpty) {
+              setDialogState(() {
+                filteredContacts = [];
+                isLoading = false;
+              });
+              return;
+            }
+            
+            setDialogState(() => isLoading = true);
+            
+            final currentUser = FirebaseAuth.instance.currentUser;
+            if (currentUser == null) {
+              setDialogState(() => isLoading = false);
+              return;
+            }
+            
+            try {
+              final contactsSnapshot = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUser.uid)
+                  .collection('contacts')
+                  .get();
               
-              Navigator.pop(context);
-              
-              // Show loading
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
-                ),
-              );
-              
-              try {
-                // Look up user by email
-                final userQuery = await FirebaseFirestore.instance
+              final List<Map<String, dynamic>> contacts = [];
+              for (var contactDoc in contactsSnapshot.docs) {
+                final contactUid = contactDoc.id;
+                final userDoc = await FirebaseFirestore.instance
                     .collection('users')
-                    .where('email', isEqualTo: email.toLowerCase())
-                    .limit(1)
+                    .doc(contactUid)
                     .get();
                 
-                if (userQuery.docs.isEmpty) {
-                  if (mounted) Navigator.pop(context);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('User not found')),
-                    );
+                if (userDoc.exists) {
+                  final data = userDoc.data();
+                  if (data != null) {
+                    contacts.add({
+                      'uid': contactUid,
+                      'name': data['displayName'] ?? data['name'] ?? 'Unknown',
+                      'email': data['email'] ?? '',
+                    });
                   }
-                  return;
-                }
-                
-                final recipientUserId = userQuery.docs.first.id;
-                final livekit = context.read<LiveKitService>();
-                
-                // Send call invitation
-                final signalingService = CallSignalingService();
-                await signalingService.sendCallInvitation(
-                  recipientUserId: recipientUserId,
-                  roomName: widget.roomName,
-                  token: '', // They'll generate their own
-                  livekitUrl: widget.livekitUrl,
-                  isVideoCall: true,
-                );
-                
-                if (mounted) Navigator.pop(context);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Invitation sent to $email')),
-                  );
-                }
-              } catch (e) {
-                if (mounted) Navigator.pop(context);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to send invitation: $e')),
-                  );
                 }
               }
-            },
-            child: const Text('Add', style: TextStyle(color: Color(0xFF6B7FB8))),
-          ),
-        ],
+              
+              final filtered = contacts.where((contact) {
+                final name = (contact['name'] as String).toLowerCase();
+                final email = (contact['email'] as String).toLowerCase();
+                final searchQuery = query.toLowerCase();
+                return name.contains(searchQuery) || email.contains(searchQuery);
+              }).take(5).toList();
+              
+              setDialogState(() {
+                filteredContacts = filtered;
+                isLoading = false;
+              });
+            } catch (e) {
+              debugPrint('Error loading contacts: $e');
+              setDialogState(() => isLoading = false);
+            }
+          }
+          
+          return AlertDialog(
+            backgroundColor: const Color(0xFF2C2C2E),
+            title: const Text('Add Person to Call', style: TextStyle(color: Colors.white)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: emailController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    hintText: 'Enter name or email',
+                    hintStyle: TextStyle(color: Colors.white60),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFF6B7FB8)),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFF6B7FB8)),
+                    ),
+                  ),
+                  onChanged: updateContacts,
+                ),
+                if (isLoading)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF6B7FB8),
+                        ),
+                      ),
+                    ),
+                  ),
+                if (!isLoading && filteredContacts.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3C3C3E),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: filteredContacts.length,
+                      itemBuilder: (context, index) {
+                        final contact = filteredContacts[index];
+                        return ListTile(
+                          dense: true,
+                          leading: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: const Color(0xFF6B7FB8),
+                            child: Text(
+                              (contact['name'] as String).isNotEmpty 
+                                  ? (contact['name'] as String)[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                            ),
+                          ),
+                          title: Text(
+                            contact['name'] as String,
+                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                          subtitle: Text(
+                            contact['email'] as String,
+                            style: const TextStyle(color: Colors.white60, fontSize: 12),
+                          ),
+                          onTap: () {
+                            emailController.text = contact['email'] as String;
+                            setDialogState(() {
+                              filteredContacts = [];
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final email = emailController.text.trim();
+                  if (email.isEmpty) return;
+                  
+                  Navigator.pop(dialogContext);
+                  
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(
+                      child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+                    ),
+                  );
+                  
+                  try {
+                    final userQuery = await FirebaseFirestore.instance
+                        .collection('users')
+                        .where('email', isEqualTo: email.toLowerCase())
+                        .limit(1)
+                        .get();
+                    
+                    if (userQuery.docs.isEmpty) {
+                      if (mounted) Navigator.pop(context);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('User not found')),
+                        );
+                      }
+                      return;
+                    }
+                    
+                    final recipientUserId = userQuery.docs.first.id;
+                    
+                    final signalingService = CallSignalingService();
+                    await signalingService.sendCallInvitation(
+                      recipientUserId: recipientUserId,
+                      roomName: widget.roomName,
+                      token: '',
+                      livekitUrl: widget.livekitUrl,
+                      isVideoCall: true,
+                    );
+                    
+                    if (mounted) Navigator.pop(context);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Invitation sent to $email')),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) Navigator.pop(context);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to send invitation: $e')),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Add', style: TextStyle(color: Color(0xFF6B7FB8))),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
