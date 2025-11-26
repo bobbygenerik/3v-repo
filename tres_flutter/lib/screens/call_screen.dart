@@ -69,6 +69,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   // Track if we've ever had a remote participant (to avoid false disconnect on call start)
   bool _hadRemoteParticipant = false;
   
+  // Track participant SIDs to detect new joins
+  final Set<String> _knownParticipantSids = {};
+  
+  // Track newly joined participants for highlight animation
+  final Set<String> _highlightedParticipants = {};
+  
   @override
   void initState() {
     super.initState();
@@ -196,6 +202,53 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
           _updatePipForMainParticipant();
         });
       }
+      
+      // Detect new participant joins
+      final currentSids = livekit.remoteParticipants.map((p) => p.sid).toSet();
+      final newSids = currentSids.difference(_knownParticipantSids);
+      
+      if (newSids.isNotEmpty && _knownParticipantSids.isNotEmpty) {
+        // Someone new joined (and this isn't the initial call setup)
+        for (final sid in newSids) {
+          final participant = livekit.remoteParticipants.firstWhere((p) => p.sid == sid);
+          final name = participant.name ?? participant.identity ?? 'Someone';
+          
+          // Show toast notification
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.person_add, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text('$name joined the call')),
+                  ],
+                ),
+                duration: const Duration(seconds: 3),
+                backgroundColor: const Color(0xFF4CAF50),
+                behavior: SnackBarBehavior.floating,
+                margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+              ),
+            );
+          }
+          
+          // Add to highlighted participants for animation
+          _highlightedParticipants.add(sid);
+          
+          // Remove highlight after 4 seconds
+          Future.delayed(const Duration(seconds: 4), () {
+            if (mounted) {
+              setState(() {
+                _highlightedParticipants.remove(sid);
+              });
+            }
+          });
+        }
+      }
+      
+      // Update known participants
+      _knownParticipantSids.clear();
+      _knownParticipantSids.addAll(currentSids);
     }
     
     // Clean up positions for disconnected participants
@@ -715,17 +768,26 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                 );
               });
             },
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 500),
               width: width,
               height: height,
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.white, width: 2),
+                border: Border.all(
+                  color: _highlightedParticipants.contains(pipKey) 
+                      ? const Color(0xFF4CAF50) 
+                      : Colors.white,
+                  width: _highlightedParticipants.contains(pipKey) ? 4 : 2,
+                ),
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.5),
-                    blurRadius: 10,
+                    color: _highlightedParticipants.contains(pipKey)
+                        ? const Color(0xFF4CAF50).withOpacity(0.6)
+                        : Colors.black.withOpacity(0.5),
+                    blurRadius: _highlightedParticipants.contains(pipKey) ? 20 : 10,
                     offset: const Offset(0, 4),
+                    spreadRadius: _highlightedParticipants.contains(pipKey) ? 2 : 0,
                   ),
                 ],
               ),
