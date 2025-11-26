@@ -36,7 +36,7 @@ class CallScreen extends StatefulWidget {
   State<CallScreen> createState() => _CallScreenState();
 }
 
-class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
+class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   bool _isConnecting = true;
   late CallFeaturesCoordinator _coordinator;
   final TextEditingController _chatController = TextEditingController();
@@ -75,11 +75,17 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   // Track newly joined participants for highlight animation
   final Set<String> _highlightedParticipants = {};
   
+  // Track app lifecycle state
+  bool _isAppInBackground = false;
+  
   @override
   void initState() {
     super.initState();
     _coordinator = CallFeaturesCoordinator();
     _connectToRoom();
+    
+    // Register lifecycle observer
+    WidgetsBinding.instance.addObserver(this);
     
     // Start listening for incoming calls while in call (for call-waiting)
     _callListener.startListening();
@@ -293,6 +299,64 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
           Navigator.of(context).pop();
         }
       });
+    }
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    debugPrint('📱 App lifecycle changed: $state');
+    
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        // App moved to background or lost focus
+        _isAppInBackground = true;
+        debugPrint('📱 App backgrounded during call - call continues');
+        
+        // Show brief confirmation that call is still active
+        if (mounted && state == AppLifecycleState.paused) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Call continues in background')),
+                ],
+              ),
+              duration: Duration(seconds: 2),
+              backgroundColor: Color(0xFF4CAF50),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        // Call continues running - LiveKit maintains connection
+        // Web: PiP already handles this via setupAutoPip
+        // Android: Call stays active, no special handling needed
+        break;
+        
+      case AppLifecycleState.resumed:
+        // App returned to foreground
+        if (_isAppInBackground) {
+          _isAppInBackground = false;
+          debugPrint('📱 App resumed - refreshing UI');
+          
+          // Refresh UI state
+          if (mounted) {
+            setState(() {
+              // Force UI rebuild to ensure everything is current
+            });
+          }
+        }
+        break;
+        
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        // App is terminating or hidden
+        debugPrint('📱 App detached/hidden');
+        break;
     }
   }
   
@@ -1693,6 +1757,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _controlsHideTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     widget.sessionService?.removeListener(_handleSessionEnd);
     _callListener.removeListener(_handleIncomingCallWhileInCall);
     _callListener.stopListening();
