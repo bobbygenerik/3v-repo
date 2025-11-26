@@ -163,20 +163,38 @@ class LiveKitService extends ChangeNotifier {
             // Enable simulcast with multiple quality layers for better adaptation
             simulcast: true,
             // Provide multiple quality layers so receivers can choose best quality
-            videoSimulcastLayers: [
-              VideoParameters(
-                dimensions: VideoDimensions(1280, 720),
-                encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
-              ),
-              VideoParameters(
-                dimensions: VideoDimensions(640, 360),
-                encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
-              ),
-              VideoParameters(
-                dimensions: VideoDimensions(320, 180),
-                encoding: VideoEncoding(maxBitrate: 500000, maxFramerate: 24),
-              ),
-            ],
+            // Top layer matches capture resolution (1080p for high-end, 720p otherwise)
+            videoSimulcastLayers: DeviceCapabilityService.shouldUse1080p()
+                ? [
+                    // High-end: 1080p, 720p, 360p layers
+                    VideoParameters(
+                      dimensions: VideoDimensions(1920, 1080),
+                      encoding: VideoEncoding(maxBitrate: 8000000, maxFramerate: 60),
+                    ),
+                    VideoParameters(
+                      dimensions: VideoDimensions(1280, 720),
+                      encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
+                    ),
+                    VideoParameters(
+                      dimensions: VideoDimensions(640, 360),
+                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
+                    ),
+                  ]
+                : [
+                    // Mid/Low-end: 720p, 480p, 240p layers
+                    VideoParameters(
+                      dimensions: VideoDimensions(1280, 720),
+                      encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
+                    ),
+                    VideoParameters(
+                      dimensions: VideoDimensions(640, 480),
+                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
+                    ),
+                    VideoParameters(
+                      dimensions: VideoDimensions(320, 240),
+                      encoding: VideoEncoding(maxBitrate: 500000, maxFramerate: 24),
+                    ),
+                  ],
           ),
           defaultAudioPublishOptions: AudioPublishOptions(
             audioBitrate: _networkService.getRecommendedAudioBitrate(),
