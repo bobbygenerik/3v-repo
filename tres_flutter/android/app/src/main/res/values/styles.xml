@@ -12,8 +12,9 @@
          running.
 
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
-    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowBackground">?android:colorBackground</item>
+    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">#1C1C1E</item>
+        <item name="android:colorBackground">#1C1C1E</item>
     </style>
 
     <style name="Theme.Tres_FullScreenCall" parent="@android:style/Theme.Light.NoTitleBar">

@@ -32,22 +32,25 @@ void main() async {
   NotificationService.initialize();
 
   // Ensure local notification plugin has a channel for calls (Android)
-  try {
-    final flutterLocalNotificationsPlugin =
-        FlutterLocalNotificationsPlugin();
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'call_channel',
-      'Calls',
-      description: 'Incoming call notifications',
-      importance: Importance.high,
-    );
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
-  } catch (e) {
-    // ignore
-  }
+  // Don't await - let it initialize in background
+  Future.microtask(() async {
+    try {
+      final flutterLocalNotificationsPlugin =
+          FlutterLocalNotificationsPlugin();
+      const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        'call_channel',
+        'Calls',
+        description: 'Incoming call notifications',
+        importance: Importance.high,
+      );
+      await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(channel);
+    } catch (e) {
+      // ignore
+    }
+  });
   
   // Print environment configuration in debug mode
   Environment.printConfig();

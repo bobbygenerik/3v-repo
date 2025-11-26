@@ -100,9 +100,11 @@ class LiveKitService extends ChangeNotifier {
     if (kIsWeb) {
       // Web: Force H.264 for maximum iOS/Safari compatibility
       // VP9 is not well supported on iPhone browsers
-      debugPrint('🌐 Web platform: Using H.264 codec for iOS compatibility');
+      // Use higher bitrate on web to ensure good quality from browsers
+      final webBitrate = finalBitrate < 8000000 ? 8000000 : finalBitrate;
+      debugPrint('🌐 Web platform: Using H.264 codec with enhanced bitrate: ${(webBitrate / 1000000).toStringAsFixed(1)} Mbps');
       return VideoEncoding(
-        maxBitrate: finalBitrate, // Use full bitrate for H.264 on web
+        maxBitrate: webBitrate, // Ensure minimum 8 Mbps for web senders
         maxFramerate: finalFramerate,
       );
     }
@@ -142,8 +144,10 @@ class LiveKitService extends ChangeNotifier {
         roomOptions: RoomOptions(
           defaultCameraCaptureOptions: CameraCaptureOptions(
             maxFrameRate: DeviceCapabilityService.getMaxFramerate().toDouble(),
-            // Force minimum 720p for all devices
-            params: VideoParametersPresets.h720_169,
+            // Use 1080p for high-end devices (including web), 720p otherwise
+            params: DeviceCapabilityService.shouldUse1080p() 
+                ? VideoParametersPresets.h1080_169 
+                : VideoParametersPresets.h720_169,
           ),
           defaultScreenShareCaptureOptions: ScreenShareCaptureOptions(
             maxFrameRate: 15,
@@ -156,8 +160,23 @@ class LiveKitService extends ChangeNotifier {
           ),
           defaultVideoPublishOptions: VideoPublishOptions(
             videoEncoding: _getOptimalVideoEncoding(),
-            // Enable simulcast for better quality adaptation across platforms
+            // Enable simulcast with multiple quality layers for better adaptation
             simulcast: true,
+            // Provide multiple quality layers so receivers can choose best quality
+            videoSimulcastLayers: [
+              VideoParameters(
+                dimensions: VideoDimensions(1280, 720),
+                encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
+              ),
+              VideoParameters(
+                dimensions: VideoDimensions(640, 360),
+                encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
+              ),
+              VideoParameters(
+                dimensions: VideoDimensions(320, 180),
+                encoding: VideoEncoding(maxBitrate: 500000, maxFramerate: 24),
+              ),
+            ],
           ),
           defaultAudioPublishOptions: AudioPublishOptions(
             audioBitrate: _networkService.getRecommendedAudioBitrate(),
@@ -266,18 +285,19 @@ class LiveKitService extends ChangeNotifier {
       int? maxBitrateOverride;
 
       // Determine target bitrate and FPS based on network conditions
-      if (packetLossPct > 5.0 || rttMs > 300.0 || jitterMs > 80.0 || bitrate < 500000) {
-        // Very poor conditions: reduce FPS but maintain acceptable bitrate
+      // Increased thresholds for better quality baseline
+      if (packetLossPct > 8.0 || rttMs > 400.0 || jitterMs > 100.0 || bitrate < 300000) {
+        // Very poor conditions: reduce FPS but maintain decent bitrate
         maxFpsOverride = 15.0;
-        maxBitrateOverride = 4000 * 1000; // 4 Mbps (increased from 2 Mbps)
-      } else if (packetLossPct > 3.0 || rttMs > 200.0 || jitterMs > 50.0 || bitrate < 1000000) {
-        // Poor conditions: reduce FPS and bitrate moderately
-        maxFpsOverride = 20.0;
-        maxBitrateOverride = 5000 * 1000; // 5 Mbps
+        maxBitrateOverride = 5000 * 1000; // 5 Mbps minimum
+      } else if (packetLossPct > 5.0 || rttMs > 250.0 || jitterMs > 60.0 || bitrate < 800000) {
+        // Poor conditions: reduce FPS slightly, maintain good bitrate
+        maxFpsOverride = 24.0;
+        maxBitrateOverride = 8000 * 1000; // 8 Mbps
       } else if (bitrate <= 2000000) {
-        // Medium conditions: slightly reduce FPS, allow higher bitrate
-        maxFpsOverride = DeviceCapabilityService.getMaxFramerate() * 0.8;
-        maxBitrateOverride = 10000 * 1000; // 10 Mbps (increased from 8 Mbps)
+        // Medium conditions: maintain FPS, use high bitrate
+        maxFpsOverride = DeviceCapabilityService.getMaxFramerate() * 0.9;
+        maxBitrateOverride = 12000 * 1000; // 12 Mbps for better quality
       } else {
         // Good conditions: use optimal encoding from network quality
         maxFpsOverride = null;

@@ -85,9 +85,10 @@ class DeviceCapabilityService {
   static void _detectWebCapability() {
     // Web platforms, especially iOS Safari, have better H.264 support
     // VP9 is poorly supported on iPhone/Safari browsers
-    _capability = DeviceCapability.midRange;
+    // Treat web as high-end for better quality (browsers handle encoding well)
+    _capability = DeviceCapability.highEnd;
     _preferredCodec = PreferredCodec.h264; // Changed from VP9 for iOS compatibility
-    debugPrint('🌐 Web platform detected: Using H.264 codec for iOS/Safari compatibility');
+    debugPrint('🌐 Web platform detected: Using H.264 codec with high-end bitrate for quality');
   }
   
   /// Detect Android device capability
