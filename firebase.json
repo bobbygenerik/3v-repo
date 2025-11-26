@@ -19,7 +19,6 @@
     }
   ],
   "hosting": {
-    "target": "tres3-site",
     "public": "tres_flutter/build/web",
     "ignore": [
       "firebase.json",
