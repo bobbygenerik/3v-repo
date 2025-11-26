@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -382,6 +383,101 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     return '$minutes:$seconds';
   }
   
+  Widget _buildBackgroundPlaceholder(LiveKitService livekit) {
+    final remoteCount = livekit.remoteParticipants.length;
+    final participantText = remoteCount == 1 
+        ? livekit.remoteParticipants.first.name ?? livekit.remoteParticipants.first.identity ?? 'participant'
+        : '$remoteCount participants';
+    
+    return Container(
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Animated phone icon
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.9, end: 1.1),
+              duration: const Duration(milliseconds: 1500),
+              curve: Curves.easeInOut,
+              builder: (context, scale, child) {
+                return Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4CAF50).withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.phone_in_talk,
+                      size: 64,
+                      color: Color(0xFF4CAF50),
+                    ),
+                  ),
+                );
+              },
+              onEnd: () {
+                // Restart animation if still in background
+                if (mounted && _isAppInBackground) {
+                  setState(() {});
+                }
+              },
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Call in progress',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Connected with $participantText',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _formatDuration(_callDuration),
+              style: const TextStyle(
+                color: Colors.white54,
+                fontSize: 14,
+                fontFamily: 'monospace',
+              ),
+            ),
+            const SizedBox(height: 32),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info_outline, color: Colors.white70, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Return to app to see video',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
   Future<void> _connectToRoom() async {
     final livekit = context.read<LiveKitService>();
     
@@ -475,6 +571,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                   children: [
                     // Main participant view
                     _buildMainParticipantView(livekit),
+                    
+                    // Background placeholder (when app is backgrounded on mobile browsers)
+                    if (_isAppInBackground && kIsWeb)
+                      _buildBackgroundPlaceholder(livekit),
                     
                     // Reaction overlay (floating emojis)
                     ReactionOverlay(reactions: coordinator.activeReactions),
