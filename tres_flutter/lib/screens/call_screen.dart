@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:livekit_client/livekit_client.dart';
 import '../services/livekit_service.dart';
+import '../services/android_pip_service.dart';
 import '../services/call_features_coordinator.dart';
 import '../services/call_session_service.dart';
 import '../services/call_signaling_service.dart';
@@ -332,10 +333,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               behavior: SnackBarBehavior.floating,
             ),
           );
+          
+          // Try to enter Android PiP mode
+          _tryEnterAndroidPip();
         }
         // Call continues running - LiveKit maintains connection
         // Web: PiP already handles this via setupAutoPip
-        // Android: Call stays active, no special handling needed
+        // Android: Will enter native PiP if supported
         break;
         
       case AppLifecycleState.resumed:
@@ -361,6 +365,20 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     }
   }
   
+  Future<void> _tryEnterAndroidPip() async {
+    try {
+      final available = await AndroidPipService.isPipAvailable();
+      if (available) {
+        final entered = await AndroidPipService.enterPipMode();
+        if (entered) {
+          debugPrint('✅ Entered Android PiP mode');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error entering Android PiP: $e');
+    }
+  }
+  
   void _startControlsHideTimer() {
     _controlsHideTimer?.cancel();
     _controlsHideTimer = Timer(const Duration(seconds: 3), () {
@@ -381,6 +399,34 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       return '$hours:$minutes:$seconds';
     }
     return '$minutes:$seconds';
+  }
+  
+  bool _shouldShowPlaceholder(LiveKitService livekit) {
+    // Show placeholder when app is backgrounded
+    if (_isAppInBackground) return true;
+    
+    // Show placeholder when main participant has video disabled
+    final remoteParticipants = livekit.remoteParticipants;
+    if (remoteParticipants.isEmpty) return false;
+    
+    // Check if main participant has video enabled
+    int mainIndex = _mainParticipantIndex;
+    if (_mainParticipantSid != null) {
+      final foundIndex = remoteParticipants.indexWhere((p) => p.sid == _mainParticipantSid);
+      if (foundIndex != -1) mainIndex = foundIndex;
+    }
+    if (mainIndex >= remoteParticipants.length) mainIndex = 0;
+    
+    final mainParticipant = remoteParticipants[mainIndex];
+    
+    // Check if participant has any video track enabled
+    for (final pub in mainParticipant.videoTrackPublications) {
+      if (!pub.muted && pub.subscribed) {
+        return false; // Video is on, don't show placeholder
+      }
+    }
+    
+    return true; // No active video, show placeholder
   }
   
   Widget _buildBackgroundPlaceholder(LiveKitService livekit) {
@@ -425,9 +471,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               },
             ),
             const SizedBox(height: 32),
-            const Text(
-              'Call in progress',
-              style: TextStyle(
+            Text(
+              _isAppInBackground ? 'Call in progress' : 'Camera off',
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 24,
                 fontWeight: FontWeight.w600,
@@ -451,27 +497,28 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               ),
             ),
             const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.info_outline, color: Colors.white70, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Return to app to see video',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+            if (_isAppInBackground)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.white70, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'Return to app to see video',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -572,8 +619,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                     // Main participant view
                     _buildMainParticipantView(livekit),
                     
-                    // Background placeholder (when app is backgrounded on mobile browsers)
-                    if (_isAppInBackground && kIsWeb)
+                    // Placeholder overlay (when backgrounded OR video is disabled)
+                    if (_shouldShowPlaceholder(livekit))
                       _buildBackgroundPlaceholder(livekit),
                     
                     // Reaction overlay (floating emojis)
