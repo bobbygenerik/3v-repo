@@ -120,8 +120,47 @@ class CallSignalingService {
   }
 
   /// Accept a call invitation
-  Future<void> acceptInvitation(String invitationId) async {
+  /// Returns true if accepted successfully, false if expired/cancelled
+  Future<bool> acceptInvitation(String invitationId) async {
     try {
+      // First, check if the invitation exists and is still valid
+      final invitationDoc = await _firestore
+          .collection('call_invitations')
+          .doc(invitationId)
+          .get();
+
+      if (!invitationDoc.exists) {
+        debugPrint('❌ Invitation does not exist: $invitationId');
+        return false;
+      }
+
+      final data = invitationDoc.data();
+      if (data == null) {
+        debugPrint('❌ Invitation has no data: $invitationId');
+        return false;
+      }
+
+      final status = data['status'] as String?;
+      final expiresAt = data['expiresAt'] as Timestamp?;
+
+      // Check if already cancelled or declined
+      if (status == 'cancelled' || status == 'declined' || status == 'timeout') {
+        debugPrint('❌ Invitation already $status: $invitationId');
+        return false;
+      }
+
+      // Check if expired
+      if (expiresAt != null && expiresAt.toDate().isBefore(DateTime.now())) {
+        debugPrint('⏰ Invitation expired: $invitationId');
+        // Update status to timeout
+        await _firestore
+            .collection('call_invitations')
+            .doc(invitationId)
+            .update({'status': 'timeout'});
+        return false;
+      }
+
+      // Accept the invitation
       await _firestore
           .collection('call_invitations')
           .doc(invitationId)
@@ -130,8 +169,10 @@ class CallSignalingService {
         'acceptedAt': FieldValue.serverTimestamp(),
       });
       debugPrint('✅ Call invitation accepted: $invitationId');
+      return true;
     } catch (e) {
       debugPrint('❌ Error accepting invitation: $e');
+      return false;
     }
   }
 

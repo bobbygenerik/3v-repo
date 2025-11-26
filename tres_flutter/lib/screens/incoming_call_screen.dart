@@ -78,6 +78,23 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     setState(() => _isAccepting = true);
 
     try {
+      // First, validate the invitation is still valid
+      final isValid = await _signalingService.acceptInvitation(widget.invitationId);
+      
+      if (!isValid) {
+        debugPrint('❌ Cannot accept - invitation expired or cancelled');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('This call has expired or been cancelled'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          Navigator.pop(context);
+        }
+        return;
+      }
+
       // Generate our own LiveKit token for this room
       debugPrint('🎫 Generating LiveKit token for recipient');
       final functions = FirebaseFunctions.instance;
@@ -95,9 +112,6 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
 
       final myToken = response.data['token'] as String;
       debugPrint('✅ Got recipient token');
-      
-      // Mark invitation as accepted in Firestore
-      await _signalingService.acceptInvitation(widget.invitationId);
 
       if (!mounted) return;
 
