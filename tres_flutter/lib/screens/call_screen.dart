@@ -3,15 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:livekit_client/livekit_client.dart';
 import '../services/livekit_service.dart';
 import '../services/call_features_coordinator.dart';
 import '../services/call_session_service.dart';
 import '../services/call_signaling_service.dart';
+import '../services/call_listener_service.dart';
 import '../services/reaction_service.dart';
 import '../services/chat_service.dart' as chat;
 import '../widgets/participant_video.dart';
 import '../widgets/stats_overlay.dart';
+import '../widgets/call_waiting_banner.dart';
 
 class CallScreen extends StatefulWidget {
   final String roomName;
@@ -37,6 +40,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
   bool _isConnecting = true;
   late CallFeaturesCoordinator _coordinator;
   final TextEditingController _chatController = TextEditingController();
+  final CallListenerService _callListener = CallListenerService();
   
   // Call timer
   Duration _callDuration = Duration.zero;
@@ -70,6 +74,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     super.initState();
     _coordinator = CallFeaturesCoordinator();
     _connectToRoom();
+    
+    // Start listening for incoming calls while in call (for call-waiting)
+    _callListener.startListening();
+    _callListener.addListener(_handleIncomingCallWhileInCall);
     
     // Listen for session end
     widget.sessionService?.addListener(_handleSessionEnd);
@@ -383,6 +391,21 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
                           child: StatsOverlay(
                             statsService: coordinator.statsService,
                           ),
+                        ),
+                      ),
+                    
+                    // Call-waiting banner (shows when receiving a call while in call)
+                    if (_callListener.hasIncomingCall)
+                      Positioned(
+                        top: 80,
+                        left: 16,
+                        right: 16,
+                        child: CallWaitingBanner(
+                          callerName: _callListener.currentIncomingCall!['callerName'],
+                          callerPhotoUrl: _callListener.currentIncomingCall!['callerPhotoUrl'],
+                          isVideoCall: _callListener.currentIncomingCall!['isVideoCall'],
+                          onAccept: _acceptWaitingCall,
+                          onDecline: _declineWaitingCall,
                         ),
                       ),
                     
@@ -1522,10 +1545,95 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin {
     );
   }
   
+  /// Handle incoming call while already in call (call-waiting)
+  void _handleIncomingCallWhileInCall() {
+    if (_callListener.hasIncomingCall && mounted) {
+      setState(() {}); // Trigger rebuild to show banner
+    }
+  }
+  
+  /// Accept waiting call and add caller to current group call
+  Future<void> _acceptWaitingCall() async {
+    final incomingCall = _callListener.currentIncomingCall;
+    if (incomingCall == null) return;
+    
+    try {
+      debugPrint('📞 Accepting waiting call from ${incomingCall['callerName']}');
+      
+      // Generate token for the new participant
+      final functions = FirebaseFunctions.instance;
+      final callable = functions.httpsCallable('getLiveKitToken');
+      
+      final response = await callable.call({
+        'calleeId': incomingCall['callerId'],
+        'roomName': widget.roomName, // Add them to THIS room
+      });
+      
+      final theirToken = response.data['token'] as String;
+      
+      // Accept the invitation - this will signal them to join
+      await widget.signalingService.acceptInvitation(incomingCall['id']);
+      
+      // Add them to the current session
+      if (widget.sessionService != null) {
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser != null) {
+          await widget.sessionService!.startSession(
+            widget.roomName, 
+            [currentUser.uid, incomingCall['callerId']],
+          );
+        }
+      }
+      
+      // Clear the call from listener
+      _callListener.clearIncomingCall();
+      
+      if (mounted) {
+        setState(() {}); // Hide banner
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${incomingCall['callerName']} joined the call'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      
+      debugPrint('✅ Added ${incomingCall['callerName']} to group call');
+    } catch (e) {
+      debugPrint('❌ Error accepting waiting call: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add ${incomingCall?['callerName'] ?? 'caller'} to call')),
+        );
+      }
+    }
+  }
+  
+  /// Decline waiting call
+  Future<void> _declineWaitingCall() async {
+    final incomingCall = _callListener.currentIncomingCall;
+    if (incomingCall == null) return;
+    
+    try {
+      await widget.signalingService.declineInvitation(incomingCall['id']);
+      _callListener.clearIncomingCall();
+      
+      if (mounted) {
+        setState(() {}); // Hide banner
+      }
+      
+      debugPrint('❌ Declined waiting call from ${incomingCall['callerName']}');
+    } catch (e) {
+      debugPrint('❌ Error declining waiting call: $e');
+    }
+  }
+  
   @override
   void dispose() {
     _controlsHideTimer?.cancel();
     widget.sessionService?.removeListener(_handleSessionEnd);
+    _callListener.removeListener(_handleIncomingCallWhileInCall);
+    _callListener.stopListening();
     
     // Remove listeners safely
     try {
