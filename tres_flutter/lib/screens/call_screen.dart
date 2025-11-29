@@ -278,29 +278,46 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       }
     }
     
-    // Only trigger disconnect if we HAD a participant and now they're gone
-    // This prevents false triggers when the call is just starting
-    if (livekit.isConnected && 
-        _hadRemoteParticipant && 
-        livekit.remoteParticipants.isEmpty && 
-        mounted) {
-      debugPrint('📞 All remote participants left - ending call');
+    // Handle case when all remote participants have left (call ended)
+    if (livekit.remoteParticipants.isEmpty && _knownParticipantSids.isNotEmpty) {
+      // All remote participants have disconnected
+      debugPrint('📞 All participants have left - ending call');
       
-      // Show a brief message before closing
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Other participant left the call'),
-          duration: Duration(seconds: 2),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      
-      // End call after a short delay
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          Navigator.of(context).pop();
-        }
-      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Other participant left the call'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        
+        // Properly clean up the call
+        Future.delayed(const Duration(seconds: 2), () async {
+          if (mounted) {
+            try {
+              // End signaling call
+              widget.signalingService.endCall(widget.roomName);
+              
+              // End session if exists
+              widget.sessionService?.endSession();
+              
+              // Disconnect from LiveKit
+              final livekit = Provider.of<LiveKitService>(context, listen: false);
+              await livekit.disconnect();
+              
+              // Navigate back
+              if (mounted) {
+                Navigator.of(context).pop();
+              }
+            } catch (e) {
+              debugPrint('Error during call cleanup: $e');
+              if (mounted) {
+                Navigator.of(context).pop();
+              }
+            }
+          }
+        });
+      }
     }
   }
   
