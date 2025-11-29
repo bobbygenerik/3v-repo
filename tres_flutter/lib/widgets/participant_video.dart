@@ -34,11 +34,20 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
     super.dispose();
   }
   
+  @override
+  void didUpdateWidget(ParticipantVideo oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Re-request quality if main view status changes
+    if (oldWidget.isMainView != widget.isMainView) {
+      _requestAppropriateQuality();
+    }
+  }
+  
   void _onParticipantChanged() {
     _setupTracks();
   }
   
-  void _setupTracks() async {
+  void _setupTracks() {
     _setupVideoTrack();
     _setupAudioTrack();
   }
@@ -53,7 +62,6 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
       }
     }
     
-    // Subscribe to unsubscribed tracks
     if (track == null && !widget.isLocal) {
       for (final pub in widget.participant.audioTrackPublications) {
         if (!pub.subscribed && pub is RemoteTrackPublication) {
@@ -63,46 +71,78 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
               track = pub.track as AudioTrack;
             }
           } catch (e) {
-            debugPrint('❌ Failed to subscribe to audio track: $e');
+            debugPrint('❌ Failed to subscribe to audio: $e');
           }
         }
       }
     }
     
     if (mounted && track != _audioTrack) {
-      setState(() {
-        _audioTrack = track;
-      });
+      setState(() => _audioTrack = track);
     }
   }
   
   void _setupVideoTrack() async {
     VideoTrack? track;
+    RemoteTrackPublication? remotePub;
     
     for (final pub in widget.participant.videoTrackPublications) {
       if (pub.subscribed && pub.track != null) {
         track = pub.track as VideoTrack;
+        if (pub is RemoteTrackPublication) {
+          remotePub = pub;
+        }
         break;
       }
     }
     
-    // Subscribe to unsubscribed tracks
+    // Subscribe if needed
     if (track == null && !widget.isLocal) {
       for (final pub in widget.participant.videoTrackPublications) {
         if (!pub.subscribed && pub is RemoteTrackPublication) {
           try {
             await pub.subscribe();
+            remotePub = pub;
           } catch (e) {
-            debugPrint('❌ Failed to subscribe to track: $e');
+            debugPrint('❌ Failed to subscribe to video: $e');
           }
         }
       }
     }
     
+    // Request appropriate quality for this view
+    if (remotePub != null) {
+      _requestQualityForPublication(remotePub);
+    }
+    
     if (mounted && track != _videoTrack) {
-      setState(() {
-        _videoTrack = track;
-      });
+      setState(() => _videoTrack = track);
+    }
+  }
+  
+  void _requestAppropriateQuality() {
+    for (final pub in widget.participant.videoTrackPublications) {
+      if (pub is RemoteTrackPublication && pub.subscribed) {
+        _requestQualityForPublication(pub);
+      }
+    }
+  }
+  
+  void _requestQualityForPublication(RemoteTrackPublication pub) {
+    try {
+      if (widget.isMainView) {
+        // Main view: Request highest quality
+        pub.setVideoQuality(VideoQuality.HIGH);
+        pub.setVideoFPS(30);
+        debugPrint('📹 [${widget.participant.identity}] Requested HIGH quality (main view)');
+      } else {
+        // PIP/thumbnail: Request medium to save bandwidth but still look decent
+        pub.setVideoQuality(VideoQuality.MEDIUM);
+        pub.setVideoFPS(24);
+        debugPrint('📹 [${widget.participant.identity}] Requested MEDIUM quality (pip view)');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Could not set video quality: $e');
     }
   }
   
@@ -148,9 +188,7 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
   
   String _getInitials(String name) {
     if (name.isEmpty) return '?';
-    if (name.contains('@')) {
-      name = name.split('@')[0];
-    }
+    if (name.contains('@')) name = name.split('@')[0];
     final parts = name.trim().split(' ');
     if (parts.isEmpty) return '?';
     if (parts.length == 1) {
