@@ -255,24 +255,66 @@ class LiveKitService extends ChangeNotifier {
       // Create camera track if not exists
       if (_localVideoTrack == null) {
         debugPrint('📹 Creating new camera track...');
+        
+        // Use 1080p for high-end devices, 720p otherwise (matches room options)
+        final captureParams = DeviceCapabilityService.shouldUse1080p() 
+            ? VideoParametersPresets.h1080_169 
+            : VideoParametersPresets.h720_169;
+        
+        debugPrint('📹 Capture params: $captureParams (1080p=${DeviceCapabilityService.shouldUse1080p()})');
+        
         _localVideoTrack = await LocalVideoTrack.createCameraTrack(
           CameraCaptureOptions(
             maxFrameRate: DeviceCapabilityService.getMaxFramerate().toDouble(),
-            // Force minimum 720p
-            params: VideoParametersPresets.h720_169,
+            params: captureParams,
           ),
         );
-        _currentVideoPreset = VideoParametersPresets.h720_169;
+        _currentVideoPreset = captureParams;
         debugPrint('✅ Camera track created: ${_localVideoTrack?.sid}');
         
-        // Publish to room
+        // Publish to room with high quality encoding
         debugPrint('📤 Publishing video track to room...');
-        await _room!.localParticipant?.publishVideoTrack(_localVideoTrack!);
+        final encoding = _getOptimalVideoEncoding();
+        debugPrint('📤 Publishing with encoding: ${encoding.maxBitrate} bps, ${encoding.maxFramerate} fps');
+        await _room!.localParticipant?.publishVideoTrack(
+          _localVideoTrack!,
+          publishOptions: VideoPublishOptions(
+            videoEncoding: encoding,
+            simulcast: true,
+            // Provide simulcast layers matching device capability
+            videoSimulcastLayers: DeviceCapabilityService.shouldUse1080p()
+                ? [
+                    VideoParameters(
+                      dimensions: VideoDimensions(1920, 1080),
+                      encoding: VideoEncoding(maxBitrate: 8000000, maxFramerate: 30),
+                    ),
+                    VideoParameters(
+                      dimensions: VideoDimensions(1280, 720),
+                      encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
+                    ),
+                    VideoParameters(
+                      dimensions: VideoDimensions(640, 360),
+                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
+                    ),
+                  ]
+                : [
+                    VideoParameters(
+                      dimensions: VideoDimensions(1280, 720),
+                      encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
+                    ),
+                    VideoParameters(
+                      dimensions: VideoDimensions(640, 480),
+                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
+                    ),
+                    VideoParameters(
+                      dimensions: VideoDimensions(320, 240),
+                      encoding: VideoEncoding(maxBitrate: 500000, maxFramerate: 24),
+                    ),
+                  ],
+          ),
+        );
         debugPrint('✅ Video track published');
       }
-      
-      // Unmute
-      debugPrint('🎥 Unmuting video track...');
       await _localVideoTrack?.unmute();
       debugPrint('✅ Video track unmuted');
       notifyListeners();

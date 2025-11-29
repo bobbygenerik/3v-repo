@@ -51,16 +51,20 @@ class DeviceCapabilityService {
         final info = await deviceInfo.androidInfo;
         final sdk = info.version.sdkInt ?? 0;
         final processors = Platform.numberOfProcessors;
-        // Heuristic: newer Android SDK + more CPUs -> higher capability
-        if (processors >= 8 && sdk >= 29) {
+        
+        debugPrint('📱 Android: SDK=$sdk, processors=$processors');
+        
+        // More aggressive detection - most modern phones are high-end
+        // SDK 28+ (Android 9+) with 4+ cores = high-end
+        if (processors >= 4 && sdk >= 28) {
           _capability = DeviceCapability.highEnd;
           _preferredCodec = PreferredCodec.h264;
-        } else if (processors <= 2) {
+        } else if (processors <= 2 || sdk < 26) {
           _capability = DeviceCapability.lowEnd;
           _preferredCodec = PreferredCodec.vp9;
         } else {
           _capability = DeviceCapability.midRange;
-          _preferredCodec = PreferredCodec.vp9;
+          _preferredCodec = PreferredCodec.h264;
         }
       } else if (Platform.isIOS) {
         final info = await deviceInfo.iosInfo;
@@ -87,42 +91,45 @@ class DeviceCapabilityService {
     // VP9 is poorly supported on iPhone/Safari browsers
     // Treat web as high-end for better quality (browsers handle encoding well)
     _capability = DeviceCapability.highEnd;
-    _preferredCodec = PreferredCodec.h264; // Changed from VP9 for iOS compatibility
+    _preferredCodec = PreferredCodec.h264; // H.264 for iOS compatibility
     debugPrint('🌐 Web platform detected: Using H.264 codec with high-end bitrate for quality');
   }
   
   /// Detect Android device capability
   static void _detectAndroidCapability() {
-    // Heuristic using number of processors to better detect low-end devices.
-    // In the future we can add `device_info_plus` checks (RAM, model) for more accuracy.
+    // More aggressive - most Android phones from 2018+ are capable of 1080p
     try {
       final processors = Platform.numberOfProcessors;
+      debugPrint('📱 Android processors: $processors');
+      
       if (processors <= 2) {
         _capability = DeviceCapability.lowEnd;
         _preferredCodec = PreferredCodec.vp9;
-      } else if (processors <= 4) {
+      } else if (processors <= 3) {
         _capability = DeviceCapability.midRange;
-        _preferredCodec = PreferredCodec.vp9;
+        _preferredCodec = PreferredCodec.h264;
       } else {
+        // 4+ cores = high-end (covers most phones from 2018+)
         _capability = DeviceCapability.highEnd;
         _preferredCodec = PreferredCodec.h264;
       }
     } catch (e) {
-      // Fallback
-      _capability = DeviceCapability.midRange;
-      _preferredCodec = PreferredCodec.vp9;
+      // Fallback to high-end (better to try high quality and adapt down)
+      _capability = DeviceCapability.highEnd;
+      _preferredCodec = PreferredCodec.h264;
     }
   }
   
-  /// Get max video bitrate for device (increased as recommended)
+  /// Get max video bitrate for device (FaceTime-level quality)
+  /// FaceTime uses ~3-5 Mbps for 1080p, we go higher for headroom
   static int getMaxVideoBitrate() {
     switch (_capability) {
       case DeviceCapability.highEnd:
-        return 12000 * 1000; // 12 Mbps for high-end devices
+        return 15000 * 1000; // 15 Mbps for high-end (allows overhead for encoding)
       case DeviceCapability.midRange:
-        return 5000 * 1000; // 5 Mbps for mid-range
+        return 8000 * 1000; // 8 Mbps for mid-range
       case DeviceCapability.lowEnd:
-        return 2000 * 1000; // 2 Mbps for low-end
+        return 3000 * 1000; // 3 Mbps for low-end
     }
   }
   
@@ -142,7 +149,7 @@ class DeviceCapabilityService {
   static int getMaxFramerate() {
     switch (_capability) {
       case DeviceCapability.highEnd:
-        return 60; // Allow 60fps on high-end devices for very smooth video
+        return 30; // 30fps is smooth and efficient (FaceTime uses 30fps)
       case DeviceCapability.midRange:
         return 30;
       case DeviceCapability.lowEnd:
@@ -152,6 +159,9 @@ class DeviceCapabilityService {
   
   /// Should use 1080p resolution
   static bool shouldUse1080p() {
-    return _capability == DeviceCapability.highEnd;
+    // Enable 1080p for high-end AND mid-range devices
+    // Most phones can handle 1080p capture
+    return _capability == DeviceCapability.highEnd || 
+           _capability == DeviceCapability.midRange;
   }
 }

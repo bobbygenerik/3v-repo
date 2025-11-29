@@ -4,11 +4,13 @@ import 'package:livekit_client/livekit_client.dart';
 class ParticipantVideo extends StatefulWidget {
   final Participant participant;
   final bool isLocal;
+  final bool isMainView; // If true, request highest quality
   
   const ParticipantVideo({
     super.key,
     required this.participant,
     this.isLocal = false,
+    this.isMainView = true,
   });
 
   @override
@@ -98,6 +100,11 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
       if (pub.subscribed && pub.track != null) {
         track = pub.track as VideoTrack;
         debugPrint('📹 Using subscribed track: ${pub.sid}');
+        
+        // Request high quality for main view
+        if (!widget.isLocal && pub is RemoteTrackPublication) {
+          _requestHighQuality(pub);
+        }
         break;
       }
     }
@@ -110,6 +117,10 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
           try {
             debugPrint('📹 Subscribing to video track: ${pub.sid}');
             await pub.subscribe();
+            
+            // Request high quality after subscribing
+            _requestHighQuality(pub);
+            
             // The track will be available after subscription completes
             // and _onParticipantChanged will be called
           } catch (e) {
@@ -127,6 +138,25 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
     }
   }
   
+  /// Request highest quality video layer from sender via simulcast
+  void _requestHighQuality(RemoteTrackPublication pub) {
+    try {
+      if (widget.isMainView) {
+        // Request HIGH quality (1080p/720p depending on sender's capability)
+        pub.setVideoQuality(VideoQuality.HIGH);
+        pub.setVideoFPS(30);
+        debugPrint('📹 Requested HIGH quality + 30fps for ${pub.sid}');
+      } else {
+        // Request LOW quality for smaller views (saves bandwidth)
+        pub.setVideoQuality(VideoQuality.LOW);
+        pub.setVideoFPS(24);
+        debugPrint('📹 Requested LOW quality + 24fps for ${pub.sid}');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Could not set video quality: $e');
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
     // Check if video is muted (camera off) or track doesn't exist
@@ -139,7 +169,7 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
     return RepaintBoundary(
       child: VideoTrackRenderer(
         _videoTrack!,
-        fit: VideoViewFit.contain, // Use contain to show full video without cropping
+        fit: VideoViewFit.cover, // Use cover for better quality appearance
       ),
     );
   }
