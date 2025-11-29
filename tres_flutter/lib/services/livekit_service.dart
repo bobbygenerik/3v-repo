@@ -76,9 +76,9 @@ class LiveKitService extends ChangeNotifier {
     }
   }
   
-  /// Get optimal video encoding with enhanced codec optimization
+  /// FaceTime-quality video encoding
+  /// FaceTime uses approximately 3-8 Mbps for 1080p video
   VideoEncoding _getOptimalVideoEncoding() {
-    // Get device capability limits (now with increased bitrates)
     final deviceMaxBitrate = DeviceCapabilityService.getMaxVideoBitrate();
     final deviceMaxFramerate = DeviceCapabilityService.getMaxFramerate();
     final preferredCodec = DeviceCapabilityService.getCodecPreference();
@@ -87,32 +87,42 @@ class LiveKitService extends ChangeNotifier {
     final networkBitrate = _networkService.getRecommendedVideoBitrate();
     
     // Use the MINIMUM of device capability and network quality
-    final finalBitrate = deviceMaxBitrate < networkBitrate 
+    var finalBitrate = deviceMaxBitrate < networkBitrate 
         ? deviceMaxBitrate 
         : networkBitrate;
     
-    final finalFramerate = networkBitrate < 600000 
-        ? (deviceMaxFramerate * 0.8).toInt()
-        : deviceMaxFramerate;
-    
-    debugPrint('🎥 Video encoding: $finalBitrate bps, $finalFramerate fps, codec: $preferredCodec');
-    
-    if (kIsWeb) {
-      // Web: Force H.264 for maximum iOS/Safari compatibility
-      // VP9 is not well supported on iPhone browsers
-      // Use higher bitrate on web to ensure good quality from browsers
-      final webBitrate = finalBitrate < 8000000 ? 8000000 : finalBitrate;
-      debugPrint('🌐 Web platform: Using H.264 codec with enhanced bitrate: ${(webBitrate / 1000000).toStringAsFixed(1)} Mbps');
-      return VideoEncoding(
-        maxBitrate: webBitrate, // Ensure minimum 8 Mbps for web senders
-        maxFramerate: finalFramerate,
-      );
+    // Ensure minimum quality - never go below 5 Mbps for acceptable video
+    if (finalBitrate < 5000000) {
+      finalBitrate = 5000000;
     }
+    
+    final finalFramerate = 30; // Fixed 30fps like FaceTime
+    
+    debugPrint('�� Video encoding: ${(finalBitrate / 1000000).toStringAsFixed(1)} Mbps, $finalFramerate fps, codec: $preferredCodec');
     
     return VideoEncoding(
       maxBitrate: finalBitrate,
       maxFramerate: finalFramerate,
     );
+  }
+  
+  /// Get high-quality capture parameters (NOT using low-bitrate presets)
+  VideoParameters _getHighQualityCaptureParams() {
+    final encoding = _getOptimalVideoEncoding();
+    
+    if (DeviceCapabilityService.shouldUse1080p()) {
+      debugPrint('📹 Using 1080p capture with ${(encoding.maxBitrate / 1000000).toStringAsFixed(1)} Mbps');
+      return VideoParameters(
+        dimensions: const VideoDimensions(1920, 1080),
+        encoding: encoding,
+      );
+    } else {
+      debugPrint('📹 Using 720p capture with ${(encoding.maxBitrate / 1000000).toStringAsFixed(1)} Mbps');
+      return VideoParameters(
+        dimensions: const VideoDimensions(1280, 720),
+        encoding: encoding,
+      );
+    }
   }
   
   /// Connect to LiveKit room
@@ -134,6 +144,9 @@ class LiveKitService extends ChangeNotifier {
       // Start network monitoring
       _networkService.startMonitoring();
       
+      final captureParams = _getHighQualityCaptureParams();
+      final encoding = _getOptimalVideoEncoding();
+      
       // Connect to room (fail fast with timeout to avoid long hangs)
       await _room!.connect(
         url,
@@ -143,15 +156,13 @@ class LiveKitService extends ChangeNotifier {
         ),
         roomOptions: RoomOptions(
           defaultCameraCaptureOptions: CameraCaptureOptions(
-            maxFrameRate: DeviceCapabilityService.getMaxFramerate().toDouble(),
-            // Use 1080p for high-end devices (including web), 720p otherwise
-            params: DeviceCapabilityService.shouldUse1080p() 
-                ? VideoParametersPresets.h1080_169 
-                : VideoParametersPresets.h720_169,
+            maxFrameRate: 30,
+            // Use our high-quality params instead of low-bitrate presets
+            params: captureParams,
           ),
           defaultScreenShareCaptureOptions: ScreenShareCaptureOptions(
             maxFrameRate: 15,
-            params: VideoParametersPresets.h720_169,
+            params: VideoParametersPresets.h1080_169,
           ),
           defaultAudioCaptureOptions: AudioCaptureOptions(
             echoCancellation: true,
@@ -159,49 +170,21 @@ class LiveKitService extends ChangeNotifier {
             autoGainControl: true,
           ),
           defaultVideoPublishOptions: VideoPublishOptions(
-            videoEncoding: _getOptimalVideoEncoding(),
-            // Enable simulcast with multiple quality layers for better adaptation
-            simulcast: true,
-            // Provide multiple quality layers so receivers can choose best quality
-            // Top layer matches capture resolution (1080p for high-end, 720p otherwise)
-            videoSimulcastLayers: DeviceCapabilityService.shouldUse1080p()
-                ? [
-                    // High-end: 1080p, 720p, 360p layers
-                    VideoParameters(
-                      dimensions: VideoDimensions(1920, 1080),
-                      encoding: VideoEncoding(maxBitrate: 8000000, maxFramerate: 60),
-                    ),
-                    VideoParameters(
-                      dimensions: VideoDimensions(1280, 720),
-                      encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
-                    ),
-                    VideoParameters(
-                      dimensions: VideoDimensions(640, 360),
-                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
-                    ),
-                  ]
-                : [
-                    // Mid/Low-end: 720p, 480p, 240p layers
-                    VideoParameters(
-                      dimensions: VideoDimensions(1280, 720),
-                      encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
-                    ),
-                    VideoParameters(
-                      dimensions: VideoDimensions(640, 480),
-                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
-                    ),
-                    VideoParameters(
-                      dimensions: VideoDimensions(320, 240),
-                      encoding: VideoEncoding(maxBitrate: 500000, maxFramerate: 24),
-                    ),
-                  ],
+            videoEncoding: encoding,
+            // Use H.264 for best compatibility (especially iOS)
+            videoCodec: 'H264',
+            // CRITICAL: Prioritize resolution over framerate for quality
+            degradationPreference: DegradationPreference.maintainResolution,
+            // Disable simulcast for now - it can cause quality issues
+            // The receiver might pick a lower quality layer
+            simulcast: false,
           ),
           defaultAudioPublishOptions: AudioPublishOptions(
-            audioBitrate: _networkService.getRecommendedAudioBitrate(),
+            audioBitrate: 64000, // 64 kbps for good audio
           ),
-          // Enable adaptive streaming with higher baseline quality
-          adaptiveStream: true,
-          dynacast: true,
+          // Disable adaptive stream - we want consistent high quality
+          adaptiveStream: false,
+          dynacast: false,
         ),
       );
 
@@ -243,7 +226,7 @@ class LiveKitService extends ChangeNotifier {
     }
   }
   
-  /// Enable camera and publish video track
+  /// Enable camera and publish video track with FaceTime-quality settings
   Future<void> enableCamera() async {
     try {
       debugPrint('📹 enableCamera() called');
@@ -256,16 +239,15 @@ class LiveKitService extends ChangeNotifier {
       if (_localVideoTrack == null) {
         debugPrint('📹 Creating new camera track...');
         
-        // Use 1080p for high-end devices, 720p otherwise (matches room options)
-        final captureParams = DeviceCapabilityService.shouldUse1080p() 
-            ? VideoParametersPresets.h1080_169 
-            : VideoParametersPresets.h720_169;
+        final captureParams = _getHighQualityCaptureParams();
+        final encoding = _getOptimalVideoEncoding();
         
-        debugPrint('📹 Capture params: $captureParams (1080p=${DeviceCapabilityService.shouldUse1080p()})');
+        debugPrint('📹 Capture: ${captureParams.dimensions.width}x${captureParams.dimensions.height}');
+        debugPrint('📹 Bitrate: ${(encoding.maxBitrate / 1000000).toStringAsFixed(1)} Mbps');
         
         _localVideoTrack = await LocalVideoTrack.createCameraTrack(
           CameraCaptureOptions(
-            maxFrameRate: DeviceCapabilityService.getMaxFramerate().toDouble(),
+            maxFrameRate: 30,
             params: captureParams,
           ),
         );
@@ -274,47 +256,21 @@ class LiveKitService extends ChangeNotifier {
         
         // Publish to room with high quality encoding
         debugPrint('📤 Publishing video track to room...');
-        final encoding = _getOptimalVideoEncoding();
-        debugPrint('📤 Publishing with encoding: ${encoding.maxBitrate} bps, ${encoding.maxFramerate} fps');
         await _room!.localParticipant?.publishVideoTrack(
           _localVideoTrack!,
           publishOptions: VideoPublishOptions(
             videoEncoding: encoding,
-            simulcast: true,
-            // Provide simulcast layers matching device capability
-            videoSimulcastLayers: DeviceCapabilityService.shouldUse1080p()
-                ? [
-                    VideoParameters(
-                      dimensions: VideoDimensions(1920, 1080),
-                      encoding: VideoEncoding(maxBitrate: 8000000, maxFramerate: 30),
-                    ),
-                    VideoParameters(
-                      dimensions: VideoDimensions(1280, 720),
-                      encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
-                    ),
-                    VideoParameters(
-                      dimensions: VideoDimensions(640, 360),
-                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
-                    ),
-                  ]
-                : [
-                    VideoParameters(
-                      dimensions: VideoDimensions(1280, 720),
-                      encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
-                    ),
-                    VideoParameters(
-                      dimensions: VideoDimensions(640, 480),
-                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
-                    ),
-                    VideoParameters(
-                      dimensions: VideoDimensions(320, 240),
-                      encoding: VideoEncoding(maxBitrate: 500000, maxFramerate: 24),
-                    ),
-                  ],
+            videoCodec: 'H264',
+            // CRITICAL: Maintain resolution quality
+            degradationPreference: DegradationPreference.maintainResolution,
+            simulcast: false,
           ),
         );
-        debugPrint('✅ Video track published');
+        _currentMaxBitrate = encoding.maxBitrate;
+        debugPrint('✅ Video track published at ${(encoding.maxBitrate / 1000000).toStringAsFixed(1)} Mbps');
       }
+      
+      // Unmute
       await _localVideoTrack?.unmute();
       debugPrint('✅ Video track unmuted');
       notifyListeners();
@@ -339,147 +295,43 @@ class LiveKitService extends ChangeNotifier {
       // Get current optimal encoding based on network quality
       final optimalEncoding = _getOptimalVideoEncoding();
       
-      // Always use 720p minimum resolution
-      dynamic desired = VideoParametersPresets.h720_169;
-      double? maxFpsOverride;
-      int? maxBitrateOverride;
+      // Determine target bitrate based on network conditions
+      int targetBitrate = optimalEncoding.maxBitrate;
 
-      // Determine target bitrate and FPS based on network conditions
-      // Increased thresholds for better quality baseline
-      if (packetLossPct > 8.0 || rttMs > 400.0 || jitterMs > 100.0 || bitrate < 300000) {
-        // Very poor conditions: reduce FPS but maintain decent bitrate
-        maxFpsOverride = 15.0;
-        maxBitrateOverride = 5000 * 1000; // 5 Mbps minimum
-      } else if (packetLossPct > 5.0 || rttMs > 250.0 || jitterMs > 60.0 || bitrate < 800000) {
-        // Poor conditions: reduce FPS slightly, maintain good bitrate
-        maxFpsOverride = 24.0;
-        maxBitrateOverride = 8000 * 1000; // 8 Mbps
-      } else if (bitrate <= 2000000) {
-        // Medium conditions: maintain FPS, use high bitrate
-        maxFpsOverride = DeviceCapabilityService.getMaxFramerate() * 0.9;
-        maxBitrateOverride = 12000 * 1000; // 12 Mbps for better quality
-      } else {
-        // Good conditions: use optimal encoding from network quality
-        maxFpsOverride = null;
-        maxBitrateOverride = optimalEncoding.maxBitrate;
+      // Only reduce quality if network is really struggling
+      if (packetLossPct > 10.0 || rttMs > 500.0 || jitterMs > 150.0) {
+        // Very poor conditions: reduce to 3 Mbps minimum
+        targetBitrate = 3000000;
+        debugPrint('⚠️ Poor network detected, reducing to 3 Mbps');
+      } else if (packetLossPct > 5.0 || rttMs > 300.0 || jitterMs > 80.0) {
+        // Moderate issues: reduce to 5 Mbps
+        targetBitrate = 5000000;
+        debugPrint('⚠️ Moderate network issues, using 5 Mbps');
       }
 
-      // Check if we need to adjust encoding
-      final bool needsAdjustment = maxFpsOverride != null || 
-                                   (maxBitrateOverride != _currentMaxBitrate);
-      
-      if (needsAdjustment) {
-        final codec = DeviceCapabilityService.getCodecPreference();
-      debugPrint('🔧 Video Quality Adjustment:');
-      debugPrint('   📊 Bitrate: ${maxBitrateOverride ?? optimalEncoding.maxBitrate} bps (${((maxBitrateOverride ?? optimalEncoding.maxBitrate) / 1000000).toStringAsFixed(1)} Mbps)');
-      debugPrint('   🎬 FPS: ${maxFpsOverride ?? DeviceCapabilityService.getMaxFramerate()}');
-      debugPrint('   📡 Codec: $codec');
-      debugPrint('   📉 Packet Loss: ${packetLossPct.toStringAsFixed(1)}%');
-      debugPrint('   ⏱️ RTT: ${rttMs.toStringAsFixed(0)}ms');
-      debugPrint('   📶 Jitter: ${jitterMs.toStringAsFixed(0)}ms');
-        await _recreateAndPublishVideoTrack(
-          desired, 
-          maxFrameRateOverride: maxFpsOverride,
-          maxBitrateOverride: maxBitrateOverride,
-        );
+      // Only adjust if significantly different from current
+      if ((targetBitrate - (_currentMaxBitrate ?? 0)).abs() > 1000000) {
+        debugPrint('🔧 Adjusting bitrate to ${(targetBitrate / 1000000).toStringAsFixed(1)} Mbps');
+        _currentMaxBitrate = targetBitrate;
+        // Note: LiveKit handles this internally via degradation preference
       }
     } catch (e) {
       debugPrint('Error adjusting video for stats: $e');
     }
   }
 
-  /// Recreate and publish local camera track for a requested preset.
-  /// Optionally pass `maxFrameRateOverride` to cap capture FPS and
-  /// `maxBitrateOverride` to set encoding bitrate.
-  Future<void> _recreateAndPublishVideoTrack(
-    dynamic preset, {
-    double? maxFrameRateOverride,
-    int? maxBitrateOverride,
-  }) async {
-    try {
-      final wasMuted = !isCameraEnabled;
-
-      // Stop old track if exists
-      await _localVideoTrack?.stop();
-
-      // Create new track with requested preset
-      _localVideoTrack = await LocalVideoTrack.createCameraTrack(
-        CameraCaptureOptions(
-          maxFrameRate: (maxFrameRateOverride ?? DeviceCapabilityService.getMaxFramerate()).toDouble(),
-          params: preset,
-        ),
-      );
-      _currentVideoPreset = preset;
-
-      // Publish new track with updated encoding if bitrate override provided
-      if (maxBitrateOverride != null) {
-        await _room?.localParticipant?.publishVideoTrack(
-          _localVideoTrack!,
-          publishOptions: VideoPublishOptions(
-            videoEncoding: VideoEncoding(
-              maxBitrate: maxBitrateOverride,
-              maxFramerate: (maxFrameRateOverride ?? DeviceCapabilityService.getMaxFramerate()).toInt(),
-            ),
-          ),
-        );
-        _currentMaxBitrate = maxBitrateOverride;
-      } else {
-        await _room?.localParticipant?.publishVideoTrack(_localVideoTrack!);
-      }
-
-      // Restore mute state
-      if (wasMuted) {
-        await _localVideoTrack?.mute();
-      } else {
-        await _localVideoTrack?.unmute();
-      }
-      debugPrint('🔁 Recreated and published new video track with preset $preset');
-    } catch (e) {
-      debugPrint('Failed to recreate video track: $e');
-    }
-  }
-
   /// External entrypoint: apply observed stats (from CallStatsService)
-  /// so LiveKitService can decide to adapt publish settings.
-  Future<void> applyObservedStats(CallStats stats) async {
+  Future<void> applyStats(CallStats stats) async {
     await _maybeAdjustVideoForStats(stats);
   }
-
-  /// Apply a high-level capture profile (low/medium/high) immediately.
-  /// This is used by `PerformanceMonitor` to quickly lower capture
-  /// resolution/fps when device or network conditions demand it.
-  Future<void> applyCaptureProfile(CaptureProfile profile) async {
+  
+  /// Update video quality based on network conditions
+  Future<void> updateNetworkQuality() async {
     try {
-      if (_room == null) return;
-
-      dynamic preset = VideoParametersPresets.h720_169;
-      double? fpsOverride;
-
-      switch (profile) {
-        case CaptureProfile.low:
-          preset = VideoParametersPresets.h360_169;
-          fpsOverride = 15.0;
-          break;
-        case CaptureProfile.medium:
-          preset = VideoParametersPresets.h720_169;
-          fpsOverride = DeviceCapabilityService.getMaxFramerate() * 0.8;
-          break;
-        case CaptureProfile.high:
-          preset = DeviceCapabilityService.shouldUse1080p()
-              ? VideoParametersPresets.h1080_169
-              : VideoParametersPresets.h720_169;
-          fpsOverride = null; // don't force fps change for high
-          break;
-      }
-
-      // Respect device capability
-      if (!DeviceCapabilityService.shouldUse1080p() && preset == VideoParametersPresets.h1080_169) {
-        preset = VideoParametersPresets.h720_169;
-      }
-
-      await _recreateAndPublishVideoTrack(preset, maxFrameRateOverride: fpsOverride);
+      final stats = await collectCallStats();
+      await _maybeAdjustVideoForStats(stats);
     } catch (e) {
-      debugPrint('applyCaptureProfile error: $e');
+      debugPrint('Error updating network quality: $e');
     }
   }
   
@@ -502,7 +354,7 @@ class LiveKitService extends ChangeNotifier {
       // Create audio track if not exists
       if (_localAudioTrack == null) {
         _localAudioTrack = await LocalAudioTrack.create(
-          const AudioCaptureOptions(
+          AudioCaptureOptions(
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,

@@ -544,7 +544,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         try {
           final stats = _coordinator.statsService.currentStats;
           // Fire-and-forget adaptation
-          livekit.applyObservedStats(stats);
+          livekit.applyStats(stats);
         } catch (e) {
           debugPrint('Failed to apply observed stats to LiveKitService: $e');
         }
