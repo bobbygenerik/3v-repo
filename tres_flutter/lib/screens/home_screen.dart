@@ -62,8 +62,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadContacts();
-    _loadCallHistory();
+    
+    // Defer data loading until after first frame to avoid context issues
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadContacts();
+        _loadCallHistory();
+      }
+    });
+    
     _searchController.addListener(_filterContacts);
     
     // Listen to search focus changes
@@ -90,20 +97,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       duration: const Duration(milliseconds: 2000),
     );
     
-    // Pick a random welcome message for this session
-    _currentWelcomeIndex = DateTime.now().millisecond % _welcomeMessages.length;
-    final user = context.read<AuthService>().currentUser;
-    _currentWelcomeText = '${_welcomeMessages[_currentWelcomeIndex]}${user?.displayName ?? user?.email?.split('@')[0] ?? 'Guest'}';
-    _setupLetterAnimations();
-    
-    // Play animation once
-    _textAnimationController.forward().then((_) {
-      setState(() => _hasAnimated = true);
-    });
-    
-    // Request notification permissions after a short delay
-    Future.delayed(const Duration(seconds: 2), () {
-      _requestNotificationPermissions();
+    // Defer context-dependent initialization until after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        // Pick a random welcome message for this session
+        _currentWelcomeIndex = DateTime.now().millisecond % _welcomeMessages.length;
+        final user = context.read<AuthService>().currentUser;
+        _currentWelcomeText = '${_welcomeMessages[_currentWelcomeIndex]}${user?.displayName ?? user?.email?.split('@')[0] ?? 'Guest'}';
+        _setupLetterAnimations();
+        
+        // Play animation once
+        _textAnimationController.forward().then((_) {
+          if (mounted) {
+            setState(() => _hasAnimated = true);
+          }
+        });
+        
+        // Request notification permissions after a short delay
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            _requestNotificationPermissions();
+          }
+        });
+      }
     });
   }
   

@@ -100,11 +100,11 @@ class LiveKitService extends ChangeNotifier {
     if (kIsWeb) {
       // Web: Force H.264 for maximum iOS/Safari compatibility
       // VP9 is not well supported on iPhone browsers
-      // Use higher bitrate on web to ensure good quality from browsers
-      final webBitrate = finalBitrate < 8000000 ? 8000000 : finalBitrate;
-      debugPrint('🌐 Web platform: Using H.264 codec with enhanced bitrate: ${(webBitrate / 1000000).toStringAsFixed(1)} Mbps');
+      // Use adaptive bitrate for better mobile network compatibility
+      final webBitrate = finalBitrate < 4000000 ? 4000000 : finalBitrate;
+      debugPrint('🌐 Web platform: Using H.264 codec with adaptive bitrate: ${(webBitrate / 1000000).toStringAsFixed(1)} Mbps');
       return VideoEncoding(
-        maxBitrate: webBitrate, // Ensure minimum 8 Mbps for web senders
+        maxBitrate: webBitrate, // Minimum 4 Mbps for web, adapts up based on network
         maxFramerate: finalFramerate,
       );
     }
@@ -166,33 +166,33 @@ class LiveKitService extends ChangeNotifier {
             // Top layer matches capture resolution (1080p for high-end, 720p otherwise)
             videoSimulcastLayers: DeviceCapabilityService.shouldUse1080p()
                 ? [
-                    // High-end: 1080p, 720p, 360p layers
+                    // High-end: 1080p, 720p, 360p layers (30fps for iOS Safari stability)
                     VideoParameters(
                       dimensions: VideoDimensions(1920, 1080),
-                      encoding: VideoEncoding(maxBitrate: 8000000, maxFramerate: 60),
+                      encoding: VideoEncoding(maxBitrate: 6000000, maxFramerate: 30),
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(1280, 720),
-                      encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 3000000, maxFramerate: 30),
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(640, 360),
-                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 1200000, maxFramerate: 30),
                     ),
                   ]
                 : [
-                    // Mid/Low-end: 720p, 480p, 240p layers
+                    // Mid/Low-end: 720p, 480p, 360p layers (optimized for mobile)
                     VideoParameters(
                       dimensions: VideoDimensions(1280, 720),
-                      encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 3000000, maxFramerate: 30),
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(640, 480),
-                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 1200000, maxFramerate: 30),
                     ),
                     VideoParameters(
-                      dimensions: VideoDimensions(320, 240),
-                      encoding: VideoEncoding(maxBitrate: 500000, maxFramerate: 24),
+                      dimensions: VideoDimensions(640, 360),
+                      encoding: VideoEncoding(maxBitrate: 800000, maxFramerate: 30),
                     ),
                   ],
           ),
@@ -286,29 +286,29 @@ class LiveKitService extends ChangeNotifier {
                 ? [
                     VideoParameters(
                       dimensions: VideoDimensions(1920, 1080),
-                      encoding: VideoEncoding(maxBitrate: 8000000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 6000000, maxFramerate: 30),
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(1280, 720),
-                      encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 3000000, maxFramerate: 30),
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(640, 360),
-                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 1200000, maxFramerate: 30),
                     ),
                   ]
                 : [
                     VideoParameters(
                       dimensions: VideoDimensions(1280, 720),
-                      encoding: VideoEncoding(maxBitrate: 4000000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 3000000, maxFramerate: 30),
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(640, 480),
-                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 1200000, maxFramerate: 30),
                     ),
                     VideoParameters(
-                      dimensions: VideoDimensions(320, 240),
-                      encoding: VideoEncoding(maxBitrate: 500000, maxFramerate: 24),
+                      dimensions: VideoDimensions(640, 360),
+                      encoding: VideoEncoding(maxBitrate: 800000, maxFramerate: 30),
                     ),
                   ],
           ),
