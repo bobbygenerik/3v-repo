@@ -17,6 +17,7 @@ import '../services/chat_service.dart' as chat;
 import '../widgets/participant_video.dart';
 import '../widgets/stats_overlay.dart';
 import '../widgets/call_waiting_banner.dart';
+import '../widgets/video_call_quality_dashboard.dart';
 
 class CallScreen extends StatefulWidget {
   final String roomName;
@@ -79,6 +80,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   
   // Track app lifecycle state
   bool _isAppInBackground = false;
+  
+  // Quality dashboard state
+  bool _qualityDashboardVisible = false;
   
   @override
   void initState() {
@@ -704,6 +708,21 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                         ),
                       ),
                     ),
+                    
+                    // Quality Dashboard (positioned to avoid overlap)
+                    if (_qualityDashboardVisible)
+                      Positioned(
+                        top: 100,
+                        right: 16,
+                        child: VideoCallQualityDashboard(
+                          isExpanded: true,
+                          onToggle: () {
+                            setState(() {
+                              _qualityDashboardVisible = false;
+                            });
+                          },
+                        ),
+                      ),
                     
                     // Chat panel (bottom sheet)
                     if (coordinator.isChatOpen)
@@ -1604,6 +1623,18 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                   Navigator.pop(context);
                 },
               ),
+            ),
+            
+            // Quality Dashboard
+            ListTile(
+              leading: const Icon(Icons.analytics, color: Color(0xFF6B7FB8)),
+              title: const Text('Quality Dashboard', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                setState(() {
+                  _qualityDashboardVisible = !_qualityDashboardVisible;
+                });
+                Navigator.pop(context);
+              },
             ),
           ],
         ),
