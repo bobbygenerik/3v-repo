@@ -4,6 +4,7 @@ import '../config/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/call_signaling_service.dart';
 import '../services/call_session_service.dart';
+import '../services/vibration_service.dart';
 import 'call_screen.dart';
 
 class IncomingCallScreen extends StatefulWidget {
@@ -44,6 +45,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
   void initState() {
     super.initState();
     
+    // Start vibration for incoming call
+    VibrationService.vibrateIncomingCall();
+    
     // Setup pulse animation for avatar
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
@@ -68,12 +72,17 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
 
   @override
   void dispose() {
+    // Stop vibration when screen is disposed
+    VibrationService.stopVibration();
     _pulseController.dispose();
     super.dispose();
   }
 
   Future<void> _acceptCall() async {
     if (_isAccepting) return;
+    
+    // Stop vibration when call is accepted
+    VibrationService.stopVibration();
     
     setState(() => _isAccepting = true);
 
@@ -151,6 +160,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
   }
 
   Future<void> _declineCall() async {
+    // Stop vibration when call is declined
+    VibrationService.stopVibration();
+    
     try {
       // Mark invitation as declined in Firestore
       await _signalingService.declineInvitation(widget.invitationId);

@@ -1,0 +1,486 @@
+import 'package:flutter/material.dart';
+import 'dart:async';
+import '../services/chat_service.dart' as chat;
+import '../services/vibration_service.dart';
+
+enum ChatOverlayState { hidden, preview, expanded }
+
+class ModernChatOverlay extends StatefulWidget {
+  final List<chat.ChatMessage> messages;
+  final Function(String) onSendMessage;
+  final VoidCallback? onToggleExpanded;
+  final bool isVisible;
+
+  const ModernChatOverlay({
+    super.key,
+    required this.messages,
+    required this.onSendMessage,
+    this.onToggleExpanded,
+    this.isVisible = false,
+  });
+
+  @override
+  State<ModernChatOverlay> createState() => _ModernChatOverlayState();
+}
+
+class _ModernChatOverlayState extends State<ModernChatOverlay>
+    with TickerProviderStateMixin {
+  ChatOverlayState _state = ChatOverlayState.hidden;
+  Timer? _autoHideTimer;
+  late AnimationController _slideController;
+  late AnimationController _fadeController;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _fadeAnimation;
+  final TextEditingController _messageController = TextEditingController();
+  final FocusNode _messageFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(1.0, 0.0), // Start off-screen right
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+    
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    ));
+  }
+
+  @override
+  void didUpdateWidget(ModernChatOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Check for new messages
+    if (widget.messages.length > oldWidget.messages.length) {
+      final newMessage = widget.messages.last;
+      if (!newMessage.isLocal) {
+        _showPreviewForNewMessage(newMessage);
+      }
+    }
+    
+    // Handle visibility changes
+    if (widget.isVisible != oldWidget.isVisible) {
+      if (widget.isVisible) {
+        _showExpanded();
+      } else {
+        _hide();
+      }
+    }
+  }
+
+  void _showPreviewForNewMessage(chat.ChatMessage message) {
+    if (_state == ChatOverlayState.expanded) return; // Already expanded
+    
+    // Vibrate for new message
+    VibrationService.vibrateNewMessage();
+    
+    setState(() {
+      _state = ChatOverlayState.preview;
+    });
+    
+    _slideController.forward();
+    _fadeController.forward();
+    
+    // Auto-hide after 6 seconds
+    _startAutoHideTimer();
+  }
+
+  void _showExpanded() {
+    _cancelAutoHideTimer();
+    
+    setState(() {
+      _state = ChatOverlayState.expanded;
+    });
+    
+    _slideController.forward();
+    _fadeController.forward();
+  }
+
+  void _hide() {
+    _cancelAutoHideTimer();
+    
+    setState(() {
+      _state = ChatOverlayState.hidden;
+    });
+    
+    _slideController.reverse();
+    _fadeController.reverse();
+  }
+
+  void _startAutoHideTimer() {
+    _cancelAutoHideTimer();
+    _autoHideTimer = Timer(const Duration(seconds: 6), () {
+      if (_state == ChatOverlayState.preview) {
+        _hide();
+      }
+    });
+  }
+
+  void _cancelAutoHideTimer() {
+    _autoHideTimer?.cancel();
+    _autoHideTimer = null;
+  }
+
+  void _toggleExpanded() {
+    if (_state == ChatOverlayState.expanded) {
+      _hide();
+    } else {
+      _showExpanded();
+    }
+    widget.onToggleExpanded?.call();
+  }
+
+  void _sendMessage() {
+    final text = _messageController.text.trim();
+    if (text.isNotEmpty) {
+      widget.onSendMessage(text);
+      _messageController.clear();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_state == ChatOverlayState.hidden) {
+      return const SizedBox.shrink();
+    }
+
+    return Positioned(
+      top: 100,
+      right: 16,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: _state == ChatOverlayState.preview
+              ? _buildPreviewMode()
+              : _buildExpandedMode(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewMode() {
+    final recentMessages = widget.messages.where((m) => !m.isLocal).take(2).toList();
+    
+    return GestureDetector(
+      onTap: _toggleExpanded,
+      child: Container(
+        width: 280,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Row(
+              children: [
+                const Icon(Icons.chat_bubble, color: Colors.white, size: 16),
+                const SizedBox(width: 8),
+                const Text(
+                  'New message',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.expand_more,
+                  color: Colors.white.withValues(alpha: 0.7),
+                  size: 16,
+                ),
+              ],
+            ),
+            
+            if (recentMessages.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              ...recentMessages.map((message) => _buildPreviewMessage(message)),
+            ],
+            
+            // Tap to expand hint
+            const SizedBox(height: 8),
+            Text(
+              'Tap to open chat',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewMessage(chat.ChatMessage message) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Sender avatar
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.3),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                message.senderName.isNotEmpty ? message.senderName[0].toUpperCase() : '?',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          
+          // Message content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message.senderName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  message.message.length > 50 
+                      ? '${message.message.substring(0, 50)}...'
+                      : message.message,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandedMode() {
+    return Container(
+      width: 320,
+      height: 400,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.6),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.chat_bubble, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  'Chat',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                  onPressed: _hide,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+              ],
+            ),
+          ),
+          
+          // Messages
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(12),
+              reverse: true,
+              itemCount: widget.messages.length,
+              itemBuilder: (context, index) {
+                final reversedIndex = widget.messages.length - 1 - index;
+                final message = widget.messages[reversedIndex];
+                return _buildExpandedMessage(message);
+              },
+            ),
+          ),
+          
+          // Input
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    focusNode: _messageFocus,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Type a message...',
+                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.1),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                    ),
+                    onSubmitted: (_) => _sendMessage(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.send, color: Colors.white, size: 18),
+                    onPressed: _sendMessage,
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandedMessage(chat.ChatMessage message) {
+    return Align(
+      alignment: message.isLocal ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.7,
+        ),
+        decoration: BoxDecoration(
+          color: message.isLocal 
+              ? Colors.blue 
+              : Colors.white.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!message.isLocal) ...[
+              Text(
+                message.senderName,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+            ],
+            Text(
+              message.message,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              message.getFormattedTime(),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _cancelAutoHideTimer();
+    _slideController.dispose();
+    _fadeController.dispose();
+    _messageController.dispose();
+    _messageFocus.dispose();
+    super.dispose();
+  }
+}

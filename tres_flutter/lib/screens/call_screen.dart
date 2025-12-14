@@ -14,10 +14,15 @@ import '../services/call_signaling_service.dart';
 import '../services/call_listener_service.dart';
 import '../services/reaction_service.dart';
 import '../services/chat_service.dart' as chat;
+import '../services/vibration_service.dart';
 import '../widgets/participant_video.dart';
 import '../widgets/stats_overlay.dart';
 import '../widgets/call_waiting_banner.dart';
 import '../widgets/video_call_quality_dashboard.dart';
+import '../widgets/modern_chat_overlay.dart';
+import '../widgets/chat_notification_badge.dart';
+import '../widgets/audio_controls_panel.dart';
+import '../services/audio_device_service.dart';
 
 class CallScreen extends StatefulWidget {
   final String roomName;
@@ -84,6 +89,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   // Quality dashboard state
   bool _qualityDashboardVisible = false;
   
+  // Modern chat state
+  bool _chatOverlayVisible = false;
+  int _unreadMessageCount = 0;
+  bool _hasNewMessage = false;
+  String? _lastMessageId;
+  
   @override
   void initState() {
     super.initState();
@@ -108,6 +119,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         
         // Setup auto PiP for web
         livekit.setupAutoPip();
+        
+        // Listen for new chat messages
+        _coordinator.addListener(_handleNewChatMessage);
       }
     });
     
@@ -724,14 +738,26 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                         ),
                       ),
                     
-                    // Chat panel (bottom sheet)
-                    if (coordinator.isChatOpen)
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: _buildChatPanel(coordinator),
-                      ),
+                    // Modern Chat Overlay
+                    ModernChatOverlay(
+                      messages: coordinator.chatMessages,
+                      onSendMessage: (message) {
+                        coordinator.sendChatMessage(message);
+                        setState(() {
+                          _hasNewMessage = false;
+                        });
+                      },
+                      isVisible: _chatOverlayVisible,
+                      onToggleExpanded: () {
+                        setState(() {
+                          _chatOverlayVisible = !_chatOverlayVisible;
+                          if (_chatOverlayVisible) {
+                            _unreadMessageCount = 0;
+                            _hasNewMessage = false;
+                          }
+                        });
+                      },
+                    ),
                   ],
                 );
               },
@@ -1222,7 +1248,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _buildAnimatedButton(
         index: 1,
         icon: livekit.isMicrophoneEnabled ? Icons.mic : Icons.mic_off,
-        onPressed: livekit.toggleMicrophone,
+        onPressed: () => livekit.toggleMicrophone(),
         backgroundColor: livekit.isMicrophoneEnabled
             ? Colors.white.withOpacity(0.2)
             : Colors.red.shade600,
@@ -1235,6 +1261,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         icon: Icons.call_end,
         onPressed: () async {
           if (!mounted) return;
+          
+          // Vibrate when call is ended
+          VibrationService.vibrateCallEnd();
           
           try {
             // Notify other participant the call is ending (fire and forget)
@@ -1374,179 +1403,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     );
   }
   
-  // Chat panel
-  Widget _buildChatPanel(CallFeaturesCoordinator coordinator) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.6,
-      decoration: const BoxDecoration(
-        color: Colors.black87,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: Colors.white24, width: 1),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.chat, color: Colors.white),
-                const SizedBox(width: 8),
-                const Text(
-                  'Chat',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: coordinator.toggleChat,
-                ),
-              ],
-            ),
-          ),
-          
-          // Messages list
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              reverse: true,
-              itemCount: coordinator.chatMessages.length,
-              itemBuilder: (context, index) {
-                final reversedIndex = coordinator.chatMessages.length - 1 - index;
-                final message = coordinator.chatMessages[reversedIndex];
-                return _buildChatMessage(message);
-              },
-            ),
-          ),
-          
-          // Typing indicators
-          if (coordinator.chatService.typingUsers.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                '${coordinator.chatService.typingUsers.map((u) => u.userName).join(", ")} ${coordinator.chatService.typingUsers.length == 1 ? "is" : "are"} typing...',
-                style: const TextStyle(
-                  color: Colors.white60,
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          
-          // Message input
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              border: Border(
-                top: BorderSide(color: Colors.white24, width: 1),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _chatController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      hintStyle: const TextStyle(color: Colors.white60),
-                      filled: true,
-                      fillColor: Colors.white12,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    onChanged: (text) {
-                      if (text.isNotEmpty) {
-                        coordinator.chatService.sendTypingIndicator();
-                      }
-                    },
-                    onSubmitted: (text) {
-                      if (text.trim().isNotEmpty) {
-                        coordinator.sendChatMessage(text);
-                        _chatController.clear();
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send, color: Colors.blue),
-                  onPressed: () {
-                    final text = _chatController.text;
-                    if (text.trim().isNotEmpty) {
-                      coordinator.sendChatMessage(text);
-                      _chatController.clear();
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildChatMessage(chat.ChatMessage message) {
-    return Align(
-      alignment: message.isLocal ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.7,
-        ),
-        decoration: BoxDecoration(
-          color: message.isLocal ? Colors.blue : Colors.white24,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!message.isLocal)
-              Text(
-                message.senderName,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            const SizedBox(height: 4),
-            Text(
-              message.message,
-              style: const TextStyle(color: Colors.white),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              message.getFormattedTime(),
-              style: const TextStyle(
-                color: Colors.white60,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
   
   // More menu
   void _showMoreMenu(CallFeaturesCoordinator coordinator) {
@@ -1569,10 +1426,37 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               ),
               // Chat moved into the More menu
               ListTile(
-                leading: const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8)),
-                title: const Text('Chat', style: TextStyle(color: Colors.white)),
+                leading: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8)),
+                    if (_unreadMessageCount > 0)
+                      Positioned(
+                        right: -4,
+                        top: -4,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                title: Text(
+                  _unreadMessageCount > 0 ? 'Chat ($_unreadMessageCount)' : 'Chat',
+                  style: const TextStyle(color: Colors.white),
+                ),
                 onTap: () {
-                  coordinator.toggleChat();
+                  setState(() {
+                    _chatOverlayVisible = !_chatOverlayVisible;
+                    if (_chatOverlayVisible) {
+                      _unreadMessageCount = 0;
+                      _hasNewMessage = false;
+                    }
+                  });
                   Navigator.pop(context);
                 },
               ),
@@ -1634,6 +1518,16 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                   _qualityDashboardVisible = !_qualityDashboardVisible;
                 });
                 Navigator.pop(context);
+              },
+            ),
+            
+            // Audio Controls
+            ListTile(
+              leading: const Icon(Icons.volume_up, color: Color(0xFF6B7FB8)),
+              title: const Text('Audio Controls', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _showAudioControlsPanel();
               },
             ),
           ],
@@ -1873,6 +1767,28 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     }
   }
   
+  /// Handle new chat messages
+  void _handleNewChatMessage() {
+    final coordinator = context.read<CallFeaturesCoordinator>();
+    
+    if (coordinator.chatMessages.isNotEmpty) {
+      final lastMessage = coordinator.chatMessages.last;
+      
+      // Check if this is a new message from someone else
+      if (!lastMessage.isLocal && lastMessage.id != _lastMessageId) {
+        setState(() {
+          _lastMessageId = lastMessage.id;
+          _hasNewMessage = true;
+          
+          // Only increment unread count if chat overlay is not visible
+          if (!_chatOverlayVisible) {
+            _unreadMessageCount++;
+          }
+        });
+      }
+    }
+  }
+  
   /// Accept waiting call and add caller to current group call
   Future<void> _acceptWaitingCall() async {
     final incomingCall = _callListener.currentIncomingCall;
@@ -1949,6 +1865,17 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     }
   }
   
+  /// Show audio controls panel
+  void _showAudioControlsPanel() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const AudioControlsPanel(),
+    );
+  }
+  
+
+  
   @override
   void dispose() {
     _controlsHideTimer?.cancel();
@@ -1968,6 +1895,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     } catch (e) {
       debugPrint('Error during LiveKit cleanup: $e');
     }
+    
+    // Remove chat message listener
+    _coordinator.removeListener(_handleNewChatMessage);
     
     // Cleanup coordinator (fire and forget)
     _coordinator.cleanup();

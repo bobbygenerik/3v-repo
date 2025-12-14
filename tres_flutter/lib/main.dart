@@ -13,6 +13,7 @@ import 'services/auth_service.dart';
 import 'services/livekit_service.dart';
 import 'services/guest_link_service.dart';
 import 'services/notification_service.dart';
+import 'services/audio_device_service.dart';
 import 'firebase_background_handler.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -20,10 +21,15 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Firebase with auto-generated options
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    // Initialize Firebase with auto-generated options
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint('✅ Firebase initialized successfully');
+  } catch (e) {
+    debugPrint('❌ Firebase initialization error: $e');
+  }
   
   // Register background message handler BEFORE calling runApp
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
@@ -74,6 +80,7 @@ class TresApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => LiveKitService()),
         ChangeNotifierProvider(create: (_) => GuestLinkService()),
+        ChangeNotifierProvider(create: (_) => AudioDeviceService()),
       ],
       child: MaterialApp(
         title: 'Três3',
@@ -85,30 +92,52 @@ class TresApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
   @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isInitialized = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _initializeApp();
+  }
+  
+  Future<void> _initializeApp() async {
+    // Small delay to ensure Firebase is ready
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (mounted) {
+      setState(() {
+        _isInitialized = true;
+      });
+    }
+  }
+  
+  @override
   Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return const Scaffold(
+        backgroundColor: AppColors.backgroundDark,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.accentBlue),
+        ),
+      );
+    }
+    
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Show loading while checking auth state
-        if (snapshot.connectionState == widgets.ConnectionState.waiting) {
-          return const Scaffold(
-            backgroundColor: AppColors.backgroundDark,
-            body: Center(
-              child: CircularProgressIndicator(color: AppColors.accentBlue),
-            ),
-          );
-        }
-        
         // User is signed in
         if (snapshot.hasData && snapshot.data != null) {
           return const HomeScreen();
         }
         
-        // User is signed out
+        // User is signed out or loading
         return const AuthScreen();
       },
     );

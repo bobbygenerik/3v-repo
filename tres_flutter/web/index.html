@@ -18,6 +18,7 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="description" content="High-quality video calling app with advanced features">
 
   <!-- iOS meta tags & icons -->
@@ -112,10 +113,33 @@
   <!-- Container for reCAPTCHA widget (required for phone auth on web) -->
   <div id="recaptcha-container"></div>
   
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-storage-compat.js"></script>
+  
+  <script>
+    // Initialize Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyBKlwuvmoaZNbHADyO7INVW8FoG7YW2RoY",
+      authDomain: "tres3-5fdba.firebaseapp.com",
+      projectId: "tres3-5fdba",
+      storageBucket: "tres3-5fdba.firebasestorage.app",
+      messagingSenderId: "128602192923",
+      appId: "1:128602192923:web:0d756019d8a9121fd3ccbe",
+      measurementId: "G-LL6DSZ6BEM"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+  </script>
+  
   <script src="flutter.js" defer></script>
   <script>
     window.addEventListener('load', function(ev) {
-      _flutter.loader.loadEntrypoint().then(function(engineInitializer) {
+      _flutter.loader.load().then(function(engineInitializer) {
         return engineInitializer.initializeEngine();
       }).then(function(appRunner) {
         return appRunner.runApp();

@@ -23,7 +23,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   bool _showContactsView = true;
@@ -252,15 +252,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   
   void _setupLetterAnimations() {
     _letterAnimations = List.generate(_currentWelcomeText.length, (index) {
-      final start = index * 0.05; // Stagger each letter
-      final end = start + 0.3;
-      return Tween<double>(begin: -50.0, end: 0.0).animate(
+      final start = index * 0.08; // Stagger each letter fade
+      final end = start + 0.2;
+      return Tween<double>(begin: 0.0, end: 1.0).animate(
         CurvedAnimation(
           parent: _textAnimationController,
           curve: Interval(
             start.clamp(0.0, 1.0),
             end.clamp(0.0, 1.0),
-            curve: Curves.easeOut,
+            curve: Curves.easeIn,
           ),
         ),
       );
@@ -638,7 +638,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
             const SizedBox(height: 80),
 
-            // Welcome Message - CENTERED with cascading animation (plays once)
+            // Welcome Message - CENTERED with fade-in animation
             AnimatedBuilder(
               animation: _textAnimationController,
               builder: (context, child) {
@@ -646,31 +646,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: List.generate(_currentWelcomeText.length, (index) {
-                      // If animation is complete, show text with no transform
-                      if (_hasAnimated) {
-                        return Text(
+                      return Opacity(
+                        opacity: _letterAnimations.length > index 
+                            ? _letterAnimations[index].value
+                            : (_hasAnimated ? 1.0 : 0.0),
+                        child: Text(
                           _currentWelcomeText[index],
                           style: const TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.w400,
                             color: Colors.white,
-                          ),
-                        );
-                      }
-                      // During animation, apply transforms
-                      return Transform.translate(
-                        offset: Offset(0, _letterAnimations.length > index ? _letterAnimations[index].value : 0),
-                        child: Opacity(
-                          opacity: _letterAnimations.length > index 
-                              ? ((_letterAnimations[index].value + 50) / 50).clamp(0.0, 1.0)
-                              : 1.0,
-                          child: Text(
-                            _currentWelcomeText[index],
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w400,
-                              color: Colors.white,
-                            ),
                           ),
                         ),
                       );
