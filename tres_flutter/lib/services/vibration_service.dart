@@ -36,6 +36,22 @@ class VibrationService {
     }
   }
 
+  static Future<void> lightImpact() async {
+    if (kIsWeb) {
+      _webVibrate([50]);
+    } else if (await Vibration.hasVibrator() == true) {
+      await Vibration.vibrate(duration: 50);
+    }
+  }
+
+  static Future<void> mediumImpact() async {
+    if (kIsWeb) {
+      _webVibrate([100]);
+    } else if (await Vibration.hasVibrator() == true) {
+      await Vibration.vibrate(duration: 100);
+    }
+  }
+
   static void _webVibrate(List<int> pattern) {
     webVibrate(pattern);
   }

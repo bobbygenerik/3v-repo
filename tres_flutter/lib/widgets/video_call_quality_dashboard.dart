@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../services/livekit_service.dart';
-import '../services/enhanced_network_quality_service.dart';
-import '../services/adaptive_streaming_manager.dart';
-import '../services/enhanced_audio_processor.dart';
-import '../services/video_call_memory_manager.dart';
-import '../services/advanced_device_profiler.dart';
+import '../services/call_stats_service.dart';
 
 class VideoCallQualityDashboard extends StatefulWidget {
   final bool isExpanded;
@@ -22,6 +19,33 @@ class VideoCallQualityDashboard extends StatefulWidget {
 }
 
 class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
+  Timer? _statsTimer;
+  CallStats _currentStats = const CallStats();
+  
+  @override
+  void initState() {
+    super.initState();
+    _startStatsCollection();
+  }
+  
+  void _startStatsCollection() {
+    _statsTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      final liveKit = context.read<LiveKitService>();
+      final stats = await liveKit.collectCallStats();
+      if (mounted) {
+        setState(() {
+          _currentStats = stats;
+        });
+      }
+    });
+  }
+  
+  @override
+  void dispose() {
+    _statsTimer?.cancel();
+    super.dispose();
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Consumer<LiveKitService>(
@@ -101,9 +125,7 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
                   const SizedBox(height: 16),
                   _buildAudioSection(liveKitService),
                   const SizedBox(height: 16),
-                  _buildMemorySection(liveKitService),
-                  const SizedBox(height: 16),
-                  _buildDeviceSection(liveKitService),
+                  _buildConnectionSection(liveKitService),
                 ],
               ),
             ),
@@ -144,6 +166,24 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
   }
 
   Widget _buildNetworkSection(LiveKitService liveKitService) {
+    final rtt = (_currentStats.roundTripTime * 1000).round();
+    final packetLoss = _currentStats.videoPacketLoss;
+    final jitter = (_currentStats.jitter * 1000).round();
+    
+    Color qualityColor = Colors.green;
+    String qualityText = 'Excellent';
+    
+    if (rtt > 150 || packetLoss > 3.0 || jitter > 50) {
+      qualityColor = Colors.red;
+      qualityText = 'Poor';
+    } else if (rtt > 100 || packetLoss > 1.0 || jitter > 30) {
+      qualityColor = Colors.orange;
+      qualityText = 'Fair';
+    } else if (rtt > 50 || packetLoss > 0.5 || jitter > 15) {
+      qualityColor = Colors.yellow;
+      qualityText = 'Good';
+    }
+    
     return _buildSection(
       title: 'Network Quality',
       icon: Icons.wifi,
@@ -151,23 +191,23 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
         children: [
           _buildMetricRow(
             'Quality',
-            'Good',
-            Colors.green,
+            qualityText,
+            qualityColor,
           ),
           _buildMetricRow(
             'Latency',
-            '45ms',
-            Colors.green,
+            '${rtt}ms',
+            rtt > 100 ? Colors.red : rtt > 50 ? Colors.orange : Colors.green,
           ),
           _buildMetricRow(
-            'Bandwidth',
-            '50 Mbps',
-            Colors.blue,
+            'Jitter',
+            '${jitter}ms',
+            jitter > 30 ? Colors.red : jitter > 15 ? Colors.orange : Colors.green,
           ),
           _buildMetricRow(
             'Packet Loss',
-            '0.1%',
-            Colors.green,
+            '${packetLoss.toStringAsFixed(1)}%',
+            packetLoss > 1.0 ? Colors.red : packetLoss > 0.5 ? Colors.orange : Colors.green,
           ),
         ],
       ),
@@ -175,25 +215,35 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
   }
 
   Widget _buildVideoSection(LiveKitService liveKitService) {
+    final sendBitrate = (_currentStats.videoSendBitrate / 1000000).toStringAsFixed(1);
+    final receiveBitrate = (_currentStats.videoRecvBitrate / 1000000).toStringAsFixed(1);
+    final sendFps = _currentStats.videoFps;
+    final receiveFps = _currentStats.videoFps; // Use same FPS for both since model only has one
+    
     return _buildSection(
       title: 'Video Quality',
       icon: Icons.videocam,
       child: Column(
         children: [
           _buildMetricRow(
-            'Bitrate',
-            '5.2 Mbps',
+            'Send Bitrate',
+            '$sendBitrate Mbps',
             Colors.blue,
           ),
           _buildMetricRow(
-            'Frame Rate',
-            '30 fps',
-            Colors.green,
+            'Receive Bitrate',
+            '$receiveBitrate Mbps',
+            Colors.cyan,
           ),
           _buildMetricRow(
-            'Resolution',
-            '1080p',
-            Colors.purple,
+            'Send FPS',
+            '$sendFps fps',
+            sendFps >= 25 ? Colors.green : sendFps >= 15 ? Colors.orange : Colors.red,
+          ),
+          _buildMetricRow(
+            'Receive FPS',
+            '$receiveFps fps',
+            receiveFps >= 25 ? Colors.green : receiveFps >= 15 ? Colors.orange : Colors.red,
           ),
           _buildMetricRow(
             'Camera',
@@ -206,25 +256,33 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
   }
 
   Widget _buildAudioSection(LiveKitService liveKitService) {
+    final audioSendBitrate = (_currentStats.audioSendBitrate / 1000).round();
+    final audioReceiveBitrate = (_currentStats.audioRecvBitrate / 1000).round();
+    
     return _buildSection(
       title: 'Audio Quality',
       icon: Icons.mic,
       child: Column(
         children: [
           _buildMetricRow(
-            'Quality Score',
-            '95%',
-            Colors.green,
+            'Send Bitrate',
+            '$audioSendBitrate kbps',
+            Colors.blue,
+          ),
+          _buildMetricRow(
+            'Receive Bitrate',
+            '$audioReceiveBitrate kbps',
+            Colors.cyan,
           ),
           _buildMetricRow(
             'Noise Suppression',
             'Enabled',
-            Colors.blue,
+            Colors.green,
           ),
           _buildMetricRow(
             'Echo Cancellation',
             'Enabled',
-            Colors.purple,
+            Colors.green,
           ),
           _buildMetricRow(
             'Microphone',
@@ -236,56 +294,49 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
     );
   }
 
-  Widget _buildMemorySection(LiveKitService liveKitService) {
+  Widget _buildConnectionSection(LiveKitService liveKitService) {
+    final participants = liveKitService.remoteParticipants.length + 1; // +1 for local
+    final connectionState = liveKitService.isConnected ? 'Connected' : 'Disconnected';
+    final connectionColor = liveKitService.isConnected ? Colors.green : Colors.red;
+    
     return _buildSection(
-      title: 'Memory Usage',
-      icon: Icons.memory,
+      title: 'Connection Info',
+      icon: Icons.info_outline,
       child: Column(
         children: [
           _buildMetricRow(
-            'Current',
-            '245 MB',
-            Colors.green,
+            'Status',
+            connectionState,
+            connectionColor,
           ),
           _buildMetricRow(
-            'Peak',
-            '312 MB',
-            Colors.orange,
+            'Participants',
+            '$participants',
+            Colors.blue,
           ),
           _buildMetricRow(
-            'Pressure',
-            'Normal',
-            Colors.green,
+            'Quality',
+            '${_currentStats.quality.name}'.toUpperCase(),
+            _getQualityColor(_currentStats.quality),
           ),
         ],
       ),
     );
   }
-
-  Widget _buildDeviceSection(LiveKitService liveKitService) {
-    return _buildSection(
-      title: 'Device Performance',
-      icon: Icons.phone_android,
-      child: Column(
-        children: [
-          _buildMetricRow(
-            'Performance',
-            'High',
-            Colors.green,
-          ),
-          _buildMetricRow(
-            'Thermal State',
-            'Normal',
-            Colors.green,
-          ),
-          _buildMetricRow(
-            'Battery',
-            '78%',
-            Colors.green,
-          ),
-        ],
-      ),
-    );
+  
+  Color _getQualityColor(CallConnectionQuality quality) {
+    switch (quality) {
+      case CallConnectionQuality.excellent:
+        return Colors.green;
+      case CallConnectionQuality.good:
+        return Colors.lightGreen;
+      case CallConnectionQuality.fair:
+        return Colors.yellow;
+      case CallConnectionQuality.poor:
+        return Colors.orange;
+      case CallConnectionQuality.unknown:
+        return Colors.grey;
+    }
   }
 
   Widget _buildSection({

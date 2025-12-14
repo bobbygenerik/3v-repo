@@ -44,8 +44,8 @@ class WebPipBridge {
       final result = <web.HTMLVideoElement>[];
       for (var i = 0; i < videos.length; i++) {
         final element = videos.item(i);
-        if (element is web.HTMLVideoElement) {
-          result.add(element);
+        if (element != null && element.isA<web.HTMLVideoElement>()) {
+          result.add(element as web.HTMLVideoElement);
         }
       }
       return result;
@@ -66,9 +66,9 @@ class WebPipBridge {
       for (final video in videos) {
         if (video.srcObject != null && !video.paused) {
           final srcObject = video.srcObject;
-          if (srcObject is web.MediaStream) {
+          if (srcObject != null && srcObject.isA<web.MediaStream>()) {
             debugPrint('✅ Found main video MediaStream');
-            return srcObject;
+            return srcObject as web.MediaStream;
           }
         }
       }

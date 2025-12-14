@@ -69,9 +69,13 @@ class _ChatNotificationBadgeState extends State<ChatNotificationBadge>
                   height: 50,
                   decoration: BoxDecoration(
                     color: widget.unreadCount > 0 
-                        ? Colors.blue 
-                        : Colors.white.withValues(alpha: 0.2),
+                        ? const Color(0xFF6B7FB8) // Use app's primary color
+                        : const Color(0xFF2C2C2E), // Use app's card color
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFF3A3A3C), // Use app's border color
+                      width: 1,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.3),
@@ -80,7 +84,7 @@ class _ChatNotificationBadgeState extends State<ChatNotificationBadge>
                       ),
                     ],
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.chat_bubble,
                     color: Colors.white,
                     size: 24,
@@ -95,9 +99,9 @@ class _ChatNotificationBadgeState extends State<ChatNotificationBadge>
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Colors.red,
+                        color: Colors.red.shade600, // Slightly darker red to match app style
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.black, width: 2),
+                        border: Border.all(color: const Color(0xFF1C1C1E), width: 2), // Use app's background color for border
                       ),
                       constraints: const BoxConstraints(
                         minWidth: 20,
@@ -126,11 +130,11 @@ class _ChatNotificationBadgeState extends State<ChatNotificationBadge>
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: Colors.green,
+                        color: const Color(0xFF4CAF50), // Use a green that matches the app's color scheme
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.green.withValues(alpha: 0.6),
+                            color: const Color(0xFF4CAF50).withValues(alpha: 0.6),
                             blurRadius: 4,
                             spreadRadius: 1,
                           ),

@@ -91,7 +91,7 @@ class CallStatsService extends ChangeNotifier {
     if (_room == null) return;
 
     _isCollecting = true;
-    _statsTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+    _statsTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       _flushCurrentStats();
     });
     notifyListeners();
@@ -231,14 +231,17 @@ class CallStatsService extends ChangeNotifier {
     };
   }
 
-  /// If event-driven fields are missing, try native getStats bridge.
+  /// If event-driven fields are missing, try to collect from room
   Future<void> _maybeFillFromNativeIfNeeded() async {
-    // Native fallback removed: we rely solely on LiveKit event payloads.
+    // Don't provide fake estimates - let dashboard show "Collecting..." for zero values
     return;
   }
 
   /// Build CallStats and append to history
-  void _flushCurrentStats() {
+  void _flushCurrentStats() async {
+    // Try to fill missing stats from native WebRTC getStats
+    await _maybeFillFromNativeIfNeeded();
+    
     final quality = _calculateQuality(rttMs: _lastRtt * 1000.0, packetLoss: _lastVideoPacketLoss);
 
     _currentStats = CallStats(

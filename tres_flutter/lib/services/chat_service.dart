@@ -96,12 +96,13 @@ class ChatService extends ChangeNotifier {
     try {
       _roomListener = _room!.createListener();
       _roomListener!.on<DataReceivedEvent>((event) {
+        debugPrint('📨 DataChannel event received from ${event.participant?.name}');
         final data = event.data is Uint8List 
             ? event.data as Uint8List 
             : Uint8List.fromList(event.data);
         _handleIncomingData(data, event.participant);
       });
-      debugPrint('DataChannel listener setup complete');
+      debugPrint('✅ DataChannel listener setup complete');
     } catch (e) {
       debugPrint('❌ Failed to setup DataChannel listener: $e');
     }
@@ -164,15 +165,18 @@ class ChatService extends ChangeNotifier {
         isLocal: true,
       );
 
+      // Add to local history FIRST so sender sees their message immediately
+      _addMessageToHistory(message);
+      notifyListeners();
+
       // Create JSON payload
       final data = utf8.encode(jsonEncode(message.toJson()));
 
-      // Send via DataChannel to all participants
-      await _room!.localParticipant!.publishData(data);
-
-      // Add to local history
-      _addMessageToHistory(message);
-      notifyListeners();
+      // Send via DataChannel to all participants with reliable delivery
+      await _room!.localParticipant!.publishData(
+        data,
+        reliable: true, // Ensure reliable delivery
+      );
 
       // Stop typing indicator for local user
       await sendTypingStop();
@@ -225,9 +229,20 @@ class ChatService extends ChangeNotifier {
 
   /// Handle received message
   void _handleReceivedMessage(ChatMessage message) {
-    _addMessageToHistory(message);
-    notifyListeners();
-    debugPrint('📬 Received message from ${message.senderName}: ${message.message}');
+    // Don't add duplicate messages (check by ID and timestamp)
+    final isDuplicate = _messageHistory.any((existing) => 
+        existing.id == message.id || 
+        (existing.senderId == message.senderId && 
+         existing.message == message.message &&
+         existing.timestamp.difference(message.timestamp).abs().inSeconds < 2));
+    
+    if (!isDuplicate) {
+      _addMessageToHistory(message);
+      notifyListeners();
+      debugPrint('📬 Received message from ${message.senderName}: ${message.message}');
+    } else {
+      debugPrint('⚠️ Duplicate message ignored from ${message.senderName}');
+    }
   }
 
   /// Handle typing indicator

@@ -19,6 +19,9 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="description" content="High-quality video calling app with advanced features">
 
   <!-- iOS meta tags & icons -->
@@ -91,8 +94,14 @@
   </style>
   
   <script>
-    // Register Firebase messaging service worker for background notifications
+    // Clear service worker cache and register new one
     if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister();
+        }
+      });
+      
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
         .then(function(registration) {
           console.log('Service Worker registered:', registration);
@@ -136,20 +145,22 @@
     firebase.initializeApp(firebaseConfig);
   </script>
   
-  <script src="flutter.js" defer></script>
+  <script src="flutter_bootstrap.js" async></script>
   <script>
+    // Fix mobile keyboard viewport issues
+    function setViewportHeight() {
+      document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+    }
+    
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
+    
     window.addEventListener('load', function(ev) {
-      _flutter.loader.load().then(function(engineInitializer) {
-        return engineInitializer.initializeEngine();
-      }).then(function(appRunner) {
-        return appRunner.runApp();
-      }).then(function() {
-        // Hide loading indicator when Flutter is ready
-        var loading = document.getElementById('loading');
-        if (loading) {
-          loading.style.display = 'none';
-        }
-      });
+      // Hide loading indicator when Flutter is ready
+      var loading = document.getElementById('loading');
+      if (loading) {
+        loading.style.display = 'none';
+      }
     });
   </script>
 </body>

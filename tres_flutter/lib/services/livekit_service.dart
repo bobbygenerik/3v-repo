@@ -100,11 +100,11 @@ class LiveKitService extends ChangeNotifier {
     if (kIsWeb) {
       // Web: Force H.264 for maximum iOS/Safari compatibility
       // VP9 is not well supported on iPhone browsers
-      // Use adaptive bitrate for better mobile network compatibility
-      final webBitrate = finalBitrate < 4000000 ? 4000000 : finalBitrate;
-      debugPrint('🌐 Web platform: Using H.264 codec with adaptive bitrate: ${(webBitrate / 1000000).toStringAsFixed(1)} Mbps');
+      // Use higher bitrate for sharper video on web
+      final webBitrate = finalBitrate < 8000000 ? 8000000 : finalBitrate;
+      debugPrint('🌐 Web platform: Using H.264 codec with high bitrate: ${(webBitrate / 1000000).toStringAsFixed(1)} Mbps');
       return VideoEncoding(
-        maxBitrate: webBitrate, // Minimum 4 Mbps for web, adapts up based on network
+        maxBitrate: webBitrate, // Minimum 8 Mbps for web for sharp video
         maxFramerate: finalFramerate,
       );
     }
@@ -166,33 +166,33 @@ class LiveKitService extends ChangeNotifier {
             // Top layer matches capture resolution (1080p for high-end, 720p otherwise)
             videoSimulcastLayers: DeviceCapabilityService.shouldUse1080p()
                 ? [
-                    // High-end: 1080p, 720p, 360p layers (30fps for iOS Safari stability)
+                    // High-end: 1080p, 720p, 360p layers with higher bitrates for sharpness
                     VideoParameters(
                       dimensions: VideoDimensions(1920, 1080),
-                      encoding: VideoEncoding(maxBitrate: 6000000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 12000000, maxFramerate: 30), // 12 Mbps for crisp 1080p
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(1280, 720),
-                      encoding: VideoEncoding(maxBitrate: 3000000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 6000000, maxFramerate: 30), // 6 Mbps for sharp 720p
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(640, 360),
-                      encoding: VideoEncoding(maxBitrate: 1200000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 2000000, maxFramerate: 30), // 2 Mbps for clear 360p
                     ),
                   ]
                 : [
-                    // Mid/Low-end: 720p, 480p, 360p layers (optimized for mobile)
+                    // Mid/Low-end: 720p, 480p, 360p layers with increased bitrates
                     VideoParameters(
                       dimensions: VideoDimensions(1280, 720),
-                      encoding: VideoEncoding(maxBitrate: 3000000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 6000000, maxFramerate: 30), // 6 Mbps for sharp 720p
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(640, 480),
-                      encoding: VideoEncoding(maxBitrate: 1200000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 3000000, maxFramerate: 30), // 3 Mbps for clear 480p
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(640, 360),
-                      encoding: VideoEncoding(maxBitrate: 800000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30), // 1.5 Mbps for decent 360p
                     ),
                   ],
           ),
@@ -225,21 +225,51 @@ class LiveKitService extends ChangeNotifier {
   /// Disconnect from room and cleanup
   Future<void> disconnect() async {
     try {
+      debugPrint('🔌 Disconnecting from LiveKit...');
+      
+      // Stop monitoring services
       _networkService.stopMonitoring();
       _pipService.dispose();
       
-      await _localVideoTrack?.stop();
-      await _localAudioTrack?.stop();
+      // Stop stats collection
+      _internalStatsService?.stopCollecting();
       
-      await _room?.disconnect();
+      // Stop local tracks with timeout
+      await Future.wait([
+        _localVideoTrack?.stop() ?? Future.value(),
+        _localAudioTrack?.stop() ?? Future.value(),
+      ]).timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('⚠️ Timeout stopping local tracks');
+          return <void>[];
+        },
+      );
       
+      // Disconnect from room with timeout
+      await _room?.disconnect().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('⚠️ Timeout disconnecting from room');
+        },
+      );
+      
+      // Clear references
       _localVideoTrack = null;
       _localAudioTrack = null;
       _room = null;
+      _internalStatsService = null;
       
+      debugPrint('✅ LiveKit disconnected successfully');
       notifyListeners();
     } catch (e) {
-      debugPrint('Error disconnecting: $e');
+      debugPrint('❌ Error disconnecting: $e');
+      // Force cleanup even if there were errors
+      _localVideoTrack = null;
+      _localAudioTrack = null;
+      _room = null;
+      _internalStatsService = null;
+      notifyListeners();
     }
   }
   
@@ -286,29 +316,29 @@ class LiveKitService extends ChangeNotifier {
                 ? [
                     VideoParameters(
                       dimensions: VideoDimensions(1920, 1080),
-                      encoding: VideoEncoding(maxBitrate: 6000000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 12000000, maxFramerate: 30), // 12 Mbps for crisp 1080p
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(1280, 720),
-                      encoding: VideoEncoding(maxBitrate: 3000000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 6000000, maxFramerate: 30), // 6 Mbps for sharp 720p
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(640, 360),
-                      encoding: VideoEncoding(maxBitrate: 1200000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 2000000, maxFramerate: 30), // 2 Mbps for clear 360p
                     ),
                   ]
                 : [
                     VideoParameters(
                       dimensions: VideoDimensions(1280, 720),
-                      encoding: VideoEncoding(maxBitrate: 3000000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 6000000, maxFramerate: 30), // 6 Mbps for sharp 720p
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(640, 480),
-                      encoding: VideoEncoding(maxBitrate: 1200000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 3000000, maxFramerate: 30), // 3 Mbps for clear 480p
                     ),
                     VideoParameters(
                       dimensions: VideoDimensions(640, 360),
-                      encoding: VideoEncoding(maxBitrate: 800000, maxFramerate: 30),
+                      encoding: VideoEncoding(maxBitrate: 1500000, maxFramerate: 30), // 1.5 Mbps for decent 360p
                     ),
                   ],
           ),
@@ -345,38 +375,37 @@ class LiveKitService extends ChangeNotifier {
       int? maxBitrateOverride;
 
       // Determine target bitrate and FPS based on network conditions
-      // Increased thresholds for better quality baseline
+      // Focus on frame rate stability to reduce jitter
       if (packetLossPct > 8.0 || rttMs > 400.0 || jitterMs > 100.0 || bitrate < 300000) {
-        // Very poor conditions: reduce FPS but maintain decent bitrate
-        maxFpsOverride = 15.0;
-        maxBitrateOverride = 5000 * 1000; // 5 Mbps minimum
+        // Very poor conditions: prioritize stable FPS over high bitrate
+        maxFpsOverride = 20.0; // Stable 20fps instead of variable 15fps
+        maxBitrateOverride = 6000 * 1000; // 6 Mbps minimum for sharp video
       } else if (packetLossPct > 5.0 || rttMs > 250.0 || jitterMs > 60.0 || bitrate < 800000) {
-        // Poor conditions: reduce FPS slightly, maintain good bitrate
-        maxFpsOverride = 24.0;
-        maxBitrateOverride = 8000 * 1000; // 8 Mbps
-      } else if (bitrate <= 2000000) {
-        // Medium conditions: maintain FPS, use high bitrate
-        maxFpsOverride = DeviceCapabilityService.getMaxFramerate() * 0.9;
-        maxBitrateOverride = 12000 * 1000; // 12 Mbps for better quality
+        // Poor conditions: use consistent 25fps for smoothness
+        maxFpsOverride = 25.0; // Consistent 25fps
+        maxBitrateOverride = 8000 * 1000; // 8 Mbps for crisp quality
+      } else if (jitterMs > 30.0 || bitrate <= 2000000) {
+        // Medium conditions with jitter: prioritize frame consistency
+        maxFpsOverride = 30.0; // Lock to 30fps for consistency
+        maxBitrateOverride = 10000 * 1000; // 10 Mbps for high quality
       } else {
-        // Good conditions: use optimal encoding from network quality
-        maxFpsOverride = null;
-        maxBitrateOverride = optimalEncoding.maxBitrate;
+        // Good conditions: use stable 30fps with high bitrate
+        maxFpsOverride = 30.0; // Always use stable 30fps
+        maxBitrateOverride = 12000 * 1000; // 12 Mbps for maximum sharpness
       }
 
       // Check if we need to adjust encoding
-      final bool needsAdjustment = maxFpsOverride != null || 
-                                   (maxBitrateOverride != _currentMaxBitrate);
+      final bool needsAdjustment = (maxBitrateOverride != _currentMaxBitrate);
       
       if (needsAdjustment) {
         final codec = DeviceCapabilityService.getCodecPreference();
-      debugPrint('🔧 Video Quality Adjustment:');
+      debugPrint('🔧 Video Quality Adjustment (Anti-Jitter):');
       debugPrint('   📊 Bitrate: ${maxBitrateOverride ?? optimalEncoding.maxBitrate} bps (${((maxBitrateOverride ?? optimalEncoding.maxBitrate) / 1000000).toStringAsFixed(1)} Mbps)');
-      debugPrint('   🎬 FPS: ${maxFpsOverride ?? DeviceCapabilityService.getMaxFramerate()}');
+      debugPrint('   🎬 FPS: ${maxFpsOverride ?? DeviceCapabilityService.getMaxFramerate()} (locked for stability)');
       debugPrint('   📡 Codec: $codec');
       debugPrint('   📉 Packet Loss: ${packetLossPct.toStringAsFixed(1)}%');
       debugPrint('   ⏱️ RTT: ${rttMs.toStringAsFixed(0)}ms');
-      debugPrint('   📶 Jitter: ${jitterMs.toStringAsFixed(0)}ms');
+      debugPrint('   📶 Jitter: ${jitterMs.toStringAsFixed(0)}ms (${jitterMs > 30 ? "HIGH - applying smoothing" : "OK"})');
         await _recreateAndPublishVideoTrack(
           desired, 
           maxFrameRateOverride: maxFpsOverride,
@@ -584,7 +613,11 @@ class LiveKitService extends ChangeNotifier {
     // Listen to room events
     _room!.createListener()
       ..on<RoomDisconnectedEvent>((event) {
-        debugPrint('Room disconnected: ${event.reason}');
+        debugPrint('🔌 Room disconnected: ${event.reason}');
+        // Clear local state when room disconnects
+        _localVideoTrack = null;
+        _localAudioTrack = null;
+        _room = null;
         notifyListeners();
       })
       ..on<ParticipantConnectedEvent>((event) {

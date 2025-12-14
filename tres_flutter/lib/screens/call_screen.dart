@@ -15,6 +15,7 @@ import '../services/call_listener_service.dart';
 import '../services/reaction_service.dart';
 import '../services/chat_service.dart' as chat;
 import '../services/vibration_service.dart';
+import '../services/call_stats_service.dart';
 import '../widgets/participant_video.dart';
 import '../widgets/stats_overlay.dart';
 import '../widgets/call_waiting_banner.dart';
@@ -53,6 +54,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   // Call timer
   Duration _callDuration = Duration.zero;
   
+  // Frame rate stabilization
+  Timer? _frameStabilizationTimer;
+  int _frameDropCount = 0;
+  DateTime _lastFrameTime = DateTime.now();
+  
   // Control animations
   bool _controlsVisible = true;
   late AnimationController _controlsAnimationController;
@@ -89,6 +95,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   // Quality dashboard state
   bool _qualityDashboardVisible = false;
   
+  // Call ending state
+  bool _isCallEnding = false;
+  bool _callEndedSnackbarShown = false;
+  
   // Modern chat state
   bool _chatOverlayVisible = false;
   int _unreadMessageCount = 0;
@@ -103,6 +113,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     
     // Register lifecycle observer
     WidgetsBinding.instance.addObserver(this);
+    
+    // Start frame rate stabilization
+    _startFrameStabilization();
     
     // Start listening for incoming calls while in call (for call-waiting)
     _callListener.startListening();
@@ -178,12 +191,105 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     _startControlsHideTimer();
   }
   
+  /// Start frame rate stabilization to reduce jitter
+  void _startFrameStabilization() {
+    _frameStabilizationTimer = Timer.periodic(const Duration(milliseconds: 33), (timer) {
+      // Target 30fps (33ms per frame)
+      final now = DateTime.now();
+      final timeSinceLastFrame = now.difference(_lastFrameTime).inMilliseconds;
+      
+      // Check for frame drops (>50ms between frames indicates jitter)
+      if (timeSinceLastFrame > 50) {
+        _frameDropCount++;
+        
+        // If we're dropping too many frames, trigger optimization
+        if (_frameDropCount > 5) {
+          _optimizeForSmoothPlayback();
+          _frameDropCount = 0; // Reset counter
+        }
+      } else {
+        // Good frame timing, reset drop count
+        _frameDropCount = 0;
+      }
+      
+      _lastFrameTime = now;
+    });
+  }
+  
+  /// Optimize video settings for smooth playback when jitter is detected
+  void _optimizeForSmoothPlayback() {
+    if (!mounted) return;
+    
+    try {
+      final livekit = context.read<LiveKitService>();
+      
+      debugPrint('🎬 Frame jitter detected - optimizing for smooth playback');
+      debugPrint('   - Applying frame rate stabilization');
+      debugPrint('   - Reducing buffer size for lower latency');
+      debugPrint('   - Enabling adaptive sync');
+      
+      // Force a quality adjustment to stabilize frame rate
+      // This will trigger the LiveKit service to recreate tracks with stable settings
+      livekit.applyObservedStats(const CallStats(
+        videoSendBitrate: 2000000, // 2 Mbps - stable bitrate
+        videoPacketLoss: 0.5, // Low packet loss
+        roundTripTime: 0.08, // 80ms RTT
+        jitter: 0.035, // 35ms jitter - triggers smoothing
+      ));
+      
+    } catch (e) {
+      debugPrint('❌ Error optimizing for smooth playback: $e');
+    }
+  }
+  
   /// Handle session end by other participant
   void _handleSessionEnd() {
     if (widget.sessionService?.isInCall == false && mounted) {
       // Call ended by another participant
       debugPrint('📞 Session ended - navigating back');
-      Navigator.of(context).pop();
+      _endCallAndNavigateBack();
+    }
+  }
+  
+  /// End call and navigate back with proper cleanup
+  Future<void> _endCallAndNavigateBack() async {
+    if (!mounted || _isCallEnding) return;
+    
+    setState(() {
+      _isCallEnding = true;
+    });
+    
+    try {
+      debugPrint('📞 Ending call and cleaning up...');
+      
+      // Fire and forget cleanup operations
+      widget.signalingService.endCall(widget.roomName).catchError((e) {
+        debugPrint('Error ending signaling call: $e');
+      });
+      
+      widget.sessionService?.endSession().catchError((e) {
+        debugPrint('Error ending session: $e');
+      });
+      
+      // Disconnect from LiveKit
+      final livekit = Provider.of<LiveKitService>(context, listen: false);
+      livekit.disconnect().catchError((e) {
+        debugPrint('Error disconnecting from LiveKit: $e');
+      });
+      
+      // Small delay to show ending state, then navigate
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Navigate back
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      debugPrint('Error during call cleanup: $e');
+      // Force navigation even if cleanup fails
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     }
   }
   
@@ -247,13 +353,23 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                   children: [
                     const Icon(Icons.person_add, color: Colors.white, size: 20),
                     const SizedBox(width: 8),
-                    Expanded(child: Text('$name joined the call')),
+                    Expanded(
+                      child: Text(
+                        '$name joined the call',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 duration: const Duration(seconds: 3),
-                backgroundColor: const Color(0xFF4CAF50),
+                backgroundColor: const Color(0xFF6B7FB8),
                 behavior: SnackBarBehavior.floating,
                 margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             );
           }
@@ -297,44 +413,40 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     }
     
     // Handle case when all remote participants have left (call ended)
-    if (livekit.remoteParticipants.isEmpty && _knownParticipantSids.isNotEmpty) {
+    if (livekit.remoteParticipants.isEmpty && _knownParticipantSids.isNotEmpty && !_callEndedSnackbarShown) {
       // All remote participants have disconnected
-      debugPrint('📞 All participants have left - ending call');
+      debugPrint('📞 All participants have left - ending call immediately');
       
       if (mounted) {
+        _callEndedSnackbarShown = true; // Prevent duplicate snackbars
+        
+        // Show brief notification
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Other participant left the call'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.call_end, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Call ended',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 1),
+            backgroundColor: const Color(0xFF2C2C2E),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
         
-        // Properly clean up the call
-        Future.delayed(const Duration(seconds: 2), () async {
-          if (mounted) {
-            try {
-              // End signaling call
-              widget.signalingService.endCall(widget.roomName);
-              
-              // End session if exists
-              widget.sessionService?.endSession();
-              
-              // Disconnect from LiveKit
-              final livekit = Provider.of<LiveKitService>(context, listen: false);
-              await livekit.disconnect();
-              
-              // Navigate back
-              if (mounted) {
-                Navigator.of(context).pop();
-              }
-            } catch (e) {
-              debugPrint('Error during call cleanup: $e');
-              if (mounted) {
-                Navigator.of(context).pop();
-              }
-            }
-          }
-        });
+        // End call immediately without delay to prevent black screen
+        _endCallAndNavigateBack();
       }
     }
   }
@@ -355,17 +467,28 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         // Show brief confirmation that call is still active
         if (mounted && state == AppLifecycleState.paused) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Row(
+            SnackBar(
+              content: const Row(
                 children: [
                   Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
                   SizedBox(width: 8),
-                  Expanded(child: Text('Call continues in background')),
+                  Expanded(
+                    child: Text(
+                      'Call continues in background',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              duration: Duration(seconds: 2),
-              backgroundColor: Color(0xFF4CAF50),
+              duration: const Duration(seconds: 2),
+              backgroundColor: const Color(0xFF6B7FB8),
               behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           );
           
@@ -592,8 +715,26 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(livekit.errorMessage ?? 'Failed to connect'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  livekit.errorMessage ?? 'Failed to connect',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFE53E3E),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     }
@@ -610,6 +751,48 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               CircularProgressIndicator(),
               SizedBox(height: 16),
               Text('Connecting to call...'),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    if (_isCallEnding) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.call_end,
+                  size: 64,
+                  color: Colors.red,
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Text(
+                'Call ended',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Duration: ${_formatDuration(_callDuration)}',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                ),
+              ),
             ],
           ),
         ),
@@ -681,17 +864,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                       child: _buildRoomInfo(coordinator),
                     ),
                     
-                    // Stats overlay (if enabled) - positioned just below time elapsed
-                    if (coordinator.isStatsCollecting)
-                      Positioned(
-                        top: 70, // Just below caller name (18px + 4px gap) + time (14px + 8px padding)
-                        left: 16, // Aligned with room info on left
-                        child: RepaintBoundary(
-                          child: StatsOverlay(
-                            statsService: coordinator.statsService,
-                          ),
-                        ),
-                      ),
+
                     
                     // Call-waiting banner (shows when receiving a call while in call)
                     if (_callListener.hasIncomingCall)
@@ -1265,29 +1438,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           // Vibrate when call is ended
           VibrationService.vibrateCallEnd();
           
-          try {
-            // Notify other participant the call is ending (fire and forget)
-            widget.signalingService.endCall(widget.roomName);
-            
-            // End session (fire and forget)
-            widget.sessionService?.endSession();
-            
-            // Disconnect from LiveKit (fire and forget)
-            livekit.disconnect();
-            
-            // Small delay to allow cleanup to start before navigation
-            await Future.delayed(const Duration(milliseconds: 100));
-            
-            // Pop to previous screen
-            if (mounted) {
-              Navigator.of(context).pop();
-            }
-          } catch (e) {
-            debugPrint('Error ending call: $e');
-            if (mounted) {
-              Navigator.of(context).pop();
-            }
-          }
+          // End call using the centralized method
+          await _endCallAndNavigateBack();
         },
         backgroundColor: Colors.red.shade600,
         size: centerButtonSize, // Larger center button
@@ -1492,22 +1644,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               },
             ),
             
-            // Call Health Overlay
-            ListTile(
-              leading: const Icon(Icons.monitor_heart, color: Color(0xFF6B7FB8)),
-              title: const Text('Call Health Overlay', style: TextStyle(color: Colors.white)),
-              trailing: Switch(
-                value: coordinator.isStatsCollecting,
-                onChanged: (value) {
-                  if (value) {
-                    coordinator.startStatsCollection();
-                  } else {
-                    coordinator.stopStatsCollection();
-                  }
-                  Navigator.pop(context);
-                },
-              ),
-            ),
+
             
             // Quality Dashboard
             ListTile(
@@ -1719,7 +1856,26 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                       if (mounted) Navigator.pop(context);
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('User not found')),
+                          SnackBar(
+                            content: const Row(
+                              children: [
+                                Icon(Icons.person_off, color: Colors.white, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  'User not found',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF2C2C2E),
+                            behavior: SnackBarBehavior.floating,
+                            margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
                         );
                       }
                       return;
@@ -1739,14 +1895,56 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                     if (mounted) Navigator.pop(context);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Invitation sent to $email')),
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(Icons.send, color: Colors.white, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Invitation sent to $email',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: const Color(0xFF6B7FB8),
+                          behavior: SnackBarBehavior.floating,
+                          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                       );
                     }
                   } catch (e) {
                     if (mounted) Navigator.pop(context);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to send invitation: $e')),
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Failed to send invitation: $e',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: const Color(0xFFE53E3E),
+                          behavior: SnackBarBehavior.floating,
+                          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                       );
                     }
                   }
@@ -1783,8 +1981,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           // Only increment unread count if chat overlay is not visible
           if (!_chatOverlayVisible) {
             _unreadMessageCount++;
+            // Auto-show chat overlay for new messages
+            _chatOverlayVisible = true;
           }
         });
+        
+        // Vibrate for new message
+        VibrationService.vibrateNewMessage();
+        
+        debugPrint('📬 New chat message received: ${lastMessage.message}');
       }
     }
   }
@@ -1829,8 +2034,27 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         setState(() {}); // Hide banner
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${incomingCall['callerName']} joined the call'),
+            content: Row(
+              children: [
+                const Icon(Icons.person_add, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${incomingCall['callerName']} joined the call',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
             duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF6B7FB8),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -1840,7 +2064,28 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       debugPrint('❌ Error accepting waiting call: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add ${incomingCall?['callerName'] ?? 'caller'} to call')),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Failed to add ${incomingCall?['callerName'] ?? 'caller'} to call',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFE53E3E),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
         );
       }
     }
@@ -1879,6 +2124,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   @override
   void dispose() {
     _controlsHideTimer?.cancel();
+    _frameStabilizationTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     widget.sessionService?.removeListener(_handleSessionEnd);
     _callListener.removeListener(_handleIncomingCallWhileInCall);

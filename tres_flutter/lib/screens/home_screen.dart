@@ -11,6 +11,8 @@ import '../services/call_signaling_service.dart';
 import '../services/call_session_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/responsive_container.dart';
+import '../widgets/skeleton_loader.dart';
+import '../services/vibration_service.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 import 'call_screen.dart';
@@ -768,7 +770,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => setState(() => _showContactsView = true),
+                      onPressed: () {
+                  VibrationService.lightImpact();
+                  setState(() => _showContactsView = true);
+                },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _showContactsView
                             ? const Color(0xFF6B7FB8)
@@ -799,7 +804,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => setState(() => _showContactsView = false),
+                      onPressed: () {
+                  VibrationService.lightImpact();
+                  setState(() => _showContactsView = false);
+                },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: !_showContactsView
                             ? const Color(0xFF6B7FB8)
@@ -859,12 +867,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         ),
       ),
     ),
+    floatingActionButton: FloatingActionButton.extended(
+      onPressed: () {
+        VibrationService.mediumImpact();
+        _showAddContactDialog();
+      },
+      backgroundColor: const Color(0xFF6B7FB8),
+      foregroundColor: Colors.white,
+      elevation: 8,
+      icon: const Icon(Icons.add_call),
+      label: const Text('Quick Call'),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+    ),
     );
   }
 
   Widget _buildContactsList() {
     if (_isLoadingContacts) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF6B7FB8)));
+      return ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        itemCount: 6,
+        itemBuilder: (context, index) => const ContactSkeleton(),
+      );
     }
 
     if (_filteredContacts.isEmpty) {
@@ -948,7 +974,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               // Phone icon
               IconButton(
                 icon: const Icon(Icons.phone, color: Color(0xFF6B7FB8), size: 22),
-                onPressed: () => _startCallWithContact(contact),
+                onPressed: () {
+                  VibrationService.mediumImpact();
+                  _startCallWithContact(contact);
+                },
               ),
             ],
           ),

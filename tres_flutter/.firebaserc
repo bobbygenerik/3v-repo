@@ -1,0 +1,13 @@
+{
+  "projects": {},
+  "targets": {
+    "tres3-5fdba": {
+      "hosting": {
+        "main": [
+          "tres3"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

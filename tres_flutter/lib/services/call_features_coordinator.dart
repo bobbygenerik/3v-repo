@@ -171,6 +171,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
   /// Chat callbacks
   void _onChatChanged() {
+    debugPrint('📬 CallFeaturesCoordinator: Chat changed, notifying listeners');
     notifyListeners();
   }
 
@@ -215,7 +216,13 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
   /// Send chat message
   Future<bool> sendChatMessage(String message) async {
-    return await chatService.sendMessage(message);
+    debugPrint('📬 CallFeaturesCoordinator: Sending message: $message');
+    final success = await chatService.sendMessage(message);
+    if (success) {
+      // Force notification to ensure UI updates
+      notifyListeners();
+    }
+    return success;
   }
 
   /// Send reaction
