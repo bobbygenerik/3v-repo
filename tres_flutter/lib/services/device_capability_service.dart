@@ -102,9 +102,17 @@ class DeviceCapabilityService {
       final processors = Platform.numberOfProcessors;
       debugPrint('📱 Android processors: $processors');
       
+      // Special detection for known low-end devices
+      if (_isKnownLowEndDevice()) {
+        _capability = DeviceCapability.lowEnd;
+        _preferredCodec = PreferredCodec.h264; // H.264 baseline for compatibility
+        debugPrint('🔧 Low-end device detected: Optimized settings applied');
+        return;
+      }
+      
       if (processors <= 2) {
         _capability = DeviceCapability.lowEnd;
-        _preferredCodec = PreferredCodec.vp9;
+        _preferredCodec = PreferredCodec.h264; // Changed from VP9 for better compatibility
       } else if (processors <= 3) {
         _capability = DeviceCapability.midRange;
         _preferredCodec = PreferredCodec.h264;
@@ -119,6 +127,32 @@ class DeviceCapabilityService {
       _preferredCodec = PreferredCodec.h264;
     }
   }
+
+  /// Check if device is known low-end (Fire tablets, old budget phones)
+  static bool _isKnownLowEndDevice() {
+    try {
+      // Check for Amazon Fire tablets and other known low-end devices
+      final brand = Platform.environment['ro.product.brand']?.toLowerCase() ?? '';
+      final model = Platform.environment['ro.product.model']?.toLowerCase() ?? '';
+      
+      // Amazon Fire tablets
+      if (brand.contains('amazon') || model.contains('fire')) {
+        return true;
+      }
+      
+      // Other known low-end patterns
+      final lowEndPatterns = ['mt8', 'sc9', 'unisoc', 'spreadtrum'];
+      for (final pattern in lowEndPatterns) {
+        if (model.contains(pattern)) {
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
   
   /// Get max video bitrate for device (EXTREME quality)
   /// Now supporting up to 25 Mbps for 4K calls
@@ -129,7 +163,19 @@ class DeviceCapabilityService {
       case DeviceCapability.midRange:
         return 12000 * 1000; // 12 Mbps for enhanced mid-range
       case DeviceCapability.lowEnd:
-        return 6000 * 1000; // 6 Mbps for improved low-end
+        return 2000 * 1000; // 2 Mbps for low-end (Fire tablets, old devices)
+    }
+  }
+
+  /// Get optimized resolution for device
+  static Map<String, int> getOptimalResolution() {
+    switch (_capability) {
+      case DeviceCapability.highEnd:
+        return {'width': 1920, 'height': 1080}; // 1080p for flagship
+      case DeviceCapability.midRange:
+        return {'width': 1280, 'height': 720}; // 720p for mid-range
+      case DeviceCapability.lowEnd:
+        return {'width': 640, 'height': 480}; // 480p for low-end devices
     }
   }
   
@@ -153,7 +199,7 @@ class DeviceCapabilityService {
       case DeviceCapability.midRange:
         return 30;
       case DeviceCapability.lowEnd:
-        return 24; // Lower for battery/CPU
+        return 15; // Much lower for Fire tablets and budget devices
     }
   }
   

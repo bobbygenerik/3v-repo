@@ -57,6 +57,17 @@ class FaceTimeVideoPresets {
     dimensions: VideoDimensions(1280, 720),
     encoding: VideoEncoding(maxBitrate: 5_000_000, maxFramerate: 30),
   );
+
+  // LOW-END DEVICE OPTIMIZATIONS
+  static final lowEnd480p = VideoParameters(
+    dimensions: VideoDimensions(640, 480),
+    encoding: VideoEncoding(maxBitrate: 2_000_000, maxFramerate: 15),
+  );
+
+  static final lowEnd360p = VideoParameters(
+    dimensions: VideoDimensions(480, 360),
+    encoding: VideoEncoding(maxBitrate: 1_000_000, maxFramerate: 15),
+  );
 }
 
 class LiveKitService extends ChangeNotifier {
@@ -235,6 +246,7 @@ class LiveKitService extends ChangeNotifier {
     _currentVideoCodec = _getPreferredCodec();
     
     // Get device capability limits
+    final deviceCapability = DeviceCapabilityService.capability;
     final deviceMaxBitrate = DeviceCapabilityService.getMaxVideoBitrate();
     final deviceMaxFramerate = DeviceCapabilityService.getMaxFramerate();
     
@@ -243,6 +255,17 @@ class LiveKitService extends ChangeNotifier {
     
     int finalBitrate;
     int finalFramerate = deviceMaxFramerate;
+    
+    // Special handling for low-end devices
+    if (deviceCapability == DeviceCapability.lowEnd) {
+      finalBitrate = deviceMaxBitrate; // Use conservative 2 Mbps
+      finalFramerate = 15; // Lower framerate for stability
+      debugPrint('🔧 Low-end device optimization applied');
+      return VideoEncoding(
+        maxBitrate: finalBitrate,
+        maxFramerate: finalFramerate,
+      );
+    }
     
     if (_isUltraHQMode) {
       // Android Ultra-HQ mode: Higher bitrates allowed
@@ -306,8 +329,13 @@ class LiveKitService extends ChangeNotifier {
       final optimalEncoding = _getOptimalVideoEncoding();
       VideoParameters captureParams;
       
-      // Select capture parameters based on call type and Ultra-HQ mode
-      if (_isUltraHQMode && _supports4K()) {
+      // Select capture parameters based on device capability first
+      final deviceCapability = DeviceCapabilityService.capability;
+      
+      if (deviceCapability == DeviceCapability.lowEnd) {
+        // Low-end devices: Use 480p for stability
+        captureParams = FaceTimeVideoPresets.lowEnd480p;
+      } else if (_isUltraHQMode && _supports4K()) {
         captureParams = FaceTimeVideoPresets.androidExtreme4K;
       } else if (_isUltraHQMode && _supports1440p60()) {
         captureParams = FaceTimeVideoPresets.androidExtreme1440p60;
@@ -450,8 +478,13 @@ class LiveKitService extends ChangeNotifier {
         final optimalEncoding = _getOptimalVideoEncoding();
         VideoParameters captureParams;
         
-        // Select capture parameters
-        if (_isUltraHQMode && _supports60fps()) {
+        // Select capture parameters based on device capability
+        final deviceCapability = DeviceCapabilityService.capability;
+        
+        if (deviceCapability == DeviceCapability.lowEnd) {
+          // Low-end devices: Use 480p for stability
+          captureParams = FaceTimeVideoPresets.lowEnd480p;
+        } else if (_isUltraHQMode && _supports60fps()) {
           captureParams = FaceTimeVideoPresets.androidUltraHQ60;
         } else if (_isUltraHQMode) {
           captureParams = FaceTimeVideoPresets.androidUltraHQ;
