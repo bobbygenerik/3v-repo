@@ -1,0 +1,84 @@
+port: 7890
+bind_addresses:
+  - ""
+
+rtc:
+  tcp_port: 7891
+  port_range_start: 50000
+  port_range_end: 60000
+  use_external_ip: true
+  
+keys:
+  f03678d1c6db35971ad1c4e751e69421: 027cc579f784050c49e45da3b14f68802f705620b7733ad508977a7f2682f0f6
+
+# EXTREME QUALITY CODEC CONFIGURATION
+codecs:
+  # AV1 with extreme quality settings
+  - mime: video/AV1
+    fmtp: "profile-id=0;level-idx=8;tier=1"
+  # H.264 High Profile Level 5.2 (supports 4K)
+  - mime: video/H264
+    fmtp: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=640034"
+  # VP9 Profile 2 (10-bit, HDR support)
+  - mime: video/VP9
+    fmtp: "profile-id=2"
+  # H.265/HEVC for extreme efficiency
+  - mime: video/H265
+    fmtp: "profile-id=1;level-id=153"
+
+# EXTREME PERFORMANCE SETTINGS
+room:
+  max_participants: 10  # Reduced for extreme quality
+  empty_timeout: 300s
+  max_bitrate: 25000000  # 25 Mbps max
+  
+# VIDEO PROCESSING PIPELINE
+video:
+  # Hardware acceleration
+  hardware_encoder: true
+  # Extreme quality settings
+  quality_preset: "veryslow"  # Best compression
+  tune: "film"  # Optimized for video calls
+  # Advanced encoding
+  crf: 18  # Very high quality (lower = better)
+  preset: "veryslow"
+  # Noise reduction
+  denoise: "medium"
+  # Sharpening
+  unsharp: "5:5:0.8:3:3:0.4"
+
+# AUDIO EXTREME QUALITY
+audio:
+  # Opus with maximum quality
+  bitrate: 48000  # 48 kbps
+  sample_rate: 48000
+  channels: 2  # Stereo for extreme quality
+  # Advanced audio processing
+  noise_suppression: true
+  echo_cancellation: true
+  auto_gain_control: true
+  # High-quality audio codec
+  codec: "opus"
+  complexity: 10  # Maximum complexity
+
+# NETWORK OPTIMIZATIONS
+network:
+  # Aggressive adaptation
+  adaptation_enabled: true
+  # Higher buffer sizes for quality
+  jitter_buffer_min: 50
+  jitter_buffer_max: 500
+  # Packet loss recovery
+  fec_enabled: true
+  rtx_enabled: true
+  # Bandwidth probing
+  bandwidth_probe: true
+
+# LOGGING FOR DEBUGGING
+log_level: debug
+log_stats: true
+
+# PERFORMANCE MONITORING
+metrics:
+  enabled: true
+  prometheus_port: 9090

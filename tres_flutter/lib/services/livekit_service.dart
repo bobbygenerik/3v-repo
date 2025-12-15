@@ -31,13 +31,25 @@ class FaceTimeVideoPresets {
   // Android Ultra-HQ 1080p+
   static final androidUltraHQ = VideoParameters(
     dimensions: VideoDimensions(1920, 1080),
-    encoding: VideoEncoding(maxBitrate: 8_000_000, maxFramerate: 30),
+    encoding: VideoEncoding(maxBitrate: 12_000_000, maxFramerate: 30),
   );
 
   // Android Ultra-HQ 60 FPS (High-End Devices Only)
   static final androidUltraHQ60 = VideoParameters(
     dimensions: VideoDimensions(1920, 1080),
-    encoding: VideoEncoding(maxBitrate: 10_000_000, maxFramerate: 60),
+    encoding: VideoEncoding(maxBitrate: 15_000_000, maxFramerate: 60),
+  );
+
+  // EXTREME QUALITY - 4K Support for flagship devices
+  static final androidExtreme4K = VideoParameters(
+    dimensions: VideoDimensions(3840, 2160),
+    encoding: VideoEncoding(maxBitrate: 25_000_000, maxFramerate: 30),
+  );
+
+  // EXTREME QUALITY - 1440p 60fps
+  static final androidExtreme1440p60 = VideoParameters(
+    dimensions: VideoDimensions(2560, 1440),
+    encoding: VideoEncoding(maxBitrate: 20_000_000, maxFramerate: 60),
   );
 
   // Android-Only Ultra-HQ 720p
@@ -154,18 +166,38 @@ class LiveKitService extends ChangeNotifier {
 
   /// Check AV1 support
   bool _supportsAV1() {
-    // Simplified AV1 support detection
-    // In real implementation, this would check actual hardware encoder support
+    // Use device capability service's built-in AV1 detection
     final deviceInfo = DeviceCapabilityService.getDeviceInfo();
-    final chipset = deviceInfo['chipset']?.toLowerCase() ?? '';
-    
-    return chipset.contains('snapdragon 8') || 
-           chipset.contains('tensor') ||
-           chipset.contains('exynos 2');
+    return deviceInfo['supportsAV1'] == true;
   }
 
   /// Check if device supports 60fps
   bool _supports60fps() {
+    final deviceLevel = DeviceCapabilityService.getDeviceLevel();
+    final chipset = DeviceCapabilityService.getDeviceInfo()['chipset']?.toLowerCase() ?? '';
+    
+    return deviceLevel >= 9 && (
+      chipset.contains('snapdragon 8 gen') ||
+      chipset.contains('tensor g') ||
+      chipset.contains('exynos 2')
+    );
+  }
+
+  /// Check if device supports 4K recording
+  bool _supports4K() {
+    final deviceLevel = DeviceCapabilityService.getDeviceLevel();
+    final chipset = DeviceCapabilityService.getDeviceInfo()['chipset']?.toLowerCase() ?? '';
+    
+    return deviceLevel >= 9 && (
+      chipset.contains('snapdragon 8 gen 2') ||
+      chipset.contains('snapdragon 8 gen 3') ||
+      chipset.contains('tensor g3') ||
+      chipset.contains('exynos 2400')
+    );
+  }
+
+  /// Check if device supports 1440p 60fps
+  bool _supports1440p60() {
     final deviceLevel = DeviceCapabilityService.getDeviceLevel();
     final chipset = DeviceCapabilityService.getDeviceInfo()['chipset']?.toLowerCase() ?? '';
     
@@ -263,7 +295,7 @@ class LiveKitService extends ChangeNotifier {
       debugPrint('🎯 FaceTime-Quality Connection Setup:');
       debugPrint('   📞 Call Type: $_currentCallType');
       debugPrint('   🚀 Ultra-HQ Mode: $_isUltraHQMode');
-      debugPrint('   📡 Codec: $_currentVideoCodec');
+      debugPrint('   📡 Preferred Codec: $_currentVideoCodec');
       debugPrint('   🔄 Simulcast: $_isSimulcastEnabled (disabled for 1-to-1)');
       
       _room = Room();
@@ -275,7 +307,11 @@ class LiveKitService extends ChangeNotifier {
       VideoParameters captureParams;
       
       // Select capture parameters based on call type and Ultra-HQ mode
-      if (_isUltraHQMode && _supports60fps()) {
+      if (_isUltraHQMode && _supports4K()) {
+        captureParams = FaceTimeVideoPresets.androidExtreme4K;
+      } else if (_isUltraHQMode && _supports1440p60()) {
+        captureParams = FaceTimeVideoPresets.androidExtreme1440p60;
+      } else if (_isUltraHQMode && _supports60fps()) {
         captureParams = FaceTimeVideoPresets.androidUltraHQ60;
       } else if (_isUltraHQMode) {
         captureParams = FaceTimeVideoPresets.androidUltraHQ;
@@ -331,6 +367,10 @@ class LiveKitService extends ChangeNotifier {
       ]).timeout(const Duration(seconds: 12), onTimeout: () {
         throw Exception('Timed out while enabling local media tracks');
       });
+      
+      // Verify actual codec being used after connection
+      await Future.delayed(const Duration(seconds: 2)); // Wait for negotiation
+      _logActualCodecUsed();
       
       debugPrint('✅ Connected to LiveKit room with FaceTime-quality tuning: $roomName');
       return true;
@@ -730,6 +770,30 @@ class LiveKitService extends ChangeNotifier {
     notifyListeners();
   }
   
+  /// Log actual codec being used after connection
+  void _logActualCodecUsed() {
+    try {
+      final localParticipant = _room?.localParticipant;
+      final videoTrack = localParticipant?.videoTrackPublications.firstOrNull?.track;
+      
+      if (videoTrack != null) {
+        debugPrint('📊 ACTUAL CODEC VERIFICATION:');
+        debugPrint('   🎯 Requested: $_currentVideoCodec');
+        debugPrint('   ✅ LiveKit Server Accepted: ${videoTrack.source}');
+        
+        // Check if AV1 was requested but H.264 is being used (indicates no AV1 support)
+        if (_currentVideoCodec == 'av1' && !videoTrack.source.toString().toLowerCase().contains('av1')) {
+          debugPrint('   ⚠️ AV1 requested but not used - LiveKit server may not support AV1');
+          debugPrint('   📝 Recommendation: Check LiveKit Cloud plan or server configuration');
+        }
+      } else {
+        debugPrint('⚠️ Could not verify codec - no video track found');
+      }
+    } catch (e) {
+      debugPrint('Error checking actual codec: $e');
+    }
+  }
+
   /// Debug FaceTime-quality settings
   void debugFaceTimeQualitySettings() {
     debugPrint('🔍 FaceTime-Quality Debug Info:');
@@ -746,6 +810,9 @@ class LiveKitService extends ChangeNotifier {
       debugPrint('   - May ignore some encoder hints');
       debugPrint('   - May throttle under thermal pressure');
     }
+    
+    // Check actual codec being used
+    _logActualCodecUsed();
   }
   
   /// Update the PiP video stream with the specified participant's video track

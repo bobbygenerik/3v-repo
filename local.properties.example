@@ -4,13 +4,13 @@
 # Android SDK location (adjust to your system)
 sdk.dir=/home/username/Android/Sdk
 
-# LiveKit Configuration (get from https://cloud.livekit.io/)
-livekit.url=wss://your-project.livekit.cloud
-livekit.api.key=your_livekit_api_key_here
-livekit.api.secret=your_livekit_api_secret_here
+# LiveKit Configuration (Self-hosted VPS with AV1 support)
+livekit.url=ws://31.220.97.48:7890
+livekit.api.key=f03678d1c6db35971ad1c4e751e69421
+livekit.api.secret=027cc579f784050c49e45da3b14f68802f705620b7733ad508977a7f2682f0f6
 
 # ===== SETUP INSTRUCTIONS =====
 # 1. Copy this file to local.properties (same directory)
 # 2. Update sdk.dir to point to your Android SDK
-# 3. Fill in LiveKit credentials from your LiveKit Cloud dashboard
+# 3. Credentials are now set for your self-hosted VPS LiveKit server
 # 4. NEVER commit local.properties to git

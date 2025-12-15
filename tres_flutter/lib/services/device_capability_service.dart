@@ -120,16 +120,16 @@ class DeviceCapabilityService {
     }
   }
   
-  /// Get max video bitrate for device (FaceTime-level quality)
-  /// FaceTime uses ~3-5 Mbps for 1080p, we go higher for headroom
+  /// Get max video bitrate for device (EXTREME quality)
+  /// Now supporting up to 25 Mbps for 4K calls
   static int getMaxVideoBitrate() {
     switch (_capability) {
       case DeviceCapability.highEnd:
-        return 15000 * 1000; // 15 Mbps for high-end (allows overhead for encoding)
+        return 25000 * 1000; // 25 Mbps for extreme quality (4K support)
       case DeviceCapability.midRange:
-        return 8000 * 1000; // 8 Mbps for mid-range
+        return 12000 * 1000; // 12 Mbps for enhanced mid-range
       case DeviceCapability.lowEnd:
-        return 3000 * 1000; // 3 Mbps for low-end
+        return 6000 * 1000; // 6 Mbps for improved low-end
     }
   }
   
@@ -208,6 +208,23 @@ class DeviceCapabilityService {
   static bool _supportsAV1() {
     final level = getDeviceLevel();
     return level >= 8; // Only high-end devices support AV1
+  }
+
+  /// Check if device supports 4K video
+  static bool _supports4K() {
+    final level = getDeviceLevel();
+    final chipset = _getChipsetInfo().toLowerCase();
+    return level >= 9 && (
+      chipset.contains('snapdragon 8') ||
+      chipset.contains('tensor') ||
+      chipset.contains('exynos 2')
+    );
+  }
+
+  /// Check if device supports HEVC/H.265
+  static bool _supportsHEVC() {
+    final level = getDeviceLevel();
+    return level >= 8; // Most modern devices support HEVC
   }
   
   /// Check if device supports 60fps
