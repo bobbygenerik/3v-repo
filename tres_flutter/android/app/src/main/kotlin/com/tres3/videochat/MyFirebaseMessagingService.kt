@@ -9,26 +9,42 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import android.util.Log
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
+        android.util.Log.d("FCM", "Message received: ${remoteMessage.data}")
+        
         val data = remoteMessage.data
         val type = data["type"] ?: ""
+        
         if (type == "call_invite" || type == "guest_joining") {
-            val invitationId = data["invitationId"] ?: data["invitationId"] ?: ""
+            val invitationId = data["invitationId"] ?: ""
             val fromName = data["fromUserName"] ?: data["guestName"] ?: "Incoming call"
 
             val channelId = "call_channel"
             val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            
+            // Create high-priority notification channel
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val ch = NotificationChannel(channelId, "Calls", NotificationManager.IMPORTANCE_HIGH)
+                val ch = NotificationChannel(
+                    channelId, 
+                    "Calls", 
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Incoming call notifications"
+                    enableVibration(true)
+                    enableLights(true)
+                    setBypassDnd(true)
+                    setShowBadge(true)
+                }
                 nm.createNotificationChannel(ch)
             }
 
             val fullScreenIntent = Intent(this, FullScreenCallActivity::class.java).apply {
                 putExtra("invitationId", invitationId)
                 putExtra("fromName", fromName)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             }
 
             val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
@@ -52,15 +68,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val notification = NotificationCompat.Builder(this, channelId)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("$fromName is calling")
-                .setContentText("Tap to answer")
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentText("Tap to answer or use buttons below")
+                .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
-                .setAutoCancel(true)
+                .setAutoCancel(false)
+                .setOngoing(true)
                 .setFullScreenIntent(fullScreenPendingIntent, true)
+                .setVibrate(longArrayOf(0, 1000, 500, 1000))
+                .setTimeoutAfter(30000) // 30 seconds
                 .addAction(R.drawable.ic_call_accept, "Accept", acceptPI)
                 .addAction(R.drawable.ic_call_decline, "Decline", declinePI)
                 .build()
 
+            android.util.Log.d("FCM", "Showing notification for $fromName")
             nm.notify(1001, notification)
         }
     }
