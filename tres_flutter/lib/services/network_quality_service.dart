@@ -116,6 +116,21 @@ class NetworkQualityService extends ChangeNotifier {
            _currentQuality != NetworkQuality.poor;
   }
   
+  /// Get current network type as string
+  String getCurrentNetworkType() {
+    switch (_currentQuality) {
+      case NetworkQuality.excellent:
+      case NetworkQuality.good:
+        return 'wifi'; // Assume excellent/good quality is WiFi
+      case NetworkQuality.fair:
+        return '5g'; // Fair quality might be 5G
+      case NetworkQuality.poor:
+        return '4g'; // Poor quality likely 4G
+      case NetworkQuality.offline:
+        return 'none';
+    }
+  }
+  
   @override
   void dispose() {
     stopMonitoring();

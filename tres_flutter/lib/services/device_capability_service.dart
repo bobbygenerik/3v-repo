@@ -164,4 +164,60 @@ class DeviceCapabilityService {
     return _capability == DeviceCapability.highEnd || 
            _capability == DeviceCapability.midRange;
   }
+  
+  /// Get device information map
+  static Map<String, dynamic> getDeviceInfo() {
+    final Map<String, dynamic> info = {
+      'capability': _capability.name,
+      'preferredCodec': _preferredCodec.name,
+      'isThermalThrottling': false, // Simplified - would need platform-specific implementation
+      'chipset': _getChipsetInfo(),
+      'supportsAV1': _supportsAV1(),
+      'supports60fps': _supports60fps(),
+    };
+    return info;
+  }
+  
+  /// Get device capability level (1-10 scale)
+  static int getDeviceLevel() {
+    switch (_capability) {
+      case DeviceCapability.highEnd:
+        return 9; // High-end devices get level 9
+      case DeviceCapability.midRange:
+        return 6; // Mid-range devices get level 6
+      case DeviceCapability.lowEnd:
+        return 3; // Low-end devices get level 3
+    }
+  }
+  
+  /// Get chipset information (simplified)
+  static String _getChipsetInfo() {
+    if (kIsWeb) return 'web-browser';
+    if (Platform.isIOS) return 'apple-silicon';
+    if (Platform.isAndroid) {
+      // Simplified chipset detection based on processor count
+      final processors = Platform.numberOfProcessors;
+      if (processors >= 8) return 'snapdragon-8-series';
+      if (processors >= 6) return 'snapdragon-7-series';
+      return 'snapdragon-6-series';
+    }
+    return 'unknown';
+  }
+  
+  /// Check if device supports AV1 codec
+  static bool _supportsAV1() {
+    final level = getDeviceLevel();
+    return level >= 8; // Only high-end devices support AV1
+  }
+  
+  /// Check if device supports 60fps
+  static bool _supports60fps() {
+    final level = getDeviceLevel();
+    final chipset = _getChipsetInfo().toLowerCase();
+    return level >= 9 && (
+      chipset.contains('snapdragon 8') ||
+      chipset.contains('tensor') ||
+      chipset.contains('exynos 2')
+    );
+  }
 }

@@ -1,0 +1,256 @@
+Absolutely 👍
+Below is **ONE unified, copy-paste-ready master brief** that includes:
+
+* ✅ **All the cross-platform FaceTime-quality tuning**
+* ✅ **PLUS the Android-only Ultra-HQ preset**
+* ✅ Clearly scoped rules so Android ↔ Android gets extra quality
+* ✅ Written as **instructions for an AI agent in VS Code**
+
+You can drop this into **a single `.txt` file** and hand it straight to Amazon Q.
+
+---
+
+# 🎥 LiveKit FaceTime-Quality Master Tuning Brief
+
+**Platforms:** Android native + iOS PWA (Safari WebRTC)
+**Primary Goal:** Max achievable video quality approaching FaceTime
+**Secondary Goal:** Android ↔ Android Ultra-HQ mode
+
+---
+
+## 0️⃣ Core Assumptions
+
+* Optimize **1-to-1 calls first**
+* Group calls intentionally degrade quality
+* Visual clarity is prioritized over conservative WebRTC defaults
+* All defaults must be explicitly overridden
+
+---
+
+## 1️⃣ Call Classification Logic (Required)
+
+Determine call type at runtime:
+
+* Android ↔ Android (native)
+* Android ↔ iOS PWA
+* iOS PWA ↔ iOS PWA
+* Mixed / unknown
+
+Apply presets based on weakest platform unless **Android ↔ Android Ultra-HQ** conditions are met.
+
+---
+
+## 2️⃣ Simulcast Policy (Critical)
+
+### 1-to-1 Calls
+
+```ts
+publishTrack(videoTrack, {
+  simulcast: false,
+});
+```
+
+Simulcast is NEVER used for 1-to-1 calls.
+
+---
+
+## 3️⃣ Codec Strategy (Platform-Aware)
+
+### Default Cross-Platform Order
+
+1. **H.264 High Profile**
+2. VP9 (fallback)
+3. VP8 (last resort only)
+
+```ts
+const room = new Room({
+  videoCodec: 'h264',
+});
+```
+
+---
+
+### Android ↔ Android Override
+
+1. **AV1** (if supported)
+2. **H.264 High Profile**
+3. VP9 fallback only
+
+```ts
+videoCodec = supportsAV1 ? 'av1' : 'h264';
+```
+
+---
+
+## 4️⃣ Explicit Video Presets (No Defaults)
+
+### Cross-Platform 1080p HQ
+
+```ts
+VideoPresets.h1080 = {
+  resolution: { width: 1920, height: 1080 },
+  maxBitrate: 6_000_000,
+  maxFramerate: 30,
+};
+```
+
+### Cross-Platform 720p Fallback
+
+```ts
+VideoPresets.h720 = {
+  resolution: { width: 1280, height: 720 },
+  maxBitrate: 3_500_000,
+  maxFramerate: 30,
+};
+```
+
+```ts
+videoCaptureDefaults: {
+  resolution: VideoPresets.h1080.resolution,
+},
+```
+
+---
+
+## 5️⃣ Android ↔ Android Ultra-HQ Preset (Add-On)
+
+### Enable ONLY if:
+
+* Both peers are Android native
+* Same app build
+* Thermal state = normal
+* Network = Wi-Fi or strong 5G
+
+---
+
+### Android Ultra-HQ 1080p+
+
+```ts
+VideoPresets.androidUltraHQ = {
+  resolution: { width: 1920, height: 1080 },
+  maxBitrate: 8_000_000,
+  maxFramerate: 30,
+};
+```
+
+### Optional Android Ultra-HQ 60 FPS (High-End Devices Only)
+
+```ts
+VideoPresets.androidUltraHQ60 = {
+  resolution: { width: 1920, height: 1080 },
+  maxBitrate: 10_000_000,
+  maxFramerate: 60,
+};
+```
+
+Enable 60 FPS only for:
+
+* Snapdragon 8 Gen 1+
+* Tensor G2+
+* Exynos 2200+
+* Verified thermal headroom
+
+---
+
+## 6️⃣ Bitrate & Adaptation Policy
+
+* Allow bitrate bursting
+* Prefer dropping FPS before resolution
+* Avoid dropping below 720p unless packet loss > ~5%
+* Android ↔ Android allowed higher sustained bitrate
+
+---
+
+## 7️⃣ Camera Control (Major Quality Factor)
+
+### Android (CameraX)
+
+* Lock exposure after stabilization
+* Lock focus after autofocus completes
+* Disable auto-HDR if flicker detected
+* Avoid camera restarts mid-call
+
+### iOS PWA (Safari)
+
+* Limited control
+* Minimize renegotiation
+* Avoid frequent track changes
+
+---
+
+## 8️⃣ Pre-Encode Video Enhancement (Required)
+
+LiveKit does **no** enhancement by default.
+
+### Cross-Platform Enhancement
+
+1. Mild temporal denoise
+2. Subtle sharpening
+3. Contrast normalization
+4. Slight gamma lift (skin tones)
+
+### Android-Only Enhancement (Stronger)
+
+1. Motion-aware temporal denoise
+2. Edge-preserving sharpening (low strength)
+3. Local contrast enhancement
+4. Skin-tone biased gamma correction
+
+⚠️ Avoid aggressive sharpening (causes compression artifacts).
+
+---
+
+## 9️⃣ Audio Bandwidth Protection
+
+* Opus codec
+* 24–32 kbps (speech)
+* Enable DTX
+* Disable stereo unless required
+
+Audio must never starve video bitrate.
+
+---
+
+## 🔟 iOS PWA Constraints (Known Limits)
+
+Safari WebRTC:
+
+* Caps bitrate unpredictably
+* Ignores some encoder hints
+* Throttles under thermal pressure
+
+Result:
+
+* Cannot exceed FaceTime
+* Can approach Zoom HQ with tuning
+
+---
+
+## 1️⃣1️⃣ Debugging Checklist
+
+If quality is poor:
+
+* Confirm codec ≠ VP8
+* Confirm simulcast OFF
+* Log actual outgoing bitrate
+* Check camera exposure stability
+* Check thermal throttling
+* Verify preset selection logic
+
+---
+
+## 1️⃣2️⃣ Expected Results
+
+| Scenario                   | Expected Quality     |
+| -------------------------- | -------------------- |
+| Android ↔ Android Ultra-HQ | Near FaceTime        |
+| Android ↔ Android HQ       | Zoom-level           |
+| Android ↔ iOS PWA          | High, below FaceTime |
+| iOS PWA ↔ iOS PWA          | Better than WhatsApp |
+
+---
+
+## Final Instruction to Agent
+
+This application intentionally overrides conservative WebRTC defaults
+to maximize visual quality where hardware and network allow.
