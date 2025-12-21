@@ -34,7 +34,33 @@ class AndroidPipService {
       return false;
     }
   }
-  
+
+  /// Enable or disable auto-enter PiP when user leaves the app.
+  static Future<void> setAutoPipEnabled(bool enabled) async {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+
+    try {
+      await _channel.invokeMethod('setAutoPipEnabled', {'enabled': enabled});
+    } catch (e) {
+      debugPrint('Error setting auto PiP: $e');
+    }
+  }
+
+  /// Indicate whether a call is active for auto PiP.
+  static Future<void> setCallActive(bool active) async {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+
+    try {
+      await _channel.invokeMethod('setCallActive', {'active': active});
+    } catch (e) {
+      debugPrint('Error setting call active: $e');
+    }
+  }
+
   /// Check if currently in PiP mode
   static Future<bool> isInPipMode() async {
     if (defaultTargetPlatform != TargetPlatform.android) {

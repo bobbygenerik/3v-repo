@@ -14,6 +14,8 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "tres3/pip"
     private var methodChannel: MethodChannel? = null
+    private var autoPipEnabled: Boolean = false
+    private var callActive: Boolean = false
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +58,16 @@ class MainActivity : FlutterActivity() {
                         result.success(false)
                     }
                 }
+                "setAutoPipEnabled" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    autoPipEnabled = enabled
+                    result.success(null)
+                }
+                "setCallActive" -> {
+                    val active = call.argument<Boolean>("active") ?: false
+                    callActive = active
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }
@@ -90,6 +102,24 @@ class MainActivity : FlutterActivity() {
                     .build()
                 itIntent.data = Uri.parse(uriStr.toString())
             }
+        }
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        maybeEnterPictureInPicture()
+    }
+
+    private fun maybeEnterPictureInPicture() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        if (!autoPipEnabled || !callActive || isInPictureInPictureMode) return
+        try {
+            val params = PictureInPictureParams.Builder()
+                .setAspectRatio(Rational(9, 16)) // Portrait video call
+                .build()
+            enterPictureInPictureMode(params)
+        } catch (_: Exception) {
+            // Ignore PiP errors when leaving app
         }
     }
 }

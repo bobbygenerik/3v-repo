@@ -118,6 +118,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     );
     _connectToRoom();
     _loadPipPreference();
+    _setAndroidCallActive(true);
     
     // Register lifecycle observer
     WidgetsBinding.instance.addObserver(this);
@@ -579,13 +580,20 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     try {
       final prefs = await SharedPreferences.getInstance();
       final enabled = prefs.getBool('picture_in_picture') ?? true;
-      if (enabled == _pipEnabled) return;
       _pipEnabled = enabled;
       if (!mounted) return;
       final livekit = context.read<LiveKitService>();
       _configureWebPip(livekit);
+      await AndroidPipService.setAutoPipEnabled(_pipEnabled);
     } catch (e) {
       debugPrint('⚠️ Failed to load PiP preference: $e');
+    }
+  }
+
+  Future<void> _setAndroidCallActive(bool active) async {
+    await AndroidPipService.setCallActive(active);
+    if (active) {
+      await AndroidPipService.setAutoPipEnabled(_pipEnabled);
     }
   }
 
@@ -1558,7 +1566,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _buildAnimatedButton(
         index: 0,
         icon: Icons.more_vert,
-        onPressed: () => _showMoreMenu(coordinator),
+        onPressed: () => _showMoreMenu(livekit, coordinator),
         backgroundColor: Colors.white.withOpacity(0.2),
         size: buttonSize,
         spacing: buttonSpacing,
@@ -1704,182 +1712,193 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
 
   
   // More menu
-  void _showMoreMenu(CallFeaturesCoordinator coordinator) {
+  void _showMoreMenu(LiveKitService livekit, CallFeaturesCoordinator coordinator) {
+    final parentContext = context;
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1C1C1E),
       isScrollControlled: true,
-      builder: (context) => Consumer<CallFeaturesCoordinator>(
-        builder: (context, menuCoordinator, _) => SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
+      builder: (context) {
+        final menuCoordinator = coordinator;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'More Options',
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    Row(
+                      children: [
+                        const Text(
+                          'More Options',
+                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Color(0xFF8E8E93)),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
                     ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Color(0xFF8E8E93)),
-                      onPressed: () => Navigator.pop(context),
+                    const SizedBox(height: 8),
+
+                    _buildMoreSectionLabel('People'),
+                    ListTile(
+                      leading: const Icon(Icons.person_add, color: Color(0xFF6B7FB8)),
+                      title: const Text('Add Person', style: TextStyle(color: Colors.white)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showAddPersonDialog();
+                      },
+                    ),
+                    ListTile(
+                      leading: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8)),
+                          if (_unreadMessageCount > 0)
+                            Positioned(
+                              right: -4,
+                              top: -4,
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      title: Text(
+                        _unreadMessageCount > 0 ? 'Chat ($_unreadMessageCount)' : 'Chat',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _chatOverlayVisible = !_chatOverlayVisible;
+                          if (_chatOverlayVisible) {
+                            _unreadMessageCount = 0;
+                            _hasNewMessage = false;
+                          }
+                        });
+                        Navigator.pop(context);
+                      },
+                    ),
+
+                    const Divider(color: Color(0xFF2C2C2E)),
+                    _buildMoreSectionLabel('Video Effects'),
+                    SwitchListTile(
+                      value: menuCoordinator.isBackgroundBlurEnabled,
+                      activeColor: const Color(0xFF6B7FB8),
+                      title: const Text('Background Blur', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('Blur background during call', style: TextStyle(color: Color(0xFF8E8E93))),
+                      onChanged: (_) async {
+                        await menuCoordinator.toggleBackgroundBlur();
+                        setModalState(() {});
+                      },
+                    ),
+                    SwitchListTile(
+                      value: menuCoordinator.isBeautyFilterEnabled,
+                      activeColor: const Color(0xFF6B7FB8),
+                      title: const Text('Beauty Filter', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('Smooth skin effect', style: TextStyle(color: Color(0xFF8E8E93))),
+                      onChanged: (_) {
+                        menuCoordinator.toggleBeautyFilter();
+                        setModalState(() {});
+                      },
+                    ),
+                    SwitchListTile(
+                      value: menuCoordinator.isFaceAutoFramingEnabled,
+                      activeColor: const Color(0xFF6B7FB8),
+                      title: const Text('Face Auto-Framing', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('Keep face centered', style: TextStyle(color: Color(0xFF8E8E93))),
+                      onChanged: (_) {
+                        menuCoordinator.toggleFaceAutoFraming();
+                        setModalState(() {});
+                      },
+                    ),
+
+                    const Divider(color: Color(0xFF2C2C2E)),
+                    _buildMoreSectionLabel('Call Tools'),
+                    ListTile(
+                      leading: const Icon(Icons.screen_share, color: Color(0xFF6B7FB8)),
+                      title: const Text('Share Screen', style: TextStyle(color: Colors.white)),
+                      onTap: () async {
+                        await menuCoordinator.toggleScreenShare();
+                        if (!mounted) return;
+                        Navigator.pop(context);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.picture_in_picture, color: Color(0xFF6B7FB8)),
+                      title: const Text('Enter PiP', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text(
+                        'Keep call visible while multitasking',
+                        style: TextStyle(color: Color(0xFF8E8E93)),
+                      ),
+                      onTap: () async {
+                        final entered = await _enterPipNow(livekit);
+                        if (!mounted) return;
+                        Navigator.pop(context);
+                        if (!entered && mounted) {
+                          ScaffoldMessenger.of(parentContext).showSnackBar(
+                            SnackBar(
+                              content: const Text('PiP not available on this device/browser'),
+                              backgroundColor: const Color(0xFF2C2C2E),
+                              behavior: SnackBarBehavior.floating,
+                              margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    ListTile(
+                      leading: Icon(
+                        menuCoordinator.isRecording ? Icons.stop : Icons.fiber_manual_record,
+                        color: menuCoordinator.isRecording ? Colors.red : const Color(0xFF6B7FB8),
+                      ),
+                      title: Text(
+                        menuCoordinator.isRecording ? 'Stop Recording' : 'Start Recording',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      onTap: () async {
+                        await menuCoordinator.toggleRecording();
+                        if (!mounted) return;
+                        Navigator.pop(context);
+                      },
+                    ),
+
+                    const Divider(color: Color(0xFF2C2C2E)),
+                    _buildMoreSectionLabel('Insights'),
+                    ListTile(
+                      leading: const Icon(Icons.analytics, color: Color(0xFF6B7FB8)),
+                      title: const Text('Quality Dashboard', style: TextStyle(color: Colors.white)),
+                      onTap: () {
+                        setState(() {
+                          _qualityDashboardVisible = !_qualityDashboardVisible;
+                        });
+                        Navigator.pop(context);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.volume_up, color: Color(0xFF6B7FB8)),
+                      title: const Text('Audio Controls', style: TextStyle(color: Colors.white)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showAudioControlsPanel();
+                      },
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-
-                _buildMoreSectionLabel('People'),
-                ListTile(
-                  leading: const Icon(Icons.person_add, color: Color(0xFF6B7FB8)),
-                  title: const Text('Add Person', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showAddPersonDialog();
-                  },
-                ),
-                ListTile(
-                  leading: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8)),
-                      if (_unreadMessageCount > 0)
-                        Positioned(
-                          right: -4,
-                          top: -4,
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  title: Text(
-                    _unreadMessageCount > 0 ? 'Chat ($_unreadMessageCount)' : 'Chat',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  onTap: () {
-                    setState(() {
-                      _chatOverlayVisible = !_chatOverlayVisible;
-                      if (_chatOverlayVisible) {
-                        _unreadMessageCount = 0;
-                        _hasNewMessage = false;
-                      }
-                    });
-                    Navigator.pop(context);
-                  },
-                ),
-
-                const Divider(color: Color(0xFF2C2C2E)),
-                _buildMoreSectionLabel('Video Effects'),
-                SwitchListTile(
-                  value: menuCoordinator.isBackgroundBlurEnabled,
-                  activeColor: const Color(0xFF6B7FB8),
-                  title: const Text('Background Blur', style: TextStyle(color: Colors.white)),
-                  subtitle: const Text('Blur background during call', style: TextStyle(color: Color(0xFF8E8E93))),
-                  onChanged: (_) async {
-                    await menuCoordinator.toggleBackgroundBlur();
-                  },
-                ),
-                SwitchListTile(
-                  value: menuCoordinator.isBeautyFilterEnabled,
-                  activeColor: const Color(0xFF6B7FB8),
-                  title: const Text('Beauty Filter', style: TextStyle(color: Colors.white)),
-                  subtitle: const Text('Smooth skin effect', style: TextStyle(color: Color(0xFF8E8E93))),
-                  onChanged: (_) {
-                    menuCoordinator.toggleBeautyFilter();
-                  },
-                ),
-                SwitchListTile(
-                  value: menuCoordinator.isFaceAutoFramingEnabled,
-                  activeColor: const Color(0xFF6B7FB8),
-                  title: const Text('Face Auto-Framing', style: TextStyle(color: Colors.white)),
-                  subtitle: const Text('Keep face centered', style: TextStyle(color: Color(0xFF8E8E93))),
-                  onChanged: (_) {
-                    menuCoordinator.toggleFaceAutoFraming();
-                  },
-                ),
-
-                const Divider(color: Color(0xFF2C2C2E)),
-                _buildMoreSectionLabel('Call Tools'),
-                ListTile(
-                  leading: const Icon(Icons.screen_share, color: Color(0xFF6B7FB8)),
-                  title: const Text('Share Screen', style: TextStyle(color: Colors.white)),
-                  onTap: () async {
-                    await menuCoordinator.toggleScreenShare();
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.picture_in_picture, color: Color(0xFF6B7FB8)),
-                  title: const Text('Enter PiP', style: TextStyle(color: Colors.white)),
-                  subtitle: const Text(
-                    'Keep call visible while multitasking',
-                    style: TextStyle(color: Color(0xFF8E8E93)),
-                  ),
-                  onTap: () async {
-                    final livekit = context.read<LiveKitService>();
-                    final entered = await _enterPipNow(livekit);
-                    Navigator.pop(context);
-                    if (!entered && mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('PiP not available on this device/browser'),
-                          backgroundColor: const Color(0xFF2C2C2E),
-                          behavior: SnackBarBehavior.floating,
-                          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      );
-                    }
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    menuCoordinator.isRecording ? Icons.stop : Icons.fiber_manual_record,
-                    color: menuCoordinator.isRecording ? Colors.red : const Color(0xFF6B7FB8),
-                  ),
-                  title: Text(
-                    menuCoordinator.isRecording ? 'Stop Recording' : 'Start Recording',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  onTap: () async {
-                    await menuCoordinator.toggleRecording();
-                    Navigator.pop(context);
-                  },
-                ),
-
-                const Divider(color: Color(0xFF2C2C2E)),
-                _buildMoreSectionLabel('Insights'),
-                ListTile(
-                  leading: const Icon(Icons.analytics, color: Color(0xFF6B7FB8)),
-                  title: const Text('Quality Dashboard', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    setState(() {
-                      _qualityDashboardVisible = !_qualityDashboardVisible;
-                    });
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.volume_up, color: Color(0xFF6B7FB8)),
-                  title: const Text('Audio Controls', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showAudioControlsPanel();
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -2380,6 +2399,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     _chatController.dispose();
     _controlsAnimationController.dispose();
     _reactionsAnimationController.dispose();
+    _setAndroidCallActive(false);
     
     super.dispose();
   }
