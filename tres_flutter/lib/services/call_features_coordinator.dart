@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'device_capability_service.dart';
@@ -9,6 +10,7 @@ import 'e2e_encryption_service.dart';
 import 'screen_share_service.dart';
 import 'call_stats_service.dart';
 import 'grid_layout_manager.dart';
+import 'mediapipe_settings.dart';
 
 export 'grid_layout_manager.dart' show LayoutMode;
 
@@ -24,6 +26,8 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   final ScreenShareService screenShareService = ScreenShareService();
   final CallStatsService statsService = CallStatsService();
   final GridLayoutManager layoutManager = GridLayoutManager();
+
+  final MediaPipeSettings? _mediaPipeSettings;
 
   // Feature states
   bool _isChatOpen = false;
@@ -86,6 +90,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   bool get isStatsCollecting => statsService.isCollecting;
 
   /// Initialize coordinator with LiveKit room
+  CallFeaturesCoordinator({MediaPipeSettings? mediaPipeSettings})
+      : _mediaPipeSettings = mediaPipeSettings;
+
   Future<void> initialize(Room room) async {
     debugPrint('🎯 CallFeaturesCoordinator initializing...');
 
@@ -93,23 +100,29 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     chatService.initialize(room);
     reactionService.initialize(room);
 
-    // ML services removed - stubs only
-    debugPrint('⚠️ ML services not available');
+    if (_mediaPipeSettings != null) {
+      debugPrint('✅ MediaPipe services ready');
+    } else {
+      debugPrint('⚠️ MediaPipe settings not provided; ML features disabled');
+    }
 
     // Apply user preferences (if present) so features the user enabled in Settings
     try {
       final prefs = await SharedPreferences.getInstance();
       final bgBlur = prefs.getBool('background_blur') ?? false;
       _isBackgroundBlurEnabled = bgBlur;
-      // Background blur service removed - stub only
+      _mediaPipeSettings?.update(backgroundBlur: bgBlur);
 
       final beauty = prefs.getBool('beauty_filter') ?? false;
       _isBeautyFilterEnabled = beauty;
-      // Beauty filter service removed - stub only
+      _mediaPipeSettings?.update(beauty: beauty, faceMesh: beauty);
 
       final faceAuto = prefs.getBool('face_auto_framing') ?? false;
       _isFaceAutoFramingEnabled = faceAuto;
-      // AI features service removed - stub only
+      _mediaPipeSettings?.update(faceDetection: faceAuto);
+
+      final blurIntensity = prefs.getDouble('portrait_blur_intensity') ?? 70.0;
+      _mediaPipeSettings?.update(blurIntensity: blurIntensity);
       
       // If device is low-end, disable expensive ML features regardless of saved prefs
       try {
@@ -124,6 +137,12 @@ class CallFeaturesCoordinator extends ChangeNotifier {
           if (_isFaceAutoFramingEnabled) {
             _isFaceAutoFramingEnabled = false;
           }
+          _mediaPipeSettings?.update(
+            backgroundBlur: _isBackgroundBlurEnabled,
+            beauty: _isBeautyFilterEnabled,
+            faceMesh: _isBeautyFilterEnabled,
+            faceDetection: _isFaceAutoFramingEnabled,
+          );
         }
       } catch (e) {
         debugPrint('⚠️ Error applying low-end device ML fallback: $e');
@@ -337,25 +356,47 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     // TODO: Implement spatial audio logic
   }
 
-  /// Toggle background blur (stub - service removed)
+  /// Toggle background blur
   Future<void> toggleBackgroundBlur() async {
     _isBackgroundBlurEnabled = !_isBackgroundBlurEnabled;
-    // Background blur service removed - stub only
+    _mediaPipeSettings?.update(backgroundBlur: _isBackgroundBlurEnabled);
+    await _persistSetting('background_blur', _isBackgroundBlurEnabled);
     notifyListeners();
-    debugPrint('Background blur ${_isBackgroundBlurEnabled ? "enabled" : "disabled"} (stub)');
+    debugPrint('Background blur ${_isBackgroundBlurEnabled ? "enabled" : "disabled"}');
   }
 
-  /// Toggle beauty filter (stub - service removed)
+  /// Toggle beauty filter
   void toggleBeautyFilter() {
     _isBeautyFilterEnabled = !_isBeautyFilterEnabled;
-    // Beauty filter service removed - stub only
+    _mediaPipeSettings?.update(
+      beauty: _isBeautyFilterEnabled,
+      faceMesh: _isBeautyFilterEnabled,
+    );
+    unawaited(_persistSetting('beauty_filter', _isBeautyFilterEnabled));
     notifyListeners();
-    debugPrint('Beauty filter ${_isBeautyFilterEnabled ? "enabled" : "disabled"} (stub)');
+    debugPrint('Beauty filter ${_isBeautyFilterEnabled ? "enabled" : "disabled"}');
   }
 
-  /// Set beauty filter intensity (0.0 - 1.0) (stub - service removed)
+  /// Toggle face auto-framing
+  void toggleFaceAutoFraming() {
+    _isFaceAutoFramingEnabled = !_isFaceAutoFramingEnabled;
+    _mediaPipeSettings?.update(faceDetection: _isFaceAutoFramingEnabled);
+    unawaited(_persistSetting('face_auto_framing', _isFaceAutoFramingEnabled));
+    notifyListeners();
+    debugPrint('Face auto-framing ${_isFaceAutoFramingEnabled ? "enabled" : "disabled"}');
+  }
+
+  Future<void> _persistSetting(String key, bool value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(key, value);
+    } catch (e) {
+      debugPrint('⚠️ Failed to persist setting $key: $e');
+    }
+  }
+
+  /// Set beauty filter intensity (0.0 - 1.0)
   void setBeautyIntensity(double intensity) {
-    // Beauty filter service removed - stub only
     notifyListeners();
   }
 

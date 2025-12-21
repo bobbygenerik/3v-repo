@@ -7,8 +7,12 @@ import 'package:flutter/foundation.dart';
 /// Listens for incoming call invitations from Firestore
 /// Mirrors functionality from Android MyFirebaseMessagingService.kt
 class CallListenerService extends ChangeNotifier {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  CallListenerService({FirebaseFirestore? firestore, FirebaseAuth? auth})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance;
+
+  final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
   
   StreamSubscription<QuerySnapshot>? _invitationSubscription;
   Map<String, dynamic>? _currentIncomingCall;

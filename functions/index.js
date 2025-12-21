@@ -2,6 +2,7 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { AccessToken, EgressClient, EncodedFileOutput, RoomCompositeEgressRequest } = require('livekit-server-sdk');
 const { onRequest } = require('firebase-functions/v2/https');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 // const { queueFailedNotification } = require('./retryQueue');  // Temporarily disabled - needs firebase-functions upgrade
 
 admin.initializeApp();
@@ -12,8 +13,20 @@ const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || functions.config().
 const LIVEKIT_WS_URL = process.env.LIVEKIT_URL || functions.config().livekit?.url || 'wss://livekit.iptvsubz.fun';
 const LIVEKIT_HTTP_URL = process.env.LIVEKIT_HTTP_URL || 'https://livekit.iptvsubz.fun';
 const WEB_URL = process.env.WEB_URL || 'https://tres3.web.app';
+const STALE_SESSION_MINUTES = Number(process.env.CALL_SESSION_STALE_MINUTES || 2);
 
-exports.getLiveKitToken = functions.https.onCall(async (request) => {
+const normalizeCallableRequest = (requestOrData, context) => {
+  if (requestOrData && typeof requestOrData === 'object' && 'data' in requestOrData) {
+    return requestOrData;
+  }
+  return {
+    data: requestOrData || {},
+    auth: context?.auth,
+  };
+};
+
+exports.getLiveKitToken = functions.https.onCall(async (requestOrData, context) => {
+  const request = normalizeCallableRequest(requestOrData, context);
   console.log('=== getLiveKitToken Function Called ===');
   console.log('Raw request object keys:', Object.keys(request));
   console.log('Request auth:', request.auth);
@@ -60,13 +73,17 @@ exports.getLiveKitToken = functions.https.onCall(async (request) => {
       throw new Error('LiveKit credentials not configured in .env file');
     }
 
-    // Get user info
-    const userDoc = await admin.firestore()
-      .collection('users')
-      .doc(userId)
-      .get();
-
-    const userName = userDoc.data()?.name || userDoc.data()?.displayName || 'User';
+    // Get user info (fallback to a safe default if Firestore is unavailable)
+    let userName = 'User';
+    try {
+      const userDoc = await admin.firestore()
+        .collection('users')
+        .doc(userId)
+        .get();
+      userName = userDoc.data()?.name || userDoc.data()?.displayName || 'User';
+    } catch (error) {
+      console.warn('User lookup failed, using fallback name:', error.message);
+    }
     console.log('User name:', userName);
 
     // Create token
@@ -152,7 +169,38 @@ exports.sendCallNotification = functions.firestore.onDocumentCreated(
               status: 'failed',
               failureReason: 'no_fcm_token',
               failureTimestamp: admin.firestore.FieldValue.serverTimestamp()
-            });
+  });
+
+/**
+ * Cleanup stale call sessions that stopped heartbeating.
+ */
+exports.cleanupStaleCallSessions = onSchedule('every 5 minutes', async () => {
+  const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - 2 * 60 * 1000);
+
+  const snapshot = await admin.firestore()
+    .collection('call_sessions')
+    .where('status', '==', 'active')
+    .where('lastHeartbeat', '<', cutoff)
+    .get();
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  const batch = admin.firestore().batch();
+  for (const doc of snapshot.docs) {
+    batch.update(doc.ref, {
+      status: 'ended',
+      endTime: admin.firestore.FieldValue.serverTimestamp(),
+      endedBy: 'system',
+      endedReason: 'stale_heartbeat',
+    });
+  }
+
+  await batch.commit();
+  console.log(`✅ Cleaned up ${snapshot.size} stale call sessions`);
+  return null;
+});
           console.log(`✅ Marked call invitation as failed (no FCM token)`);
         } catch (updateError) {
           console.error(`Failed to update call invitation status: ${updateError}`);
@@ -327,7 +375,8 @@ exports.markStaleCallSignals = functions.scheduler.onSchedule(
  * Cloud Function: Generate guest call token for web users
  * Allows authenticated app users to create shareable links for non-app users
  */
-exports.generateGuestToken = functions.https.onCall(async (request) => {
+exports.generateGuestToken = functions.https.onCall(async (requestOrData, context) => {
+  const request = normalizeCallableRequest(requestOrData, context);
   // Verify caller is authenticated
   if (!request.auth) {
     throw new functions.https.HttpsError(
@@ -780,7 +829,8 @@ exports.debugSendTestNotification = onRequest(async (req, res) => {
  * Cloud Function: Start LiveKit Egress recording
  * Called by client to start server-side recording of a room
  */
-exports.startRecording = functions.https.onCall(async (request) => {
+exports.startRecording = functions.https.onCall(async (requestOrData, context) => {
+  const request = normalizeCallableRequest(requestOrData, context);
   console.log('=== startRecording Function Called ===');
   
   // Verify user is authenticated
@@ -859,7 +909,8 @@ exports.startRecording = functions.https.onCall(async (request) => {
  * Cloud Function: Stop LiveKit Egress recording
  * Called by client to stop an ongoing recording
  */
-exports.stopRecording = functions.https.onCall(async (request) => {
+exports.stopRecording = functions.https.onCall(async (requestOrData, context) => {
+  const request = normalizeCallableRequest(requestOrData, context);
   console.log('=== stopRecording Function Called ===');
   
   // Verify user is authenticated
@@ -924,3 +975,39 @@ exports.stopRecording = functions.https.onCall(async (request) => {
     );
   }
 });
+
+exports.cleanupStaleCallSessions = onSchedule('every 15 minutes', async () => {
+    const staleThresholdMs = STALE_SESSION_MINUTES * 60 * 1000;
+    const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - staleThresholdMs);
+
+    try {
+      const snapshot = await admin.firestore()
+        .collection('call_sessions')
+        .where('status', '==', 'active')
+        .where('lastHeartbeat', '<', cutoff)
+        .limit(200)
+        .get();
+
+      if (snapshot.empty) {
+        console.log('No stale call sessions found.');
+        return null;
+      }
+
+      const batch = admin.firestore().batch();
+      snapshot.docs.forEach((doc) => {
+        batch.update(doc.ref, {
+          status: 'ended',
+          endTime: admin.firestore.FieldValue.serverTimestamp(),
+          endedBy: 'system',
+          endedReason: 'heartbeat_timeout',
+        });
+      });
+
+      await batch.commit();
+      console.log(`Cleaned up ${snapshot.docs.length} stale call sessions.`);
+      return null;
+    } catch (error) {
+      console.error('cleanupStaleCallSessions error:', error);
+      return null;
+    }
+  });

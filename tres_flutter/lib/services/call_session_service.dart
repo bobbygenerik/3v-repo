@@ -6,8 +6,12 @@ import 'package:flutter/foundation.dart';
 /// Call Session Service
 /// Manages active call sessions and ensures proper cleanup
 class CallSessionService extends ChangeNotifier {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  CallSessionService({FirebaseFirestore? firestore, FirebaseAuth? auth})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance;
+
+  final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
   
   String? _currentSessionId;
   StreamSubscription<DocumentSnapshot>? _sessionSubscription;

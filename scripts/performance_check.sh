@@ -16,7 +16,9 @@ echo "🏗️  Testing build performance..."
 START_TIME=$(date +%s)
 
 # Run a quick debug build to test performance
+cd android
 ./gradlew :app:assembleDebug --no-daemon --quiet
+cd ..
 
 END_TIME=$(date +%s)
 BUILD_TIME=$((END_TIME - START_TIME))
@@ -29,18 +31,17 @@ echo ""
 
 # ✅ Check code quality
 echo "🔍 Checking code quality..."
-ANALYZE_OUTPUT=$(flutter analyze --no-pub 2>&1 || true)
-ANALYZE_LINES=$(echo "$ANALYZE_OUTPUT" | wc -l)
+ANALYZE_ISSUES=$(flutter analyze --no-pub --format=machine 2>/dev/null | awk -F'\\|' 'NF>1{c++} END{print c+0}')
 
 echo "📊 Code Quality Results:"
-echo "   - Analysis issues: $ANALYZE_LINES"
+echo "   - Analysis issues: $ANALYZE_ISSUES"
 echo "   - Target: 0 issues (Excellent)"
-echo "   - Status: $([ $ANALYZE_LINES -eq 0 ] && echo "✅ EXCELLENT" || echo "⚠️  ISSUES FOUND")"
+echo "   - Status: $([ $ANALYZE_ISSUES -eq 0 ] && echo "✅ EXCELLENT" || echo "⚠️  ISSUES FOUND")"
 echo ""
 
 # ✅ Check dependencies
 echo "📦 Checking dependencies..."
-PUB_OUTDATED=$(flutter pub outdated --no-pub 2>/dev/null | grep -c ".*" || echo "0")
+PUB_OUTDATED=$(flutter pub outdated --no-pub 2>/dev/null | awk 'BEGIN{c=0} /^\* /{c++} END{print c+0}')
 
 echo "📊 Dependency Results:"
 echo "   - Outdated packages: $PUB_OUTDATED"

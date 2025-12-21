@@ -13,6 +13,26 @@ class Environment {
     'LIVEKIT_URL',
     defaultValue: 'wss://livekit.iptvsubz.fun',
   );
+
+  // Optional comma-separated list of fallback LiveKit URLs for reconnects.
+  static const String liveKitFallbackUrls = String.fromEnvironment(
+    'LIVEKIT_FALLBACK_URLS',
+    defaultValue: '',
+  );
+
+  // Optional JSON array of ICE servers for TURN/STUN overrides.
+  // Example:
+  // [{"urls":["turn:turn.example.com:3478"],"username":"user","credential":"pass"}]
+  static const String liveKitIceServersJson = String.fromEnvironment(
+    'LIVEKIT_ICE_SERVERS_JSON',
+    defaultValue: '',
+  );
+
+  // Force TURN relay only if set (may increase latency).
+  static const bool liveKitForceRelay = bool.fromEnvironment(
+    'LIVEKIT_FORCE_RELAY',
+    defaultValue: false,
+  );
   
   // Firebase Functions Base URL
   // Format: https://REGION-PROJECT_ID.cloudfunctions.net
@@ -90,6 +110,15 @@ class Environment {
     print('E2E Encryption: $enableE2EEncryption');
     print('Cloud Recording: $enableCloudRecording');
     print('Screen Share: $enableScreenShare');
+    if (liveKitFallbackUrls.isNotEmpty) {
+      print('LiveKit Fallback URLs: $liveKitFallbackUrls');
+    }
+    if (liveKitIceServersJson.isNotEmpty) {
+      print('LiveKit ICE Servers: configured');
+    }
+    if (liveKitForceRelay) {
+      print('LiveKit Force Relay: enabled');
+    }
     print('Development Mode: $isDevelopment');
     print('================================');
   }

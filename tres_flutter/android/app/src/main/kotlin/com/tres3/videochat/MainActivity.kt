@@ -59,6 +59,8 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        MediaPipeChannel.register(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
     }
     
     override fun onNewIntent(intent: Intent) {

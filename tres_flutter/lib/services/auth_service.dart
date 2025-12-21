@@ -6,7 +6,12 @@ import 'web_auth_helper.dart' if (dart.library.io) 'web_auth_helper_stub.dart';
 /// Authentication service wrapping Firebase Auth
 /// Supports phone number and email/password authentication
 class AuthService extends ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
+      : _auth = auth ?? FirebaseAuth.instance,
+        _firestore = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
   ConfirmationResult? _webConfirmationResult;
   
   User? get currentUser => _auth.currentUser;
@@ -91,7 +96,7 @@ class AuthService extends ChangeNotifier {
   /// Ensure user document exists in Firestore
   Future<void> _ensureUserDocument(User user) async {
     try {
-      final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final userDoc = _firestore.collection('users').doc(user.uid);
       final docSnapshot = await userDoc.get();
       
       // Always store email in lowercase for consistent searching

@@ -27,9 +27,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _portraitBlurIntensity = 70.0;
   bool _beautyFilter = true;
   bool _backgroundBlur = false;
-  bool _virtualBackground = false;
   bool _faceAutoFraming = false;
-  bool _lowLightEnhancement = false;
   
   // Audio Processing
   bool _noiseSuppression = true;
@@ -37,9 +35,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _spatialAudio = false;
   
   // AI Features
-  bool _handGestures = false;
-  bool _emotionDetection = false;
-  bool _liveCaptions = false;
   
   // UI & Interaction
   String _defaultGridLayout = 'auto';
@@ -75,9 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _portraitBlurIntensity = _prefs.getDouble('portrait_blur_intensity') ?? 70.0;
           _beautyFilter = _prefs.getBool('beauty_filter') ?? true;
           _backgroundBlur = _prefs.getBool('background_blur') ?? false;
-          _virtualBackground = _prefs.getBool('virtual_background') ?? false;
           _faceAutoFraming = _prefs.getBool('face_auto_framing') ?? false;
-          _lowLightEnhancement = _prefs.getBool('low_light_enhancement') ?? false;
           
           // Audio Processing
           _noiseSuppression = _prefs.getBool('noise_suppression') ?? true;
@@ -85,9 +78,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _spatialAudio = _prefs.getBool('spatial_audio') ?? false;
           
           // AI Features
-          _handGestures = _prefs.getBool('hand_gestures') ?? false;
-          _emotionDetection = _prefs.getBool('emotion_detection') ?? false;
-          _liveCaptions = _prefs.getBool('live_captions') ?? false;
           
           // UI & Interaction
           _defaultGridLayout = _prefs.getString('default_grid_layout') ?? 'auto';
@@ -275,30 +265,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           _buildSwitchTile(
-            title: 'Virtual Background (Auto-enable)',
-            subtitle: 'Replace background with custom image',
-            value: _virtualBackground,
-            onChanged: (value) {
-              setState(() => _virtualBackground = value);
-              _saveSetting('virtual_background', value);
-            },
-          ),
-          _buildSwitchTile(
             title: 'Face Auto-Framing (Auto-enable)',
             subtitle: 'Automatically center and track your face',
             value: _faceAutoFraming,
             onChanged: (value) {
               setState(() => _faceAutoFraming = value);
               _saveSetting('face_auto_framing', value);
-            },
-          ),
-          _buildSwitchTile(
-            title: 'Low-Light Enhancement (Auto-enable)',
-            subtitle: 'Brighten video in dark environments',
-            value: _lowLightEnhancement,
-            onChanged: (value) {
-              setState(() => _lowLightEnhancement = value);
-              _saveSetting('low_light_enhancement', value);
             },
           ),
           
@@ -334,33 +306,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           
           // AI Features
           _buildSectionHeader('AI Features'),
-          _buildSwitchTile(
-            title: 'Hand Gestures (Auto-enable)',
-            subtitle: 'Detect hand gestures for reactions (👍 👎 etc.)',
-            value: _handGestures,
-            onChanged: (value) {
-              setState(() => _handGestures = value);
-              _saveSetting('hand_gestures', value);
-            },
-          ),
-          _buildSwitchTile(
-            title: 'Emotion Detection (Auto-enable)',
-            subtitle: 'Detect facial expressions (experimental)',
-            value: _emotionDetection,
-            onChanged: (value) {
-              setState(() => _emotionDetection = value);
-              _saveSetting('emotion_detection', value);
-            },
-          ),
-          _buildSwitchTile(
-            title: 'Live Captions (Auto-enable)',
-            subtitle: 'Real-time speech-to-text (requires OpenAI key)',
-            value: _liveCaptions,
-            onChanged: (value) {
-              setState(() => _liveCaptions = value);
-              _saveSetting('live_captions', value);
-            },
-          ),
           
           // UI & Interaction
           _buildSectionHeader('UI & Interaction'),

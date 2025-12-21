@@ -6,8 +6,12 @@ import 'package:flutter/foundation.dart';
 /// Manages call invitations and signaling via Firestore
 /// Mirrors functionality from Android CallSignalingManager.kt
 class CallSignalingService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  CallSignalingService({FirebaseFirestore? firestore, FirebaseAuth? auth})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance;
+
+  final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
 
   /// Send a call invitation to a recipient
   /// Returns the invitation ID if successful

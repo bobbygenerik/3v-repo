@@ -867,20 +867,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         ),
       ),
     ),
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: () {
-        VibrationService.mediumImpact();
-        _showAddContactDialog();
-      },
-      backgroundColor: const Color(0xFF6B7FB8),
-      foregroundColor: Colors.white,
-      elevation: 8,
-      icon: const Icon(Icons.add_call),
-      label: const Text('Quick Call'),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-    ),
     );
   }
 

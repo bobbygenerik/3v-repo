@@ -81,7 +81,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
             'Functions URL': Environment.functionsBaseUrl,
           },
           'Features': {
-            'ML Kit Face Detection': Environment.enableMLFeatures.toString(),
+            'MediaPipe Vision Features': Environment.enableMLFeatures.toString(),
             'E2E Encryption': Environment.enableE2EEncryption.toString(),
             'Recording': Environment.enableCloudRecording.toString(),
             'Screen Share': Environment.enableScreenShare.toString(),

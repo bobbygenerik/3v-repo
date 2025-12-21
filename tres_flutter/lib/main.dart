@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart' as widgets;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,7 @@ import 'services/livekit_service.dart';
 import 'services/guest_link_service.dart';
 import 'services/notification_service.dart';
 import 'services/audio_device_service.dart';
+import 'services/mediapipe_settings.dart';
 import 'firebase_background_handler.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -27,6 +29,10 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     debugPrint('✅ Firebase initialized successfully');
+    if (kIsWeb) {
+      await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+      debugPrint('✅ Firebase auth persistence set to LOCAL');
+    }
   } catch (e) {
     debugPrint('❌ Firebase initialization error: $e');
   }
@@ -78,7 +84,12 @@ class TresApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
-        ChangeNotifierProvider(create: (_) => LiveKitService()),
+        ChangeNotifierProvider(create: (_) => MediaPipeSettings()),
+        ChangeNotifierProvider(
+          create: (context) => LiveKitService(
+            mediaPipeSettings: context.read<MediaPipeSettings>(),
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => GuestLinkService()),
         ChangeNotifierProvider(create: (_) => AudioDeviceService()),
       ],

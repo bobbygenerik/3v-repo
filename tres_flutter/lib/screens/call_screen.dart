@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,6 +17,7 @@ import '../services/reaction_service.dart';
 import '../services/chat_service.dart' as chat;
 import '../services/vibration_service.dart';
 import '../services/call_stats_service.dart';
+import '../services/mediapipe_settings.dart';
 import '../widgets/participant_video.dart';
 import '../widgets/stats_overlay.dart';
 import '../widgets/call_waiting_banner.dart';
@@ -104,12 +106,18 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   int _unreadMessageCount = 0;
   bool _hasNewMessage = false;
   String? _lastMessageId;
+  DateTime? _lastNetworkWarning;
+  bool _wasReconnecting = false;
+  bool _pipEnabled = true;
   
   @override
   void initState() {
     super.initState();
-    _coordinator = CallFeaturesCoordinator();
+    _coordinator = CallFeaturesCoordinator(
+      mediaPipeSettings: context.read<MediaPipeSettings>(),
+    );
     _connectToRoom();
+    _loadPipPreference();
     
     // Register lifecycle observer
     WidgetsBinding.instance.addObserver(this);
@@ -130,8 +138,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         final livekit = context.read<LiveKitService>();
         livekit.addListener(_handleLiveKitUpdate);
         
-        // Setup auto PiP for web
-        livekit.setupAutoPip();
+        // Setup auto PiP for web if enabled
+        _configureWebPip(livekit);
         
         // Listen for new chat messages
         _coordinator.addListener(_handleNewChatMessage);
@@ -228,14 +236,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       debugPrint('   - Reducing buffer size for lower latency');
       debugPrint('   - Enabling adaptive sync');
       
-      // Force a quality adjustment to stabilize frame rate
-      // This will trigger the LiveKit service to recreate tracks with stable settings
-      livekit.applyObservedStats(const CallStats(
-        videoSendBitrate: 2000000, // 2 Mbps - stable bitrate
-        videoPacketLoss: 0.5, // Low packet loss
-        roundTripTime: 0.08, // 80ms RTT
-        jitter: 0.035, // 35ms jitter - triggers smoothing
-      ));
+      // Visual quality is locked; avoid adaptive changes based on synthetic stats.
       
     } catch (e) {
       debugPrint('❌ Error optimizing for smooth playback: $e');
@@ -322,6 +323,41 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   /// Handle LiveKit updates - check if all participants left
   void _handleLiveKitUpdate() {
     final livekit = context.read<LiveKitService>();
+
+    if (livekit.isReconnecting != _wasReconnecting && mounted) {
+      _wasReconnecting = livekit.isReconnecting;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                livekit.isReconnecting ? Icons.wifi_off : Icons.wifi,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  livekit.isReconnecting
+                      ? 'Reconnecting... call will resume automatically'
+                      : 'Reconnected',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF6B7FB8),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
     
     // Track if we've ever had a remote participant join
     final hadParticipants = _hadRemoteParticipant;
@@ -505,6 +541,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         if (_isAppInBackground) {
           _isAppInBackground = false;
           debugPrint('📱 App resumed - refreshing UI');
+          _loadPipPreference();
           
           // Refresh UI state
           if (mounted) {
@@ -525,6 +562,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   
   Future<void> _tryEnterAndroidPip() async {
     try {
+      if (!_pipEnabled) return;
       final available = await AndroidPipService.isPipAvailable();
       if (available) {
         final entered = await AndroidPipService.enterPipMode();
@@ -535,6 +573,39 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     } catch (e) {
       debugPrint('❌ Error entering Android PiP: $e');
     }
+  }
+
+  Future<void> _loadPipPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final enabled = prefs.getBool('picture_in_picture') ?? true;
+      if (enabled == _pipEnabled) return;
+      _pipEnabled = enabled;
+      if (!mounted) return;
+      final livekit = context.read<LiveKitService>();
+      _configureWebPip(livekit);
+    } catch (e) {
+      debugPrint('⚠️ Failed to load PiP preference: $e');
+    }
+  }
+
+  void _configureWebPip(LiveKitService livekit) {
+    livekit.pipService.setAutoEnterPip(_pipEnabled);
+    if (_pipEnabled) {
+      livekit.setupAutoPip();
+    } else if (livekit.pipService.isPipActive) {
+      livekit.pipService.exitPip();
+    }
+  }
+
+  Future<bool> _enterPipNow(LiveKitService livekit) async {
+    if (!_pipEnabled) return false;
+    if (Theme.of(context).platform == TargetPlatform.android) {
+      final available = await AndroidPipService.isPipAvailable();
+      if (!available) return false;
+      return AndroidPipService.enterPipMode();
+    }
+    return livekit.pipService.enterPip();
   }
   
   void _startControlsHideTimer() {
@@ -701,10 +772,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _coordinator.statsService.addListener(() {
         try {
           final stats = _coordinator.statsService.currentStats;
-          // Fire-and-forget adaptation
-          livekit.applyObservedStats(stats);
+          _maybeShowNetworkWarning(stats);
         } catch (e) {
-          debugPrint('Failed to apply observed stats to LiveKitService: $e');
+          debugPrint('Failed to process call stats: $e');
         }
       });
       // Don't start stats collection automatically - let user enable it
@@ -738,6 +808,50 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         ),
       );
     }
+  }
+
+  void _maybeShowNetworkWarning(CallStats stats) {
+    if (!mounted) return;
+
+    final rttMs = stats.roundTripTime * 1000.0;
+    final jitterMs = stats.jitter * 1000.0;
+    final packetLoss = stats.videoPacketLoss;
+
+    final isDegraded = packetLoss > 5.0 || rttMs > 300.0 || jitterMs > 50.0;
+    if (!isDegraded) return;
+
+    final now = DateTime.now();
+    if (_lastNetworkWarning != null &&
+        now.difference(_lastNetworkWarning!) < const Duration(seconds: 30)) {
+      return;
+    }
+
+    _lastNetworkWarning = now;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.network_check, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Network is unstable. Try Wi-Fi or move closer to your router.',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 3),
+        backgroundColor: const Color(0xFFE67E22),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
   
   @override
@@ -863,6 +977,38 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                       left: 16,
                       child: _buildRoomInfo(coordinator),
                     ),
+
+                    if (livekit.isReconnecting)
+                      Positioned(
+                        top: 16,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white.withOpacity(0.2)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.sync, color: Colors.white, size: 16),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Reconnecting...',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     
 
                     
@@ -1562,112 +1708,194 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1C1C1E),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-              // Add Person moved into the More menu
-              ListTile(
-                leading: const Icon(Icons.person_add, color: Color(0xFF6B7FB8)),
-                title: const Text('Add Person', style: TextStyle(color: Colors.white)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showAddPersonDialog();
-                },
-              ),
-              // Chat moved into the More menu
-              ListTile(
-                leading: Stack(
-                  clipBehavior: Clip.none,
+      isScrollControlled: true,
+      builder: (context) => Consumer<CallFeaturesCoordinator>(
+        builder: (context, menuCoordinator, _) => SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
                   children: [
-                    const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8)),
-                    if (_unreadMessageCount > 0)
-                      Positioned(
-                        right: -4,
-                        top: -4,
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
+                    const Text(
+                      'More Options',
+                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Color(0xFF8E8E93)),
+                      onPressed: () => Navigator.pop(context),
+                    ),
                   ],
                 ),
-                title: Text(
-                  _unreadMessageCount > 0 ? 'Chat ($_unreadMessageCount)' : 'Chat',
-                  style: const TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  setState(() {
-                    _chatOverlayVisible = !_chatOverlayVisible;
-                    if (_chatOverlayVisible) {
-                      _unreadMessageCount = 0;
-                      _hasNewMessage = false;
-                    }
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-            const Text(
-              'More Options',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            
-            // Screen Share
-            ListTile(
-              leading: const Icon(Icons.screen_share, color: Color(0xFF6B7FB8)),
-              title: const Text('Share Screen', style: TextStyle(color: Colors.white)),
-              onTap: () async {
-                await coordinator.toggleScreenShare();
-                Navigator.pop(context);
-              },
-            ),
-            
-            // Recording
-            ListTile(
-              leading: Icon(
-                coordinator.isRecording ? Icons.stop : Icons.fiber_manual_record,
-                color: coordinator.isRecording ? Colors.red : const Color(0xFF6B7FB8),
-              ),
-              title: Text(
-                coordinator.isRecording ? 'Stop Recording' : 'Start Recording',
-                style: const TextStyle(color: Colors.white),
-              ),
-              onTap: () async {
-                await coordinator.toggleRecording();
-                Navigator.pop(context);
-              },
-            ),
-            
+                const SizedBox(height: 8),
 
-            
-            // Quality Dashboard
-            ListTile(
-              leading: const Icon(Icons.analytics, color: Color(0xFF6B7FB8)),
-              title: const Text('Quality Dashboard', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                setState(() {
-                  _qualityDashboardVisible = !_qualityDashboardVisible;
-                });
-                Navigator.pop(context);
-              },
+                _buildMoreSectionLabel('People'),
+                ListTile(
+                  leading: const Icon(Icons.person_add, color: Color(0xFF6B7FB8)),
+                  title: const Text('Add Person', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showAddPersonDialog();
+                  },
+                ),
+                ListTile(
+                  leading: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8)),
+                      if (_unreadMessageCount > 0)
+                        Positioned(
+                          right: -4,
+                          top: -4,
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  title: Text(
+                    _unreadMessageCount > 0 ? 'Chat ($_unreadMessageCount)' : 'Chat',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  onTap: () {
+                    setState(() {
+                      _chatOverlayVisible = !_chatOverlayVisible;
+                      if (_chatOverlayVisible) {
+                        _unreadMessageCount = 0;
+                        _hasNewMessage = false;
+                      }
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+
+                const Divider(color: Color(0xFF2C2C2E)),
+                _buildMoreSectionLabel('Video Effects'),
+                SwitchListTile(
+                  value: menuCoordinator.isBackgroundBlurEnabled,
+                  activeColor: const Color(0xFF6B7FB8),
+                  title: const Text('Background Blur', style: TextStyle(color: Colors.white)),
+                  subtitle: const Text('Blur background during call', style: TextStyle(color: Color(0xFF8E8E93))),
+                  onChanged: (_) async {
+                    await menuCoordinator.toggleBackgroundBlur();
+                  },
+                ),
+                SwitchListTile(
+                  value: menuCoordinator.isBeautyFilterEnabled,
+                  activeColor: const Color(0xFF6B7FB8),
+                  title: const Text('Beauty Filter', style: TextStyle(color: Colors.white)),
+                  subtitle: const Text('Smooth skin effect', style: TextStyle(color: Color(0xFF8E8E93))),
+                  onChanged: (_) {
+                    menuCoordinator.toggleBeautyFilter();
+                  },
+                ),
+                SwitchListTile(
+                  value: menuCoordinator.isFaceAutoFramingEnabled,
+                  activeColor: const Color(0xFF6B7FB8),
+                  title: const Text('Face Auto-Framing', style: TextStyle(color: Colors.white)),
+                  subtitle: const Text('Keep face centered', style: TextStyle(color: Color(0xFF8E8E93))),
+                  onChanged: (_) {
+                    menuCoordinator.toggleFaceAutoFraming();
+                  },
+                ),
+
+                const Divider(color: Color(0xFF2C2C2E)),
+                _buildMoreSectionLabel('Call Tools'),
+                ListTile(
+                  leading: const Icon(Icons.screen_share, color: Color(0xFF6B7FB8)),
+                  title: const Text('Share Screen', style: TextStyle(color: Colors.white)),
+                  onTap: () async {
+                    await menuCoordinator.toggleScreenShare();
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.picture_in_picture, color: Color(0xFF6B7FB8)),
+                  title: const Text('Enter PiP', style: TextStyle(color: Colors.white)),
+                  subtitle: const Text(
+                    'Keep call visible while multitasking',
+                    style: TextStyle(color: Color(0xFF8E8E93)),
+                  ),
+                  onTap: () async {
+                    final livekit = context.read<LiveKitService>();
+                    final entered = await _enterPipNow(livekit);
+                    Navigator.pop(context);
+                    if (!entered && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('PiP not available on this device/browser'),
+                          backgroundColor: const Color(0xFF2C2C2E),
+                          behavior: SnackBarBehavior.floating,
+                          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
+                    menuCoordinator.isRecording ? Icons.stop : Icons.fiber_manual_record,
+                    color: menuCoordinator.isRecording ? Colors.red : const Color(0xFF6B7FB8),
+                  ),
+                  title: Text(
+                    menuCoordinator.isRecording ? 'Stop Recording' : 'Start Recording',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  onTap: () async {
+                    await menuCoordinator.toggleRecording();
+                    Navigator.pop(context);
+                  },
+                ),
+
+                const Divider(color: Color(0xFF2C2C2E)),
+                _buildMoreSectionLabel('Insights'),
+                ListTile(
+                  leading: const Icon(Icons.analytics, color: Color(0xFF6B7FB8)),
+                  title: const Text('Quality Dashboard', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    setState(() {
+                      _qualityDashboardVisible = !_qualityDashboardVisible;
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.volume_up, color: Color(0xFF6B7FB8)),
+                  title: const Text('Audio Controls', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showAudioControlsPanel();
+                  },
+                ),
+              ],
             ),
-            
-            // Audio Controls
-            ListTile(
-              leading: const Icon(Icons.volume_up, color: Color(0xFF6B7FB8)),
-              title: const Text('Audio Controls', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                _showAudioControlsPanel();
-              },
-            ),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoreSectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Color(0xFF8E8E93),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
         ),
       ),
     );

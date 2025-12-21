@@ -33,6 +33,7 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
   late Animation<double> _fadeAnimation;
   final TextEditingController _messageController = TextEditingController();
   final FocusNode _messageFocus = FocusNode();
+  Offset? _overlayPosition;
 
   @override
   void initState() {
@@ -167,22 +168,35 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
       return const SizedBox.shrink();
     }
 
+    final screenSize = MediaQuery.of(context).size;
+    final padding = MediaQuery.of(context).padding;
+    final panelSize = _state == ChatOverlayState.expanded
+        ? const Size(320, 400)
+        : const Size(280, 170);
+    final defaultLeft = screenSize.width - panelSize.width - 16;
+    final defaultTop = (padding.top + 16).clamp(16, screenSize.height - panelSize.height - 16);
+    final initialPosition = Offset(defaultLeft, defaultTop.toDouble());
+    final position = _overlayPosition == null
+        ? _clampPosition(initialPosition, screenSize, panelSize, padding)
+        : _clampPosition(_overlayPosition!, screenSize, panelSize, padding);
+    _overlayPosition ??= position;
+
     return Positioned(
-      top: 100,
-      right: 16,
+      top: position.dy,
+      left: position.dx,
       child: SlideTransition(
         position: _slideAnimation,
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: _state == ChatOverlayState.preview
-              ? _buildPreviewMode()
-              : _buildExpandedMode(),
+              ? _buildPreviewMode(screenSize, padding, panelSize)
+              : _buildExpandedMode(screenSize, padding, panelSize),
         ),
       ),
     );
   }
 
-  Widget _buildPreviewMode() {
+  Widget _buildPreviewMode(Size screenSize, EdgeInsets padding, Size panelSize) {
     // Get the most recent non-local messages
     final recentMessages = widget.messages
         .where((m) => !m.isLocal)
@@ -192,6 +206,9 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
         .toList();
     
     return GestureDetector(
+      onPanUpdate: (details) {
+        _updatePosition(details.delta, screenSize, padding, panelSize);
+      },
       onTap: _toggleExpanded,
       child: Container(
         width: 280,
@@ -311,7 +328,7 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
     );
   }
 
-  Widget _buildExpandedMode() {
+  Widget _buildExpandedMode(Size screenSize, EdgeInsets padding, Size panelSize) {
     return Container(
       width: 320,
       height: 400,
@@ -345,26 +362,40 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
                 ),
               ),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8), size: 20), // Use app's primary color
-                const SizedBox(width: 8),
-                const Text(
-                  'Chat',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500, // Match app's font weight
+            child: GestureDetector(
+              onPanUpdate: (details) {
+                _updatePosition(details.delta, screenSize, padding, panelSize);
+              },
+              child: Row(
+                children: [
+                  const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8), size: 20), // Use app's primary color
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Chat',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500, // Match app's font weight
+                    ),
                   ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Color(0xFF8E8E93), size: 20), // Use app's secondary color
-                  onPressed: _hide,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                ),
-              ],
+                  const Spacer(),
+                  Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8E8E93),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Color(0xFF8E8E93), size: 20), // Use app's secondary color
+                    onPressed: _hide,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  ),
+                ],
+              ),
             ),
           ),
           
@@ -512,5 +543,33 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
     _messageController.dispose();
     _messageFocus.dispose();
     super.dispose();
+  }
+
+  Offset _clampPosition(
+    Offset position,
+    Size screenSize,
+    Size panelSize,
+    EdgeInsets padding,
+  ) {
+    final minX = 16.0;
+    final maxX = (screenSize.width - panelSize.width - 16).clamp(minX, screenSize.width);
+    final minY = (padding.top + 16).clamp(16, screenSize.height);
+    final maxY = (screenSize.height - panelSize.height - padding.bottom - 16)
+        .clamp(minY, screenSize.height);
+    final dx = position.dx.clamp(minX, maxX).toDouble();
+    final dy = position.dy.clamp(minY, maxY).toDouble();
+    return Offset(dx, dy);
+  }
+
+  void _updatePosition(
+    Offset delta,
+    Size screenSize,
+    EdgeInsets padding,
+    Size panelSize,
+  ) {
+    setState(() {
+      final next = (_overlayPosition ?? const Offset(16, 100)) + delta;
+      _overlayPosition = _clampPosition(next, screenSize, panelSize, padding);
+    });
   }
 }
