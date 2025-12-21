@@ -83,6 +83,10 @@ class LiveKitService extends ChangeNotifier {
   bool _isUltraHQMode = false;
   bool _isSimulcastEnabled = false;
   String _currentVideoCodec = 'h264';
+  bool _adaptiveBitrateEnabled = true;
+  int? _currentAdaptiveBitrate;
+  DateTime? _lastAdaptiveChange;
+  VideoParameters? _currentCapturePreset;
   CameraPosition _currentCameraPosition = CameraPosition.front;
   bool _isReconnecting = false;
   bool _manualDisconnect = false;
@@ -289,6 +293,27 @@ class LiveKitService extends ChangeNotifier {
       maxFramerate: finalFramerate,
     );
   }
+
+  int _getAdaptiveTargetBitrate(CallStats stats, int baseBitrate) {
+    final packetLoss = (stats.videoPacketLoss > stats.audioPacketLoss)
+        ? stats.videoPacketLoss
+        : stats.audioPacketLoss;
+    final rttMs = stats.roundTripTime * 1000.0;
+    final jitterMs = stats.jitter * 1000.0;
+
+    double factor = 1.0;
+    if (packetLoss >= 5.0 || rttMs >= 300.0 || jitterMs >= 40.0) {
+      factor = 0.5;
+    } else if (packetLoss >= 2.0 || rttMs >= 200.0 || jitterMs >= 30.0) {
+      factor = 0.7;
+    } else if (packetLoss >= 1.0 || rttMs >= 150.0 || jitterMs >= 20.0) {
+      factor = 0.85;
+    }
+
+    final minBitrate = _isUltraHQMode ? 4_000_000 : 2_000_000;
+    final target = (baseBitrate * factor).round();
+    return target.clamp(minBitrate, baseBitrate);
+  }
   
   /// Connect to LiveKit room with FaceTime-quality tuning
   Future<bool> connect({
@@ -349,6 +374,7 @@ class LiveKitService extends ChangeNotifier {
                 captureParams = FaceTimeVideoPresets.h720;
             }
           }
+          _currentCapturePreset = captureParams;
 
       final processor = _mediaPipeSettings.shouldProcess
           ? (_mediaPipeProcessor ??= MediaPipeProcessor(_mediaPipeSettings))
@@ -533,6 +559,7 @@ class LiveKitService extends ChangeNotifier {
             processor: processor,
           ),
         );
+        _currentCapturePreset = captureParams;
         
         debugPrint('📤 Publishing video track with FaceTime-quality encoding...');
         await _room!.localParticipant?.publishVideoTrack(
@@ -557,7 +584,39 @@ class LiveKitService extends ChangeNotifier {
 
   /// Apply bitrate & adaptation policy (From brief)
   Future<void> _maybeAdjustVideoForStats(CallStats stats) async {
-    debugPrint('🔒 Visual quality locked: skipping adaptive video changes');
+    if (!_adaptiveBitrateEnabled) return;
+    if (_room == null || _localVideoTrack == null) return;
+
+    final baseEncoding = _getOptimalVideoEncoding();
+    final baseBitrate = baseEncoding.maxBitrate ?? 0;
+    if (baseBitrate <= 0) return;
+
+    final targetBitrate = _getAdaptiveTargetBitrate(stats, baseBitrate);
+    if (_currentAdaptiveBitrate == targetBitrate) return;
+
+    final now = DateTime.now();
+    if (_lastAdaptiveChange != null &&
+        now.difference(_lastAdaptiveChange!) < const Duration(seconds: 12)) {
+      return;
+    }
+
+    final previous = _currentAdaptiveBitrate ?? baseBitrate;
+    final changeRatio = (targetBitrate - previous).abs() / previous;
+    if (changeRatio < 0.1) return;
+
+    final preset = _currentCapturePreset ?? FaceTimeVideoPresets.h720;
+    final processor = _mediaPipeSettings.shouldProcess
+        ? (_mediaPipeProcessor ??= MediaPipeProcessor(_mediaPipeSettings))
+        : null;
+
+    debugPrint('📉 Adaptive bitrate update: ${previous / 1000000} → ${targetBitrate / 1000000} Mbps');
+    await _recreateAndPublishVideoTrack(
+      preset,
+      maxBitrateOverride: targetBitrate,
+      processor: processor,
+    );
+    _currentAdaptiveBitrate = targetBitrate;
+    _lastAdaptiveChange = now;
   }
 
   /// Recreate and publish local camera track
@@ -586,6 +645,7 @@ class LiveKitService extends ChangeNotifier {
           processor: processor,
         ),
       );
+      _currentCapturePreset = preset;
 
       await _room?.localParticipant?.publishVideoTrack(
         _localVideoTrack!,

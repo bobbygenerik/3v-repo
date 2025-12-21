@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'config/environment.dart';
 import 'config/app_theme.dart';
@@ -112,11 +113,15 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _isInitialized = false;
+  bool _hasCachedUser = false;
+  DateTime? _authNullSince;
+  static const Duration _authGracePeriod = Duration(seconds: 3);
   
   @override
   void initState() {
     super.initState();
     _initializeApp();
+    _loadCachedUser();
   }
   
   Future<void> _initializeApp() async {
@@ -126,6 +131,19 @@ class _AuthWrapperState extends State<AuthWrapper> {
       setState(() {
         _isInitialized = true;
       });
+    }
+  }
+
+  Future<void> _loadCachedUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString('last_signed_in_uid');
+      if (!mounted) return;
+      setState(() {
+        _hasCachedUser = cached != null && cached.isNotEmpty;
+      });
+    } catch (e) {
+      debugPrint('⚠️ Failed to load cached auth state: $e');
     }
   }
   
@@ -143,12 +161,34 @@ class _AuthWrapperState extends State<AuthWrapper> {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: AppColors.backgroundDark,
+            body: Center(
+              child: CircularProgressIndicator(color: AppColors.accentBlue),
+            ),
+          );
+        }
         // User is signed in
         if (snapshot.hasData && snapshot.data != null) {
+          _authNullSince = null;
           return const HomeScreen();
         }
-        
-        // User is signed out or loading
+
+        if (_hasCachedUser) {
+          _authNullSince ??= DateTime.now();
+          final elapsed = DateTime.now().difference(_authNullSince!);
+          if (elapsed < _authGracePeriod) {
+            return const Scaffold(
+              backgroundColor: AppColors.backgroundDark,
+              body: Center(
+                child: CircularProgressIndicator(color: AppColors.accentBlue),
+              ),
+            );
+          }
+        }
+        _authNullSince = null;
+        // User is signed out
         return const AuthScreen();
       },
     );

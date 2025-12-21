@@ -781,11 +781,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         try {
           final stats = _coordinator.statsService.currentStats;
           _maybeShowNetworkWarning(stats);
+          livekit.applyObservedStats(stats);
         } catch (e) {
           debugPrint('Failed to process call stats: $e');
         }
       });
-      // Don't start stats collection automatically - let user enable it
+      _coordinator.statsService.startCollecting();
     }
     
     setState(() => _isConnecting = false);

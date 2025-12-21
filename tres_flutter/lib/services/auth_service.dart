@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'web_auth_helper.dart' if (dart.library.io) 'web_auth_helper_stub.dart';
 
 /// Authentication service wrapping Firebase Auth
@@ -43,6 +44,7 @@ class AuthService extends ChangeNotifier {
       // Ensure user document exists in Firestore
       if (credential.user != null) {
         await _ensureUserDocument(credential.user!);
+        await _cacheSignedInUser(credential.user!);
       }
       
       return credential.user != null;
@@ -77,6 +79,7 @@ class AuthService extends ChangeNotifier {
       // Create user document in Firestore
       if (credential.user != null) {
         await _ensureUserDocument(credential.user!);
+        await _cacheSignedInUser(credential.user!);
       }
       
       return credential.user != null;
@@ -251,8 +254,27 @@ class AuthService extends ChangeNotifier {
   Future<void> signOut() async {
     await _auth.signOut();
     _verificationId = null;
+    await _clearCachedUser();
     _errorMessage = null;
     notifyListeners();
+  }
+
+  Future<void> _cacheSignedInUser(User user) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_signed_in_uid', user.uid);
+    } catch (e) {
+      debugPrint('⚠️ Failed to cache signed-in user: $e');
+    }
+  }
+
+  Future<void> _clearCachedUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('last_signed_in_uid');
+    } catch (e) {
+      debugPrint('⚠️ Failed to clear cached user: $e');
+    }
   }
   
   /// Clear error message
