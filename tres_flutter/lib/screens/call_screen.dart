@@ -18,6 +18,7 @@ import '../services/chat_service.dart' as chat;
 import '../services/vibration_service.dart';
 import '../services/call_stats_service.dart';
 import '../services/mediapipe_settings.dart';
+import '../config/environment.dart';
 import '../widgets/participant_video.dart';
 import '../widgets/stats_overlay.dart';
 import '../widgets/call_waiting_banner.dart';
@@ -1818,38 +1819,40 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                       },
                     ),
 
-                    const Divider(color: Color(0xFF2C2C2E)),
-                    _buildMoreSectionLabel('Video Effects'),
-                    SwitchListTile(
-                      value: menuCoordinator.isBackgroundBlurEnabled,
-                      activeColor: const Color(0xFF6B7FB8),
-                      title: const Text('Background Blur', style: TextStyle(color: Colors.white)),
-                      subtitle: const Text('Blur background during call', style: TextStyle(color: Color(0xFF8E8E93))),
-                      onChanged: (_) async {
-                        await menuCoordinator.toggleBackgroundBlur();
-                        setModalState(() {});
-                      },
-                    ),
-                    SwitchListTile(
-                      value: menuCoordinator.isBeautyFilterEnabled,
-                      activeColor: const Color(0xFF6B7FB8),
-                      title: const Text('Beauty Filter', style: TextStyle(color: Colors.white)),
-                      subtitle: const Text('Smooth skin effect', style: TextStyle(color: Color(0xFF8E8E93))),
-                      onChanged: (_) {
-                        menuCoordinator.toggleBeautyFilter();
-                        setModalState(() {});
-                      },
-                    ),
-                    SwitchListTile(
-                      value: menuCoordinator.isFaceAutoFramingEnabled,
-                      activeColor: const Color(0xFF6B7FB8),
-                      title: const Text('Face Auto-Framing', style: TextStyle(color: Colors.white)),
-                      subtitle: const Text('Keep face centered', style: TextStyle(color: Color(0xFF8E8E93))),
-                      onChanged: (_) {
-                        menuCoordinator.toggleFaceAutoFraming();
-                        setModalState(() {});
-                      },
-                    ),
+                    if (Environment.enableMLFeatures) ...[
+                      const Divider(color: Color(0xFF2C2C2E)),
+                      _buildMoreSectionLabel('Video Effects'),
+                      SwitchListTile(
+                        value: menuCoordinator.isBackgroundBlurEnabled,
+                        activeColor: const Color(0xFF6B7FB8),
+                        title: const Text('Background Blur', style: TextStyle(color: Colors.white)),
+                        subtitle: const Text('Blur background during call', style: TextStyle(color: Color(0xFF8E8E93))),
+                        onChanged: (_) async {
+                          await menuCoordinator.toggleBackgroundBlur();
+                          setModalState(() {});
+                        },
+                      ),
+                      SwitchListTile(
+                        value: menuCoordinator.isBeautyFilterEnabled,
+                        activeColor: const Color(0xFF6B7FB8),
+                        title: const Text('Beauty Filter', style: TextStyle(color: Colors.white)),
+                        subtitle: const Text('Smooth skin effect', style: TextStyle(color: Color(0xFF8E8E93))),
+                        onChanged: (_) {
+                          menuCoordinator.toggleBeautyFilter();
+                          setModalState(() {});
+                        },
+                      ),
+                      SwitchListTile(
+                        value: menuCoordinator.isFaceAutoFramingEnabled,
+                        activeColor: const Color(0xFF6B7FB8),
+                        title: const Text('Face Auto-Framing', style: TextStyle(color: Colors.white)),
+                        subtitle: const Text('Keep face centered', style: TextStyle(color: Color(0xFF8E8E93))),
+                        onChanged: (_) {
+                          menuCoordinator.toggleFaceAutoFraming();
+                          setModalState(() {});
+                        },
+                      ),
+                    ],
 
                     const Divider(color: Color(0xFF2C2C2E)),
                     _buildMoreSectionLabel('Call Tools'),

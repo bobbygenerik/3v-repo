@@ -12,6 +12,7 @@ import 'call_stats_service.dart';
 import '../config/environment.dart';
 import 'grid_layout_manager.dart';
 import 'mediapipe_settings.dart';
+import '../config/environment.dart';
 
 export 'grid_layout_manager.dart' show LayoutMode;
 
@@ -101,7 +102,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     chatService.initialize(room);
     reactionService.initialize(room);
 
-    if (_mediaPipeSettings != null) {
+    if (_mediaPipeSettings != null && Environment.enableMLFeatures) {
       debugPrint('✅ MediaPipe services ready');
     } else {
       debugPrint('⚠️ MediaPipe settings not provided; ML features disabled');
@@ -110,20 +111,32 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     // Apply user preferences (if present) so features the user enabled in Settings
     try {
       final prefs = await SharedPreferences.getInstance();
-      final bgBlur = prefs.getBool('background_blur') ?? false;
-      _isBackgroundBlurEnabled = bgBlur;
-      _mediaPipeSettings?.update(backgroundBlur: bgBlur);
+      if (Environment.enableMLFeatures) {
+        final bgBlur = prefs.getBool('background_blur') ?? false;
+        _isBackgroundBlurEnabled = bgBlur;
+        _mediaPipeSettings?.update(backgroundBlur: bgBlur);
 
-      final beauty = prefs.getBool('beauty_filter') ?? false;
-      _isBeautyFilterEnabled = beauty;
-      _mediaPipeSettings?.update(beauty: beauty, faceMesh: beauty);
+        final beauty = prefs.getBool('beauty_filter') ?? false;
+        _isBeautyFilterEnabled = beauty;
+        _mediaPipeSettings?.update(beauty: beauty, faceMesh: beauty);
 
-      final faceAuto = prefs.getBool('face_auto_framing') ?? false;
-      _isFaceAutoFramingEnabled = faceAuto;
-      _mediaPipeSettings?.update(faceDetection: faceAuto);
+        final faceAuto = prefs.getBool('face_auto_framing') ?? false;
+        _isFaceAutoFramingEnabled = faceAuto;
+        _mediaPipeSettings?.update(faceDetection: faceAuto);
 
-      final blurIntensity = prefs.getDouble('portrait_blur_intensity') ?? 70.0;
-      _mediaPipeSettings?.update(blurIntensity: blurIntensity);
+        final blurIntensity = prefs.getDouble('portrait_blur_intensity') ?? 70.0;
+        _mediaPipeSettings?.update(blurIntensity: blurIntensity);
+      } else {
+        _isBackgroundBlurEnabled = false;
+        _isBeautyFilterEnabled = false;
+        _isFaceAutoFramingEnabled = false;
+        _mediaPipeSettings?.update(
+          backgroundBlur: false,
+          beauty: false,
+          faceMesh: false,
+          faceDetection: false,
+        );
+      }
       
       // If device is low-end, disable expensive ML features regardless of saved prefs
       try {
@@ -362,6 +375,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
   /// Toggle background blur
   Future<void> toggleBackgroundBlur() async {
+    if (!Environment.enableMLFeatures) return;
     _isBackgroundBlurEnabled = !_isBackgroundBlurEnabled;
     _mediaPipeSettings?.update(backgroundBlur: _isBackgroundBlurEnabled);
     await _persistSetting('background_blur', _isBackgroundBlurEnabled);
@@ -371,6 +385,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
   /// Toggle beauty filter
   void toggleBeautyFilter() {
+    if (!Environment.enableMLFeatures) return;
     _isBeautyFilterEnabled = !_isBeautyFilterEnabled;
     _mediaPipeSettings?.update(
       beauty: _isBeautyFilterEnabled,
@@ -383,6 +398,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
   /// Toggle face auto-framing
   void toggleFaceAutoFraming() {
+    if (!Environment.enableMLFeatures) return;
     _isFaceAutoFramingEnabled = !_isFaceAutoFramingEnabled;
     _mediaPipeSettings?.update(faceDetection: _isFaceAutoFramingEnabled);
     unawaited(_persistSetting('face_auto_framing', _isFaceAutoFramingEnabled));

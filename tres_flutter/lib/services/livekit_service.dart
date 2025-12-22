@@ -6,6 +6,7 @@ import 'network_quality_service.dart';
 import 'device_capability_service.dart';
 import 'call_stats_service.dart';
 import 'mediapipe_processor.dart';
+import '../config/environment.dart';
 import 'mediapipe_settings.dart';
 import 'web_pip_helper.dart';
 import '../config/environment.dart';
@@ -940,6 +941,7 @@ class LiveKitService extends ChangeNotifier {
   void _onMediaPipeSettingsChanged() {
     if (_room == null || _localVideoTrack == null) return;
 
+    if (!Environment.enableMLFeatures) return;
     final shouldProcess = _mediaPipeSettings.shouldProcess;
     final processor = shouldProcess
         ? (_mediaPipeProcessor ??= MediaPipeProcessor(_mediaPipeSettings))

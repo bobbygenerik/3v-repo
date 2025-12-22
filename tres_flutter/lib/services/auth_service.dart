@@ -173,12 +173,7 @@ class AuthService extends ChangeNotifier {
         timeout: const Duration(seconds: 60),
         verificationCompleted: (PhoneAuthCredential credential) async {
           // Auto-verification (Android only)
-          final result = await _auth.signInWithCredential(credential);
-          final user = result.user;
-          if (user != null) {
-            await _ensureUserDocument(user);
-            await _cacheSignedInUser(user);
-          }
+          await _auth.signInWithCredential(credential);
           _verificationId = null;
           notifyListeners();
         },
@@ -216,12 +211,7 @@ class AuthService extends ChangeNotifier {
       // Web phone verification
       if (kIsWeb && _webConfirmationResult != null) {
         try {
-          final result = await _webConfirmationResult!.confirm(smsCode);
-          final user = result.user;
-          if (user != null) {
-            await _ensureUserDocument(user);
-            await _cacheSignedInUser(user);
-          }
+          await _webConfirmationResult!.confirm(smsCode);
           _webConfirmationResult = null;
           notifyListeners();
           return true;
@@ -244,12 +234,7 @@ class AuthService extends ChangeNotifier {
         smsCode: smsCode,
       );
       
-      final result = await _auth.signInWithCredential(credential);
-      final user = result.user;
-      if (user != null) {
-        await _ensureUserDocument(user);
-        await _cacheSignedInUser(user);
-      }
+      await _auth.signInWithCredential(credential);
       _verificationId = null;
       notifyListeners();
       

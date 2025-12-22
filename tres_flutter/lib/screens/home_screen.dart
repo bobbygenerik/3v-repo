@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../utils/web_reload_stub.dart'
+    if (dart.library.html) '../utils/web_reload_web.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -507,6 +509,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   }
 
   Future<void> _refreshHome() async {
+    if (kIsWeb) {
+      await refreshWebApp();
+      return;
+    }
+
     setState(() {
       _isLoadingContacts = true;
       _isLoadingHistory = true;

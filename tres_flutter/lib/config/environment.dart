@@ -43,7 +43,7 @@ class Environment {
   );
   
   // Feature Flags
-  static const bool enableMLFeatures = true;
+  static const bool enableMLFeatures = false;
   static const bool enableE2EEncryption = true;
   static const bool enableCloudRecording = true;
   static const bool enableScreenShare = false;
