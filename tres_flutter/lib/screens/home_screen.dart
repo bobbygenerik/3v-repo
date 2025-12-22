@@ -1061,11 +1061,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       itemBuilder: (context, index) {
         final contact = _filteredContacts[index];
         return Dismissible(
-          key: ValueKey('contact_${contact['uid']}'),
-          direction: DismissDirection.endToStart,
+          key: ValueKey('contact_${contact['uid'] ?? contact['email'] ?? index}'),
+          direction: DismissDirection.horizontal,
+          dismissThresholds: const {
+            DismissDirection.startToEnd: 0.2,
+            DismissDirection.endToStart: 0.2,
+          },
           confirmDismiss: (_) => _confirmDeleteContact(contact),
           onDismissed: (_) => _deleteContact(contact),
-          background: const SizedBox.shrink(),
+          background: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.redAccent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            alignment: Alignment.centerLeft,
+            child: const Row(
+              children: [
+                Icon(Icons.delete_outline, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Remove', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
           secondaryBackground: Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 20),
