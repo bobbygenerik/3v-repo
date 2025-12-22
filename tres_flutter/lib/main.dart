@@ -138,10 +138,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cached = prefs.getString('last_signed_in_uid');
+      final currentUser = FirebaseAuth.instance.currentUser;
       if (!mounted) return;
       setState(() {
-        _hasCachedUser = cached != null && cached.isNotEmpty;
+        _hasCachedUser = (cached != null && cached.isNotEmpty) || currentUser != null;
       });
+      if (currentUser != null && (cached == null || cached.isEmpty)) {
+        await prefs.setString('last_signed_in_uid', currentUser.uid);
+      }
     } catch (e) {
       debugPrint('⚠️ Failed to load cached auth state: $e');
     }

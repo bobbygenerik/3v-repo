@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
@@ -157,7 +158,7 @@ class _AuthScreenState extends State<AuthScreen> {
             left: 32,
             right: 32,
             top: 32,
-            bottom: 32 + MediaQuery.of(context).viewInsets.bottom,
+            bottom: 32 + (kIsWeb ? 0 : MediaQuery.of(context).viewInsets.bottom),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
