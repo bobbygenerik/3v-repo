@@ -325,6 +325,35 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   void _handleLiveKitUpdate() {
     final livekit = context.read<LiveKitService>();
 
+    final mediaPipeError = livekit.consumeMediaPipeError();
+    if (mediaPipeError != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  mediaPipeError,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 3),
+          backgroundColor: const Color(0xFFB24A4A),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+
     if (livekit.isReconnecting != _wasReconnecting && mounted) {
       _wasReconnecting = livekit.isReconnecting;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1824,15 +1853,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
 
                     const Divider(color: Color(0xFF2C2C2E)),
                     _buildMoreSectionLabel('Call Tools'),
-                    ListTile(
-                      leading: const Icon(Icons.screen_share, color: Color(0xFF6B7FB8)),
-                      title: const Text('Share Screen', style: TextStyle(color: Colors.white)),
-                      onTap: () async {
-                        await menuCoordinator.toggleScreenShare();
-                        if (!mounted) return;
-                        Navigator.pop(context);
-                      },
-                    ),
                     ListTile(
                       leading: const Icon(Icons.picture_in_picture, color: Color(0xFF6B7FB8)),
                       title: const Text('Enter PiP', style: TextStyle(color: Colors.white)),

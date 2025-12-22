@@ -59,18 +59,20 @@ class MediaPipeVideoProcessor(
       return frame
     }
 
-    val i420 = frame.buffer.toI420() ?: return frame
-    val width = i420.width
-    val height = i420.height
-    val bitmap = i420ToBitmap(i420)
-    i420.release()
-
-    val processed = processBitmap(bitmap, frame.timestampNs / 1000000)
-
-    val outI420 = bitmapToI420(processed)
-
-    val outFrame = VideoFrame(outI420, frame.rotation, frame.timestampNs)
-    return outFrame
+    return try {
+      val i420 = frame.buffer.toI420() ?: return frame
+      try {
+        val bitmap = i420ToBitmap(i420)
+        val processed = processBitmap(bitmap, frame.timestampNs / 1000000)
+        val outI420 = bitmapToI420(processed)
+        VideoFrame(outI420, frame.rotation, frame.timestampNs)
+      } finally {
+        i420.release()
+      }
+    } catch (e: Exception) {
+      Log.e("MediaPipe", "Frame processing failed, passing through frame: ${e.message}")
+      frame
+    }
   }
 
   private fun processBitmap(bitmap: Bitmap, timestampMs: Long): Bitmap {
@@ -97,6 +99,8 @@ class MediaPipeVideoProcessor(
         xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN)
       })
       canvas.drawBitmap(subject, 0f, 0f, paint)
+    } else if (options.backgroundBlur && blurred != null) {
+      canvas.drawBitmap(blurred, 0f, 0f, paint)
     } else {
       canvas.drawBitmap(bitmap, 0f, 0f, paint)
     }

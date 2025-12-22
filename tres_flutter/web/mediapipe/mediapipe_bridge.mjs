@@ -15,13 +15,15 @@ let lastCropRect = null;
 
 async function init() {
   if (initialized) return;
+  const baseUrl = new URL(document.baseURI);
+  const resolveAsset = (path) => new URL(path, baseUrl).toString();
   vision = await FilesetResolver.forVisionTasks(
-    '/mediapipe/node_modules/@mediapipe/tasks-vision/wasm'
+    resolveAsset('mediapipe/node_modules/@mediapipe/tasks-vision/wasm')
   );
 
   segmenter = await ImageSegmenter.createFromOptions(vision, {
     baseOptions: {
-      modelAssetPath: '/assets/mediapipe/selfie_segmenter.tflite',
+      modelAssetPath: resolveAsset('assets/assets/mediapipe/selfie_segmenter.tflite'),
     },
     runningMode: 'VIDEO',
     outputCategoryMask: true,
@@ -29,7 +31,7 @@ async function init() {
 
   faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
     baseOptions: {
-      modelAssetPath: '/assets/mediapipe/face_landmarker.task',
+      modelAssetPath: resolveAsset('assets/assets/mediapipe/face_landmarker.task'),
     },
     runningMode: 'VIDEO',
     outputFaceBlendshapes: false,
@@ -161,110 +163,140 @@ async function createProcessedTrack(jsTrack, opts) {
 
   const transformer = new TransformStream({
     async transform(videoFrame, controller) {
-      const width = videoFrame.displayWidth;
-      const height = videoFrame.displayHeight;
-      _ensureCanvasSize(canvas, width, height);
-      _ensureCanvasSize(maskCanvas, width, height);
-      _ensureCanvasSize(subjectCanvas, width, height);
-      _ensureCanvasSize(blurCanvas, width, height);
-      _ensureCanvasSize(frameCanvas, width, height);
+      try {
+        const width = videoFrame.displayWidth;
+        const height = videoFrame.displayHeight;
+        _ensureCanvasSize(canvas, width, height);
+        _ensureCanvasSize(maskCanvas, width, height);
+        _ensureCanvasSize(subjectCanvas, width, height);
+        _ensureCanvasSize(blurCanvas, width, height);
+        _ensureCanvasSize(frameCanvas, width, height);
 
-      const timestampMs = Math.round(videoFrame.timestamp / 1000);
+        const timestampMs = Math.round(videoFrame.timestamp / 1000);
 
-      let maskData;
-      let faceResult;
-      if (optionsState.backgroundBlur && segmenter) {
-        const result = await segmenter.segmentForVideo(videoFrame, timestampMs);
-        const categoryMask = result.categoryMask;
-        const maskArray = categoryMask.getAsUint8Array
-          ? categoryMask.getAsUint8Array()
-          : categoryMask.getAsFloat32Array();
-        maskData = _buildMaskImageData(maskArray, categoryMask.width, categoryMask.height);
-        _ensureCanvasSize(maskImageCanvas, categoryMask.width, categoryMask.height);
-        maskImageCtx.putImageData(maskData, 0, 0);
-      }
-
-      ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(videoFrame, 0, 0, width, height);
-
-      const blurIntensity = Number.isFinite(optionsState.blurIntensity)
-        ? Math.min(Math.max(optionsState.blurIntensity, 0), 100)
-        : 70;
-      const blurPx = blurIntensity <= 0 ? 0 : Math.round(2 + (blurIntensity / 100) * 18);
-
-      blurCtx.clearRect(0, 0, width, height);
-      blurCtx.filter = blurPx > 0 ? `blur(${blurPx}px)` : 'none';
-      blurCtx.drawImage(canvas, 0, 0, width, height);
-      blurCtx.filter = 'none';
-
-      if (maskData) {
-        maskCtx.clearRect(0, 0, width, height);
-        maskCtx.drawImage(maskImageCanvas, 0, 0, width, height);
-        subjectCtx.clearRect(0, 0, width, height);
-        subjectCtx.drawImage(canvas, 0, 0, width, height);
-        subjectCtx.globalCompositeOperation = 'destination-in';
-        subjectCtx.drawImage(maskCanvas, 0, 0, width, height);
-        subjectCtx.globalCompositeOperation = 'source-over';
+        let maskData;
+        let faceResult;
+        if (optionsState.backgroundBlur && segmenter) {
+          try {
+            const result = await segmenter.segmentForVideo(videoFrame, timestampMs);
+            const categoryMask = result.categoryMask;
+            const maskArray = categoryMask.getAsUint8Array
+              ? categoryMask.getAsUint8Array()
+              : categoryMask.getAsFloat32Array();
+            maskData = _buildMaskImageData(maskArray, categoryMask.width, categoryMask.height);
+            _ensureCanvasSize(maskImageCanvas, categoryMask.width, categoryMask.height);
+            maskImageCtx.putImageData(maskData, 0, 0);
+          } catch (e) {
+            console.warn('MediaPipe segmenter error, passing through frame:', e);
+            maskData = null;
+          }
+        }
 
         ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(blurCanvas, 0, 0, width, height);
-        ctx.drawImage(subjectCanvas, 0, 0, width, height);
-      }
+        ctx.drawImage(videoFrame, 0, 0, width, height);
 
-      if ((optionsState.beauty || optionsState.faceDetection || optionsState.faceMesh) && faceLandmarker) {
-        faceResult = await faceLandmarker.detectForVideo(videoFrame, timestampMs);
-      }
+        const blurIntensity = Number.isFinite(optionsState.blurIntensity)
+          ? Math.min(Math.max(optionsState.blurIntensity, 0), 100)
+          : 70;
+        const blurPx = blurIntensity <= 0 ? 0 : Math.round(2 + (blurIntensity / 100) * 18);
 
-      if (optionsState.beauty && faceResult?.faceLandmarks?.length > 0) {
-        faceResult.faceLandmarks.forEach((landmarks) => {
-          let minX = 1;
-          let minY = 1;
-          let maxX = 0;
-          let maxY = 0;
-          landmarks.forEach((point) => {
-            minX = Math.min(minX, point.x);
-            minY = Math.min(minY, point.y);
-            maxX = Math.max(maxX, point.x);
-            maxY = Math.max(maxY, point.y);
-          });
-          const x = Math.max(Math.floor(minX * width) - 10, 0);
-          const y = Math.max(Math.floor(minY * height) - 10, 0);
-          const w = Math.min(Math.ceil((maxX - minX) * width) + 20, width - x);
-          const h = Math.min(Math.ceil((maxY - minY) * height) + 20, height - y);
+        blurCtx.clearRect(0, 0, width, height);
+        blurCtx.filter = blurPx > 0 ? `blur(${blurPx}px)` : 'none';
+        blurCtx.drawImage(canvas, 0, 0, width, height);
+        blurCtx.filter = 'none';
 
-          ctx.save();
-          ctx.filter = 'blur(3px)';
-          ctx.drawImage(canvas, x, y, w, h, x, y, w, h);
-          ctx.restore();
-        });
-      }
+        if (maskData) {
+          maskCtx.clearRect(0, 0, width, height);
+          maskCtx.drawImage(maskImageCanvas, 0, 0, width, height);
+          subjectCtx.clearRect(0, 0, width, height);
+          subjectCtx.drawImage(canvas, 0, 0, width, height);
+          subjectCtx.globalCompositeOperation = 'destination-in';
+          subjectCtx.drawImage(maskCanvas, 0, 0, width, height);
+          subjectCtx.globalCompositeOperation = 'source-over';
 
-      let outputCanvas = canvas;
-      if (optionsState.faceDetection && faceResult?.faceLandmarks?.length > 0) {
-        const rect = _smoothRect(_computeFaceRect(faceResult.faceLandmarks[0], width, height));
-        if (rect) {
-          frameCtx.clearRect(0, 0, width, height);
-          frameCtx.drawImage(
-            canvas,
-            rect.x,
-            rect.y,
-            rect.w,
-            rect.h,
-            0,
-            0,
-            width,
-            height
-          );
-          outputCanvas = frameCanvas;
+          ctx.clearRect(0, 0, width, height);
+          ctx.drawImage(blurCanvas, 0, 0, width, height);
+          ctx.drawImage(subjectCanvas, 0, 0, width, height);
+        } else if (optionsState.backgroundBlur && blurPx > 0) {
+          ctx.clearRect(0, 0, width, height);
+          ctx.drawImage(blurCanvas, 0, 0, width, height);
         }
-      } else if (!optionsState.faceDetection) {
-        lastCropRect = null;
-      }
 
-      const outputFrame = new VideoFrame(outputCanvas, { timestamp: videoFrame.timestamp });
-      controller.enqueue(outputFrame);
-      outputFrame.close();
-      videoFrame.close();
+        if ((optionsState.beauty || optionsState.faceDetection || optionsState.faceMesh) && faceLandmarker) {
+          try {
+            faceResult = await faceLandmarker.detectForVideo(videoFrame, timestampMs);
+          } catch (e) {
+            console.warn('MediaPipe faceLandmarker error, skipping face effects:', e);
+            faceResult = null;
+          }
+        }
+
+        if (optionsState.beauty && faceResult?.faceLandmarks?.length > 0) {
+          faceResult.faceLandmarks.forEach((landmarks) => {
+            let minX = 1;
+            let minY = 1;
+            let maxX = 0;
+            let maxY = 0;
+            landmarks.forEach((point) => {
+              minX = Math.min(minX, point.x);
+              minY = Math.min(minY, point.y);
+              maxX = Math.max(maxX, point.x);
+              maxY = Math.max(maxY, point.y);
+            });
+            const x = Math.max(Math.floor(minX * width) - 10, 0);
+            const y = Math.max(Math.floor(minY * height) - 10, 0);
+            const w = Math.min(Math.ceil((maxX - minX) * width) + 20, width - x);
+            const h = Math.min(Math.ceil((maxY - minY) * height) + 20, height - y);
+
+            ctx.save();
+            ctx.filter = 'blur(3px)';
+            ctx.drawImage(canvas, x, y, w, h, x, y, w, h);
+            ctx.restore();
+          });
+        }
+
+        let outputCanvas = canvas;
+        if (optionsState.faceDetection && faceResult?.faceLandmarks?.length > 0) {
+          const rect = _smoothRect(_computeFaceRect(faceResult.faceLandmarks[0], width, height));
+          if (rect) {
+            frameCtx.clearRect(0, 0, width, height);
+            frameCtx.drawImage(
+              canvas,
+              rect.x,
+              rect.y,
+              rect.w,
+              rect.h,
+              0,
+              0,
+              width,
+              height
+            );
+            outputCanvas = frameCanvas;
+          }
+        } else if (!optionsState.faceDetection) {
+          lastCropRect = null;
+        }
+
+        const outputFrame = new VideoFrame(outputCanvas, { timestamp: videoFrame.timestamp });
+        controller.enqueue(outputFrame);
+        outputFrame.close();
+      } catch (e) {
+        console.warn('MediaPipe processing error, passing through frame:', e);
+        try {
+          const width = videoFrame.displayWidth;
+          const height = videoFrame.displayHeight;
+          _ensureCanvasSize(canvas, width, height);
+          ctx.clearRect(0, 0, width, height);
+          ctx.drawImage(videoFrame, 0, 0, width, height);
+          const outputFrame = new VideoFrame(canvas, { timestamp: videoFrame.timestamp });
+          controller.enqueue(outputFrame);
+          outputFrame.close();
+        } catch (fallbackError) {
+          console.error('MediaPipe fallback failed:', fallbackError);
+        }
+      } finally {
+        videoFrame.close();
+      }
     },
   });
 

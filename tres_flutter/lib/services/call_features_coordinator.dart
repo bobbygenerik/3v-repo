@@ -9,6 +9,7 @@ import 'cloud_recording_service.dart';
 import 'e2e_encryption_service.dart';
 import 'screen_share_service.dart';
 import 'call_stats_service.dart';
+import '../config/environment.dart';
 import 'grid_layout_manager.dart';
 import 'mediapipe_settings.dart';
 
@@ -319,6 +320,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     ScreenResolution? resolution,
     int? fps,
   }) async {
+    if (!Environment.enableScreenShare) return;
     await screenShareService.toggleScreenShare(
       resolution: resolution,
       fps: fps,
@@ -331,6 +333,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     ScreenResolution? resolution,
     int? fps,
   }) async {
+    if (!Environment.enableScreenShare) return false;
     return await screenShareService.startScreenShare(
       resolution: resolution,
       fps: fps,
@@ -339,6 +342,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
   /// Stop screen sharing
   Future<bool> stopScreenShare() async {
+    if (!Environment.enableScreenShare) return false;
     return await screenShareService.stopScreenShare();
   }
 

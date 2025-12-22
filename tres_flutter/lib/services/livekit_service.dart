@@ -82,6 +82,8 @@ class LiveKitService extends ChangeNotifier {
   CallType _currentCallType = CallType.mixedUnknown;
   bool _isUltraHQMode = false;
   bool _isSimulcastEnabled = false;
+  String? _mediaPipeError;
+  bool _isRecoveringAudio = false;
   String _currentVideoCodec = 'h264';
   bool _adaptiveBitrateEnabled = true;
   int? _currentAdaptiveBitrate;
@@ -102,6 +104,11 @@ class LiveKitService extends ChangeNotifier {
   CallType get currentCallType => _currentCallType;
   bool get isUltraHQMode => _isUltraHQMode;
   bool get isSimulcastEnabled => _isSimulcastEnabled;
+  String? consumeMediaPipeError() {
+    final error = _mediaPipeError;
+    _mediaPipeError = null;
+    return error;
+  }
   String get currentVideoCodec => _currentVideoCodec;
   bool get isReconnecting => _isReconnecting;
   
@@ -467,6 +474,14 @@ class LiveKitService extends ChangeNotifier {
         return 24000; // 24kbps minimum
     }
   }
+
+  AudioCaptureOptions _buildAudioCaptureOptions() {
+    return const AudioCaptureOptions(
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    );
+  }
   
   /// Disconnect from room and cleanup
   Future<void> disconnect() async {
@@ -577,6 +592,9 @@ class LiveKitService extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('❌ Failed to enable camera: $e');
+      if (_mediaPipeSettings.shouldProcess) {
+        _mediaPipeError = 'MediaPipe failed to start. Effects are disabled.';
+      }
       _errorMessage = 'Failed to enable camera: ${e.toString()}';
       notifyListeners();
     }
@@ -664,6 +682,10 @@ class LiveKitService extends ChangeNotifier {
       debugPrint('🔁 Recreated video track with FaceTime-quality preset');
     } catch (e) {
       debugPrint('Failed to recreate video track: $e');
+      if (processor != null) {
+        _mediaPipeError = 'MediaPipe failed to apply. Effects are disabled.';
+        notifyListeners();
+      }
     }
   }
 
@@ -715,12 +737,7 @@ class LiveKitService extends ChangeNotifier {
       
       if (_localAudioTrack == null) {
         _localAudioTrack = await LocalAudioTrack.create(
-          AudioCaptureOptions(
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            // DTX enabled by default in LiveKit for better bandwidth efficiency
-          ),
+          _buildAudioCaptureOptions(),
         );
         
         await _room!.localParticipant?.publishAudioTrack(
@@ -758,6 +775,62 @@ class LiveKitService extends ChangeNotifier {
       await disableMicrophone();
     } else {
       await enableMicrophone();
+      if (!isMicrophoneEnabled) {
+        await recoverAudio(forceRecreate: true);
+      }
+    }
+  }
+
+  Future<void> recoverAudio({bool forceRecreate = false}) async {
+    if (_isRecoveringAudio) return;
+    final room = _room;
+    if (room == null) return;
+
+    _isRecoveringAudio = true;
+    try {
+      final localParticipant = room.localParticipant;
+      if (localParticipant == null) return;
+
+      final audioPub = localParticipant.getTrackPublicationBySource(TrackSource.microphone);
+
+      if (forceRecreate || audioPub == null) {
+        if (audioPub != null) {
+          await localParticipant.removePublishedTrack(audioPub.sid);
+        }
+        _localAudioTrack = await LocalAudioTrack.create(_buildAudioCaptureOptions());
+        await localParticipant.publishAudioTrack(
+          _localAudioTrack!,
+          publishOptions: AudioPublishOptions(
+            audioBitrate: _getOptimalAudioBitrate(),
+            dtx: true,
+            red: true,
+          ),
+        );
+      } else {
+        await localParticipant.setMicrophoneEnabled(
+          true,
+          audioCaptureOptions: _buildAudioCaptureOptions(),
+        );
+      }
+
+      await _localAudioTrack?.unmute();
+
+      for (final participant in room.remoteParticipants.values) {
+        for (final pub in participant.audioTrackPublications) {
+          if (pub is RemoteTrackPublication && (!pub.subscribed || pub.track == null)) {
+            try {
+              await pub.subscribe();
+            } catch (e) {
+              debugPrint('⚠️ Failed to resubscribe audio: $e');
+            }
+          }
+        }
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('⚠️ Audio recovery failed: $e');
+    } finally {
+      _isRecoveringAudio = false;
     }
   }
   
@@ -815,6 +888,7 @@ class LiveKitService extends ChangeNotifier {
         _isReconnecting = false;
         _reconnectAttempts = 0;
         debugPrint('✅ Room reconnected');
+        unawaited(recoverAudio());
         notifyListeners();
       })
       ..on<RoomAttemptReconnectEvent>((event) {

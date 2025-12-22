@@ -46,7 +46,7 @@ class Environment {
   static const bool enableMLFeatures = true;
   static const bool enableE2EEncryption = true;
   static const bool enableCloudRecording = true;
-  static const bool enableScreenShare = true;
+  static const bool enableScreenShare = false;
   static const bool enableBackgroundMode = true;
   
   // ML Configuration

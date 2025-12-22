@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -504,6 +506,135 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     });
   }
 
+  Future<void> _refreshHome() async {
+    setState(() {
+      _isLoadingContacts = true;
+      _isLoadingHistory = true;
+    });
+    await Future.wait([
+      _loadContacts(),
+      _loadCallHistory(),
+    ]);
+  }
+
+  Future<bool> _confirmDeleteContact(Map<String, dynamic> contact) async {
+    final name = (contact['name'] as String?) ?? 'this contact';
+    final confirm = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: const Color(0xFF1C1C1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white12,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                Text(
+                  'Remove contact?',
+                  style: const TextStyle(color: Colors.white, fontSize: 18),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Remove $name from your contacts list?',
+                  style: const TextStyle(color: Colors.white70),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: const BorderSide(color: Color(0xFF3A3A3C)),
+                          ),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('Remove', style: TextStyle(color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    return confirm == true;
+  }
+
+  Future<void> _deleteContact(Map<String, dynamic> contact) async {
+    final currentUser = context.read<AuthService>().currentUser;
+    if (currentUser == null) return;
+
+    try {
+      final contactUid = contact['uid'] as String?;
+      if (contactUid == null || contactUid.isEmpty) {
+        throw Exception('Missing contact uid');
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('contacts')
+          .doc(contactUid)
+          .delete();
+
+      if (!mounted) return;
+      setState(() {
+        _contacts.removeWhere((c) => c['uid'] == contactUid);
+        _filteredContacts.removeWhere((c) => c['uid'] == contactUid);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Contact removed'),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error removing contact: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to remove contact'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   String _getUserInitial(user) {
     if (user?.displayName != null && user!.displayName!.isNotEmpty) {
       return user.displayName![0].toUpperCase();
@@ -861,7 +992,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
             // Content
             Expanded(
-              child: _showContactsView ? _buildContactsList() : _buildHistoryList(),
+              child: _wrapWithRefresh(
+                _showContactsView ? _buildContactsList() : _buildHistoryList(),
+              ),
             ),
           ],
         ),
@@ -870,102 +1003,153 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     );
   }
 
+  Widget _wrapWithRefresh(Widget child) {
+    final refreshable = RefreshIndicator(
+      onRefresh: _refreshHome,
+      color: const Color(0xFF6B7FB8),
+      backgroundColor: const Color(0xFF2C2C2E),
+      child: child,
+    );
+
+    if (!kIsWeb) {
+      return refreshable;
+    }
+
+    return ScrollConfiguration(
+      behavior: const _WebRefreshScrollBehavior(),
+      child: refreshable,
+    );
+  }
+
   Widget _buildContactsList() {
     if (_isLoadingContacts) {
       return ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 24),
+        physics: const AlwaysScrollableScrollPhysics(),
         itemCount: 6,
         itemBuilder: (context, index) => const ContactSkeleton(),
       );
     }
 
     if (_filteredContacts.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.people_outline, size: 64, color: Colors.white.withOpacity(0.3)),
-            const SizedBox(height: 16),
-            Text(
-              _searchController.text.isEmpty ? 'No contacts yet' : 'No contacts found',
-              style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.5)),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        children: [
+          const SizedBox(height: 120),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.people_outline, size: 64, color: Colors.white.withOpacity(0.3)),
+                const SizedBox(height: 16),
+                Text(
+                  _searchController.text.isEmpty ? 'No contacts yet' : 'No contacts found',
+                  style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.5)),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 24),
+      physics: const AlwaysScrollableScrollPhysics(),
       itemCount: _filteredContacts.length,
       itemBuilder: (context, index) {
         final contact = _filteredContacts[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2C2C2E),
-            borderRadius: BorderRadius.circular(12),
+        return Dismissible(
+          key: ValueKey('contact_${contact['uid']}'),
+          direction: DismissDirection.endToStart,
+          confirmDismiss: (_) => _confirmDeleteContact(contact),
+          onDismissed: (_) => _deleteContact(contact),
+          background: const SizedBox.shrink(),
+          secondaryBackground: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.redAccent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            alignment: Alignment.centerRight,
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Icon(Icons.delete_outline, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Remove', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              ],
+            ),
           ),
-          child: Row(
-            children: [
-              // Large avatar
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: const Color(0xFF6B7FB8),
-                backgroundImage: contact['photoURL'] != null && contact['photoURL'].toString().isNotEmpty
-                    ? NetworkImage(contact['photoURL'])
-                    : null,
-                child: contact['photoURL'] == null || contact['photoURL'].toString().isEmpty
-                    ? Text(
-                        contact['name'][0].toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 24,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 16),
-              // Name and email
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      contact['name'],
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      contact['email'],
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF8E8E93),
-                      ),
-                    ),
-                  ],
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2C2C2E),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                // Large avatar
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: const Color(0xFF6B7FB8),
+                  backgroundImage: contact['photoURL'] != null && contact['photoURL'].toString().isNotEmpty
+                      ? NetworkImage(contact['photoURL'])
+                      : null,
+                  child: contact['photoURL'] == null || contact['photoURL'].toString().isEmpty
+                      ? Text(
+                          contact['name'][0].toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
                 ),
-              ),
-              // Star icon
-              IconButton(
-                icon: const Icon(Icons.star_border, color: Color(0xFF8E8E93), size: 22),
-                onPressed: () {},
-              ),
-              // Phone icon
-              IconButton(
-                icon: const Icon(Icons.phone, color: Color(0xFF6B7FB8), size: 22),
-                onPressed: () {
-                  VibrationService.mediumImpact();
-                  _startCallWithContact(contact);
-                },
-              ),
-            ],
+                const SizedBox(width: 16),
+                // Name and email
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        contact['name'],
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        contact['email'],
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF8E8E93),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Star icon
+                IconButton(
+                  icon: const Icon(Icons.star_border, color: Color(0xFF8E8E93), size: 22),
+                  onPressed: () {},
+                ),
+                // Phone icon
+                IconButton(
+                  icon: const Icon(Icons.phone, color: Color(0xFF6B7FB8), size: 22),
+                  onPressed: () {
+                    VibrationService.mediumImpact();
+                    _startCallWithContact(contact);
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -974,27 +1158,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   Widget _buildHistoryList() {
     if (_isLoadingHistory) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF6B7FB8)));
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        children: const [
+          SizedBox(height: 120),
+          Center(child: CircularProgressIndicator(color: Color(0xFF6B7FB8))),
+        ],
+      );
     }
 
     if (_callHistory.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.history, size: 64, color: Colors.white.withOpacity(0.3)),
-            const SizedBox(height: 16),
-            Text(
-              'No call history yet',
-              style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.5)),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        children: [
+          const SizedBox(height: 120),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.history, size: 64, color: Colors.white.withOpacity(0.3)),
+                const SizedBox(height: 16),
+                Text(
+                  'No call history yet',
+                  style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.5)),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 24),
+      physics: const AlwaysScrollableScrollPhysics(),
       itemCount: _callHistory.length,
       itemBuilder: (context, index) {
         final call = _callHistory[index];
@@ -1537,6 +1736,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       await context.read<AuthService>().signOut();
     }
   }
+}
+
+class _WebRefreshScrollBehavior extends MaterialScrollBehavior {
+  const _WebRefreshScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+  };
 }
 
 /// Dialog shown while waiting for recipient to accept/decline call
