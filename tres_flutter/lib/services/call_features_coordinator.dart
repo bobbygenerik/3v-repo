@@ -7,10 +7,11 @@ import 'chat_service.dart' as chat;
 import 'reaction_service.dart';
 import 'cloud_recording_service.dart';
 import 'e2e_encryption_service.dart';
-import 'screen_share_service.dart';
+// ScreenShare feature removed; keep no-op compatibility methods below.
 import 'call_stats_service.dart';
 import '../config/environment.dart';
 import 'grid_layout_manager.dart';
+import 'feature_flags.dart';
 
 export 'grid_layout_manager.dart' show LayoutMode;
 
@@ -23,7 +24,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   final ReactionService reactionService = ReactionService();
   final CloudRecordingService recordingService = CloudRecordingService();
   final E2EEncryptionService encryptionService = E2EEncryptionService();
-  final ScreenShareService screenShareService = ScreenShareService();
+  // ScreenShareService removed to fully disable feature.
   final CallStatsService statsService = CallStatsService();
   final GridLayoutManager layoutManager = GridLayoutManager();
 
@@ -78,9 +79,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   RecordingStatus get recordingStatus => recordingService.status;
   EncryptionStatus get encryptionStatus => encryptionService.status;
   RecordingMetadata? get currentRecording => recordingService.currentRecording;
-
-  // Phase 5 status
-  ScreenShareStatus get screenShareStatus => screenShareService.status;
   CallStats get currentCallStats => statsService.currentStats;
   CallConnectionQuality get connectionQuality => statsService.currentQuality;
   List<ParticipantTile> get participantTiles => layoutManager.participants.isEmpty
@@ -141,7 +139,8 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
     // Initialize Phase 5 services
     try {
-      await screenShareService.initialize(room);
+      // ScreenShare removed; skip initialization.
+      debugPrint('ℹ️ ScreenShare feature removed: skipping initialization');
       await statsService.initialize(room);
       await layoutManager.initialize(room);
       debugPrint('✅ Phase 5 services initialized');
@@ -155,7 +154,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     // ML service listeners removed
     recordingService.addListener(_onRecordingChanged);
     encryptionService.addListener(_onEncryptionChanged);
-    screenShareService.addListener(_onScreenShareChanged);
+    // No-op: screen share listeners removed
     // Stats overlay handles its own updates directly from statsService
     // No need to propagate through coordinator to avoid unnecessary rebuilds
     layoutManager.addListener(_onLayoutChanged);
@@ -191,11 +190,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Screen share callback
-  void _onScreenShareChanged() {
-    _isScreenSharing = screenShareService.isSharing;
-    notifyListeners();
-  }
+  // Screen share removed: no callbacks or service listeners remain.
 
   /// Stats callback
   /// Layout callback
@@ -294,41 +289,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     return encryptionService.getStats();
   }
 
-  /// Toggle screen sharing
-  Future<void> toggleScreenShare({
-    ScreenResolution? resolution,
-    int? fps,
-  }) async {
-    if (!Environment.enableScreenShare) return;
-    await screenShareService.toggleScreenShare(
-      resolution: resolution,
-      fps: fps,
-    );
-    notifyListeners();
-  }
-
-  /// Start screen sharing
-  Future<bool> startScreenShare({
-    ScreenResolution? resolution,
-    int? fps,
-  }) async {
-    if (!Environment.enableScreenShare) return false;
-    return await screenShareService.startScreenShare(
-      resolution: resolution,
-      fps: fps,
-    );
-  }
-
-  /// Stop screen sharing
-  Future<bool> stopScreenShare() async {
-    if (!Environment.enableScreenShare) return false;
-    return await screenShareService.stopScreenShare();
-  }
-
-  /// Get screen share statistics
-  Map<String, dynamic> getScreenShareStats() {
-    return screenShareService.getStats();
-  }
+  // Screen sharing removed from the product. Methods and service calls
+  // previously present have been deleted to remove public APIs and UI
+  // surface for this feature.
 
   /// Toggle spatial audio
   void toggleSpatialAudio() {
@@ -460,7 +423,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     // ML service listeners removed
     recordingService.removeListener(_onRecordingChanged);
     encryptionService.removeListener(_onEncryptionChanged);
-    screenShareService.removeListener(_onScreenShareChanged);
     // Stats listener removed to prevent unnecessary rebuilds
     layoutManager.removeListener(_onLayoutChanged);
 
@@ -474,7 +436,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     encryptionService.dispose();
 
     // Dispose Phase 5 services
-    await screenShareService.cleanup();
+    // No-op: screen share cleanup not required
     await statsService.cleanup();
     await layoutManager.cleanup();
 

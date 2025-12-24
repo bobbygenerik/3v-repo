@@ -62,10 +62,7 @@ class ScreenShareService extends ChangeNotifier {
     debugPrint('$_tag: cleanup called on inert stub');
     _status = ScreenShareStatus.notSharing;
   }
-
-  @override
-  void dispose() {
-    cleanup();
-    super.dispose();
-  }
-}
+// ScreenShareService removed.
+// This file intentionally left blank to remove the screen-sharing feature
+// and its public API from the codebase. Any remaining references should
+// be removed to avoid compilation errors.
