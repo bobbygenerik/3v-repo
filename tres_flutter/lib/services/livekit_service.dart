@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'network_quality_service.dart';
 import 'device_capability_service.dart';
+import 'device_mode_service.dart';
 import 'call_stats_service.dart';
 import '../config/environment.dart';
 // MediaPipe removed: no mediapipe_settings import
@@ -124,6 +125,8 @@ class LiveKitService extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   
   final NetworkQualityService _networkService = NetworkQualityService();
+  // Runtime mode
+  final bool _isSafariPwa = DeviceModeService.isSafariPwa();
   CallStatsService? _internalStatsService;
   final WebPipService _pipService = WebPipService();
   // MediaPipe removed: no processor or settings retained
@@ -135,6 +138,11 @@ class LiveKitService extends ChangeNotifier {
   LiveKitService() {
     DeviceCapabilityService.detectCapability();
     DeviceCapabilityService.detectCapabilityAsync();
+    // If running inside a Safari PWA, prefer conservative defaults
+    if (_isSafariPwa) {
+      _adaptiveBitrateEnabled = false;
+      _isSimulcastEnabled = false;
+    }
   }
 
   /// Determine call type at runtime (Required by brief)
@@ -197,6 +205,12 @@ class LiveKitService extends ChangeNotifier {
         // Default Cross-Platform: H.264 High Profile, VP9, VP8
         return 'h264';
     }
+  }
+
+  /// Get conservative encoding for Safari PWA
+  VideoEncoding _getSafariPwaEncoding() {
+    // Hard cap to 720p @ 30fps with conservative bitrate
+    return const VideoEncoding(maxBitrate: 1800000, maxFramerate: 30);
   }
 
   /// Check AV1 support
@@ -291,10 +305,56 @@ class LiveKitService extends ChangeNotifier {
     debugPrint('   📊 Bitrate: ${finalBitrate / 1000000} Mbps');
     debugPrint('   🎬 FPS: $finalFramerate');
     
+    // If Safari PWA, enforce conservative cap
+    if (_isSafariPwa) {
+      return _getSafariPwaEncoding();
+    }
+
     return VideoEncoding(
       maxBitrate: finalBitrate,
       maxFramerate: finalFramerate,
     );
+  }
+
+  // Upgrade gate state (Android-only)
+  DateTime? _upgradeGateStart;
+  bool _upgradePerformed = false;
+
+  /// Monitor stats to perform a safe one-time upgrade on Android when conditions are excellent
+  void _maybePerformUpgradeGate(CallStats stats) {
+    if (_upgradePerformed) return;
+    if (!DeviceModeService.isAndroidNative()) return; // Safari PWA never upgrades
+    // Require app foreground, no reconnects, low packet loss, low RTT, low jitter
+    final packetLoss = stats.videoPacketLoss;
+    final rttMs = stats.roundTripTime * 1000.0;
+    final jitterMs = stats.jitter * 1000.0;
+    if (packetLoss > 0.5 || rttMs >= 150.0 || jitterMs >= 10.0 || _isReconnecting) {
+      _upgradeGateStart = null;
+      return;
+    }
+
+    final now = DateTime.now();
+    _upgradeGateStart ??= now;
+    final elapsed = now.difference(_upgradeGateStart!);
+    if (elapsed >= const Duration(seconds: 15)) {
+      // Conditions met continuously for 15s — attempt upgrade (safe, single time)
+      _performUpgradeTo1080pSafe();
+      _upgradePerformed = true;
+    }
+  }
+
+  Future<void> _performUpgradeTo1080pSafe() async {
+    try {
+      // Double-check again
+      if (!DeviceModeService.isAndroidNative()) return;
+      final preset = FaceTimeVideoPresets.h1080;
+      final encoding = preset.encoding ?? VideoEncoding(maxBitrate: 8_000_000, maxFramerate: 30);
+      // Recreate & publish track with new preset — this is a one-time upgrade per call
+      await _recreateAndPublishVideoTrack(preset, maxBitrateOverride: encoding.maxBitrate);
+      debugPrint('✅ Performed safe upgrade to 1080p (one-time gate)');
+    } catch (e) {
+      debugPrint('⚠️ Upgrade gate failed or aborted: $e');
+    }
   }
 
   int _getAdaptiveTargetBitrate(CallStats stats, int baseBitrate) {
@@ -376,6 +436,10 @@ class LiveKitService extends ChangeNotifier {
               default:
                 captureParams = FaceTimeVideoPresets.h720;
             }
+          }
+          // Enforce Safari PWA conservative capture preset
+          if (_isSafariPwa) {
+            captureParams = FaceTimeVideoPresets.h720;
           }
           _currentCapturePreset = captureParams;
 
@@ -548,6 +612,7 @@ class LiveKitService extends ChangeNotifier {
               captureParams = FaceTimeVideoPresets.h720;
           }
         }
+        if (_isSafariPwa) captureParams = FaceTimeVideoPresets.h720;
         
         debugPrint('📹 FaceTime-quality capture params:');
         debugPrint('   📐 Resolution: ${captureParams.dimensions.width}x${captureParams.dimensions.height}');
@@ -680,6 +745,10 @@ class LiveKitService extends ChangeNotifier {
   /// External entrypoint: apply observed stats
   Future<void> applyObservedStats(CallStats stats) async {
     await _maybeAdjustVideoForStats(stats);
+    // Android-only cautious upgrade gate (safe, single upgrade per call)
+    try {
+      _maybePerformUpgradeGate(stats);
+    } catch (_) {}
   }
 
   /// Apply a high-level capture profile
@@ -1092,6 +1161,8 @@ class LiveKitService extends ChangeNotifier {
   /// Setup auto PiP when user switches tabs (web only)
   void setupAutoPip() {
     if (!kIsWeb) return;
+    // Do not enable PiP in Safari PWA (unreliable on iOS PWA)
+    if (_isSafariPwa) return;
     _pipService.setupAutoEnterPip();
   }
   

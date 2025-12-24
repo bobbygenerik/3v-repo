@@ -110,6 +110,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   DateTime? _lastNetworkWarning;
   bool _wasReconnecting = false;
   bool _pipEnabled = true;
+  // Developer diagnostics overlay
+  bool _showDevDiagnostics = false;
   
   @override
   void initState() {
@@ -386,6 +388,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
+      if (!livekit.isReconnecting) {
+        // Reconnected — gentle haptic
+        VibrationService.mediumImpact();
+      }
     }
     
     // Track if we've ever had a remote participant join
@@ -818,6 +824,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     }
     
     setState(() => _isConnecting = false);
+    if (success) {
+      // subtle haptic to indicate call connected (no-op on Safari PWA)
+      VibrationService.lightImpact();
+    }
     
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -957,6 +967,14 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         body: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: _toggleControls,
+          onLongPress: () {
+            if (!Environment.isDevelopment) return;
+            setState(() {
+              _showDevDiagnostics = !_showDevDiagnostics;
+            });
+            // subtle haptic feedback when toggling diagnostics (native only)
+            VibrationService.lightImpact();
+          },
           onHorizontalDragStart: (details) {
             // Track if drag started from left edge
             if (details.globalPosition.dx < 50) {
@@ -1114,6 +1132,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                         });
                       },
                     ),
+                    // Developer diagnostics overlay (hidden, dev-only)
+                    if (_showDevDiagnostics && Environment.isDevelopment)
+                      Positioned(
+                        top: 16,
+                        right: 16,
+                        child: StatsOverlay(statsService: coordinator.statsService),
+                      ),
                   ],
                 );
               },
