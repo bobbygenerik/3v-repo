@@ -72,7 +72,7 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        MediaPipeChannel.register(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
+        // MediaPipe bridge removed for Safari PWA stability; no native registration.
     }
     
     override fun onNewIntent(intent: Intent) {

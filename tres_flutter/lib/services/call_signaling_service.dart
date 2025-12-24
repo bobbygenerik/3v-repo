@@ -285,6 +285,26 @@ class CallSignalingService {
 
       debugPrint('✅ Call end signal written to activeCallRooms/$roomName');
 
+      // Also write a call history record to `calls` collection so the app
+      // can show call history without requiring backend functions.
+      try {
+        final participants = <String>[currentUser.uid];
+        if (otherUserId != null && otherUserId.isNotEmpty && otherUserId != currentUser.uid) {
+          participants.add(otherUserId);
+        }
+        await _firestore.collection('calls').add({
+          'roomName': roomName,
+          'participants': participants,
+          'timestamp': FieldValue.serverTimestamp(),
+          'endedAt': FieldValue.serverTimestamp(),
+          'duration': 0,
+          'endedBy': currentUser.uid,
+        });
+        debugPrint('✅ Call history record written for room: $roomName');
+      } catch (e) {
+        debugPrint('⚠️ Failed to write call history record: $e');
+      }
+
       // Notify the other user if we know their ID
       if (otherUserId != null &&
           otherUserId.isNotEmpty &&

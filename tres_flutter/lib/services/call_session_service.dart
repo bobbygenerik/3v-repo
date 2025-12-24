@@ -40,7 +40,7 @@ class CallSessionService extends ChangeNotifier {
 
         // Ensure participants array includes current user and any passed participants
         await _firestore.collection('call_sessions').doc(doc.id).update({
-          'participants': FieldValue.arrayUnion(participants),
+          'participants': FieldValue.arrayUnion([...participants, currentUser.uid]),
           'participantStatus.${currentUser.uid}': 'connected',
           'lastHeartbeat': FieldValue.serverTimestamp(),
         });
@@ -54,15 +54,18 @@ class CallSessionService extends ChangeNotifier {
       }
 
       // No existing session found - create a new one
+      // Ensure the current user is included in the participants list
+      final createdParticipants = <String>{...participants, currentUser.uid}.toList();
+
       final sessionRef = await _firestore.collection('call_sessions').add({
         'roomName': roomName,
-        'participants': participants,
+        'participants': createdParticipants,
         'createdBy': currentUser.uid,
         'status': 'active',
         'startTime': FieldValue.serverTimestamp(),
         'lastHeartbeat': FieldValue.serverTimestamp(),
         'participantStatus': {
-          for (String uid in participants) uid: 'connected'
+          for (String uid in createdParticipants) uid: 'connected'
         },
       });
 

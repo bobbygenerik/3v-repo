@@ -5,11 +5,9 @@ import 'package:livekit_client/livekit_client.dart';
 import 'network_quality_service.dart';
 import 'device_capability_service.dart';
 import 'call_stats_service.dart';
-import 'mediapipe_processor.dart';
 import '../config/environment.dart';
-import 'mediapipe_settings.dart';
+// MediaPipe removed: no mediapipe_settings import
 import 'web_pip_helper.dart';
-import '../config/environment.dart';
 import 'web_pip_bridge_stub.dart'
     if (dart.library.html) 'web_pip_bridge.dart';
 import 'dart:io' show Platform;
@@ -128,18 +126,15 @@ class LiveKitService extends ChangeNotifier {
   final NetworkQualityService _networkService = NetworkQualityService();
   CallStatsService? _internalStatsService;
   final WebPipService _pipService = WebPipService();
-  final MediaPipeSettings _mediaPipeSettings;
-  MediaPipeProcessor? _mediaPipeProcessor;
+  // MediaPipe removed: no processor or settings retained
   
   /// Get the PiP service for web platforms
   WebPipService get pipService => _pipService;
   
   // Detect device capability on service creation
-  LiveKitService({MediaPipeSettings? mediaPipeSettings})
-      : _mediaPipeSettings = mediaPipeSettings ?? MediaPipeSettings() {
+  LiveKitService() {
     DeviceCapabilityService.detectCapability();
     DeviceCapabilityService.detectCapabilityAsync();
-    _mediaPipeSettings.addListener(_onMediaPipeSettingsChanged);
   }
 
   /// Determine call type at runtime (Required by brief)
@@ -384,9 +379,7 @@ class LiveKitService extends ChangeNotifier {
           }
           _currentCapturePreset = captureParams;
 
-      final processor = _mediaPipeSettings.shouldProcess
-          ? (_mediaPipeProcessor ??= MediaPipeProcessor(_mediaPipeSettings))
-          : null;
+        final processor = null;
 
       await _room!.connect(
         candidateUrl,
@@ -564,9 +557,7 @@ class LiveKitService extends ChangeNotifier {
         debugPrint('   📊 Max Bitrate: ${bitrate / 1000000} Mbps');
         debugPrint('   🎬 Max FPS: $framerate');
         
-        final processor = _mediaPipeSettings.shouldProcess
-            ? (_mediaPipeProcessor ??= MediaPipeProcessor(_mediaPipeSettings))
-            : null;
+        final processor = null;
 
         _localVideoTrack = await LocalVideoTrack.createCameraTrack(
           CameraCaptureOptions(
@@ -593,9 +584,7 @@ class LiveKitService extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('❌ Failed to enable camera: $e');
-      if (_mediaPipeSettings.shouldProcess) {
-        _mediaPipeError = 'MediaPipe failed to start. Effects are disabled.';
-      }
+      // MediaPipe removed - no per-frame processing errors
       _errorMessage = 'Failed to enable camera: ${e.toString()}';
       notifyListeners();
     }
@@ -624,9 +613,7 @@ class LiveKitService extends ChangeNotifier {
     if (changeRatio < 0.1) return;
 
     final preset = _currentCapturePreset ?? FaceTimeVideoPresets.h720;
-    final processor = _mediaPipeSettings.shouldProcess
-        ? (_mediaPipeProcessor ??= MediaPipeProcessor(_mediaPipeSettings))
-        : null;
+    final processor = null;
 
     debugPrint('📉 Adaptive bitrate update: ${previous / 1000000} → ${targetBitrate / 1000000} Mbps');
     await _recreateAndPublishVideoTrack(
@@ -818,7 +805,7 @@ class LiveKitService extends ChangeNotifier {
 
       for (final participant in room.remoteParticipants.values) {
         for (final pub in participant.audioTrackPublications) {
-          if (pub is RemoteTrackPublication && (!pub.subscribed || pub.track == null)) {
+          if ((!pub.subscribed || pub.track == null)) {
             try {
               await pub.subscribe();
             } catch (e) {
@@ -938,21 +925,7 @@ class LiveKitService extends ChangeNotifier {
       });
   }
 
-  void _onMediaPipeSettingsChanged() {
-    if (_room == null || _localVideoTrack == null) return;
-
-    if (!Environment.enableMLFeatures) return;
-    final shouldProcess = _mediaPipeSettings.shouldProcess;
-    final processor = shouldProcess
-        ? (_mediaPipeProcessor ??= MediaPipeProcessor(_mediaPipeSettings))
-        : null;
-
-    // Recreate track to add/remove processor.
-    _recreateAndPublishVideoTrack(
-      _localVideoTrack!.currentOptions.params,
-      processor: processor,
-    );
-  }
+  // MediaPipe removed: no per-frame processing handler required.
   
   void _onRoomDidUpdate() {
     notifyListeners();
@@ -1124,7 +1097,7 @@ class LiveKitService extends ChangeNotifier {
   
   @override
   void dispose() {
-    _mediaPipeSettings.removeListener(_onMediaPipeSettingsChanged);
+    // MediaPipe removed - no listener to remove
     disconnect();
     super.dispose();
   }

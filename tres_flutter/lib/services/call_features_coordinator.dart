@@ -11,8 +11,6 @@ import 'screen_share_service.dart';
 import 'call_stats_service.dart';
 import '../config/environment.dart';
 import 'grid_layout_manager.dart';
-import 'mediapipe_settings.dart';
-import '../config/environment.dart';
 
 export 'grid_layout_manager.dart' show LayoutMode;
 
@@ -29,7 +27,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   final CallStatsService statsService = CallStatsService();
   final GridLayoutManager layoutManager = GridLayoutManager();
 
-  final MediaPipeSettings? _mediaPipeSettings;
+  // MediaPipe removed - no settings stored here
 
   // Feature states
   bool _isChatOpen = false;
@@ -92,8 +90,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   bool get isStatsCollecting => statsService.isCollecting;
 
   /// Initialize coordinator with LiveKit room
-  CallFeaturesCoordinator({MediaPipeSettings? mediaPipeSettings})
-      : _mediaPipeSettings = mediaPipeSettings;
+  CallFeaturesCoordinator();
 
   Future<void> initialize(Room room) async {
     debugPrint('🎯 CallFeaturesCoordinator initializing...');
@@ -102,41 +99,15 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     chatService.initialize(room);
     reactionService.initialize(room);
 
-    if (_mediaPipeSettings != null && Environment.enableMLFeatures) {
-      debugPrint('✅ MediaPipe services ready');
-    } else {
-      debugPrint('⚠️ MediaPipe settings not provided; ML features disabled');
-    }
+    debugPrint('⚠️ MediaPipe support removed; ML features disabled');
 
     // Apply user preferences (if present) so features the user enabled in Settings
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (Environment.enableMLFeatures) {
-        final bgBlur = prefs.getBool('background_blur') ?? false;
-        _isBackgroundBlurEnabled = bgBlur;
-        _mediaPipeSettings?.update(backgroundBlur: bgBlur);
-
-        final beauty = prefs.getBool('beauty_filter') ?? false;
-        _isBeautyFilterEnabled = beauty;
-        _mediaPipeSettings?.update(beauty: beauty, faceMesh: beauty);
-
-        final faceAuto = prefs.getBool('face_auto_framing') ?? false;
-        _isFaceAutoFramingEnabled = faceAuto;
-        _mediaPipeSettings?.update(faceDetection: faceAuto);
-
-        final blurIntensity = prefs.getDouble('portrait_blur_intensity') ?? 70.0;
-        _mediaPipeSettings?.update(blurIntensity: blurIntensity);
-      } else {
-        _isBackgroundBlurEnabled = false;
-        _isBeautyFilterEnabled = false;
-        _isFaceAutoFramingEnabled = false;
-        _mediaPipeSettings?.update(
-          backgroundBlur: false,
-          beauty: false,
-          faceMesh: false,
-          faceDetection: false,
-        );
-      }
+      // ML features removed; ensure related flags are disabled
+      _isBackgroundBlurEnabled = false;
+      _isBeautyFilterEnabled = false;
+      _isFaceAutoFramingEnabled = false;
       
       // If device is low-end, disable expensive ML features regardless of saved prefs
       try {
@@ -151,12 +122,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
           if (_isFaceAutoFramingEnabled) {
             _isFaceAutoFramingEnabled = false;
           }
-          _mediaPipeSettings?.update(
-            backgroundBlur: _isBackgroundBlurEnabled,
-            beauty: _isBeautyFilterEnabled,
-            faceMesh: _isBeautyFilterEnabled,
-            faceDetection: _isFaceAutoFramingEnabled,
-          );
+          // MediaPipe removed - no update to settings
         }
       } catch (e) {
         debugPrint('⚠️ Error applying low-end device ML fallback: $e');
@@ -377,7 +343,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   Future<void> toggleBackgroundBlur() async {
     if (!Environment.enableMLFeatures) return;
     _isBackgroundBlurEnabled = !_isBackgroundBlurEnabled;
-    _mediaPipeSettings?.update(backgroundBlur: _isBackgroundBlurEnabled);
+    // MediaPipe removed - no-op
     await _persistSetting('background_blur', _isBackgroundBlurEnabled);
     notifyListeners();
     debugPrint('Background blur ${_isBackgroundBlurEnabled ? "enabled" : "disabled"}');
@@ -387,10 +353,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   void toggleBeautyFilter() {
     if (!Environment.enableMLFeatures) return;
     _isBeautyFilterEnabled = !_isBeautyFilterEnabled;
-    _mediaPipeSettings?.update(
-      beauty: _isBeautyFilterEnabled,
-      faceMesh: _isBeautyFilterEnabled,
-    );
+    // MediaPipe removed - no-op
     unawaited(_persistSetting('beauty_filter', _isBeautyFilterEnabled));
     notifyListeners();
     debugPrint('Beauty filter ${_isBeautyFilterEnabled ? "enabled" : "disabled"}');
@@ -400,7 +363,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   void toggleFaceAutoFraming() {
     if (!Environment.enableMLFeatures) return;
     _isFaceAutoFramingEnabled = !_isFaceAutoFramingEnabled;
-    _mediaPipeSettings?.update(faceDetection: _isFaceAutoFramingEnabled);
+    // MediaPipe removed - no-op
     unawaited(_persistSetting('face_auto_framing', _isFaceAutoFramingEnabled));
     notifyListeners();
     debugPrint('Face auto-framing ${_isFaceAutoFramingEnabled ? "enabled" : "disabled"}');

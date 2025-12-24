@@ -114,9 +114,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   @override
   void initState() {
     super.initState();
-    _coordinator = CallFeaturesCoordinator(
-      mediaPipeSettings: context.read<MediaPipeSettings>(),
-    );
+    _coordinator = CallFeaturesCoordinator();
     _connectToRoom();
     _loadPipPreference();
     _setAndroidCallActive(true);
@@ -1819,67 +1817,36 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                       },
                     ),
 
-                    if (Environment.enableMLFeatures) ...[
-                      const Divider(color: Color(0xFF2C2C2E)),
-                      _buildMoreSectionLabel('Video Effects'),
-                      SwitchListTile(
-                        value: menuCoordinator.isBackgroundBlurEnabled,
-                        activeColor: const Color(0xFF6B7FB8),
-                        title: const Text('Background Blur', style: TextStyle(color: Colors.white)),
-                        subtitle: const Text('Blur background during call', style: TextStyle(color: Color(0xFF8E8E93))),
-                        onChanged: (_) async {
-                          await menuCoordinator.toggleBackgroundBlur();
-                          setModalState(() {});
-                        },
-                      ),
-                      SwitchListTile(
-                        value: menuCoordinator.isBeautyFilterEnabled,
-                        activeColor: const Color(0xFF6B7FB8),
-                        title: const Text('Beauty Filter', style: TextStyle(color: Colors.white)),
-                        subtitle: const Text('Smooth skin effect', style: TextStyle(color: Color(0xFF8E8E93))),
-                        onChanged: (_) {
-                          menuCoordinator.toggleBeautyFilter();
-                          setModalState(() {});
-                        },
-                      ),
-                      SwitchListTile(
-                        value: menuCoordinator.isFaceAutoFramingEnabled,
-                        activeColor: const Color(0xFF6B7FB8),
-                        title: const Text('Face Auto-Framing', style: TextStyle(color: Colors.white)),
-                        subtitle: const Text('Keep face centered', style: TextStyle(color: Color(0xFF8E8E93))),
-                        onChanged: (_) {
-                          menuCoordinator.toggleFaceAutoFraming();
-                          setModalState(() {});
-                        },
-                      ),
-                    ],
+                    // ML features removed for Safari PWA stability
 
                     const Divider(color: Color(0xFF2C2C2E)),
                     _buildMoreSectionLabel('Call Tools'),
-                    ListTile(
-                      leading: const Icon(Icons.picture_in_picture, color: Color(0xFF6B7FB8)),
-                      title: const Text('Enter PiP', style: TextStyle(color: Colors.white)),
-                      subtitle: const Text(
-                        'Keep call visible while multitasking',
-                        style: TextStyle(color: Color(0xFF8E8E93)),
+                    if (Theme.of(context).platform == TargetPlatform.android || livekit.pipService.isPipSupported) ...[
+                      ListTile(
+                        leading: const Icon(Icons.picture_in_picture, color: Color(0xFF6B7FB8)),
+                        title: const Text('Enter PiP', style: TextStyle(color: Colors.white)),
+                        subtitle: const Text(
+                          'Keep call visible while multitasking',
+                          style: TextStyle(color: Color(0xFF8E8E93)),
+                        ),
+                        onTap: () async {
+                          final entered = await _enterPipNow(livekit);
+                          if (!mounted) return;
+                          Navigator.pop(context);
+                          if (!entered && mounted) {
+                            ScaffoldMessenger.of(parentContext).showSnackBar(
+                              SnackBar(
+                                content: Text('PiP not available on this device/browser'),
+                                backgroundColor: Color(0xFF2C2C2E),
+                                behavior: SnackBarBehavior.floating,
+                                margin: EdgeInsets.only(bottom: 80, left: 16, right: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            );
+                          }
+                        },
                       ),
-                      onTap: () async {
-                        final entered = await _enterPipNow(livekit);
-                        if (!mounted) return;
-                        Navigator.pop(context);
-                        if (!entered && mounted) {
-                          ScaffoldMessenger.of(parentContext).showSnackBar(
-                            SnackBar(
-                              content: const Text('PiP not available on this device/browser'),
-                              backgroundColor: const Color(0xFF2C2C2E),
-                              behavior: SnackBarBehavior.floating,
-                              margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          );
-                        }
-                      },
-                    ),
+                    ],
                     ListTile(
                       leading: Icon(
                         menuCoordinator.isRecording ? Icons.stop : Icons.fiber_manual_record,

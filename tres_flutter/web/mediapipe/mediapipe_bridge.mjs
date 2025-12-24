@@ -1,4 +1,6 @@
-import { FilesetResolver, ImageSegmenter, FaceLandmarker } from './node_modules/@mediapipe/tasks-vision/vision_bundle.mjs';
+// MediaPipe web bridge removed.
+// This file is intentionally left as a placeholder to avoid build-time errors.
+// All MediaPipe processing has been removed to ensure stability on Safari PWAs.
 
 let vision;
 let segmenter;
@@ -135,31 +137,74 @@ function _smoothRect(nextRect) {
 
 async function createProcessedTrack(jsTrack, opts) {
   updateOptions(opts);
-  await init();
+  try {
+    await init();
+  } catch (e) {
+    console.warn('MediaPipe init failed; returning original track:', e);
+    return jsTrack;
+  }
 
   if (typeof MediaStreamTrackProcessor === 'undefined' || typeof MediaStreamTrackGenerator === 'undefined') {
     console.warn('MediaPipe: MediaStreamTrackProcessor not supported; returning original track.');
     return jsTrack;
   }
 
-  const processor = new MediaStreamTrackProcessor({ track: jsTrack });
-  const generator = new MediaStreamTrackGenerator({ kind: 'video' });
+  let processor;
+  let generator;
+  try {
+    processor = new MediaStreamTrackProcessor({ track: jsTrack });
+    generator = new MediaStreamTrackGenerator({ kind: 'video' });
+  } catch (e) {
+    console.warn('MediaPipe track processor init failed; returning original track:', e);
+    return jsTrack;
+  }
 
   const input = processor.readable;
   const output = generator.writable;
 
-  const canvas = new OffscreenCanvas(1, 1);
+  const createCanvas = () => {
+    if (typeof OffscreenCanvas !== 'undefined') {
+      return new OffscreenCanvas(1, 1);
+    }
+    if (typeof document !== 'undefined') {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      return canvas;
+    }
+    throw new Error('No canvas implementation available');
+  };
+
+  let canvas;
+  let maskCanvas;
+  let maskImageCanvas;
+  let subjectCanvas;
+  let blurCanvas;
+  let frameCanvas;
+
+  try {
+    canvas = createCanvas();
+    maskCanvas = createCanvas();
+    maskImageCanvas = createCanvas();
+    subjectCanvas = createCanvas();
+    blurCanvas = createCanvas();
+    frameCanvas = createCanvas();
+  } catch (e) {
+    console.warn('MediaPipe canvas init failed; returning original track:', e);
+    return jsTrack;
+  }
+
   const ctx = canvas.getContext('2d');
-  const maskCanvas = new OffscreenCanvas(1, 1);
   const maskCtx = maskCanvas.getContext('2d');
-  const maskImageCanvas = new OffscreenCanvas(1, 1);
   const maskImageCtx = maskImageCanvas.getContext('2d');
-  const subjectCanvas = new OffscreenCanvas(1, 1);
   const subjectCtx = subjectCanvas.getContext('2d');
-  const blurCanvas = new OffscreenCanvas(1, 1);
   const blurCtx = blurCanvas.getContext('2d');
-  const frameCanvas = new OffscreenCanvas(1, 1);
   const frameCtx = frameCanvas.getContext('2d');
+
+  if (!ctx || !maskCtx || !maskImageCtx || !subjectCtx || !blurCtx || !frameCtx) {
+    console.warn('MediaPipe canvas context unavailable; returning original track.');
+    return jsTrack;
+  }
 
   const transformer = new TransformStream({
     async transform(videoFrame, controller) {

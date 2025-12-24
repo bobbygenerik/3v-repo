@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -21,6 +22,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final CallSignalingService _signalingService = CallSignalingService();
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _callHistorySub;
   bool _showContactsView = true;
   List<Map<String, dynamic>> _contacts = [];
   List<Map<String, dynamic>> _callHistory = [];
@@ -71,6 +73,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _searchController.dispose();
+    _callHistorySub?.cancel();
     _tickerController.dispose();
     super.dispose();
   }
@@ -106,17 +109,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadCallHistory() async {
-    try {
-      final currentUser = context.read<AuthService>().currentUser;
-      if (currentUser == null) return;
+    final currentUser = context.read<AuthService>().currentUser;
+    if (currentUser == null) return;
 
-      final snapshot = await FirebaseFirestore.instance
-          .collection('calls')
-          .where('participants', arrayContains: currentUser.uid)
-          .orderBy('timestamp', descending: true)
-          .limit(20)
-          .get();
-
+    _callHistorySub?.cancel();
+    _isLoadingHistory = true;
+    _callHistorySub = FirebaseFirestore.instance
+        .collection('calls')
+        .where('participants', arrayContains: currentUser.uid)
+        .orderBy('timestamp', descending: true)
+        .limit(20)
+        .snapshots()
+        .listen((snapshot) {
       setState(() {
         _callHistory = snapshot.docs.map((doc) {
           final data = doc.data();
@@ -130,10 +134,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }).toList();
         _isLoadingHistory = false;
       });
-    } catch (e) {
-      debugPrint('Error loading call history: $e');
+    }, onError: (e) {
+      debugPrint('Error listening to call history: $e');
       setState(() => _isLoadingHistory = false);
-    }
+    });
   }
 
   void _filterContacts() {

@@ -85,11 +85,8 @@ class TresApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
-        ChangeNotifierProvider(create: (_) => MediaPipeSettings()),
         ChangeNotifierProvider(
-          create: (context) => LiveKitService(
-            mediaPipeSettings: context.read<MediaPipeSettings>(),
-          ),
+          create: (context) => LiveKitService(),
         ),
         ChangeNotifierProvider(create: (_) => GuestLinkService()),
         ChangeNotifierProvider(create: (_) => AudioDeviceService()),

@@ -39,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   bool _isLoadingContacts = true;
   bool _isLoadingHistory = true;
   bool _searchHasFocus = false;
+  StreamSubscription<QuerySnapshot>? _callHistorySub;
   
   // Call services
   final CallListenerService _callListener = CallListenerService();
@@ -294,6 +295,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     _textAnimationController.dispose();
     _callListener.removeListener(_handleIncomingCall);
     _callListener.stopListening();
+    _callHistorySub?.cancel();
     super.dispose();
   }
 
@@ -352,29 +354,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   }
 
   Future<void> _loadCallHistory() async {
-    try {
-      final currentUser = context.read<AuthService>().currentUser;
-      if (currentUser == null) {
-        setState(() => _isLoadingHistory = false);
-        return;
-      }
+    final currentUser = context.read<AuthService>().currentUser;
+    if (currentUser == null) {
+      setState(() => _isLoadingHistory = false);
+      return;
+    }
 
-      // Load from call_sessions instead of calls
-      final snapshot = await FirebaseFirestore.instance
-          .collection('call_sessions')
-          .where('participants', arrayContains: currentUser.uid)
-          .where('status', isEqualTo: 'ended')
-          .orderBy('endTime', descending: true)
-          .limit(20)
-          .get();
+    // Cancel any previous subscription
+    _callHistorySub?.cancel();
 
+    // Listen in real-time to the 'calls' collection where this user participated.
+    _callHistorySub = FirebaseFirestore.instance
+        .collection('calls')
+        .where('participants', arrayContains: currentUser.uid)
+        .orderBy('timestamp', descending: true)
+        .limit(50)
+        .snapshots()
+        .listen((snapshot) async {
       final List<Map<String, dynamic>> history = [];
-      
+
       for (var doc in snapshot.docs) {
         final data = doc.data();
         final participants = List<String>.from(data['participants'] ?? []);
-        
-        // Get the other participant's name
+
+        // Resolve other participant's display name if available
         String otherParticipantName = 'Unknown';
         for (final participantId in participants) {
           if (participantId != currentUser.uid) {
@@ -383,111 +386,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   .collection('users')
                   .doc(participantId)
                   .get();
-              
               if (userDoc.exists) {
                 final userData = userDoc.data();
-                otherParticipantName = userData?['displayName'] ?? 
-                                      userData?['name'] ?? 
-                                      userData?['email']?.split('@')[0] ?? 
-                                      'Unknown User';
+                otherParticipantName = userData?['displayName'] ?? userData?['name'] ?? userData?['email']?.split('@')[0] ?? 'Unknown User';
               }
             } catch (e) {
-              debugPrint('Error loading participant data: $e');
+              debugPrint('Error resolving participant name: $e');
             }
             break;
           }
         }
-        
+
         history.add({
           'id': doc.id,
           'roomName': data['roomName'] ?? 'Unknown',
           'participantName': otherParticipantName,
-          'timestamp': (data['endTime'] as Timestamp?)?.toDate() ?? 
-                      (data['startTime'] as Timestamp?)?.toDate(),
-          'duration': _calculateDuration(data['startTime'], data['endTime']),
+          'timestamp': (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          'duration': data['duration'] ?? _calculateDuration(data['startTime'] as Timestamp?, data['endTime'] as Timestamp?),
           'participants': participants,
         });
       }
 
+      if (!mounted) return;
       setState(() {
         _callHistory = history;
         _isLoadingHistory = false;
       });
-    } catch (e) {
-      debugPrint('Error loading call history: $e');
-
-      // Firestore may require a composite index for the "where + orderBy" query above.
-      // Try a fallback query (no orderBy) and sort client-side so the UI still shows history.
-      try {
-        final currentUser2 = context.read<AuthService>().currentUser;
-        if (currentUser2 == null) throw Exception('No current user for fallback');
-
-        final fallbackSnapshot = await FirebaseFirestore.instance
-            .collection('call_sessions')
-            .where('participants', arrayContains: currentUser2.uid)
-            .where('status', isEqualTo: 'ended')
-            .limit(50)
-            .get();
-
-        final List<Map<String, dynamic>> fallbackHistory = [];
-          for (var doc in fallbackSnapshot.docs) {
-          final data = doc.data();
-          final participants = List<String>.from(data['participants'] ?? []);
-
-          String otherParticipantName = 'Unknown';
-          for (final participantId in participants) {
-            if (participantId != currentUser2.uid) {
-              try {
-                final userDoc = await FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(participantId)
-                    .get();
-                if (userDoc.exists) {
-                  final userData = userDoc.data();
-                  otherParticipantName = userData?['displayName'] ??
-                      userData?['name'] ??
-                      userData?['email']?.split('@')[0] ??
-                      'Unknown User';
-                }
-              } catch (e) {
-                debugPrint('Error loading participant data in fallback: $e');
-              }
-              break;
-            }
-          }
-
-          fallbackHistory.add({
-            'id': doc.id,
-            'roomName': data['roomName'] ?? 'Unknown',
-            'participantName': otherParticipantName,
-            'timestamp': (data['endTime'] as Timestamp?)?.toDate() ??
-                (data['startTime'] as Timestamp?)?.toDate(),
-            'duration': _calculateDuration(data['startTime'], data['endTime']),
-            'participants': participants,
-          });
-        }
-
-        // Sort by timestamp descending
-        fallbackHistory.sort((a, b) {
-          final ta = a['timestamp'] as DateTime?;
-          final tb = b['timestamp'] as DateTime?;
-          if (ta == null && tb == null) return 0;
-          if (ta == null) return 1;
-          if (tb == null) return -1;
-          return tb.compareTo(ta);
-        });
-
-        setState(() {
-          _callHistory = fallbackHistory;
-          _isLoadingHistory = false;
-        });
-        return;
-      } catch (e2) {
-        debugPrint('Fallback call history query failed: $e2');
-      }
-
+    }, onError: (e) {
+      debugPrint('Error listening to call history snapshots: $e');
+      if (!mounted) return;
       setState(() => _isLoadingHistory = false);
-    }
+    });
   }
 
   int _calculateDuration(Timestamp? startTime, Timestamp? endTime) {

@@ -14,6 +14,28 @@ class WebPipService {
   bool get isPipSupported {
     if (!kIsWeb) return false;
     try {
+      // Detect Safari PWA (standalone) — disable PiP there because it is
+      // unreliable and often unsupported in iOS PWA contexts.
+      try {
+        final ua = web.window.navigator.userAgent.toLowerCase();
+        final isSafari = ua.contains('safari') && !ua.contains('chrome') && !ua.contains('crios') && !ua.contains('fxios');
+        bool isStandalone = false;
+          try {
+            final mm = web.window.matchMedia('(display-mode: standalone)');
+            isStandalone = mm.matches;
+          } catch (_) {}
+        // Some iOS versions expose navigator.standalone
+        try {
+          final nav = web.window.navigator;
+          final standalone = (nav as dynamic).standalone;
+          if (standalone == true) isStandalone = true;
+        } catch (_) {}
+
+        if (isSafari && isStandalone) {
+          return false; // disable PiP in Safari PWAs
+        }
+      } catch (_) {}
+
       return web.document.pictureInPictureEnabled;
     } catch (e) {
       return false;

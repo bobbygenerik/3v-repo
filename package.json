@@ -1,0 +1,27 @@
+{
+  "name": "3v-repo",
+  "version": "1.0.0",
+  "description": "A production-ready Android video calling application with LiveKit integration, Firebase Cloud Functions, and native Android ConnectionService UI.",
+  "main": "fix-storage-cors.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bobbygenerik/3v-repo.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bobbygenerik/3v-repo/issues"
+  },
+  "homepage": "https://github.com/bobbygenerik/3v-repo#readme",
+  "devDependencies": {
+    "@google/gemini-cli": "^0.21.3"
+  }
+}
