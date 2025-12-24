@@ -459,10 +459,7 @@ class LiveKitService extends ChangeNotifier {
             params: captureParams,
             processor: processor,
           ),
-              defaultScreenShareCaptureOptions: ScreenShareCaptureOptions(
-                maxFrameRate: 15,
-                params: FaceTimeVideoPresets.h720,
-              ),
+              // Screen share removed: no default screen-share capture options.
               defaultAudioCaptureOptions: AudioCaptureOptions(
                 echoCancellation: true,
                 noiseSuppression: true,
