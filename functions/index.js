@@ -122,6 +122,8 @@ exports.getLiveKitToken = functions.https.onCall(async (requestOrData, context) 
   }
 });
 
+// smokeGetLiveKitToken removed — temporary test endpoint deleted
+
 /**
  * Cloud Function: Send push notification when call invitation is created
  * Triggers when a new document is added to call_invitations collection
