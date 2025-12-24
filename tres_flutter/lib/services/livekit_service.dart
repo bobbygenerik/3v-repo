@@ -7,6 +7,7 @@ import 'device_capability_service.dart';
 import 'device_mode_service.dart';
 import 'call_stats_service.dart';
 import '../config/environment.dart';
+import 'feature_flags.dart';
 // MediaPipe removed: no mediapipe_settings import
 import 'web_pip_helper.dart';
 import 'web_pip_bridge_stub.dart'
@@ -138,11 +139,10 @@ class LiveKitService extends ChangeNotifier {
   LiveKitService() {
     DeviceCapabilityService.detectCapability();
     DeviceCapabilityService.detectCapabilityAsync();
-    // If running inside a Safari PWA, prefer conservative defaults
-    if (_isSafariPwa) {
-      _adaptiveBitrateEnabled = false;
-      _isSimulcastEnabled = false;
-    }
+    // Apply conservative defaults with centralized feature flags.
+    // Safari PWA gets additional conservative enforcement.
+    _adaptiveBitrateEnabled = FeatureFlags.enableAdaptiveBitrate && !_isSafariPwa;
+    _isSimulcastEnabled = FeatureFlags.enableSimulcast && !_isSafariPwa;
   }
 
   /// Determine call type at runtime (Required by brief)
@@ -187,8 +187,9 @@ class LiveKitService extends ChangeNotifier {
     // Check if high-end device
     final deviceLevel = DeviceCapabilityService.getDeviceLevel();
     if (deviceLevel < 8) return false; // Only flagship devices
-    
-    return true;
+
+    // Honor global feature flag for ultra quality
+    return FeatureFlags.enableUltraQuality;
   }
 
   /// Get platform-aware codec strategy (Required by brief)

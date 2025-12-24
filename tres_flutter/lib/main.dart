@@ -16,7 +16,7 @@ import 'services/livekit_service.dart';
 import 'services/guest_link_service.dart';
 import 'services/notification_service.dart';
 import 'services/audio_device_service.dart';
-import 'services/mediapipe_settings.dart';
+// MediaPipe removed: settings and processing removed
 import 'firebase_background_handler.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';

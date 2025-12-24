@@ -8,6 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:livekit_client/livekit_client.dart';
 import '../services/livekit_service.dart';
+import '../services/feature_flags.dart';
+import '../services/device_mode_service.dart';
 import '../services/android_pip_service.dart';
 import '../services/call_features_coordinator.dart';
 import '../services/call_session_service.dart';
@@ -17,7 +19,7 @@ import '../services/reaction_service.dart';
 import '../services/chat_service.dart' as chat;
 import '../services/vibration_service.dart';
 import '../services/call_stats_service.dart';
-import '../services/mediapipe_settings.dart';
+// MediaPipe removed: settings and processing removed
 import '../config/environment.dart';
 import '../widgets/participant_video.dart';
 import '../widgets/stats_overlay.dart';
@@ -326,7 +328,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   void _handleLiveKitUpdate() {
     final livekit = context.read<LiveKitService>();
 
-    final mediaPipeError = livekit.consumeMediaPipeError();
+    // Only surface MediaPipe errors when MediaPipe features are enabled.
+    final mediaPipeError = FeatureFlags.enableMediaPipe ? livekit.consumeMediaPipeError() : null;
     if (mediaPipeError != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -617,23 +620,33 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _pipEnabled = enabled;
       if (!mounted) return;
       final livekit = context.read<LiveKitService>();
-      _configureWebPip(livekit);
-      await AndroidPipService.setAutoPipEnabled(_pipEnabled);
+      // Respect global PiP feature flag and Safari PWA conservative defaults
+      final pipAllowed = FeatureFlags.enablePictureInPicture && !DeviceModeService.isSafariPwa();
+      if (pipAllowed) {
+        _configureWebPip(livekit);
+        await AndroidPipService.setAutoPipEnabled(_pipEnabled);
+      } else {
+        _configureWebPip(livekit);
+        await AndroidPipService.setAutoPipEnabled(false);
+      }
     } catch (e) {
       debugPrint('⚠️ Failed to load PiP preference: $e');
     }
   }
 
   Future<void> _setAndroidCallActive(bool active) async {
+    // Only notify Android PiP if PiP is allowed by flags and not a Safari PWA
+    final pipAllowed = FeatureFlags.enablePictureInPicture && !DeviceModeService.isSafariPwa();
     await AndroidPipService.setCallActive(active);
     if (active) {
-      await AndroidPipService.setAutoPipEnabled(_pipEnabled);
+      await AndroidPipService.setAutoPipEnabled(pipAllowed ? _pipEnabled : false);
     }
   }
 
   void _configureWebPip(LiveKitService livekit) {
-    livekit.pipService.setAutoEnterPip(_pipEnabled);
-    if (_pipEnabled) {
+    final pipAllowed = FeatureFlags.enablePictureInPicture && !DeviceModeService.isSafariPwa();
+    livekit.pipService.setAutoEnterPip(pipAllowed && _pipEnabled);
+    if (pipAllowed && _pipEnabled) {
       livekit.setupAutoPip();
     } else if (livekit.pipService.isPipActive) {
       livekit.pipService.exitPip();
@@ -641,7 +654,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   }
 
   Future<bool> _enterPipNow(LiveKitService livekit) async {
-    if (!_pipEnabled) return false;
+    final pipAllowed = FeatureFlags.enablePictureInPicture && !DeviceModeService.isSafariPwa();
+    if (!_pipEnabled || !pipAllowed) return false;
     if (Theme.of(context).platform == TargetPlatform.android) {
       final available = await AndroidPipService.isPipAvailable();
       if (!available) return false;
