@@ -25,13 +25,15 @@ class FaceTimeVideoPresets {
   // Cross-Platform 1080p HQ
   static final h1080 = VideoParameters(
     dimensions: VideoDimensions(1920, 1080),
-    encoding: VideoEncoding(maxBitrate: 6_000_000, maxFramerate: 30),
+    // Target 1080p at ~5 Mbps as per brief (conservative)
+    encoding: VideoEncoding(maxBitrate: 5_000_000, maxFramerate: 30),
   );
 
   // Cross-Platform 720p Fallback
   static final h720 = VideoParameters(
     dimensions: VideoDimensions(1280, 720),
-    encoding: VideoEncoding(maxBitrate: 3_500_000, maxFramerate: 30),
+    // Target 720p at ~2 Mbps as per brief
+    encoding: VideoEncoding(maxBitrate: 2_000_000, maxFramerate: 30),
   );
 
   // Android Ultra-HQ 1080p+
@@ -56,6 +58,12 @@ class FaceTimeVideoPresets {
   static final androidExtreme1440p60 = VideoParameters(
     dimensions: VideoDimensions(2560, 1440),
     encoding: VideoEncoding(maxBitrate: 20_000_000, maxFramerate: 60),
+  );
+
+  // Opportunistic 1440p layer for simulcast ladder (target ~9-10 Mbps)
+  static final h1440 = VideoParameters(
+    dimensions: VideoDimensions(2560, 1440),
+    encoding: VideoEncoding(maxBitrate: 9_000_000, maxFramerate: 30),
   );
 
   // Android-Only Ultra-HQ 720p
@@ -142,7 +150,8 @@ class LiveKitService extends ChangeNotifier {
     // Apply conservative defaults with centralized feature flags.
     // Safari PWA gets additional conservative enforcement.
     _adaptiveBitrateEnabled = FeatureFlags.enableAdaptiveBitrate && !_isSafariPwa;
-    _isSimulcastEnabled = FeatureFlags.enableSimulcast && !_isSafariPwa;
+    // Use simulcast ladder flag (3-layer) but keep Safari PWA conservative
+    _isSimulcastEnabled = FeatureFlags.enableSimulcastLadder && !_isSafariPwa;
   }
 
   /// Determine call type at runtime (Required by brief)
@@ -397,7 +406,8 @@ class LiveKitService extends ChangeNotifier {
       _currentCallType = _classifyCallType();
       _isUltraHQMode = _shouldEnableUltraHQ();
       _currentVideoCodec = _getPreferredCodec();
-      _isSimulcastEnabled = false; // Always false for 1-to-1 calls (brief requirement)
+      // Default simulcast behavior: enable 3-layer ladder for 1:1 when allowed
+      _isSimulcastEnabled = FeatureFlags.enableSimulcastLadder && !_isSafariPwa;
       
       debugPrint('🎯 FaceTime-Quality Connection Setup:');
       debugPrint('   📞 Call Type: $_currentCallType');
@@ -466,10 +476,9 @@ class LiveKitService extends ChangeNotifier {
                 autoGainControl: true,
               ),
               defaultVideoPublishOptions: VideoPublishOptions(
-                videoEncoding: optimalEncoding,
-                simulcast: _isSimulcastEnabled, // Critical: Never use simulcast for 1-to-1
-                // No simulcast layers when simulcast is disabled
-              ),
+                    videoEncoding: optimalEncoding,
+                    simulcast: _isSimulcastEnabled,
+                  ),
               defaultAudioPublishOptions: AudioPublishOptions(
                 audioBitrate: _getOptimalAudioBitrate(),
                 dtx: true,
@@ -678,7 +687,31 @@ class LiveKitService extends ChangeNotifier {
     final preset = _currentCapturePreset ?? FaceTimeVideoPresets.h720;
     final processor = null;
 
-    debugPrint('📉 Adaptive bitrate update: ${previous / 1000000} → ${targetBitrate / 1000000} Mbps');
+    debugPrint('📉 Adaptive bitrate request: ${previous / 1000000} → ${targetBitrate / 1000000} Mbps');
+    // Try setParameters (encoder parameter update) first — prefer no track recreate
+    try {
+      final trackDyn = _localVideoTrack as dynamic;
+      // Best-effort API: many platform SDKs expose a setParameters/setEncodingParameters
+      // that accepts a map with maxBitrate/maxFramerate. Use dynamic call so it
+      // won't break on platforms where it's not supported.
+      final paramObj = {
+        'maxBitrate': targetBitrate,
+        'maxFramerate': (baseEncoding.maxFramerate ?? 30),
+      };
+      final res = await trackDyn.setParameters(paramObj);
+      if (res == null || res == true) {
+        debugPrint('✅ Applied encoder parameter update (no track recreate)');
+        _currentAdaptiveBitrate = targetBitrate;
+        _lastAdaptiveChange = now;
+        return;
+      }
+      debugPrint('⚠️ setParameters returned falsey — falling back to recreate');
+    } catch (e) {
+      debugPrint('⚠️ setParameters not available or failed: $e — will recreate track');
+    }
+
+    // Fallback: recreate track (ensure UI is notified so preview rebinds)
+    debugPrint('📉 Performing safe recreate to apply bitrate: ${targetBitrate / 1000000} Mbps');
     await _recreateAndPublishVideoTrack(
       preset,
       maxBitrateOverride: targetBitrate,
@@ -731,6 +764,8 @@ class LiveKitService extends ChangeNotifier {
       }
       
       debugPrint('🔁 Recreated video track with FaceTime-quality preset');
+      // Notify UI so any renderer bindings rebind to the new LocalVideoTrack
+      notifyListeners();
     } catch (e) {
       debugPrint('Failed to recreate video track: $e');
       if (processor != null) {
