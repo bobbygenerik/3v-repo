@@ -150,8 +150,14 @@ class LiveKitService extends ChangeNotifier {
     // Apply conservative defaults with centralized feature flags.
     // Safari PWA gets additional conservative enforcement.
     _adaptiveBitrateEnabled = FeatureFlags.enableAdaptiveBitrate && !_isSafariPwa;
-    // Use simulcast ladder flag (3-layer) but keep Safari PWA conservative
-    _isSimulcastEnabled = FeatureFlags.enableSimulcastLadder && !_isSafariPwa;
+    // Use simulcast ladder flag (3-layer) but gate by runtime capability probe on web
+    var webSimulcastOk = true;
+    if (kIsWeb) {
+      // ensure device capability detection runs the web probe
+      DeviceCapabilityService.detectCapability();
+      webSimulcastOk = DeviceCapabilityService.webSupportsSimulcast();
+    }
+    _isSimulcastEnabled = FeatureFlags.enableSimulcastLadder && !_isSafariPwa && webSimulcastOk;
   }
 
   /// Determine call type at runtime (Required by brief)
@@ -406,8 +412,13 @@ class LiveKitService extends ChangeNotifier {
       _currentCallType = _classifyCallType();
       _isUltraHQMode = _shouldEnableUltraHQ();
       _currentVideoCodec = _getPreferredCodec();
-      // Default simulcast behavior: enable 3-layer ladder for 1:1 when allowed
-      _isSimulcastEnabled = FeatureFlags.enableSimulcastLadder && !_isSafariPwa;
+      // Default simulcast behavior: enable 3-layer ladder when allowed and runtime supports it (web probe)
+      var webSimulcastOk = true;
+      if (kIsWeb) {
+        DeviceCapabilityService.detectCapability();
+        webSimulcastOk = DeviceCapabilityService.webSupportsSimulcast();
+      }
+      _isSimulcastEnabled = FeatureFlags.enableSimulcastLadder && !_isSafariPwa && webSimulcastOk;
       
       debugPrint('🎯 FaceTime-Quality Connection Setup:');
       debugPrint('   📞 Call Type: $_currentCallType');

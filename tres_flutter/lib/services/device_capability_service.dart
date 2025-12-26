@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
+// Conditional import providing web runtime probe implementations
+import 'web_runtime_probe_stub.dart'
+  if (dart.library.html) 'web_runtime_probe_html.dart';
 
 enum DeviceCapability { highEnd, midRange, lowEnd }
 enum PreferredCodec { vp9, h264, h265 }
@@ -8,6 +11,7 @@ enum PreferredCodec { vp9, h264, h265 }
 class DeviceCapabilityService {
   static DeviceCapability _capability = DeviceCapability.highEnd;
   static PreferredCodec _preferredCodec = PreferredCodec.h264;
+  // Web runtime capability probes are provided by conditional import functions
   
   static DeviceCapability get capability => _capability;
   static PreferredCodec get preferredCodec => _preferredCodec;
@@ -93,7 +97,22 @@ class DeviceCapabilityService {
     _capability = DeviceCapability.highEnd;
     _preferredCodec = PreferredCodec.h264; // H.264 for iOS compatibility
     debugPrint('🌐 Web platform detected: Using H.264 codec with high-end bitrate for quality');
+
+    // Runtime probe: use conditional web probe helpers (no-op on non-web)
+    try {
+      final setParams = webHasSetParameters();
+      final simulcastOk = webHasSimulcast();
+      debugPrint('🌐 Web runtime probe: setParameters=$setParams, simulcastOK=$simulcastOk');
+    } catch (e) {
+      debugPrint('⚠️ Web runtime probe failed: $e');
+    }
   }
+
+  /// Whether the web runtime supports RTCRtpSender.setParameters
+  static bool webSupportsSetParameters() => webHasSetParameters();
+
+  /// Whether the web runtime likely supports simulcast (best-effort)
+  static bool webSupportsSimulcast() => webHasSimulcast();
   
   /// Detect Android device capability
   static void _detectAndroidCapability() {
