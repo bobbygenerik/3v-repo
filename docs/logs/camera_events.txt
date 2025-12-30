@@ -1,0 +1,766 @@
+--------- beginning of main
+12-25 20:50:02.762  2463 17613 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 20:50:03.000  2463 17613 I CameraService: onUidStateChanged: uid=10262, procState is changed. (5 -> 3)
+12-25 20:50:03.001  2463 17613 I CameraService: onUidStateChanged: uid=10259, procState is changed. (5 -> 3)
+12-25 20:50:03.150  2463  2748 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 20:50:03.273  2463  2748 I CameraService: onUidStateChanged: uid=10276, procState is changed. (16 -> 11)
+12-25 20:50:03.419  2463  2748 I CameraService: onUidStateChanged: uid=10276, procState is changed. (11 -> 16)
+12-25 20:50:03.784  2463 17613 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 20:50:10.298  2463  2748 I CameraService: onUidStateChanged: uid=10276, procState is changed. (16 -> 10)
+12-25 20:50:10.313  2463  2748 I CameraService: onUidStateChanged: uid=10276, procState is changed. (10 -> 8)
+12-25 20:50:10.345  2463  2463 I CameraService: onUidStateChanged: uid=10276, procState is changed. (8 -> 10)
+12-25 20:50:10.348  2463 17610 I CameraService: onUidStateChanged: uid=10276, procState is changed. (10 -> 16)
+12-25 20:50:14.857  2463  2463 I CameraService: onUidStateChanged: uid=10276, procState is changed. (16 -> 10)
+12-25 20:50:14.873  2463 17613 I CameraService: onUidStateChanged: uid=10276, procState is changed. (10 -> 16)
+12-25 20:50:17.514  2463  2748 I CameraService: onUidStateChanged: uid=10276, procState is changed. (16 -> 10)
+12-25 20:50:17.537  2463 17613 I CameraService: onUidStateChanged: uid=10276, procState is changed. (10 -> 16)
+12-25 20:50:25.937  2463 17613 I CameraService: onUidStateChanged: uid=10276, procState is changed. (16 -> 11)
+12-25 20:50:25.972  2463 17613 I CameraService: onUidStateChanged: uid=10276, procState is changed. (11 -> 16)
+12-25 20:50:25.983  2463  2748 I CameraService: onUidStateChanged: uid=10276, procState is changed. (16 -> 10)
+12-25 20:50:25.995  2463  2748 I CameraService: onUidStateChanged: uid=10276, procState is changed. (10 -> 16)
+12-25 20:50:26.358  2463  2463 I CameraService: onUidStateChanged: uid=10276, procState is changed. (16 -> 10)
+12-25 20:50:26.381  2463  2748 I CameraService: onUidStateChanged: uid=10276, procState is changed. (10 -> 16)
+12-25 20:50:32.849  2463  2748 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 20:50:50.021  2463  2748 I CameraService: CameraService::connect call (PID 19571 UID 1000 "com.samsung.android.smartface", camera ID 1) and Camera API version 2
+12-25 20:50:50.023  2463  2748 I CameraService: isUidActiveLocked E: uid 1000, callingPackage com.samsung.android.smartface, isRegistered true
+12-25 20:50:50.023  2463  2748 I CameraService: isUidActiveLocked X: return true.
+12-25 20:50:50.026  2463  2748 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 19571, calling uid 1000, client com.samsung.android.smartface , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 20:50:50.026  2463  2748 I CameraService: CameraService::handleEvictionsLocked
+12-25 20:50:50.026  2463  2748 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 20:50:50.026  2463  2748 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 20:50:50.026  2463  2748 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 20:50:50.026  2463  2748 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 20:50:50.027  2463  2748 I CameraService: service.camera.client set to com.samsung.android.smartface
+12-25 20:50:50.033  2463  2748 I CameraService: increaseCamConnRef: ref=1
+12-25 20:50:50.034  2463  2748 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 20:50:50.034  2463  2748 I CameraService: Translate updateStatus callback for camera id 1
+12-25 20:50:50.034  2463  2748 I CameraService:  to 1
+12-25 20:50:50.103  2463  2748 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 20:50:50.103  2463  2748 I CameraService: CameraService::finishConnectLocked E
+12-25 20:50:50.103  2463  2748 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 20:50:50.103  2463  2748 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 20:50:50.103  2463  2748 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 20:50:50.103  2463  2748 I CameraService: addAndEvict: push the client(owner 19571, priorityScore 990, state 0) to mClients
+12-25 20:50:50.103  2463  2748 I CameraService: CameraService::finishConnectLocked X
+12-25 20:50:50.104  2463  2748 I CameraService: Notified package name to HAL.
+12-25 20:50:50.386  2463 13377 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:50:50.591  2463 13377 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:50:50.663  2463  2463 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:50:50.664  2463  2463 I CameraService: decreaseCamConnRef: ref=0
+12-25 20:50:50.664  2463  2463 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 20:50:50.664  2463  2463 I CameraService: disconnect: Disconnected client for camera 1 for PID 19571
+12-25 20:51:02.992  2463 17613 I CameraService: onUidStateChanged: uid=10262, procState is changed. (3 -> 5)
+12-25 20:51:02.996  2463 17613 I CameraService: onUidStateChanged: uid=10259, procState is changed. (3 -> 5)
+12-25 20:51:03.212  2463 17613 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 20:51:05.392  2463  2463 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 20:51:07.780  2463  2463 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 20:51:07.793  2463  2463 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 20:52:10.128  2463 17610 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 20:52:10.319  2463  4149 I CameraService: CameraService::connect call (PID 19571 UID 1000 "com.samsung.android.smartface", camera ID 1) and Camera API version 2
+12-25 20:52:10.320  2463  4149 I CameraService: isUidActiveLocked E: uid 1000, callingPackage com.samsung.android.smartface, isRegistered true
+12-25 20:52:10.320  2463  4149 I CameraService: isUidActiveLocked X: return true.
+12-25 20:52:10.324  2463  4149 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 19571, calling uid 1000, client com.samsung.android.smartface , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 20:52:10.324  2463  4149 I CameraService: CameraService::handleEvictionsLocked
+12-25 20:52:10.325  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 20:52:10.325  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 20:52:10.325  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 20:52:10.325  2463  4149 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 20:52:10.325  2463  4149 I CameraService: service.camera.client set to com.samsung.android.smartface
+12-25 20:52:10.328  2463  4149 I CameraService: increaseCamConnRef: ref=1
+12-25 20:52:10.329  2463  4149 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 20:52:10.329  2463  4149 I CameraService: Translate updateStatus callback for camera id 1
+12-25 20:52:10.329  2463  4149 I CameraService:  to 1
+12-25 20:52:10.343  2463  4149 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 20:52:10.343  2463  4149 I CameraService: CameraService::finishConnectLocked E
+12-25 20:52:10.343  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 20:52:10.343  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 20:52:10.343  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 20:52:10.344  2463  4149 I CameraService: addAndEvict: push the client(owner 19571, priorityScore 990, state 0) to mClients
+12-25 20:52:10.344  2463  4149 I CameraService: CameraService::finishConnectLocked X
+12-25 20:52:10.344  2463  4149 I CameraService: Notified package name to HAL.
+12-25 20:52:10.613  2463 13776 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:52:10.835  2463 13776 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:52:10.912  2463 14633 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:52:10.913  2463 14633 I CameraService: decreaseCamConnRef: ref=0
+12-25 20:52:10.913  2463 14633 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 20:52:10.914  2463 14633 I CameraService: disconnect: Disconnected client for camera 1 for PID 19571
+12-25 20:52:12.467  2463 14633 I CameraService: CameraService::connect call (PID 19571 UID 1000 "com.samsung.android.smartface", camera ID 1) and Camera API version 2
+12-25 20:52:12.467  2463 14633 I CameraService: isUidActiveLocked E: uid 1000, callingPackage com.samsung.android.smartface, isRegistered true
+12-25 20:52:12.467  2463 14633 I CameraService: isUidActiveLocked X: return true.
+12-25 20:52:12.471  2463 14633 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 19571, calling uid 1000, client com.samsung.android.smartface , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 20:52:12.471  2463 14633 I CameraService: CameraService::handleEvictionsLocked
+12-25 20:52:12.471  2463 14633 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 20:52:12.471  2463 14633 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 20:52:12.471  2463 14633 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 20:52:12.471  2463 14633 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 20:52:12.471  2463 14633 I CameraService: service.camera.client set to com.samsung.android.smartface
+12-25 20:52:12.476  2463 14633 I CameraService: increaseCamConnRef: ref=1
+12-25 20:52:12.476  2463 14633 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 20:52:12.476  2463 14633 I CameraService: Translate updateStatus callback for camera id 1
+12-25 20:52:12.476  2463 14633 I CameraService:  to 1
+12-25 20:52:12.492  2463 14633 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 20:52:12.492  2463 14633 I CameraService: CameraService::finishConnectLocked E
+12-25 20:52:12.492  2463 14633 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 20:52:12.492  2463 14633 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 20:52:12.492  2463 14633 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 20:52:12.492  2463 14633 I CameraService: addAndEvict: push the client(owner 19571, priorityScore 990, state 0) to mClients
+12-25 20:52:12.492  2463 14633 I CameraService: CameraService::finishConnectLocked X
+12-25 20:52:12.492  2463 14633 I CameraService: Notified package name to HAL.
+12-25 20:52:12.768  2463 13893 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:52:12.825  2463 14633 I CameraService: onUidStateChanged: uid=10262, procState is changed. (5 -> 3)
+12-25 20:52:12.825  2463 14633 I CameraService: onUidStateChanged: uid=10259, procState is changed. (5 -> 3)
+12-25 20:52:13.022  2463  2463 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 20:52:13.039  2463 13893 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:52:13.133  2463  2748 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:52:13.134  2463  2748 I CameraService: decreaseCamConnRef: ref=0
+12-25 20:52:13.134  2463  2748 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 20:52:13.135  2463  2748 I CameraService: disconnect: Disconnected client for camera 1 for PID 19571
+12-25 20:52:30.205  2463  2463 I CameraService: CameraService::connect call (PID 19571 UID 1000 "com.samsung.android.smartface", camera ID 1) and Camera API version 2
+12-25 20:52:30.206  2463  2463 I CameraService: isUidActiveLocked E: uid 1000, callingPackage com.samsung.android.smartface, isRegistered true
+12-25 20:52:30.206  2463  2463 I CameraService: isUidActiveLocked X: return true.
+12-25 20:52:30.209  2463  2463 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 19571, calling uid 1000, client com.samsung.android.smartface , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 20:52:30.209  2463  2463 I CameraService: CameraService::handleEvictionsLocked
+12-25 20:52:30.209  2463  2463 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 20:52:30.209  2463  2463 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 20:52:30.209  2463  2463 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 20:52:30.210  2463  2463 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 20:52:30.210  2463  2463 I CameraService: service.camera.client set to com.samsung.android.smartface
+12-25 20:52:30.215  2463  2463 I CameraService: increaseCamConnRef: ref=1
+12-25 20:52:30.216  2463  2463 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 20:52:30.216  2463  2463 I CameraService: Translate updateStatus callback for camera id 1
+12-25 20:52:30.216  2463  2463 I CameraService:  to 1
+12-25 20:52:30.232  2463  2463 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 20:52:30.232  2463  2463 I CameraService: CameraService::finishConnectLocked E
+12-25 20:52:30.232  2463  2463 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 20:52:30.232  2463  2463 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 20:52:30.232  2463  2463 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 20:52:30.232  2463  2463 I CameraService: addAndEvict: push the client(owner 19571, priorityScore 990, state 0) to mClients
+12-25 20:52:30.232  2463  2463 I CameraService: CameraService::finishConnectLocked X
+12-25 20:52:30.233  2463  2463 I CameraService: Notified package name to HAL.
+12-25 20:52:30.524  2463 14083 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:52:30.727  2463 14083 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:52:30.807  2463 14633 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:52:30.807  2463 14633 I CameraService: decreaseCamConnRef: ref=0
+12-25 20:52:30.808  2463 14633 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 20:52:30.811  2463 14633 I CameraService: disconnect: Disconnected client for camera 1 for PID 19571
+12-25 20:52:43.158  2463  2749 I CameraService: onUidStateChanged: uid=10262, procState is changed. (3 -> 5)
+12-25 20:52:43.159  2463  2749 I CameraService: onUidStateChanged: uid=10259, procState is changed. (3 -> 5)
+12-25 20:52:43.347  2463  2749 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 20:52:45.461  2463  4149 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 20:52:47.964  2463  4149 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 20:52:47.969  2463  4149 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 20:56:07.339  2463 17610 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 20:56:07.513  2463 17610 I CameraService: CameraService::connect call (PID 19571 UID 1000 "com.samsung.android.smartface", camera ID 1) and Camera API version 2
+12-25 20:56:07.514  2463 17610 I CameraService: isUidActiveLocked E: uid 1000, callingPackage com.samsung.android.smartface, isRegistered true
+12-25 20:56:07.514  2463 17610 I CameraService: isUidActiveLocked X: return true.
+12-25 20:56:07.517  2463 17610 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 19571, calling uid 1000, client com.samsung.android.smartface , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 20:56:07.517  2463 17610 I CameraService: CameraService::handleEvictionsLocked
+12-25 20:56:07.517  2463 17610 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 20:56:07.517  2463 17610 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 20:56:07.517  2463 17610 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 20:56:07.517  2463 17610 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 20:56:07.517  2463 17610 I CameraService: service.camera.client set to com.samsung.android.smartface
+12-25 20:56:07.520  2463 17610 I CameraService: increaseCamConnRef: ref=1
+12-25 20:56:07.520  2463 17610 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 20:56:07.520  2463 17610 I CameraService: Translate updateStatus callback for camera id 1
+12-25 20:56:07.520  2463 17610 I CameraService:  to 1
+12-25 20:56:07.540  2463 17610 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 20:56:07.540  2463 17610 I CameraService: CameraService::finishConnectLocked E
+12-25 20:56:07.540  2463 17610 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 20:56:07.540  2463 17610 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 20:56:07.540  2463 17610 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 20:56:07.540  2463 17610 I CameraService: addAndEvict: push the client(owner 19571, priorityScore 990, state 0) to mClients
+12-25 20:56:07.540  2463 17610 I CameraService: CameraService::finishConnectLocked X
+12-25 20:56:07.540  2463 17610 I CameraService: Notified package name to HAL.
+12-25 20:56:07.807  2463 14436 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:56:08.016  2463 14436 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:56:08.099  2463 17610 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:56:08.099  2463 17610 I CameraService: decreaseCamConnRef: ref=0
+12-25 20:56:08.100  2463 17610 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 20:56:08.101  2463 17610 I CameraService: disconnect: Disconnected client for camera 1 for PID 19571
+12-25 20:56:12.218  2463 17610 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 20:57:19.649  2463 17610 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 20:57:19.820  2463  2748 I CameraService: onUidStateChanged: uid=10262, procState is changed. (5 -> 3)
+12-25 20:57:19.821  2463  2748 I CameraService: onUidStateChanged: uid=10259, procState is changed. (5 -> 3)
+12-25 20:57:19.985  2463  2748 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 20:57:23.336  2463  2748 I CameraService: onUidStateChanged: uid=10635, procState is changed. (16 -> 7)
+12-25 20:57:23.337  2463  2748 I CameraService: onUidStateChanged: uid=10635, procState is changed. (7 -> 10)
+12-25 20:57:23.355  2463 17610 I CameraService: onUidStateChanged: uid=10635, procState is changed. (10 -> 8)
+12-25 20:57:24.205  2463  2749 I CameraService: onUidStateChanged: uid=10635, procState is changed. (8 -> 10)
+12-25 20:57:24.213  2463 17610 I CameraService: onUidStateChanged: uid=11185, procState is changed. (16 -> 2)
+12-25 20:57:24.214  2463 17610 I CameraService: onUidStateChanged: uid=10635, procState is changed. (10 -> 16)
+12-25 20:57:24.555  2463 17610 I CameraService: onUidStateChanged: uid=10635, procState is changed. (16 -> 8)
+12-25 20:57:24.591  2463  2748 I CameraService: onUidStateChanged: uid=10262, procState is changed. (3 -> 5)
+12-25 20:57:32.487  2463  4149 I CameraService: onUidStateChanged: uid=10797, procState is changed. (19 -> 8)
+12-25 20:57:33.241  2463  2749 I CameraService: onUidStateChanged: uid=10797, procState is changed. (8 -> 10)
+12-25 20:57:33.245  2463  4149 I CameraService: onUidStateChanged: uid=10797, procState is changed. (10 -> 19)
+12-25 20:57:53.637  2463  4149 I CameraService: onUidStateChanged: uid=10635, procState is changed. (8 -> 10)
+12-25 20:57:53.642  2463 17610 I CameraService: onUidStateChanged: uid=10635, procState is changed. (10 -> 15)
+12-25 20:57:54.206  2463  4149 I CameraService: onUidStateChanged: uid=10635, procState is changed. (15 -> 16)
+12-25 20:58:00.064  2463  4149 I CameraService: CameraService::connect call (PID 19571 UID 1000 "com.samsung.android.smartface", camera ID 1) and Camera API version 2
+12-25 20:58:00.064  2463  4149 I CameraService: isUidActiveLocked E: uid 1000, callingPackage com.samsung.android.smartface, isRegistered true
+12-25 20:58:00.064  2463  4149 I CameraService: isUidActiveLocked X: return true.
+12-25 20:58:00.066  2463  4149 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 19571, calling uid 1000, client com.samsung.android.smartface , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 20:58:00.066  2463  4149 I CameraService: CameraService::handleEvictionsLocked
+12-25 20:58:00.067  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 20:58:00.067  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 20:58:00.067  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 20:58:00.068  2463  4149 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 20:58:00.068  2463  4149 I CameraService: service.camera.client set to com.samsung.android.smartface
+12-25 20:58:00.073  2463  4149 I CameraService: increaseCamConnRef: ref=1
+12-25 20:58:00.073  2463  4149 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 20:58:00.074  2463  4149 I CameraService: Translate updateStatus callback for camera id 1
+12-25 20:58:00.074  2463  4149 I CameraService:  to 1
+12-25 20:58:00.116  2463  4149 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 20:58:00.116  2463  4149 I CameraService: CameraService::finishConnectLocked E
+12-25 20:58:00.116  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 20:58:00.116  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 20:58:00.116  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 20:58:00.116  2463  4149 I CameraService: addAndEvict: push the client(owner 19571, priorityScore 990, state 0) to mClients
+12-25 20:58:00.116  2463  4149 I CameraService: CameraService::finishConnectLocked X
+12-25 20:58:00.117  2463  4149 I CameraService: Notified package name to HAL.
+12-25 20:58:00.386  2463 16162 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:58:00.603  2463 16162 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:58:00.679  2463  2463 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 20:58:00.679  2463  2463 I CameraService: decreaseCamConnRef: ref=0
+12-25 20:58:00.679  2463  2463 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 20:58:00.680  2463  2463 I CameraService: disconnect: Disconnected client for camera 1 for PID 19571
+12-25 20:58:13.017  2463  2463 I CameraService: onUidStateChanged: uid=11185, procState is changed. (2 -> 4)
+12-25 20:58:13.019  2463  2463 I CameraService: onUidStateChanged: uid=10259, procState is changed. (3 -> 4)
+12-25 20:58:13.250  2463  4149 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 20:58:15.476  2463  2463 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 20:58:17.816  2463  2463 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 20:58:17.831  2463  2463 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 20:58:25.095  2463  2463 I CameraService: onUidStateChanged: uid=10259, procState is changed. (4 -> 5)
+12-25 21:01:47.171  2463  2749 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 21:01:47.416  2463  4149 I CameraService: CameraService::connect call (PID 19571 UID 1000 "com.samsung.android.smartface", camera ID 1) and Camera API version 2
+12-25 21:01:47.416  2463  4149 I CameraService: isUidActiveLocked E: uid 1000, callingPackage com.samsung.android.smartface, isRegistered true
+12-25 21:01:47.416  2463  4149 I CameraService: isUidActiveLocked X: return true.
+12-25 21:01:47.424  2463  4149 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 19571, calling uid 1000, client com.samsung.android.smartface , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:01:47.424  2463  4149 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:01:47.424  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 21:01:47.424  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:01:47.424  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 21:01:47.424  2463  4149 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:01:47.424  2463  4149 I CameraService: service.camera.client set to com.samsung.android.smartface
+12-25 21:01:47.426  2463  4149 I CameraService: increaseCamConnRef: ref=1
+12-25 21:01:47.428  2463  4149 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:01:47.428  2463  4149 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:01:47.428  2463  4149 I CameraService:  to 1
+12-25 21:01:47.442  2463  4149 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:01:47.442  2463  4149 I CameraService: CameraService::finishConnectLocked E
+12-25 21:01:47.442  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 21:01:47.442  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:01:47.442  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 21:01:47.442  2463  4149 I CameraService: addAndEvict: push the client(owner 19571, priorityScore 990, state 0) to mClients
+12-25 21:01:47.442  2463  4149 I CameraService: CameraService::finishConnectLocked X
+12-25 21:01:47.443  2463  4149 I CameraService: Notified package name to HAL.
+12-25 21:01:47.707  2463 17137 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 21:01:47.918  2463 17137 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 21:01:47.997  2463  4149 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 21:01:47.998  2463  4149 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:01:47.998  2463  4149 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:01:47.999  2463  4149 I CameraService: disconnect: Disconnected client for camera 1 for PID 19571
+12-25 21:01:48.282  2463 17610 I CameraService: onUidStateChanged: uid=11185, procState is changed. (4 -> 2)
+12-25 21:01:48.305  2463 17610 I CameraService: onUidStateChanged: uid=10259, procState is changed. (5 -> 3)
+12-25 21:01:48.459  2463  2749 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 21:02:06.383  2463  2749 I CameraService: onUidStateChanged: uid=10259, procState is changed. (3 -> 5)
+12-25 21:02:08.232  2463  4149 I CameraService: CameraService::connect call (PID 19571 UID 1000 "com.samsung.android.smartface", camera ID 1) and Camera API version 2
+12-25 21:02:08.233  2463  4149 I CameraService: isUidActiveLocked E: uid 1000, callingPackage com.samsung.android.smartface, isRegistered true
+12-25 21:02:08.233  2463  4149 I CameraService: isUidActiveLocked X: return true.
+12-25 21:02:08.239  2463  4149 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 19571, calling uid 1000, client com.samsung.android.smartface , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:02:08.239  2463  4149 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:02:08.240  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 21:02:08.240  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:02:08.240  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 21:02:08.240  2463  4149 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:02:08.241  2463  4149 I CameraService: service.camera.client set to com.samsung.android.smartface
+12-25 21:02:08.248  2463  4149 I CameraService: increaseCamConnRef: ref=1
+12-25 21:02:08.249  2463  4149 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:02:08.249  2463  4149 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:02:08.249  2463  4149 I CameraService:  to 1
+12-25 21:02:08.267  2463  4149 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:02:08.267  2463  4149 I CameraService: CameraService::finishConnectLocked E
+12-25 21:02:08.267  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 19571, priority-score=990, cost=51, returnIncompatibleClients=false
+12-25 21:02:08.267  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:02:08.267  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=19571, score=990
+12-25 21:02:08.267  2463  4149 I CameraService: addAndEvict: push the client(owner 19571, priorityScore 990, state 0) to mClients
+12-25 21:02:08.267  2463  4149 I CameraService: CameraService::finishConnectLocked X
+12-25 21:02:08.268  2463  4149 I CameraService: Notified package name to HAL.
+12-25 21:02:08.548  2463 17399 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 21:02:08.756  2463 17399 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 21:02:08.838  2463  2749 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.samsung.android.smartface, client UID = 1000
+12-25 21:02:08.838  2463  2749 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:02:08.838  2463  2749 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:02:08.839  2463  2749 I CameraService: disconnect: Disconnected client for camera 1 for PID 19571
+12-25 21:02:14.118  2463  2749 I CameraService: onUidStateChanged: uid=5009, procState is changed. (19 -> 5)
+12-25 21:02:21.170  2463 17610 I CameraService: onUidStateChanged: uid=11185, procState is changed. (2 -> 4)
+12-25 21:02:21.213  2463  2749 I CameraService: onUidStateChanged: uid=10259, procState is changed. (5 -> 4)
+12-25 21:02:21.397  2463 17610 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 21:02:23.539  2463 17610 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 21:02:25.993  2463  2749 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 21:02:26.009  2463  2749 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 21:02:33.260  2463 17610 I CameraService: onUidStateChanged: uid=10259, procState is changed. (4 -> 5)
+12-25 21:02:36.847  2463 17610 I CameraService: onUidStateChanged: uid=10049, procState is changed. (0 -> 1)
+12-25 21:02:37.013  2463  2749 I CameraService: onUidStateChanged: uid=11185, procState is changed. (4 -> 2)
+12-25 21:02:37.015  2463  4149 I CameraService: onUidStateChanged: uid=10259, procState is changed. (5 -> 3)
+12-25 21:02:37.262  2463 17610 I CameraService: onUidStateChanged: uid=10049, procState is changed. (1 -> 0)
+12-25 21:02:43.685  2463  2749 I CameraService: onUidStateChanged: uid=5009, procState is changed. (5 -> 15)
+12-25 21:02:49.563  2463  4149 I CameraService: onUidStateChanged: uid=11274, procState is changed. (16 -> 2)
+12-25 21:02:49.632  2463 17610 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:02:49.632  2463 17610 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:02:49.632  2463 17610 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:02:49.633  2463 17610 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:02:49.633  2463 17610 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:02:49.634  2463 17610 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:02:49.634  2463 17610 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:02:49.634  2463 17610 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:02:49.634  2463 17610 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:02:49.634  2463 17610 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:02:49.635  2463 17610 I CameraService: increaseCamConnRef: ref=1
+12-25 21:02:49.635  2463 17610 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:02:49.635  2463 17610 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:02:49.635  2463 17610 I CameraService:  to 1
+12-25 21:02:49.663  2463 17610 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:02:49.663  2463 17610 I CameraService: CameraService::finishConnectLocked E
+12-25 21:02:49.663  2463 17610 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:02:49.663  2463 17610 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:02:49.663  2463 17610 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:02:49.664  2463 17610 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:02:49.664  2463 17610 I CameraService: CameraService::finishConnectLocked X
+12-25 21:02:49.665  2463 17610 I CameraService: Notified package name to HAL.
+12-25 21:02:49.706  2463  2749 I CameraService: onUidStateChanged: uid=5009, procState is changed. (15 -> 10)
+12-25 21:02:49.880  2463  2463 I CameraService: onUidStateChanged: uid=11185, procState is changed. (2 -> 4)
+12-25 21:02:49.881  2463  2463 I CameraService: onUidStateChanged: uid=10259, procState is changed. (3 -> 4)
+12-25 21:02:49.956  2463 17811 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:02:55.729  2463 17610 I CameraService: onUidStateChanged: uid=5009, procState is changed. (10 -> 15)
+12-25 21:03:01.645  2463  2748 I CameraService: onUidStateChanged: uid=10259, procState is changed. (4 -> 5)
+12-25 21:03:15.732  2463  4149 I CameraService: onUidStateChanged: uid=5009, procState is changed. (15 -> 19)
+12-25 21:03:57.352  2463  4149 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:03:57.353  2463  4149 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:03:57.353  2463  4149 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:03:57.354  2463  4149 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:03:57.354  2463  4149 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:03:57.354  2463  4149 I CameraService: handleEvictionsLocked: priorityMap[0] : pid=32044, priorityScore=0, state=2
+12-25 21:03:57.354  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:03:57.354  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=51, adding cost=51, total cost=102, max cost=100
+12-25 21:03:57.354  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:03:57.354  2463  4149 I CameraService: wouldEvictLocked: [existing client] curOwner=32044, curPriority-score=0, conflicting=true
+12-25 21:03:57.354  2463  4149 E CameraService: CameraService::connect evicting conflicting client for camera ID 1
+12-25 21:03:57.410  2463 17811 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:03:57.533  2463  4149 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:03:57.533  2463  4149 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:03:57.534  2463  4149 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:03:57.536  2463  4149 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:03:57.537  2463  4149 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:03:57.538  2463  4149 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:03:57.539  2463  4149 I CameraService: increaseCamConnRef: ref=1
+12-25 21:03:57.540  2463  4149 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:03:57.540  2463  4149 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:03:57.541  2463  4149 I CameraService:  to 1
+12-25 21:03:57.547  2463  2749 I CameraService: onUidStateChanged: uid=5009, procState is changed. (19 -> 10)
+12-25 21:03:57.600  2463  4149 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:03:57.600  2463  4149 I CameraService: CameraService::finishConnectLocked E
+12-25 21:03:57.600  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:03:57.600  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:03:57.600  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:03:57.600  2463  4149 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:03:57.600  2463  4149 I CameraService: CameraService::finishConnectLocked X
+12-25 21:03:57.600  2463  4149 I CameraService: Notified package name to HAL.
+12-25 21:03:57.866  2463 18549 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:01.323  2463 18549 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:01.427  2463 17613 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:01.427  2463 17613 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:01.430  2463 17613 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:01.433  2463 17613 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:01.478  2463  2749 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:01.479  2463  2749 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:01.479  2463  2749 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:01.479  2463  2749 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:01.479  2463  2749 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:01.479  2463  2749 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:01.479  2463  2749 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:01.479  2463  2749 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:01.479  2463  2749 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:01.480  2463  2749 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:01.481  2463  2749 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:01.482  2463  2749 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:01.482  2463  2749 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:01.482  2463  2749 I CameraService:  to 1
+12-25 21:04:01.501  2463  2749 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:01.501  2463  2749 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:01.501  2463  2749 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:01.501  2463  2749 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:01.501  2463  2749 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:01.502  2463  2749 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:01.502  2463  2749 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:01.503  2463  2749 I CameraService: Notified package name to HAL.
+12-25 21:04:01.776  2463 18846 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:03.597  2463 17610 I CameraService: onUidStateChanged: uid=5009, procState is changed. (10 -> 15)
+12-25 21:04:04.335  2463 18846 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:04.429  2463  2749 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:04.429  2463  2749 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:04.433  2463  2749 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:04.440  2463  2749 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:04.464  2463 17610 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:04.465  2463 17610 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:04.465  2463 17610 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:04.465  2463 17610 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:04.465  2463 17610 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:04.466  2463 17610 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:04.466  2463 17610 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:04.466  2463 17610 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:04.466  2463 17610 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:04.466  2463 17610 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:04.467  2463 17610 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:04.467  2463 17610 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:04.467  2463 17610 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:04.467  2463 17610 I CameraService:  to 1
+12-25 21:04:04.477  2463 17610 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:04.477  2463 17610 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:04.477  2463 17610 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:04.477  2463 17610 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:04.477  2463 17610 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:04.478  2463 17610 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:04.478  2463 17610 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:04.480  2463 17610 I CameraService: Notified package name to HAL.
+12-25 21:04:04.750  2463 19086 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:07.348  2463 19086 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:07.445  2463 17610 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:07.445  2463 17610 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:07.447  2463 17610 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:07.449  2463 17610 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:07.467  2463  4149 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:07.468  2463  4149 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:07.468  2463  4149 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:07.468  2463  4149 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:07.468  2463  4149 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:07.468  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:07.468  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:07.468  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:07.468  2463  4149 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:07.469  2463  4149 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:07.470  2463  4149 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:07.470  2463  4149 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:07.470  2463  4149 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:07.470  2463  4149 I CameraService:  to 1
+12-25 21:04:07.479  2463  4149 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:07.479  2463  4149 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:07.479  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:07.479  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:07.479  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:07.480  2463  4149 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:07.480  2463  4149 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:07.481  2463  4149 I CameraService: Notified package name to HAL.
+12-25 21:04:07.752  2463 19302 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:10.324  2463 19302 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:10.422  2463  4149 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:10.422  2463  4149 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:10.422  2463  4149 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:10.424  2463  4149 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:10.442  2463  4149 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:10.442  2463  4149 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:10.442  2463  4149 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:10.443  2463  4149 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:10.443  2463  4149 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:10.443  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:10.443  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:10.443  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:10.443  2463  4149 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:10.443  2463  4149 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:10.444  2463  4149 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:10.445  2463  4149 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:10.445  2463  4149 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:10.445  2463  4149 I CameraService:  to 1
+12-25 21:04:10.455  2463  4149 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:10.455  2463  4149 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:10.455  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:10.455  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:10.455  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:10.456  2463  4149 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:10.456  2463  4149 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:10.456  2463  4149 I CameraService: Notified package name to HAL.
+12-25 21:04:10.715  2463 19525 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:13.343  2463 19525 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:13.434  2463  2749 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:13.434  2463  2749 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:13.435  2463  2749 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:13.437  2463  2749 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:13.452  2463 17613 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:13.453  2463 17613 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:13.453  2463 17613 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:13.453  2463 17613 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:13.453  2463 17613 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:13.453  2463 17613 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:13.453  2463 17613 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:13.453  2463 17613 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:13.453  2463 17613 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:13.454  2463 17613 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:13.455  2463 17613 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:13.456  2463 17613 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:13.456  2463 17613 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:13.456  2463 17613 I CameraService:  to 1
+12-25 21:04:13.470  2463 17613 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:13.470  2463 17613 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:13.470  2463 17613 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:13.470  2463 17613 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:13.470  2463 17613 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:13.471  2463 17613 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:13.471  2463 17613 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:13.472  2463 17613 I CameraService: Notified package name to HAL.
+12-25 21:04:13.734  2463 19741 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:16.356  2463 19741 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:16.468  2463  2749 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:16.468  2463  2749 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:16.468  2463  2749 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:16.471  2463  2749 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:16.490  2463  4149 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:16.490  2463  4149 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:16.490  2463  4149 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:16.491  2463  4149 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:16.491  2463  4149 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:16.491  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:16.491  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:16.491  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:16.491  2463  4149 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:16.491  2463  4149 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:16.492  2463  4149 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:16.493  2463  4149 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:16.493  2463  4149 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:16.493  2463  4149 I CameraService:  to 1
+12-25 21:04:16.509  2463  4149 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:16.509  2463  4149 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:16.509  2463  4149 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:16.509  2463  4149 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:16.509  2463  4149 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:16.509  2463  4149 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:16.509  2463  4149 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:16.510  2463  4149 I CameraService: Notified package name to HAL.
+12-25 21:04:16.763  2463 19989 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:19.360  2463 19989 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:19.443  2463  4149 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:19.443  2463  4149 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:19.443  2463  4149 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:19.449  2463  4149 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:19.464  2463 17613 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:19.465  2463 17613 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:19.465  2463 17613 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:19.465  2463 17613 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:19.465  2463 17613 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:19.465  2463 17613 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:19.465  2463 17613 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:19.465  2463 17613 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:19.465  2463 17613 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:19.466  2463 17613 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:19.467  2463 17613 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:19.467  2463 17613 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:19.467  2463 17613 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:19.467  2463 17613 I CameraService:  to 1
+12-25 21:04:19.478  2463 17613 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:19.478  2463 17613 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:19.478  2463 17613 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:19.478  2463 17613 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:19.478  2463 17613 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:19.479  2463 17613 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:19.479  2463 17613 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:19.480  2463 17613 I CameraService: Notified package name to HAL.
+12-25 21:04:19.761  2463 20257 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:22.370  2463 20257 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:22.473  2463 17610 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:22.473  2463 17610 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:22.473  2463 17610 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:22.475  2463 17610 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:22.494  2463  2749 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:22.495  2463  2749 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:22.495  2463  2749 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:22.495  2463  2749 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:22.495  2463  2749 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:22.495  2463  2749 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:22.495  2463  2749 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:22.495  2463  2749 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:22.495  2463  2749 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:22.496  2463  2749 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:22.497  2463  2749 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:22.497  2463  2749 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:22.497  2463  2749 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:22.497  2463  2749 I CameraService:  to 1
+12-25 21:04:22.540  2463  2749 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:22.540  2463  2749 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:22.540  2463  2749 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:22.540  2463  2749 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:22.540  2463  2749 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:22.541  2463  2749 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:22.541  2463  2749 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:22.541  2463  2749 I CameraService: Notified package name to HAL.
+12-25 21:04:22.802  2463 20485 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:23.597  2463  2749 I CameraService: onUidStateChanged: uid=5009, procState is changed. (15 -> 19)
+12-25 21:04:25.373  2463 20485 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:25.471  2463  2749 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:25.471  2463  2749 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:25.471  2463  2749 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:25.472  2463  2749 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:25.490  2463 17613 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:25.490  2463 17613 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:25.490  2463 17613 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:25.490  2463 17613 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:25.490  2463 17613 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:25.491  2463 17613 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:25.491  2463 17613 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:25.491  2463 17613 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:25.491  2463 17613 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:25.491  2463 17613 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:25.492  2463 17613 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:25.493  2463 17613 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:25.493  2463 17613 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:25.493  2463 17613 I CameraService:  to 1
+12-25 21:04:25.503  2463 17613 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:25.503  2463 17613 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:25.503  2463 17613 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:25.503  2463 17613 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:25.503  2463 17613 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:25.503  2463 17613 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:25.503  2463 17613 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:25.504  2463 17613 I CameraService: Notified package name to HAL.
+12-25 21:04:25.790  2463 20692 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:28.374  2463 20692 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:28.474  2463  4149 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:28.474  2463  4149 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:28.475  2463  4149 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:28.481  2463  4149 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:28.482  2463  2749 I CameraService: onUidStateChanged: uid=5009, procState is changed. (19 -> 10)
+12-25 21:04:28.496  2463 17613 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:28.497  2463 17613 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:28.497  2463 17613 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:28.497  2463 17613 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:28.497  2463 17613 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:28.497  2463 17613 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:28.497  2463 17613 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:28.497  2463 17613 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:28.497  2463 17613 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:28.498  2463 17613 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:28.499  2463 17613 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:28.499  2463 17613 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:28.499  2463 17613 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:28.499  2463 17613 I CameraService:  to 1
+12-25 21:04:28.512  2463 17613 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:28.512  2463 17613 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:28.512  2463 17613 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:28.512  2463 17613 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:28.512  2463 17613 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:28.513  2463 17613 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:28.513  2463 17613 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:28.514  2463 17613 I CameraService: Notified package name to HAL.
+12-25 21:04:28.779  2463 20901 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:31.367  2463 20901 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:31.459  2463 17613 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:31.459  2463 17613 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:31.460  2463 17613 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:31.463  2463 17613 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:31.478  2463 17613 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:31.478  2463 17613 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:31.478  2463 17613 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:31.478  2463 17613 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:31.478  2463 17613 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:31.479  2463 17613 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:31.479  2463 17613 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:31.479  2463 17613 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:31.479  2463 17613 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:31.479  2463 17613 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:31.480  2463 17613 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:31.480  2463 17613 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:31.480  2463 17613 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:31.480  2463 17613 I CameraService:  to 1
+12-25 21:04:31.490  2463 17613 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:31.490  2463 17613 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:31.490  2463 17613 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:31.490  2463 17613 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:31.490  2463 17613 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:31.490  2463 17613 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:31.490  2463 17613 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:31.491  2463 17613 I CameraService: Notified package name to HAL.
+12-25 21:04:31.756  2463 21088 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:34.362  2463 21088 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:34.464  2463  2749 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:34.464  2463  2749 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:34.466  2463  2749 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:34.468  2463  2749 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:34.484  2463  2749 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:34.485  2463  2749 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:34.485  2463  2749 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:34.485  2463  2749 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:34.485  2463  2749 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:34.485  2463  2749 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:34.485  2463  2749 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:34.485  2463  2749 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:34.485  2463  2749 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:34.486  2463  2749 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:34.487  2463  2749 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:34.487  2463  2749 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:34.487  2463  2749 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:34.487  2463  2749 I CameraService:  to 1
+12-25 21:04:34.496  2463  2749 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:34.496  2463  2749 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:34.496  2463  2749 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:34.496  2463  2749 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:34.496  2463  2749 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:34.497  2463  2749 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:34.497  2463  2749 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:34.497  2463  2749 I CameraService: Notified package name to HAL.
+12-25 21:04:34.515  2463  2749 I CameraService: onUidStateChanged: uid=5009, procState is changed. (10 -> 15)
+12-25 21:04:34.788  2463 21274 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:37.360  2463 21274 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:37.447  2463 17613 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:37.447  2463 17613 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:37.448  2463 17613 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:37.452  2463 17613 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:37.469  2463  2749 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:37.469  2463  2749 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:37.469  2463  2749 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:37.470  2463  2749 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:37.470  2463  2749 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:37.470  2463  2749 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:37.470  2463  2749 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:37.470  2463  2749 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:37.470  2463  2749 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:37.470  2463  2749 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:37.471  2463  2749 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:37.471  2463  2749 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:37.472  2463  2749 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:37.472  2463  2749 I CameraService:  to 1
+12-25 21:04:37.482  2463  2749 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:37.482  2463  2749 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:37.482  2463  2749 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:37.482  2463  2749 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:37.482  2463  2749 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:37.483  2463  2749 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:37.483  2463  2749 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:37.483  2463  2749 I CameraService: Notified package name to HAL.
+12-25 21:04:37.753  2463 21568 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:40.383  2463 21568 I CameraService: finishCameraStreamingOps: finish camera streaming ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:40.475  2463  2749 I CameraService: notifyCameraClosing: Finish camera ops, package name = com.tres3.videochat, client UID = 11274
+12-25 21:04:40.475  2463  2749 I CameraService: decreaseCamConnRef: ref=0
+12-25 21:04:40.476  2463  2749 I CameraService: decreaseCamConnRef: service.camera.running set to 0
+12-25 21:04:40.480  2463  2749 I CameraService: disconnect: Disconnected client for camera 1 for PID 32044
+12-25 21:04:40.496  2463  2749 I CameraService: CameraService::connect call (PID 32044 UID 11274 "com.tres3.videochat", camera ID 1) and Camera API version 2
+12-25 21:04:40.497  2463  2749 I CameraService: isUidActiveLocked E: uid 11274, callingPackage com.tres3.videochat, isRegistered true
+12-25 21:04:40.497  2463  2749 I CameraService: isUidActiveLocked X: uid 11274, callingPackage com.tres3.videochat, isActive true.
+12-25 21:04:40.497  2463  2749 I CameraService: CameraService::validateClientPermissionsLocked is ok : calling pid 32044, calling uid 11274, client com.tres3.videochat , cameraservice pid=2463, device user 0, currently allowed device users: 0
+12-25 21:04:40.497  2463  2749 I CameraService: CameraService::handleEvictionsLocked
+12-25 21:04:40.497  2463  2749 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:40.497  2463  2749 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:40.497  2463  2749 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:40.497  2463  2749 I CameraService: makeClient: Camera2 API, rotationOverride 0
+12-25 21:04:40.498  2463  2749 I CameraService: service.camera.client set to com.tres3.videochat
+12-25 21:04:40.499  2463  2749 I CameraService: increaseCamConnRef: ref=1
+12-25 21:04:40.499  2463  2749 I CameraService: increaseCamConnRef: service.camera.running set to 1
+12-25 21:04:40.499  2463  2749 I CameraService: Translate updateStatus callback for camera id 1
+12-25 21:04:40.499  2463  2749 I CameraService:  to 1
+12-25 21:04:40.508  2463  2749 I CameraService: connectHelper: overrideCameraMuteMode = false, isCameraPrivacyEnabled = false
+12-25 21:04:40.508  2463  2749 I CameraService: CameraService::finishConnectLocked E
+12-25 21:04:40.508  2463  2749 I CameraService: wouldEvictLocked: [incoming client] owner = 32044, priority-score=0, cost=51, returnIncompatibleClients=false
+12-25 21:04:40.508  2463  2749 I CameraService: wouldEvictLocked: [cost info] current cost=0, adding cost=51, total cost=51, max cost=100
+12-25 21:04:40.508  2463  2749 I CameraService: wouldEvictLocked: [highestPriority] owner=32044, score=0
+12-25 21:04:40.509  2463  2749 I CameraService: addAndEvict: push the client(owner 32044, priorityScore 0, state 2) to mClients
+12-25 21:04:40.509  2463  2749 I CameraService: CameraService::finishConnectLocked X
+12-25 21:04:40.509  2463  2749 I CameraService: Notified package name to HAL.
+12-25 21:04:40.781  2463 21756 I CameraService: startCameraStreamingOps: Start camera streaming ops, package name = com.tres3.videochat, client UID = 11274

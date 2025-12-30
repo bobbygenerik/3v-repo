@@ -740,8 +740,17 @@ class LiveKitService extends ChangeNotifier {
   }) async {
     try {
       final wasMuted = !isCameraEnabled;
+      final localParticipant = _room?.localParticipant;
+      final oldTrack = _localVideoTrack;
 
-      await _localVideoTrack?.stop();
+      if (localParticipant != null && oldTrack != null) {
+        final oldPub = localParticipant.getTrackPublicationBySource(TrackSource.camera);
+        if (oldPub != null) {
+          await localParticipant.removePublishedTrack(oldPub.sid);
+        }
+      }
+
+      await oldTrack?.stop();
 
       final optimalEncoding = _getOptimalVideoEncoding();
       final encoding = maxBitrateOverride != null 
@@ -760,7 +769,7 @@ class LiveKitService extends ChangeNotifier {
       );
       _currentCapturePreset = preset;
 
-      await _room?.localParticipant?.publishVideoTrack(
+      await localParticipant?.publishVideoTrack(
         _localVideoTrack!,
         publishOptions: VideoPublishOptions(
           videoEncoding: encoding,

@@ -1,0 +1,6 @@
+12-28 02:15:09.742 14230 14230 W FlutterWebRTCPlugin: audioFocusChangeListener [Earpiece(name=Earpiece)] Earpiece(name=Earpiece)
+12-28 02:15:09.742 14230 14230 W FlutterWebRTCPlugin: audioFocusChangeListener [Speakerphone(name=Speakerphone), Earpiece(name=Earpiece)] Speakerphone(name=Speakerphone)
+12-28 02:15:09.787 14230 14230 I flutter : LiveKit URL: wss://livekit.iptvsubz.fun
+12-28 02:15:09.820 14230 14230 W FlutterWebRTCPlugin: audioFocusChangeListener [Earpiece(name=Earpiece)] Earpiece(name=Earpiece)
+12-28 02:15:09.820 14230 14230 W FlutterWebRTCPlugin: audioFocusChangeListener [Speakerphone(name=Speakerphone), Earpiece(name=Earpiece)] Speakerphone(name=Speakerphone)
+12-28 02:15:09.892 14230 14306 W ProviderInstaller: Failed to report request stats: com.google.android.gms.common.security.ProviderInstallerImpl.reportRequestStats [class android.content.Context, long, long]
