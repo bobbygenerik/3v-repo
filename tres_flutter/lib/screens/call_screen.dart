@@ -59,11 +59,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   // Call timer
   Duration _callDuration = Duration.zero;
   
-  // Frame rate stabilization
-  Timer? _frameStabilizationTimer;
-  int _frameDropCount = 0;
-  DateTime _lastFrameTime = DateTime.now();
-  
   // Control animations
   bool _controlsVisible = true;
   late AnimationController _controlsAnimationController;
@@ -125,9 +120,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     
     // Register lifecycle observer
     WidgetsBinding.instance.addObserver(this);
-    
-    // Start frame rate stabilization
-    _startFrameStabilization();
     
     // Start listening for incoming calls while in call (for call-waiting)
     _callListener.startListening();
@@ -201,50 +193,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     
     // Start auto-hide timer for controls
     _startControlsHideTimer();
-  }
-  
-  /// Start frame rate stabilization to reduce jitter
-  void _startFrameStabilization() {
-    _frameStabilizationTimer = Timer.periodic(const Duration(milliseconds: 33), (timer) {
-      // Target 30fps (33ms per frame)
-      final now = DateTime.now();
-      final timeSinceLastFrame = now.difference(_lastFrameTime).inMilliseconds;
-      
-      // Check for frame drops (>50ms between frames indicates jitter)
-      if (timeSinceLastFrame > 50) {
-        _frameDropCount++;
-        
-        // If we're dropping too many frames, trigger optimization
-        if (_frameDropCount > 5) {
-          _optimizeForSmoothPlayback();
-          _frameDropCount = 0; // Reset counter
-        }
-      } else {
-        // Good frame timing, reset drop count
-        _frameDropCount = 0;
-      }
-      
-      _lastFrameTime = now;
-    });
-  }
-  
-  /// Optimize video settings for smooth playback when jitter is detected
-  void _optimizeForSmoothPlayback() {
-    if (!mounted) return;
-    
-    try {
-      final livekit = context.read<LiveKitService>();
-      
-      debugPrint('🎬 Frame jitter detected - optimizing for smooth playback');
-      debugPrint('   - Applying frame rate stabilization');
-      debugPrint('   - Reducing buffer size for lower latency');
-      debugPrint('   - Enabling adaptive sync');
-      
-      // Visual quality is locked; avoid adaptive changes based on synthetic stats.
-      
-    } catch (e) {
-      debugPrint('❌ Error optimizing for smooth playback: $e');
-    }
   }
   
   /// Handle session end by other participant
@@ -2401,7 +2349,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   @override
   void dispose() {
     _controlsHideTimer?.cancel();
-    _frameStabilizationTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     widget.sessionService?.removeListener(_handleSessionEnd);
     _callListener.removeListener(_handleIncomingCallWhileInCall);
