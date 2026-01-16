@@ -174,8 +174,7 @@ service cloud.firestore {
       // Users can update/delete their own invitations
       allow update, delete: if isSignedIn() && resource.data.hostUserId == request.auth.uid;
       
-      // Allow public read for guests with the invitation link (token validation happens in client)
-      allow read: if true;
+      // Public read is NOT allowed. Guests must use the Cloud Function to join.
     }
     
     // Call invitations - for incoming call notifications
