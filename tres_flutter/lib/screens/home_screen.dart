@@ -313,32 +313,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
       // Get full user data for each contact
       final List<Map<String, dynamic>> loadedContacts = [];
+      final contactIds = contactsSnapshot.docs.map((doc) => doc.id).toList();
+      final Map<String, Map<String, dynamic>> contactsMap = {};
       
-      for (var contactDoc in contactsSnapshot.docs) {
-        final contactUid = contactDoc.id;
+      // Batch load contacts in chunks of 10 (Firestore whereIn limit)
+      for (var i = 0; i < contactIds.length; i += 10) {
+        final end = (i + 10 < contactIds.length) ? i + 10 : contactIds.length;
+        final chunk = contactIds.sublist(i, end);
+
         try {
-          final userDoc = await FirebaseFirestore.instance
+          final chunkSnapshot = await FirebaseFirestore.instance
               .collection('users')
-              .doc(contactUid)
+              .where(FieldPath.documentId, whereIn: chunk)
               .get();
-          
-          if (userDoc.exists) {
+
+          for (var userDoc in chunkSnapshot.docs) {
             final data = userDoc.data();
-            if (data != null) {
-              final photoURL = data['photoURL'];
-              debugPrint('📸 Contact ${data['displayName']}: photoURL = "$photoURL" (type: ${photoURL.runtimeType})');
-              loadedContacts.add({
-                'uid': contactUid,
-                'name': data['displayName'] ?? data['name'] ?? 'Unknown',
-                'email': data['email'] ?? '',
-                'photoURL': data['photoURL'],
-              });
-            } else {
-              debugPrint('⚠️ Contact $contactUid exists but has no data');
-            }
+            final contactUid = userDoc.id;
+
+            final photoURL = data['photoURL'];
+            debugPrint('📸 Contact ${data['displayName']}: photoURL = "$photoURL" (type: ${photoURL.runtimeType})');
+
+            contactsMap[contactUid] = {
+              'uid': contactUid,
+              'name': data['displayName'] ?? data['name'] ?? 'Unknown',
+              'email': data['email'] ?? '',
+              'photoURL': data['photoURL'],
+            };
           }
         } catch (e) {
-          debugPrint('Error loading contact $contactUid: $e');
+          debugPrint('Error loading contact chunk: $e');
+        }
+      }
+
+      // Reconstruct list in original order
+      for (var contactId in contactIds) {
+        if (contactsMap.containsKey(contactId)) {
+          loadedContacts.add(contactsMap[contactId]!);
+        } else {
+          debugPrint('⚠️ Contact $contactId exists in list but user data not found');
         }
       }
 
