@@ -12,6 +12,7 @@ import 'call_stats_service.dart';
 import '../config/environment.dart';
 import 'grid_layout_manager.dart';
 import 'feature_flags.dart';
+import 'livekit_service.dart';
 
 export 'grid_layout_manager.dart' show LayoutMode;
 
@@ -30,6 +31,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
   // MediaPipe removed - no settings stored here
 
+  Room? _room;
+  LiveKitService? _liveKitService;
+
   // Feature states
   bool _isChatOpen = false;
   bool _isRecording = false;
@@ -39,7 +43,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   bool _isBackgroundBlurEnabled = false;
   bool _isBeautyFilterEnabled = false;
   bool _isArFilterEnabled = false;
-  bool _isAiNoiseCancellationEnabled = false;
+  bool _isAiNoiseCancellationEnabled = true;
 
   String _activeArFilter = 'none';
   LayoutMode _layoutMode = LayoutMode.grid;
@@ -90,8 +94,10 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   /// Initialize coordinator with LiveKit room
   CallFeaturesCoordinator();
 
-  Future<void> initialize(Room room) async {
+  Future<void> initialize(Room room, {LiveKitService? liveKitService}) async {
     debugPrint('🎯 CallFeaturesCoordinator initializing...');
+    _room = room;
+    _liveKitService = liveKitService;
 
     // Initialize services
     chatService.initialize(room);
@@ -358,12 +364,20 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   }
 
   /// Toggle AI noise cancellation
-  void toggleAiNoiseCancellation() {
+  Future<void> toggleAiNoiseCancellation() async {
     _isAiNoiseCancellationEnabled = !_isAiNoiseCancellationEnabled;
     notifyListeners();
     debugPrint('AI noise cancellation ${_isAiNoiseCancellationEnabled ? "enabled" : "disabled"}');
 
-    // TODO: Implement AI noise cancellation logic
+    if (_liveKitService != null) {
+      await _liveKitService!.updateAudioCaptureOptions(
+        AudioCaptureOptions(
+          noiseSuppression: _isAiNoiseCancellationEnabled,
+          echoCancellation: true,
+          autoGainControl: true,
+        ),
+      );
+    }
   }
 
   /// Set layout mode
