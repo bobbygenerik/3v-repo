@@ -821,7 +821,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     
     // Initialize coordinator with room (now async)
     if (success && livekit.room != null) {
-      await _coordinator.initialize(livekit.room!);
+      await _coordinator.initialize(
+        livekit.room!,
+        audioDeviceService: context.read<AudioDeviceService>(),
+      );
       // Wire stats updates into LiveKitService adaptive logic.
       // Whenever stats change, forward to LiveKitService so it can
       // react (recreate/publish tracks) based on real event-driven metrics.

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'dart:io' show Platform;
 
@@ -11,6 +12,8 @@ enum AudioOutputDevice {
 }
 
 class AudioDeviceService extends ChangeNotifier {
+  static const MethodChannel _channel = MethodChannel('tres3/audio');
+
   AudioOutputDevice _currentOutput = AudioOutputDevice.speaker;
   double _volume = 1.0;
   List<AudioOutputDevice> _availableDevices = [AudioOutputDevice.speaker, AudioOutputDevice.earpiece];
@@ -81,6 +84,17 @@ class AudioDeviceService extends ChangeNotifier {
     _volume = volume.clamp(0.0, 1.0);
     // In a real implementation, you'd set system volume
     notifyListeners();
+  }
+
+  /// Enable/Disable spatial audio (native platform feature)
+  Future<void> setSpatialAudioEnabled(bool enabled) async {
+    if (kIsWeb) return; // Not supported on web via this channel
+    try {
+      await _channel.invokeMethod('setSpatialAudioEnabled', {'enabled': enabled});
+      debugPrint('Spatial audio ${enabled ? "enabled" : "disabled"} (native request sent)');
+    } catch (e) {
+      debugPrint('Failed to set spatial audio: $e');
+    }
   }
 
   String getDeviceName(AudioOutputDevice device) {

@@ -12,6 +12,7 @@ import 'call_stats_service.dart';
 import '../config/environment.dart';
 import 'grid_layout_manager.dart';
 import 'feature_flags.dart';
+import 'audio_device_service.dart';
 
 export 'grid_layout_manager.dart' show LayoutMode;
 
@@ -27,6 +28,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   // ScreenShareService removed to fully disable feature.
   final CallStatsService statsService = CallStatsService();
   final GridLayoutManager layoutManager = GridLayoutManager();
+
+  // Audio Device Service (injected)
+  AudioDeviceService? _audioDeviceService;
 
   // MediaPipe removed - no settings stored here
 
@@ -90,8 +94,10 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   /// Initialize coordinator with LiveKit room
   CallFeaturesCoordinator();
 
-  Future<void> initialize(Room room) async {
+  Future<void> initialize(Room room, {AudioDeviceService? audioDeviceService}) async {
     debugPrint('🎯 CallFeaturesCoordinator initializing...');
+
+    _audioDeviceService = audioDeviceService;
 
     // Initialize services
     chatService.initialize(room);
@@ -299,7 +305,8 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     notifyListeners();
     debugPrint('Spatial audio ${_isSpatialAudioEnabled ? "enabled" : "disabled"}');
 
-    // TODO: Implement spatial audio logic
+    // Call native implementation if available
+    _audioDeviceService?.setSpatialAudioEnabled(_isSpatialAudioEnabled);
   }
 
   /// Toggle background blur
