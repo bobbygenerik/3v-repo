@@ -23,8 +23,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final CallSignalingService _signalingService = CallSignalingService();
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _callHistorySub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _favoritesSub;
   bool _showContactsView = true;
   List<Map<String, dynamic>> _contacts = [];
+  List<String> _favoriteIds = [];
   List<Map<String, dynamic>> _callHistory = [];
   List<Map<String, dynamic>> _filteredContacts = [];
   bool _isLoadingContacts = true;
@@ -39,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _loadFavorites();
     _loadContacts();
     _loadCallHistory();
     _searchController.addListener(_filterContacts);
@@ -74,8 +77,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void dispose() {
     _searchController.dispose();
     _callHistorySub?.cancel();
+    _favoritesSub?.cancel();
     _tickerController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadFavorites() async {
+    final currentUser = context.read<AuthService>().currentUser;
+    if (currentUser == null) return;
+
+    _favoritesSub?.cancel();
+    _favoritesSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        final data = snapshot.data();
+        if (data != null && data.containsKey('favorites')) {
+          setState(() {
+            _favoriteIds = List<String>.from(data['favorites'] ?? []);
+          });
+        }
+      }
+    }, onError: (e) {
+      debugPrint('Error listening to favorites: $e');
+    });
   }
 
   Future<void> _loadContacts() async {
@@ -505,10 +532,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               // Star icon
               IconButton(
-                icon: const Icon(Icons.star_border, color: Colors.white54, size: 24),
-                onPressed: () {
-                  // TODO: Implement favorite
-                },
+                icon: Icon(
+                  _favoriteIds.contains(contact['uid']) ? Icons.star : Icons.star_border,
+                  color: _favoriteIds.contains(contact['uid']) ? AppColors.accentBlue : Colors.white54,
+                  size: 24,
+                ),
+                onPressed: () => _toggleFavorite(contact['uid']),
               ),
               // Call button
               IconButton(
@@ -592,6 +621,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     return '${diff.inDays}d ago';
+  }
+
+  Future<void> _toggleFavorite(String contactId) async {
+    final currentUser = context.read<AuthService>().currentUser;
+    if (currentUser == null) return;
+
+    final userRef = FirebaseFirestore.instance.collection('users').doc(currentUser.uid);
+    final isFavorite = _favoriteIds.contains(contactId);
+
+    try {
+      if (isFavorite) {
+        // Remove from favorites
+        await userRef.update({
+          'favorites': FieldValue.arrayRemove([contactId])
+        });
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Removed from favorites')),
+          );
+        }
+      } else {
+        // Add to favorites
+        await userRef.update({
+          'favorites': FieldValue.arrayUnion([contactId])
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Added to favorites')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error toggling favorite: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating favorite: $e')),
+        );
+      }
+    }
   }
 
   void _showAddContactDialog() {
