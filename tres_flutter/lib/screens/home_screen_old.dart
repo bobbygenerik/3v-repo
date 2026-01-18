@@ -29,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<Map<String, dynamic>> _filteredContacts = [];
   bool _isLoadingContacts = true;
   bool _isLoadingHistory = true;
+  Set<String> _favoriteIds = {};
   
   // Animated search placeholder - ticker style
   int _currentPlaceholderIndex = 0;
@@ -41,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.initState();
     _loadContacts();
     _loadCallHistory();
+    _loadFavorites();
     _searchController.addListener(_filterContacts);
     
     // Ticker animation like old airport signs
@@ -138,6 +140,66 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       debugPrint('Error listening to call history: $e');
       setState(() => _isLoadingHistory = false);
     });
+  }
+
+  Future<void> _loadFavorites() async {
+    final currentUser = context.read<AuthService>().currentUser;
+    if (currentUser == null) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
+      if (!mounted) return;
+      if (doc.exists) {
+        final data = doc.data();
+        if (data != null && data.containsKey('favorites')) {
+          setState(() {
+            _favoriteIds = Set<String>.from(data['favorites'] ?? []);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading favorites: $e');
+    }
+  }
+
+  Future<void> _toggleFavorite(String contactId) async {
+    final currentUser = context.read<AuthService>().currentUser;
+    if (currentUser == null) return;
+
+    final isFavorite = _favoriteIds.contains(contactId);
+
+    // Optimistic update
+    setState(() {
+      if (isFavorite) {
+        _favoriteIds.remove(contactId);
+      } else {
+        _favoriteIds.add(contactId);
+      }
+    });
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).update({
+        'favorites': isFavorite
+            ? FieldValue.arrayRemove([contactId])
+            : FieldValue.arrayUnion([contactId])
+      });
+    } catch (e) {
+      if (!mounted) return;
+      // Revert if error
+      setState(() {
+        if (isFavorite) {
+          _favoriteIds.add(contactId);
+        } else {
+          _favoriteIds.remove(contactId);
+        }
+      });
+      debugPrint('Error toggling favorite: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update favorite status')),
+        );
+      }
+    }
   }
 
   void _filterContacts() {
@@ -505,10 +567,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               // Star icon
               IconButton(
-                icon: const Icon(Icons.star_border, color: Colors.white54, size: 24),
-                onPressed: () {
-                  // TODO: Implement favorite
-                },
+                icon: Icon(
+                  _favoriteIds.contains(contact['uid']) ? Icons.star : Icons.star_border,
+                  color: _favoriteIds.contains(contact['uid']) ? AppColors.accentBlue : Colors.white54,
+                  size: 24,
+                ),
+                onPressed: () => _toggleFavorite(contact['uid']),
               ),
               // Call button
               IconButton(
