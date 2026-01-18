@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/guest_link_service.dart';
 import '../services/call_signaling_service.dart';
+import '../services/contact_service.dart';
 import '../config/app_theme.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
@@ -504,10 +505,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
               // Star icon
-              IconButton(
-                icon: const Icon(Icons.star_border, color: Colors.white54, size: 24),
-                onPressed: () {
-                  // TODO: Implement favorite
+              Consumer<ContactService>(
+                builder: (context, contactService, child) {
+                  final isFavorite = contactService.isFavorite(contact['uid']);
+                  return IconButton(
+                    icon: Icon(
+                      isFavorite ? Icons.star : Icons.star_border,
+                      color: isFavorite ? AppColors.accentBlue : Colors.white54,
+                      size: 24,
+                    ),
+                    onPressed: () {
+                      contactService.toggleFavorite(contact['uid']);
+                    },
+                  );
                 },
               ),
               // Call button
