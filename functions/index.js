@@ -104,7 +104,7 @@ exports.getLiveKitToken = functions.https.onCall(async (requestOrData, context) 
 
     const token = await at.toJwt();
     console.log('SUCCESS: Token generated for user', userId);
-    console.log('Token preview (first 50 chars):', token.substring(0, 50));
+    console.log('Token preview (first 10 chars):', token.substring(0, 10) + '...');
     console.log('Room name:', roomName);
     console.log('WSS URL:', 'wss://livekit.iptvsubz.fun');
 
@@ -211,7 +211,7 @@ exports.cleanupStaleCallSessions = onSchedule('every 5 minutes', async () => {
         return null;
       }
       
-      console.log(`Sending push notification to FCM token: ${fcmToken.substring(0, 20)}...`);
+      console.log(`Sending push notification to FCM token: ${fcmToken.substring(0, 5)}...`);
       
       // Send notification with both data and notification payload
       // Android needs notification payload to wake app when killed
@@ -677,7 +677,7 @@ exports.joinGuest = onRequest(async (req, res) => {
 
       console.log('Host user data:', hostUserDoc.exists ? 'exists' : 'NOT FOUND');
       console.log('FCM token exists:', !!fcmToken);
-      if (fcmToken) console.log('FCM token (first 20 chars):', fcmToken.substring(0, 20));
+      if (fcmToken) console.log('FCM token (first 5 chars):', fcmToken.substring(0, 5) + '...');
 
       if (fcmToken) {
         console.log('📤 Sending notification to host (notification+data fallback)');
@@ -749,78 +749,7 @@ exports.joinGuest = onRequest(async (req, res) => {
   }
 });
 
-// DEBUG: HTTP function to fetch a user's FCM token (temporary - remove in production)
-exports.debugGetFcmToken = onRequest(async (req, res) => {
-  try {
-    const userId = req.query.userId;
-    if (!userId) {
-      res.status(400).json({ error: 'Missing userId query parameter' });
-      return;
-    }
-
-    const userDoc = await admin.firestore().collection('users').doc(userId).get();
-    if (!userDoc.exists) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
-
-    const fcmToken = userDoc.data()?.fcmToken || null;
-    res.json({ userId, fcmToken });
-  } catch (error) {
-    console.error('debugGetFcmToken error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// DEBUG: Send a test notification to a user (temporary - remove in production)
-exports.debugSendTestNotification = onRequest(async (req, res) => {
-  try {
-    const userId = req.query.userId;
-    if (!userId) {
-      res.status(400).json({ error: 'Missing userId query parameter' });
-      return;
-    }
-
-    const userDoc = await admin.firestore().collection('users').doc(userId).get();
-    if (!userDoc.exists) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
-
-    const fcmToken = userDoc.data()?.fcmToken;
-    if (!fcmToken) {
-      res.status(404).json({ error: 'No FCM token for this user' });
-      return;
-    }
-
-    console.log(`Sending test notification to user ${userId}, token: ${fcmToken.substring(0, 20)}...`);
-
-    // Send data-only message (same as guest_joining)
-    const message = {
-      token: fcmToken,
-      data: {
-        type: 'guest_joining',
-        guestName: 'TEST GUEST',
-        roomName: 'test_room_123',
-        invitationId: 'test_invitation',
-        token: 'test_token_value',
-        url: LIVEKIT_WS_URL
-      },
-      android: {
-        priority: 'high',
-        ttl: 60 * 1000
-      }
-    };
-
-    const response = await admin.messaging().send(message);
-    console.log(`✅ Test notification sent: ${response}`);
-    
-    res.json({ success: true, messageId: response, token: fcmToken.substring(0, 20) + '...' });
-  } catch (error) {
-    console.error('debugSendTestNotification error:', error);
-    res.status(500).json({ error: error.message, details: error.toString() });
-  }
-});
+// Debug endpoints removed for security.
 
 // Export retry queue functions (temporarily disabled - requires firebase-functions upgrade)
 // const retryQueue = require('./retryQueue');
