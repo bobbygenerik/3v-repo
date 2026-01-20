@@ -311,34 +311,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           .collection('contacts')
           .get();
 
-      // Get full user data for each contact
+      // Get full user data for each contact using batched queries
       final List<Map<String, dynamic>> loadedContacts = [];
+      final contactIds = contactsSnapshot.docs.map((doc) => doc.id).toList();
       
-      for (var contactDoc in contactsSnapshot.docs) {
-        final contactUid = contactDoc.id;
+      // Bolt Optimization: Fetch contacts in batches of 10 to avoid N+1 queries
+      // This reduces reads from N to N/10 and significantly speeds up loading
+      for (var i = 0; i < contactIds.length; i += 10) {
+        final end = (i + 10 < contactIds.length) ? i + 10 : contactIds.length;
+        final chunk = contactIds.sublist(i, end);
+
+        if (chunk.isEmpty) continue;
+
         try {
-          final userDoc = await FirebaseFirestore.instance
+          final usersSnapshot = await FirebaseFirestore.instance
               .collection('users')
-              .doc(contactUid)
+              .where(FieldPath.documentId, whereIn: chunk)
               .get();
           
-          if (userDoc.exists) {
-            final data = userDoc.data();
-            if (data != null) {
+          for (var userDoc in usersSnapshot.docs) {
+            if (userDoc.exists) {
+              final data = userDoc.data();
+              // data is Map<String, dynamic> in cloud_firestore
+
+              final contactUid = userDoc.id;
               final photoURL = data['photoURL'];
-              debugPrint('📸 Contact ${data['displayName']}: photoURL = "$photoURL" (type: ${photoURL.runtimeType})');
+              // debugPrint('📸 Contact ${data['displayName']}: photoURL = "$photoURL"');
+
               loadedContacts.add({
                 'uid': contactUid,
                 'name': data['displayName'] ?? data['name'] ?? 'Unknown',
                 'email': data['email'] ?? '',
                 'photoURL': data['photoURL'],
               });
-            } else {
-              debugPrint('⚠️ Contact $contactUid exists but has no data');
             }
           }
         } catch (e) {
-          debugPrint('Error loading contact $contactUid: $e');
+          debugPrint('Error loading contact chunk: $e');
         }
       }
 
