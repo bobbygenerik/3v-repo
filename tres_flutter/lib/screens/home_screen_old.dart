@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/guest_link_service.dart';
 import '../services/call_signaling_service.dart';
+import '../services/contact_service.dart';
 import '../config/app_theme.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
@@ -22,9 +23,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final CallSignalingService _signalingService = CallSignalingService();
+  final ContactService _contactService = ContactService();
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _callHistorySub;
+  StreamSubscription<List<String>>? _favoritesSub;
   bool _showContactsView = true;
   List<Map<String, dynamic>> _contacts = [];
+  List<String> _favoriteIds = [];
   List<Map<String, dynamic>> _callHistory = [];
   List<Map<String, dynamic>> _filteredContacts = [];
   bool _isLoadingContacts = true;
@@ -41,6 +45,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.initState();
     _loadContacts();
     _loadCallHistory();
+    _favoritesSub = _contactService.getFavoritesStream().listen((favorites) {
+      if (mounted) {
+        setState(() {
+          _favoriteIds = favorites;
+        });
+      }
+    });
     _searchController.addListener(_filterContacts);
     
     // Ticker animation like old airport signs
@@ -74,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void dispose() {
     _searchController.dispose();
     _callHistorySub?.cancel();
+    _favoritesSub?.cancel();
     _tickerController.dispose();
     super.dispose();
   }
@@ -505,9 +517,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               // Star icon
               IconButton(
-                icon: const Icon(Icons.star_border, color: Colors.white54, size: 24),
-                onPressed: () {
-                  // TODO: Implement favorite
+                icon: Icon(
+                  _favoriteIds.contains(contact['uid']) ? Icons.star : Icons.star_border,
+                  color: _favoriteIds.contains(contact['uid']) ? AppColors.accentBlue : Colors.white54,
+                  size: 24,
+                ),
+                onPressed: () async {
+                  try {
+                    await _contactService.toggleFavorite(contact['uid']);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to update favorite: $e')),
+                      );
+                    }
+                  }
                 },
               ),
               // Call button
