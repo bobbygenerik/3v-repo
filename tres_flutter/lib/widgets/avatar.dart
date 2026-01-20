@@ -33,6 +33,10 @@ class Avatar extends StatelessWidget {
       );
     }
 
+    // Calculate optimal cache size (3x radius for high density screens)
+    // This prevents loading full-resolution images into memory when displayed in a small avatar
+    final int cacheSize = (radius * 2 * 3).toInt();
+
     return CircleAvatar(
       radius: radius,
       backgroundColor: Colors.grey[700],
@@ -41,6 +45,8 @@ class Avatar extends StatelessWidget {
           imageUrl: url!,
           width: radius * 2,
           height: radius * 2,
+          memCacheWidth: cacheSize,
+          memCacheHeight: cacheSize,
           fit: BoxFit.cover,
           placeholder: (context, url) => Container(
             width: radius * 2,
