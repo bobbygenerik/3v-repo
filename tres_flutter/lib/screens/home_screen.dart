@@ -607,6 +607,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                       'assets/images/logo.png',
                       height: 60,
                       fit: BoxFit.contain,
+                      semanticLabel: 'Tres Logo',
                     ),
                   ),
                   // Profile button - right aligned with ring, lowered 10px
@@ -814,16 +815,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                         ),
                       ),
                       // Add person icon - opens add contact dialog
-                      GestureDetector(
-                        onTap: () => _showAddContactDialog(),
-                        child: Container(
-                          padding: const EdgeInsets.only(right: 12, left: 8),
-                          child: const Icon(
-                            Icons.person_add,
-                            color: Color(0xFF6B7FB8),
-                            size: 24,
-                          ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.person_add,
+                          color: Color(0xFF6B7FB8),
+                          size: 24,
                         ),
+                        onPressed: () => _showAddContactDialog(),
+                        tooltip: 'Add Contact',
+                        padding: const EdgeInsets.only(right: 12, left: 8),
+                        constraints: const BoxConstraints(), // Minimizes extra padding/margin
                       ),
                       ],
                     ),
@@ -1094,6 +1095,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 IconButton(
                   icon: const Icon(Icons.star_border, color: Color(0xFF8E8E93), size: 22),
                   onPressed: () {},
+                  tooltip: 'Favorite',
                 ),
                 // Phone icon
                 IconButton(
@@ -1102,6 +1104,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                     VibrationService.mediumImpact();
                     _startCallWithContact(contact);
                   },
+                  tooltip: 'Call',
                 ),
               ],
             ),
@@ -1197,6 +1200,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               ),
               IconButton(
                 icon: const Icon(Icons.phone, color: Color(0xFF6B7FB8), size: 20),
+                tooltip: 'Call back',
                 onPressed: () {
                   // Find contact and call them
                   final participants = call['participants'] as List<String>;
