@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../utils/web_reload_stub.dart'
     if (dart.library.html) '../utils/web_reload_web.dart';
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -704,7 +705,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                         radius: 20,
                         backgroundColor: const Color(0xFF2C2C2E),
                         backgroundImage: (user?.photoURL != null && user!.photoURL!.isNotEmpty)
-                            ? NetworkImage(user.photoURL!)
+                            ? CachedNetworkImageProvider(user.photoURL!)
                             : null,
                         child: (user?.photoURL == null || user!.photoURL!.isEmpty)
                             ? Text(
@@ -1067,7 +1068,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   radius: 28,
                   backgroundColor: const Color(0xFF6B7FB8),
                   backgroundImage: contact['photoURL'] != null && contact['photoURL'].toString().isNotEmpty
-                      ? NetworkImage(contact['photoURL'])
+                      ? CachedNetworkImageProvider(contact['photoURL'])
                       : null,
                   child: contact['photoURL'] == null || contact['photoURL'].toString().isEmpty
                       ? Text(
