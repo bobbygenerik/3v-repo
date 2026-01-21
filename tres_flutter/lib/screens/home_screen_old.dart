@@ -43,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _loadFavorites();
     _loadContacts();
     _loadCallHistory();
     _favoritesSub = _contactService.getFavoritesStream().listen((favorites) {
@@ -88,6 +89,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _favoritesSub?.cancel();
     _tickerController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadFavorites() async {
+    final currentUser = context.read<AuthService>().currentUser;
+    if (currentUser == null) return;
+
+    _favoritesSub?.cancel();
+    _favoritesSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        final data = snapshot.data();
+        if (data != null && data.containsKey('favorites')) {
+          setState(() {
+            _favoriteIds = List<String>.from(data['favorites'] ?? []);
+          });
+        }
+      }
+    }, onError: (e) {
+      debugPrint('Error listening to favorites: $e');
+    });
   }
 
   Future<void> _loadContacts() async {
@@ -526,17 +550,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       : Colors.white54,
                   size: 24,
                 ),
-                onPressed: () async {
-                  try {
-                    await _contactService.toggleFavorite(contact['uid']);
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to update favorite: $e')),
-                      );
-                    }
-                  }
-                },
+                onPressed: () => _toggleFavorite(contact['uid']),
               ),
               // Call button
               IconButton(
@@ -620,6 +634,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     return '${diff.inDays}d ago';
+  }
+
+  Future<void> _toggleFavorite(String contactId) async {
+    try {
+      final isFavorite = _favoriteIds.contains(contactId);
+      await _contactService.toggleFavorite(contactId);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isFavorite ? 'Removed from favorites' : 'Added to favorites',
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error toggling favorite: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update favorite: $e')),
+      );
+    }
   }
 
   void _showAddContactDialog() {
