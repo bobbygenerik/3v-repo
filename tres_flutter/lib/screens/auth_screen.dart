@@ -250,6 +250,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           _obscurePassword ? Icons.visibility_off : Icons.visibility,
                           color: Colors.white.withOpacity(0.7),
                         ),
+                        tooltip: _obscurePassword ? 'Show password' : 'Hide password',
                         onPressed: () {
                           setState(() => _obscurePassword = !_obscurePassword);
                         },
@@ -501,6 +502,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           _obscurePassword ? Icons.visibility_off : Icons.visibility,
                           color: Colors.white.withOpacity(0.7),
                         ),
+                        tooltip: _obscurePassword ? 'Show password' : 'Hide password',
                         onPressed: () {
                           setState(() => _obscurePassword = !_obscurePassword);
                         },
@@ -542,6 +544,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
                           color: Colors.white.withOpacity(0.7),
                         ),
+                        tooltip: _obscureConfirmPassword ? 'Show password' : 'Hide password',
                         onPressed: () {
                           setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
                         },
