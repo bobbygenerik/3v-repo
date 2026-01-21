@@ -3,7 +3,11 @@ const admin = require('firebase-admin');
 const { AccessToken, EgressClient, EncodedFileOutput, RoomCompositeEgressRequest } = require('livekit-server-sdk');
 const { onRequest } = require('firebase-functions/v2/https');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
-const { queueFailedNotification } = require('./retryQueue');
+const {
+  queueFailedNotification,
+  retryFailedNotifications,
+  cleanupOldNotifications,
+} = require('./retryQueue');
 
 admin.initializeApp();
 
@@ -841,9 +845,8 @@ exports.debugSendTestNotification = onRequest(async (req, res) => {
 });
 
 // Export retry queue functions
-const retryQueue = require('./retryQueue');
-exports.retryFailedNotifications = retryQueue.retryFailedNotifications;
-exports.cleanupOldNotifications = retryQueue.cleanupOldNotifications;
+exports.retryFailedNotifications = retryFailedNotifications;
+exports.cleanupOldNotifications = cleanupOldNotifications;
 
 /**
  * Cloud Function: Start LiveKit Egress recording

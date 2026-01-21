@@ -34,7 +34,7 @@ async function queueFailedNotification(messagePayload, error, context = {}) {
  * Scheduled function to retry failed notifications
  * Runs every 2 minutes
  */
-exports.retryFailedNotifications = onSchedule('every 2 minutes', async (event) => {
+const retryFailedNotifications = onSchedule('every 2 minutes', async (event) => {
   console.log('🔄 Starting retry of failed notifications...');
   
   try {
@@ -140,7 +140,7 @@ exports.retryFailedNotifications = onSchedule('every 2 minutes', async (event) =
 /**
  * Cleanup old completed/failed notifications (runs daily)
  */
-exports.cleanupOldNotifications = onSchedule('every 24 hours', async (event) => {
+const cleanupOldNotifications = onSchedule('every 24 hours', async (event) => {
   console.log('🧹 Cleaning up old notification records...');
   
   try {
@@ -180,4 +180,8 @@ exports.cleanupOldNotifications = onSchedule('every 24 hours', async (event) => 
   }
 });
 
-exports.queueFailedNotification = queueFailedNotification;
+module.exports = {
+  queueFailedNotification,
+  retryFailedNotifications,
+  cleanupOldNotifications
+};
