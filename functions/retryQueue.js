@@ -1,4 +1,4 @@
-const functions = require('firebase-functions');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const admin = require('firebase-admin');
 
 /**
@@ -34,7 +34,7 @@ async function queueFailedNotification(messagePayload, error, context = {}) {
  * Scheduled function to retry failed notifications
  * Runs every 2 minutes
  */
-exports.retryFailedNotifications = functions.pubsub.schedule('every 2 minutes').onRun(async (context) => {
+exports.retryFailedNotifications = onSchedule('every 2 minutes', async (event) => {
   console.log('🔄 Starting retry of failed notifications...');
   
   try {
@@ -140,7 +140,7 @@ exports.retryFailedNotifications = functions.pubsub.schedule('every 2 minutes').
 /**
  * Cleanup old completed/failed notifications (runs daily)
  */
-exports.cleanupOldNotifications = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
+exports.cleanupOldNotifications = onSchedule('every 24 hours', async (event) => {
   console.log('🧹 Cleaning up old notification records...');
   
   try {
@@ -173,7 +173,6 @@ exports.cleanupOldNotifications = functions.pubsub.schedule('every 24 hours').on
     
     console.log(`✅ Cleanup completed, deleted ${totalDeleted} records`);
 
-    
     return null;
   } catch (error) {
     console.error('❌ Error in cleanupOldNotifications:', error);
@@ -181,4 +180,4 @@ exports.cleanupOldNotifications = functions.pubsub.schedule('every 24 hours').on
   }
 });
 
-module.exports = { queueFailedNotification };
+exports.queueFailedNotification = queueFailedNotification;
