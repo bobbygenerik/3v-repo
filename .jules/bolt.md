@@ -5,3 +5,7 @@
 ## 2024-05-23 - Firestore N+1 Query Anti-Pattern
 **Learning:** The codebase frequently uses sequential `await` loops to fetch related documents (N+1 problem), particularly for loading user details in lists (contacts, call history). This causes significant latency as each document fetch waits for the previous one to complete.
 **Action:** Always look for loops containing `await FirebaseFirestore.instance...get()` and replace them with `whereIn` batching (chunks of 10) or `Future.wait` for parallel execution. Prioritize `whereIn` with `FieldPath.documentId` to reduce read operations.
+
+## 2024-05-22 - Periodic Timers on UI Thread
+**Learning:** Running high-frequency timers (e.g., 30Hz) on the UI thread to "detect" lag or manage stabilization is an anti-pattern. It adds overhead to the very thread it's trying to monitor and can contribute to the performance issues it aims to solve.
+**Action:** Use native frame metrics or low-overhead performance observers instead of polling loops on the main thread. Avoid "optimizations" that do nothing but log.
