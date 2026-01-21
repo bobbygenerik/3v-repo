@@ -40,7 +40,7 @@ class MainActivity : FlutterActivity() {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         try {
                             val params = PictureInPictureParams.Builder()
-                                .setAspectRatio(Rational(9, 16)) // Portrait video call
+                                .setAspectRatio(Rational(16, 9)) // Standard video call aspect
                                 .build()
                             val entered = enterPictureInPictureMode(params)
                             result.success(entered)
@@ -115,7 +115,7 @@ class MainActivity : FlutterActivity() {
         if (!autoPipEnabled || !callActive || isInPictureInPictureMode) return
         try {
             val params = PictureInPictureParams.Builder()
-                .setAspectRatio(Rational(9, 16)) // Portrait video call
+                .setAspectRatio(Rational(16, 9)) // Standard video call aspect
                 .build()
             enterPictureInPictureMode(params)
         } catch (_: Exception) {

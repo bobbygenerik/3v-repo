@@ -7,15 +7,16 @@ import 'package:livekit_client/livekit_client.dart';
 
 /// Reaction types enum
 enum ReactionType {
-  heart('❤️'),
-  laugh('😂'),
-  clap('👏'),
-  party('🎉'),
-  surprised('😮'),
-  thumbsUp('👍');
+  heart('❤️', 'assets/emoji/twemoji/2764-fe0f.png'),
+  laugh('😂', 'assets/emoji/twemoji/1f602.png'),
+  clap('👏', 'assets/emoji/twemoji/1f44f.png'),
+  party('🎉', 'assets/emoji/twemoji/1f389.png'),
+  surprised('😮', 'assets/emoji/twemoji/1f62e.png'),
+  thumbsUp('👍', 'assets/emoji/twemoji/1f44d.png');
 
   final String emoji;
-  const ReactionType(this.emoji);
+  final String assetPath;
+  const ReactionType(this.emoji, this.assetPath);
 
   static ReactionType? fromString(String name) {
     return ReactionType.values.where((type) => type.name == name).firstOrNull;
@@ -237,6 +238,7 @@ class _ReactionWidget extends StatefulWidget {
 
 class _ReactionWidgetState extends State<_ReactionWidget>
     with SingleTickerProviderStateMixin {
+  static const double _reactionSize = 56;
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _moveYAnimation;
@@ -302,15 +304,22 @@ class _ReactionWidgetState extends State<_ReactionWidget>
       animation: _controller,
       builder: (context, child) {
         return Positioned(
-          left: _moveXAnimation.value * size.width - 24, // Center emoji (48px / 2)
-          top: _moveYAnimation.value * size.height - 24,
+          left: _moveXAnimation.value * size.width - (_reactionSize / 2),
+          top: _moveYAnimation.value * size.height - (_reactionSize / 2),
           child: Opacity(
             opacity: _fadeAnimation.value,
             child: Transform.scale(
               scale: _scaleAnimation.value,
-              child: Text(
-                widget.reaction.type.emoji,
-                style: const TextStyle(fontSize: 48),
+              child: Image.asset(
+                widget.reaction.type.assetPath,
+                width: _reactionSize,
+                height: _reactionSize,
+                errorBuilder: (context, error, stackTrace) {
+                  return Text(
+                    widget.reaction.type.emoji,
+                    style: const TextStyle(fontSize: _reactionSize),
+                  );
+                },
               ),
             ),
           ),

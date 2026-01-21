@@ -42,4 +42,15 @@ class DeviceModeService {
       return false;
     }
   }
+
+  /// Platform label for backend metadata and codec decisions.
+  static String platformLabel() {
+    if (kIsWeb) {
+      if (isSafariPwa()) return 'ios-pwa';
+      return 'web';
+    }
+    if (isAndroidNative()) return 'android';
+    if (isIosNative()) return 'ios';
+    return 'unknown';
+  }
 }

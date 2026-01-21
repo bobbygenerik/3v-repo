@@ -36,19 +36,36 @@ class NetworkQualityService extends ChangeNotifier {
   /// Check network quality by measuring latency
   Future<void> _checkNetworkQuality() async {
     try {
-      final stopwatch = Stopwatch()..start();
-      
-      // Ping a fast, reliable endpoint
-      final response = await http.head(
+      final endpoints = <Uri>[
+        Uri.parse('https://www.gstatic.com/generate_204'),
         Uri.parse('https://www.google.com/generate_204'),
-      ).timeout(const Duration(seconds: 5));
-      
-      stopwatch.stop();
-      final latency = stopwatch.elapsedMilliseconds;
+        Uri.parse('https://cloudflare.com/cdn-cgi/trace'),
+      ];
+      int? latency;
+      int? statusCode;
+
+      for (final endpoint in endpoints) {
+        final stopwatch = Stopwatch()..start();
+        try {
+          final response = await http.head(endpoint).timeout(const Duration(seconds: 5));
+          stopwatch.stop();
+          latency = stopwatch.elapsedMilliseconds;
+          statusCode = response.statusCode;
+          break;
+        } catch (_) {
+          stopwatch.stop();
+          continue;
+        }
+      }
+
+      if (latency == null) {
+        throw Exception('No network probe succeeded');
+      }
+
       _lastLatencyMs = latency;
       
       NetworkQuality newQuality;
-      if (response.statusCode == 204) {
+      if (statusCode == 204 || statusCode == 200) {
         if (latency < 50) {
           newQuality = NetworkQuality.excellent;
         } else if (latency < 150) {
@@ -80,13 +97,13 @@ class NetworkQualityService extends ChangeNotifier {
   int getRecommendedVideoBitrate() {
     switch (_currentQuality) {
       case NetworkQuality.excellent:
-        return 25000 * 1000; // 25 Mbps (4K support)
+        return 10000 * 1000; // 10 Mbps (1080p/1440p)
       case NetworkQuality.good:
-        return 20000 * 1000; // 20 Mbps (1440p 60fps)
+        return 6500 * 1000; // 6.5 Mbps (1080p)
       case NetworkQuality.fair:
-        return 12000 * 1000; // 12 Mbps (enhanced 1080p)
+        return 3500 * 1000; // 3.5 Mbps (720p)
       case NetworkQuality.poor:
-        return 6000 * 1000;  // 6 Mbps (improved quality)
+        return 1200 * 1000;  // 1.2 Mbps (360-480p)
       case NetworkQuality.offline:
         return 0;
     }

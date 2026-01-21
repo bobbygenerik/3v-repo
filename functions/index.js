@@ -8,9 +8,9 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 admin.initializeApp();
 
 // Load environment variables (check both .env and Firebase config)
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || functions.config().livekit?.api_key;
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || functions.config().livekit?.api_secret;
-const LIVEKIT_WS_URL = process.env.LIVEKIT_URL || functions.config().livekit?.url || 'wss://livekit.iptvsubz.fun';
+const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
+const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
+const LIVEKIT_WS_URL = process.env.LIVEKIT_URL || 'wss://livekit.iptvsubz.fun';
 const LIVEKIT_HTTP_URL = process.env.LIVEKIT_HTTP_URL || 'https://livekit.iptvsubz.fun';
 const WEB_URL = process.env.WEB_URL || 'https://tres3.web.app';
 const STALE_SESSION_MINUTES = Number(process.env.CALL_SESSION_STALE_MINUTES || 2);
@@ -48,8 +48,8 @@ exports.getLiveKitToken = functions.https.onCall(async (requestOrData, context) 
   const userId = request.auth.uid;
   console.log('Authenticated user:', userId);
   
-  const { calleeId, roomName } = request.data;
-  console.log('Parameters - calleeId:', calleeId, 'roomName:', roomName);
+  const { calleeId, roomName, platform } = request.data;
+  console.log('Parameters - calleeId:', calleeId, 'roomName:', roomName, 'platform:', platform);
 
   if (!calleeId || !roomName) {
     console.error('ERROR: Missing required parameters');
@@ -88,10 +88,17 @@ exports.getLiveKitToken = functions.https.onCall(async (requestOrData, context) 
 
     // Create token
     console.log('Creating AccessToken...');
+    const platformLabel = typeof platform === 'string' && platform.trim().length > 0
+      ? platform.trim().toLowerCase()
+      : 'unknown';
+
     const at = new AccessToken(apiKey, apiSecret, {
       identity: userId,
       name: userName,
-      metadata: JSON.stringify({ displayName: userName }), // Add metadata for browser to read
+      metadata: JSON.stringify({
+        displayName: userName,
+        platform: platformLabel,
+      }),
     });
 
     at.addGrant({

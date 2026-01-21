@@ -5,12 +5,14 @@ class ParticipantVideo extends StatefulWidget {
   final Participant participant;
   final bool isLocal;
   final bool isMainView;
+  final VideoViewFit fit;
   
   const ParticipantVideo({
     super.key,
     required this.participant,
     this.isLocal = false,
     this.isMainView = true,
+    this.fit = VideoViewFit.cover,
   });
 
   @override
@@ -136,10 +138,10 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
         pub.setVideoFPS(30);
         debugPrint('📹 [${widget.participant.identity}] Requested HIGH quality (main view)');
       } else {
-        // PIP/thumbnail: Request medium to save bandwidth but still look decent
-        pub.setVideoQuality(VideoQuality.MEDIUM);
-        pub.setVideoFPS(24);
-        debugPrint('📹 [${widget.participant.identity}] Requested MEDIUM quality (pip view)');
+        // PIP/thumbnail: Request lower quality to protect main view stability.
+        pub.setVideoQuality(VideoQuality.LOW);
+        pub.setVideoFPS(15);
+        debugPrint('📹 [${widget.participant.identity}] Requested LOW quality (pip view)');
       }
     } catch (e) {
       debugPrint('⚠️ Could not set video quality: $e');
@@ -157,7 +159,7 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
     return RepaintBoundary(
       child: VideoTrackRenderer(
         _videoTrack!,
-        fit: VideoViewFit.cover,
+        fit: widget.fit,
       ),
     );
   }

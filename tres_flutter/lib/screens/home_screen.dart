@@ -17,6 +17,7 @@ import '../services/notification_service.dart';
 import '../widgets/responsive_container.dart';
 import '../widgets/skeleton_loader.dart';
 import '../services/vibration_service.dart';
+import '../services/device_mode_service.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 import 'call_screen.dart';
@@ -1299,6 +1300,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         callable.call({
           'calleeId': recipientEmail,
           'roomName': roomName,
+          'platform': DeviceModeService.platformLabel(),
         }),
         // Task B: Send Invitation via Firestore
         _signalingService.sendCallInvitation(

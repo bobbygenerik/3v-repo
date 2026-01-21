@@ -24,6 +24,7 @@ class CallStatsService extends ChangeNotifier {
   double _lastAudioPacketLoss = 0.0;
   double _lastRtt = 0.0; // seconds
   double _lastJitter = 0.0; // seconds
+  double _lastAvailableOutgoingBitrate = 0.0; // bits per second
   String _lastResolution = 'N/A';
   int _lastFps = 0;
 
@@ -52,6 +53,9 @@ class CallStatsService extends ChangeNotifier {
           if (parsed['packetLoss'] != null) _lastVideoPacketLoss = parsed['packetLoss']!;
           if (parsed['rttMs'] != null) _lastRtt = (parsed['rttMs']! / 1000.0);
           if (parsed['jitterMs'] != null) _lastJitter = (parsed['jitterMs']! / 1000.0);
+          if (parsed['availableOutgoingBitrate'] != null) {
+            _lastAvailableOutgoingBitrate = parsed['availableOutgoingBitrate']!;
+          }
           if (parsed['width'] != null && parsed['height'] != null) {
             _lastResolution = '${parsed['width']!.toInt()}x${parsed['height']!.toInt()}';
           }
@@ -63,6 +67,9 @@ class CallStatsService extends ChangeNotifier {
           if (parsed['packetLoss'] != null) _lastVideoPacketLoss = parsed['packetLoss']!;
           if (parsed['rttMs'] != null) _lastRtt = (parsed['rttMs']! / 1000.0);
           if (parsed['jitterMs'] != null) _lastJitter = (parsed['jitterMs']! / 1000.0);
+          if (parsed['availableOutgoingBitrate'] != null) {
+            _lastAvailableOutgoingBitrate = parsed['availableOutgoingBitrate']!;
+          }
           if (parsed['width'] != null && parsed['height'] != null) {
             _lastResolution = '${parsed['width']!.toInt()}x${parsed['height']!.toInt()}';
           }
@@ -111,6 +118,7 @@ class CallStatsService extends ChangeNotifier {
     double? packetLoss;
     double? rttMs;
     double? jitterMs;
+    double? availableOutgoingBitrate;
     double? width;
     double? height;
     double? fps;
@@ -182,6 +190,14 @@ class CallStatsService extends ChangeNotifier {
                   jitterMs = jitterMs == null ? normalized : ((prev + normalized) / 2.0);
                 }
             }
+            // Available outgoing bitrate (bps)
+            else if (key.contains('availableoutgoingbitrate') ||
+                key.contains('available_outgoing_bitrate')) {
+              final v = double.tryParse(value.toString());
+              if (v != null && v > 0) {
+                availableOutgoingBitrate = v;
+              }
+            }
 
             // Video width
             else if (key == 'framewidth' || key == 'frame_width' || key == 'width') {
@@ -225,6 +241,7 @@ class CallStatsService extends ChangeNotifier {
       'packetLoss': packetLoss,
       'rttMs': rttMs,
       'jitterMs': jitterMs,
+      'availableOutgoingBitrate': availableOutgoingBitrate,
       'width': width,
       'height': height,
       'fps': fps,
@@ -255,6 +272,7 @@ class CallStatsService extends ChangeNotifier {
       audioPacketLoss: _lastAudioPacketLoss,
       roundTripTime: _lastRtt,
       jitter: _lastJitter,
+      availableOutgoingBitrate: _lastAvailableOutgoingBitrate,
       quality: quality,
     );
 
@@ -297,6 +315,7 @@ class CallStatsService extends ChangeNotifier {
       audioPacketLoss: avgDouble(recent.map((s) => s.audioPacketLoss).toList()),
       roundTripTime: avgDouble(recent.map((s) => s.roundTripTime).toList()),
       jitter: avgDouble(recent.map((s) => s.jitter).toList()),
+      availableOutgoingBitrate: avgDouble(recent.map((s) => s.availableOutgoingBitrate).toList()),
       quality: _currentStats.quality,
     );
   }

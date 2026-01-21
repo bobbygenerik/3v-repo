@@ -4,6 +4,7 @@ import '../config/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/call_signaling_service.dart';
 import '../services/call_session_service.dart';
+import '../services/device_mode_service.dart';
 import '../services/vibration_service.dart';
 import 'call_screen.dart';
 
@@ -114,6 +115,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
           .call({
         'calleeId': widget.callerId, // Not actually used for token generation, just for logging
         'roomName': widget.roomName,
+        'platform': DeviceModeService.platformLabel(),
       })
           .timeout(const Duration(seconds: 10), onTimeout: () {
         throw Exception('Token request timed out');

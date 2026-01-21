@@ -33,8 +33,7 @@ class _StatsOverlayState extends State<StatsOverlay> {
   }
 
   void _onStatsUpdate() {
-    // Only rebuild if widget is mounted and expanded
-    if (mounted && _isExpanded) {
+    if (mounted) {
       setState(() {});
     }
   }

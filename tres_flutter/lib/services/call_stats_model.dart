@@ -58,6 +58,7 @@ class CallStats {
   // Network stats
   final double roundTripTime; // RTT in seconds
   final double jitter; // in seconds
+  final double availableOutgoingBitrate; // bits per second (WebRTC estimate)
   final CallConnectionQuality quality;
 
   const CallStats({
@@ -71,6 +72,7 @@ class CallStats {
     this.audioPacketLoss = 0.0,
     this.roundTripTime = 0.0,
     this.jitter = 0.0,
+    this.availableOutgoingBitrate = 0.0,
     this.quality = CallConnectionQuality.unknown,
   });
 
@@ -80,11 +82,21 @@ class CallStats {
   String get audioRecvBitrateFormatted => _formatBitrate(audioRecvBitrate);
   String get roundTripTimeFormatted => _formatLatency(roundTripTime);
   String get jitterFormatted => _formatJitter(jitter);
+  String get availableOutgoingBitrateFormatted => _formatBitrateFromBits(availableOutgoingBitrate);
   String get videoPacketLossFormatted => _formatPacketLoss(videoPacketLoss);
   String get audioPacketLossFormatted => _formatPacketLoss(audioPacketLoss);
 
   static String _formatBitrate(double bytesPerSecond) {
     final kbps = (bytesPerSecond * 8) / 1000;
+    if (kbps > 1000) {
+      return '${(kbps / 1000).toStringAsFixed(1)} Mbps';
+    } else {
+      return '${kbps.toStringAsFixed(0)} kbps';
+    }
+  }
+
+  static String _formatBitrateFromBits(double bitsPerSecond) {
+    final kbps = bitsPerSecond / 1000;
     if (kbps > 1000) {
       return '${(kbps / 1000).toStringAsFixed(1)} Mbps';
     } else {
@@ -116,6 +128,7 @@ class CallStats {
       'audioPacketLoss': audioPacketLoss,
       'roundTripTime': roundTripTime,
       'jitter': jitter,
+      'availableOutgoingBitrate': availableOutgoingBitrate,
       'quality': quality.toString(),
     };
   }

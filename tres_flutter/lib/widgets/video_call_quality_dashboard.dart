@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:async';
 import '../services/livekit_service.dart';
 import '../services/call_stats_service.dart';
 
 class VideoCallQualityDashboard extends StatefulWidget {
   final bool isExpanded;
   final VoidCallback? onToggle;
+  final CallStatsService statsService;
 
   const VideoCallQualityDashboard({
     super.key,
     this.isExpanded = false,
     this.onToggle,
+    required this.statsService,
   });
 
   @override
@@ -19,47 +20,27 @@ class VideoCallQualityDashboard extends StatefulWidget {
 }
 
 class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
-  Timer? _statsTimer;
-  CallStats _currentStats = const CallStats();
-  
-  @override
-  void initState() {
-    super.initState();
-    _startStatsCollection();
-  }
-  
-  void _startStatsCollection() {
-    _statsTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      final liveKit = context.read<LiveKitService>();
-      final stats = await liveKit.collectCallStats();
-      if (mounted) {
-        setState(() {
-          _currentStats = stats;
-        });
-      }
-    });
-  }
-  
-  @override
-  void dispose() {
-    _statsTimer?.cancel();
-    super.dispose();
-  }
-  
   @override
   Widget build(BuildContext context) {
     return Consumer<LiveKitService>(
       builder: (context, liveKitService, child) {
-        if (!widget.isExpanded) {
-          return _buildCollapsedView(liveKitService);
-        }
-        
-        return _buildExpandedView(liveKitService);
+        return AnimatedBuilder(
+          animation: widget.statsService,
+          builder: (context, _) {
+            final stats = widget.statsService.currentStats;
+            final quality = widget.statsService.currentQuality;
+            if (!widget.isExpanded) {
+              return _buildCollapsedView(liveKitService, quality);
+            }
+            return _buildExpandedView(liveKitService, stats, quality);
+          },
+        );
       },
     );
   }
 
-  Widget _buildCollapsedView(LiveKitService liveKitService) {
+  Widget _buildCollapsedView(LiveKitService liveKitService, CallConnectionQuality quality) {
+    final indicatorColors = _getIndicatorColors(quality);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -69,11 +50,11 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildQualityIndicator(Colors.green),
+          _buildQualityIndicator(indicatorColors[0]),
           const SizedBox(width: 8),
-          _buildQualityIndicator(Colors.green),
+          _buildQualityIndicator(indicatorColors[1]),
           const SizedBox(width: 8),
-          _buildQualityIndicator(Colors.green),
+          _buildQualityIndicator(indicatorColors[2]),
           const SizedBox(width: 8),
           GestureDetector(
             onTap: widget.onToggle,
@@ -99,7 +80,11 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
     );
   }
 
-  Widget _buildExpandedView(LiveKitService liveKitService) {
+  Widget _buildExpandedView(
+    LiveKitService liveKitService,
+    CallStats stats,
+    CallConnectionQuality quality,
+  ) {
     return Container(
       width: 320,
       height: 480,
@@ -119,13 +104,13 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildNetworkSection(liveKitService),
+                  _buildNetworkSection(liveKitService, stats),
                   const SizedBox(height: 16),
-                  _buildVideoSection(liveKitService),
+                  _buildVideoSection(liveKitService, stats),
                   const SizedBox(height: 16),
-                  _buildAudioSection(liveKitService),
+                  _buildAudioSection(liveKitService, stats),
                   const SizedBox(height: 16),
-                  _buildConnectionSection(liveKitService),
+                  _buildConnectionSection(liveKitService, quality),
                 ],
               ),
             ),
@@ -165,10 +150,11 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
     );
   }
 
-  Widget _buildNetworkSection(LiveKitService liveKitService) {
-    final rtt = (_currentStats.roundTripTime * 1000).round();
-    final packetLoss = _currentStats.videoPacketLoss;
-    final jitter = (_currentStats.jitter * 1000).round();
+  Widget _buildNetworkSection(LiveKitService liveKitService, CallStats stats) {
+    final rtt = (stats.roundTripTime * 1000).round();
+    final packetLoss = stats.videoPacketLoss;
+    final jitter = (stats.jitter * 1000).round();
+    final availableUplinkMbps = (stats.availableOutgoingBitrate / 1000000);
     
     Color qualityColor = Colors.green;
     String qualityText = 'Excellent';
@@ -209,16 +195,21 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
             '${packetLoss.toStringAsFixed(1)}%',
             packetLoss > 1.0 ? Colors.red : packetLoss > 0.5 ? Colors.orange : Colors.green,
           ),
+          _buildMetricRow(
+            'Available Uplink',
+            availableUplinkMbps > 0 ? '${availableUplinkMbps.toStringAsFixed(1)} Mbps' : 'N/A',
+            availableUplinkMbps >= 8 ? Colors.green : availableUplinkMbps >= 4 ? Colors.orange : Colors.red,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildVideoSection(LiveKitService liveKitService) {
-    final sendBitrate = (_currentStats.videoSendBitrate / 1000000).toStringAsFixed(1);
-    final receiveBitrate = (_currentStats.videoRecvBitrate / 1000000).toStringAsFixed(1);
-    final sendFps = _currentStats.videoFps;
-    final receiveFps = _currentStats.videoFps; // Use same FPS for both since model only has one
+  Widget _buildVideoSection(LiveKitService liveKitService, CallStats stats) {
+    final sendBitrate = (stats.videoSendBitrate / 1000000).toStringAsFixed(1);
+    final receiveBitrate = (stats.videoRecvBitrate / 1000000).toStringAsFixed(1);
+    final sendFps = stats.videoFps;
+    final receiveFps = stats.videoFps; // Use same FPS for both since model only has one
     
     return _buildSection(
       title: 'Video Quality',
@@ -255,9 +246,9 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
     );
   }
 
-  Widget _buildAudioSection(LiveKitService liveKitService) {
-    final audioSendBitrate = (_currentStats.audioSendBitrate / 1000).round();
-    final audioReceiveBitrate = (_currentStats.audioRecvBitrate / 1000).round();
+  Widget _buildAudioSection(LiveKitService liveKitService, CallStats stats) {
+    final audioSendBitrate = (stats.audioSendBitrate / 1000).round();
+    final audioReceiveBitrate = (stats.audioRecvBitrate / 1000).round();
     
     return _buildSection(
       title: 'Audio Quality',
@@ -294,7 +285,10 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
     );
   }
 
-  Widget _buildConnectionSection(LiveKitService liveKitService) {
+  Widget _buildConnectionSection(
+    LiveKitService liveKitService,
+    CallConnectionQuality quality,
+  ) {
     final participants = liveKitService.remoteParticipants.length + 1; // +1 for local
     final connectionState = liveKitService.isConnected ? 'Connected' : 'Disconnected';
     final connectionColor = liveKitService.isConnected ? Colors.green : Colors.red;
@@ -316,12 +310,32 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
           ),
           _buildMetricRow(
             'Quality',
-            '${_currentStats.quality.name}'.toUpperCase(),
-            _getQualityColor(_currentStats.quality),
+            '${quality.name}'.toUpperCase(),
+            _getQualityColor(quality),
+          ),
+          _buildMetricRow(
+            'Tier',
+            liveKitService.currentQualityTier.name.toUpperCase(),
+            Colors.blueGrey,
           ),
         ],
       ),
     );
+  }
+
+  List<Color> _getIndicatorColors(CallConnectionQuality quality) {
+    switch (quality) {
+      case CallConnectionQuality.excellent:
+        return [Colors.green, Colors.green, Colors.green];
+      case CallConnectionQuality.good:
+        return [Colors.green, Colors.green, Colors.yellow];
+      case CallConnectionQuality.fair:
+        return [Colors.orange, Colors.orange, Colors.grey];
+      case CallConnectionQuality.poor:
+        return [Colors.red, Colors.red, Colors.red];
+      case CallConnectionQuality.unknown:
+        return [Colors.grey, Colors.grey, Colors.grey];
+    }
   }
   
   Color _getQualityColor(CallConnectionQuality quality) {

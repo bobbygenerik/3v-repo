@@ -19,6 +19,7 @@ import 'dart:io' show Platform;
 /// Implements FaceTime-quality tuning for maximum video quality
 enum CallType { androidAndroid, androidIOSPWA, iosPWAIOSPWA, mixedUnknown }
 enum CaptureProfile { low, medium, high }
+enum QualityTier { low, medium, high, ultra }
 
 /// Custom video presets following FaceTime-quality tuning brief
 class FaceTimeVideoPresets {
@@ -26,7 +27,7 @@ class FaceTimeVideoPresets {
   static final h1080 = VideoParameters(
     dimensions: VideoDimensions(1920, 1080),
     // Target 1080p at ~5 Mbps as per brief (conservative)
-    encoding: VideoEncoding(maxBitrate: 5_000_000, maxFramerate: 30),
+    encoding: VideoEncoding(maxBitrate: 6_000_000, maxFramerate: 30),
   );
 
   // Cross-Platform 720p Fallback
@@ -34,6 +35,18 @@ class FaceTimeVideoPresets {
     dimensions: VideoDimensions(1280, 720),
     // Target 720p at ~2 Mbps as per brief
     encoding: VideoEncoding(maxBitrate: 2_000_000, maxFramerate: 30),
+  );
+
+  // 720p Low-FPS Stability (never drop below 720p)
+  static final h720LowFps = VideoParameters(
+    dimensions: VideoDimensions(1280, 720),
+    encoding: VideoEncoding(maxBitrate: 1_500_000, maxFramerate: 12),
+  );
+
+  // 720p Emergency (minimum FPS, last resort)
+  static final h720Emergency = VideoParameters(
+    dimensions: VideoDimensions(1280, 720),
+    encoding: VideoEncoding(maxBitrate: 1_200_000, maxFramerate: 10),
   );
 
   // Android Ultra-HQ 1080p+
@@ -63,7 +76,7 @@ class FaceTimeVideoPresets {
   // Opportunistic 1440p layer for simulcast ladder (target ~9-10 Mbps)
   static final h1440 = VideoParameters(
     dimensions: VideoDimensions(2560, 1440),
-    encoding: VideoEncoding(maxBitrate: 9_000_000, maxFramerate: 30),
+    encoding: VideoEncoding(maxBitrate: 12_000_000, maxFramerate: 30),
   );
 
   // Android-Only Ultra-HQ 720p
@@ -97,10 +110,17 @@ class LiveKitService extends ChangeNotifier {
   bool _adaptiveBitrateEnabled = true;
   int? _currentAdaptiveBitrate;
   DateTime? _lastAdaptiveChange;
+  DateTime? _lastSimulcastChange;
+  QualityTier _currentQualityTier = QualityTier.high;
+  DateTime? _lastQualityTierChange;
+  DateTime? _qualityUpgradeGateStart;
+  final List<double> _recentSendBitrates = [];
+  final List<double> _recentAvailableOutgoingBitrates = [];
   VideoParameters? _currentCapturePreset;
   CameraPosition _currentCameraPosition = CameraPosition.front;
   bool _isReconnecting = false;
   bool _manualDisconnect = false;
+  bool _abortConnect = false;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
   String? _lastUrl;
@@ -113,6 +133,7 @@ class LiveKitService extends ChangeNotifier {
   CallType get currentCallType => _currentCallType;
   bool get isUltraHQMode => _isUltraHQMode;
   bool get isSimulcastEnabled => _isSimulcastEnabled;
+  QualityTier get currentQualityTier => _currentQualityTier;
   String? consumeMediaPipeError() {
     final error = _mediaPipeError;
     _mediaPipeError = null;
@@ -163,22 +184,47 @@ class LiveKitService extends ChangeNotifier {
   /// Determine call type at runtime (Required by brief)
   CallType _classifyCallType() {
     if (remoteParticipants.isEmpty) return CallType.mixedUnknown;
-    
+
     final participant = remoteParticipants.first;
     final localIsWeb = kIsWeb;
-    final remoteIsWeb = participant.identity.contains('web') || 
-                        participant.identity.contains('ios') ||
-                        participant.metadata?.contains('web') == true;
-    
-    if (!localIsWeb && !remoteIsWeb) {
+    final remotePlatform = _inferParticipantPlatform(participant);
+    final remoteIsAndroid = remotePlatform.contains('android');
+    final remoteIsWeb = remotePlatform.contains('web') || remotePlatform.contains('ios');
+
+    if (!localIsWeb && DeviceModeService.isAndroidNative() && remoteIsAndroid) {
       return CallType.androidAndroid;
-    } else if (!localIsWeb && remoteIsWeb) {
-      return CallType.androidIOSPWA;
-    } else if (localIsWeb && remoteIsWeb) {
-      return CallType.iosPWAIOSPWA;
-    } else {
-      return CallType.mixedUnknown;
     }
+    if (!localIsWeb && DeviceModeService.isAndroidNative() && remoteIsWeb) {
+      return CallType.androidIOSPWA;
+    }
+    if (localIsWeb && remoteIsWeb) {
+      return CallType.iosPWAIOSPWA;
+    }
+
+    return CallType.mixedUnknown;
+  }
+
+  String _inferParticipantPlatform(Participant participant) {
+    final identity = participant.identity.toLowerCase();
+    final metadata = participant.metadata;
+
+    if (metadata != null && metadata.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(metadata);
+        if (decoded is Map && decoded['platform'] is String) {
+          return (decoded['platform'] as String).toLowerCase();
+        }
+      } catch (_) {}
+      final metaLower = metadata.toLowerCase();
+      if (metaLower.contains('android')) return 'android';
+      if (metaLower.contains('ios')) return 'ios';
+      if (metaLower.contains('web')) return 'web';
+    }
+
+    if (identity.contains('android')) return 'android';
+    if (identity.contains('ios')) return 'ios';
+    if (identity.contains('web')) return 'web';
+    return 'unknown';
   }
 
   /// Check if Android Ultra-HQ conditions are met (Required by brief)
@@ -221,6 +267,29 @@ class LiveKitService extends ChangeNotifier {
         // Default Cross-Platform: H.264 High Profile, VP9, VP8
         return 'h264';
     }
+  }
+
+  String _getPublishVideoCodec() {
+    if (_isSafariPwa) return 'h264';
+    return _currentVideoCodec;
+  }
+
+  VideoPublishOptions _buildVideoPublishOptions(VideoEncoding encoding) {
+    final codec = _getPublishVideoCodec();
+    BackupVideoCodec? backup;
+    if (codec == 'av1') {
+      backup = BackupVideoCodec(
+        codec: 'h264',
+        simulcast: _isSimulcastEnabled,
+      );
+    }
+    return VideoPublishOptions(
+      videoEncoding: encoding,
+      simulcast: _isSimulcastEnabled,
+      videoCodec: codec,
+      backupVideoCodec: backup ?? VideoPublishOptions.defualtBackupVideoCodec,
+      degradationPreference: DegradationPreference.maintainResolution,
+    );
   }
 
   /// Get conservative encoding for Safari PWA
@@ -294,15 +363,16 @@ class LiveKitService extends ChangeNotifier {
   }
   
   /// Get FaceTime-quality video encoding
-  VideoEncoding _getOptimalVideoEncoding() {
+  VideoEncoding _getOptimalVideoEncoding([VideoParameters? preset]) {
     _currentCallType = _classifyCallType();
     _isUltraHQMode = _shouldEnableUltraHQ();
     _currentVideoCodec = _getPreferredCodec();
     
     final deviceMaxBitrate = DeviceCapabilityService.getMaxVideoBitrate();
     final deviceMaxFramerate = DeviceCapabilityService.getMaxFramerate();
+    final presetEncoding = preset?.encoding;
     
-    int finalBitrate;
+    int finalBitrate = presetEncoding?.maxBitrate ?? deviceMaxBitrate;
     int finalFramerate = deviceMaxFramerate;
     
     if (_isUltraHQMode) {
@@ -310,8 +380,15 @@ class LiveKitService extends ChangeNotifier {
       finalBitrate = _supports60fps() ? 10_000_000 : 8_000_000;
       if (_supports60fps()) finalFramerate = 60;
     } else {
-      // Standard mode: Use device limits (no network-based downshift).
-      finalBitrate = deviceMaxBitrate;
+      // Standard mode: Respect preset and clamp to device + network conditions.
+      final networkCap = _networkService.getRecommendedVideoBitrate();
+      if (networkCap > 0) {
+        finalBitrate = finalBitrate.clamp(1_000_000, networkCap);
+      }
+      finalBitrate = finalBitrate.clamp(1_000_000, deviceMaxBitrate);
+      if (presetEncoding?.maxFramerate != null) {
+        finalFramerate = presetEncoding!.maxFramerate!;
+      }
     }
     
     debugPrint('🎥 FaceTime-Quality Encoding:');
@@ -330,6 +407,129 @@ class LiveKitService extends ChangeNotifier {
       maxBitrate: finalBitrate,
       maxFramerate: finalFramerate,
     );
+  }
+
+  QualityTier _determineTargetQualityTier(CallStats stats) {
+    if (_isSafariPwa) return QualityTier.medium;
+    if (_currentCallType != CallType.androidAndroid) return QualityTier.high;
+
+    final networkType = _networkService.getCurrentNetworkType();
+    if (networkType != 'wifi' && networkType != '5g') {
+      _qualityUpgradeGateStart = null;
+      return QualityTier.medium;
+    }
+
+    final packetLoss = stats.videoPacketLoss;
+    final rttMs = stats.roundTripTime * 1000.0;
+    final jitterMs = stats.jitter * 1000.0;
+
+    if (packetLoss >= 8.0 || rttMs >= 450.0 || jitterMs >= 80.0) {
+      _qualityUpgradeGateStart = null;
+      return QualityTier.low;
+    }
+    if (packetLoss >= 4.0 || rttMs >= 300.0 || jitterMs >= 50.0) {
+      _qualityUpgradeGateStart = null;
+      return QualityTier.medium;
+    }
+
+    if (!_supports1440p60() && !_supports4K()) {
+      _qualityUpgradeGateStart = null;
+      return QualityTier.high;
+    }
+
+    final avgSendBitrate = _getAverageSendBitrate();
+    final baselineTarget = FaceTimeVideoPresets.h1080.encoding?.maxBitrate ?? 0;
+    if (baselineTarget > 0 && avgSendBitrate < baselineTarget * 0.4) {
+      _qualityUpgradeGateStart = null;
+      return QualityTier.high;
+    }
+
+    final avgAvailableOutgoing = _getAverageAvailableOutgoingBitrate();
+    if (avgAvailableOutgoing > 0 && avgAvailableOutgoing < 8_000_000) {
+      _qualityUpgradeGateStart = null;
+      return QualityTier.high;
+    }
+
+    // Ultra upgrade gate: require excellent conditions sustained
+    if (packetLoss < 0.5 && rttMs < 80.0 && jitterMs < 10.0) {
+      final now = DateTime.now();
+      _qualityUpgradeGateStart ??= now;
+      final elapsed = now.difference(_qualityUpgradeGateStart!);
+      if (elapsed >= const Duration(seconds: 30)) {
+        return QualityTier.ultra;
+      }
+    } else {
+      _qualityUpgradeGateStart = null;
+    }
+
+    return QualityTier.high;
+  }
+
+  VideoParameters _selectPresetForTier(QualityTier tier) {
+    switch (tier) {
+      case QualityTier.low:
+        return FaceTimeVideoPresets.h720Emergency;
+      case QualityTier.medium:
+        return FaceTimeVideoPresets.h720LowFps;
+      case QualityTier.ultra:
+        return _supports1440p60()
+            ? FaceTimeVideoPresets.androidExtreme1440p60
+            : FaceTimeVideoPresets.h1440;
+      case QualityTier.high:
+      default:
+        return _selectCapturePreset();
+    }
+  }
+
+  void _recordSendBitrate(double bitrate) {
+    if (bitrate <= 0) return;
+    _recentSendBitrates.add(bitrate);
+    if (_recentSendBitrates.length > 12) {
+      _recentSendBitrates.removeAt(0);
+    }
+  }
+
+  void _recordAvailableOutgoingBitrate(double bitrate) {
+    if (bitrate <= 0) return;
+    _recentAvailableOutgoingBitrates.add(bitrate);
+    if (_recentAvailableOutgoingBitrates.length > 12) {
+      _recentAvailableOutgoingBitrates.removeAt(0);
+    }
+  }
+
+  double _getAverageSendBitrate() {
+    if (_recentSendBitrates.isEmpty) return 0.0;
+    final sum = _recentSendBitrates.fold<double>(0.0, (a, b) => a + b);
+    return sum / _recentSendBitrates.length;
+  }
+
+  double _getAverageAvailableOutgoingBitrate() {
+    if (_recentAvailableOutgoingBitrates.isEmpty) return 0.0;
+    final sum = _recentAvailableOutgoingBitrates.fold<double>(0.0, (a, b) => a + b);
+    return sum / _recentAvailableOutgoingBitrates.length;
+  }
+
+  Future<void> _maybeAdjustCaptureQualityForStats(CallStats stats) async {
+    if (_room == null || _localVideoTrack == null) return;
+    if (_isSafariPwa) return;
+
+    _recordSendBitrate(stats.videoSendBitrate);
+    _recordAvailableOutgoingBitrate(stats.availableOutgoingBitrate);
+    final targetTier = _determineTargetQualityTier(stats);
+    if (targetTier == _currentQualityTier) return;
+
+    final now = DateTime.now();
+    if (_lastQualityTierChange != null &&
+        now.difference(_lastQualityTierChange!) < const Duration(seconds: 15)) {
+      return;
+    }
+
+    _currentQualityTier = targetTier;
+    _lastQualityTierChange = now;
+
+    final preset = _selectPresetForTier(targetTier);
+    await _recreateAndPublishVideoTrack(preset);
+    debugPrint('🎯 Quality tier switched to ${targetTier.name}');
   }
 
   // Upgrade gate state (Android-only)
@@ -389,9 +589,62 @@ class LiveKitService extends ChangeNotifier {
       factor = 0.85;
     }
 
-    final minBitrate = _isUltraHQMode ? 4_000_000 : 2_000_000;
+    final minBitrate = _isUltraHQMode ? 4_000_000 : 1_500_000;
     final target = (baseBitrate * factor).round();
     return target.clamp(minBitrate, baseBitrate);
+  }
+
+  bool _shouldEnableSimulcast() {
+    if (_isSafariPwa) return false;
+    if (!FeatureFlags.enableSimulcastLadder) return false;
+    if (kIsWeb && !DeviceCapabilityService.webSupportsSimulcast()) return false;
+    // Simulcast is only helpful in multiparty; avoid in 1:1.
+    return remoteParticipants.length >= 2;
+  }
+
+  Future<void> _applySimulcastPolicyIfNeeded() async {
+    final shouldEnable = _shouldEnableSimulcast();
+    if (shouldEnable == _isSimulcastEnabled) return;
+
+    final now = DateTime.now();
+    if (_lastSimulcastChange != null &&
+        now.difference(_lastSimulcastChange!) < const Duration(seconds: 15)) {
+      return;
+    }
+    _lastSimulcastChange = now;
+    _isSimulcastEnabled = shouldEnable;
+
+    if (_room == null || _localVideoTrack == null) return;
+    final preset = _currentCapturePreset ?? FaceTimeVideoPresets.h720;
+    try {
+      await _recreateAndPublishVideoTrack(preset);
+      debugPrint('🔄 Simulcast ${_isSimulcastEnabled ? "enabled" : "disabled"} based on participant count');
+    } catch (e) {
+      debugPrint('⚠️ Failed to apply simulcast policy: $e');
+    }
+  }
+
+  VideoParameters _selectCapturePreset() {
+    if (_isUltraHQMode && _supports4K()) {
+      return FaceTimeVideoPresets.androidExtreme4K;
+    }
+    if (_isUltraHQMode && _supports1440p60()) {
+      return FaceTimeVideoPresets.androidExtreme1440p60;
+    }
+    if (_isUltraHQMode && _supports60fps()) {
+      return FaceTimeVideoPresets.androidUltraHQ60;
+    }
+    if (_isUltraHQMode) {
+      return FaceTimeVideoPresets.androidUltraHQ;
+    }
+    switch (_currentCallType) {
+      case CallType.androidAndroid:
+        return FaceTimeVideoPresets.h1080;
+      case CallType.androidIOSPWA:
+        return FaceTimeVideoPresets.h720;
+      default:
+        return FaceTimeVideoPresets.h720;
+    }
   }
   
   /// Connect to LiveKit room with FaceTime-quality tuning
@@ -401,6 +654,7 @@ class LiveKitService extends ChangeNotifier {
     required String roomName,
   }) async {
     _manualDisconnect = false;
+    _abortConnect = false;
     _cancelReconnectTimer();
     _lastUrl = url;
     _lastToken = token;
@@ -412,13 +666,8 @@ class LiveKitService extends ChangeNotifier {
       _currentCallType = _classifyCallType();
       _isUltraHQMode = _shouldEnableUltraHQ();
       _currentVideoCodec = _getPreferredCodec();
-      // Default simulcast behavior: enable 3-layer ladder when allowed and runtime supports it (web probe)
-      var webSimulcastOk = true;
-      if (kIsWeb) {
-        DeviceCapabilityService.detectCapability();
-        webSimulcastOk = DeviceCapabilityService.webSupportsSimulcast();
-      }
-      _isSimulcastEnabled = FeatureFlags.enableSimulcastLadder && !_isSafariPwa && webSimulcastOk;
+      // Default simulcast behavior: disable for 1:1 until multiparty detected.
+      _isSimulcastEnabled = _shouldEnableSimulcast();
       
       debugPrint('🎯 FaceTime-Quality Connection Setup:');
       debugPrint('   📞 Call Type: $_currentCallType');
@@ -435,35 +684,13 @@ class LiveKitService extends ChangeNotifier {
           _setupRoomListeners();
           _networkService.startMonitoring();
 
-          // Get optimal encoding for this call type
-          final optimalEncoding = _getOptimalVideoEncoding();
-          VideoParameters captureParams;
-
-          if (_isUltraHQMode && _supports4K()) {
-            captureParams = FaceTimeVideoPresets.androidExtreme4K;
-          } else if (_isUltraHQMode && _supports1440p60()) {
-            captureParams = FaceTimeVideoPresets.androidExtreme1440p60;
-          } else if (_isUltraHQMode && _supports60fps()) {
-            captureParams = FaceTimeVideoPresets.androidUltraHQ60;
-          } else if (_isUltraHQMode) {
-            captureParams = FaceTimeVideoPresets.androidUltraHQ;
-          } else {
-            switch (_currentCallType) {
-              case CallType.androidAndroid:
-                captureParams = FaceTimeVideoPresets.h1080;
-                break;
-              case CallType.androidIOSPWA:
-                captureParams = FaceTimeVideoPresets.h720;
-                break;
-              default:
-                captureParams = FaceTimeVideoPresets.h720;
-            }
-          }
+          VideoParameters captureParams = _selectCapturePreset();
           // Enforce Safari PWA conservative capture preset
           if (_isSafariPwa) {
             captureParams = FaceTimeVideoPresets.h720;
           }
           _currentCapturePreset = captureParams;
+          final optimalEncoding = _getOptimalVideoEncoding(captureParams);
 
         final processor = null;
 
@@ -489,6 +716,11 @@ class LiveKitService extends ChangeNotifier {
               defaultVideoPublishOptions: VideoPublishOptions(
                     videoEncoding: optimalEncoding,
                     simulcast: _isSimulcastEnabled,
+                    videoCodec: _getPublishVideoCodec(),
+                    backupVideoCodec: _getPublishVideoCodec() == 'av1'
+                        ? const BackupVideoCodec(codec: 'h264', simulcast: true)
+                        : VideoPublishOptions.defualtBackupVideoCodec,
+                    degradationPreference: DegradationPreference.maintainResolution,
                   ),
               defaultAudioPublishOptions: AudioPublishOptions(
                 audioBitrate: _getOptimalAudioBitrate(),
@@ -515,6 +747,13 @@ class LiveKitService extends ChangeNotifier {
 
       if (lastError != null && _room == null) {
         throw lastError;
+      }
+
+      if (_manualDisconnect || _abortConnect) {
+        await _room?.disconnect();
+        _room = null;
+        _networkService.stopMonitoring();
+        return false;
       }
 
       await Future.wait([
@@ -564,6 +803,7 @@ class LiveKitService extends ChangeNotifier {
     try {
       debugPrint('🔌 Disconnecting from LiveKit...');
       _manualDisconnect = true;
+      _abortConnect = true;
       _cancelReconnectTimer();
       _isReconnecting = false;
       _networkService.stopMonitoring();
@@ -614,23 +854,9 @@ class LiveKitService extends ChangeNotifier {
       if (_localVideoTrack == null) {
         debugPrint('📹 Creating camera track with FaceTime-quality preset...');
         
-        final optimalEncoding = _getOptimalVideoEncoding();
-        VideoParameters captureParams;
-        
-        if (_isUltraHQMode && _supports60fps()) {
-          captureParams = FaceTimeVideoPresets.androidUltraHQ60;
-        } else if (_isUltraHQMode) {
-          captureParams = FaceTimeVideoPresets.androidUltraHQ;
-        } else {
-          switch (_currentCallType) {
-            case CallType.androidAndroid:
-              captureParams = FaceTimeVideoPresets.h1080;
-              break;
-            default:
-              captureParams = FaceTimeVideoPresets.h720;
-          }
-        }
+        VideoParameters captureParams = _selectCapturePreset();
         if (_isSafariPwa) captureParams = FaceTimeVideoPresets.h720;
+        final optimalEncoding = _getOptimalVideoEncoding(captureParams);
         
         debugPrint('📹 FaceTime-quality capture params:');
         debugPrint('   📐 Resolution: ${captureParams.dimensions.width}x${captureParams.dimensions.height}');
@@ -654,10 +880,7 @@ class LiveKitService extends ChangeNotifier {
         debugPrint('📤 Publishing video track with FaceTime-quality encoding...');
         await _room!.localParticipant?.publishVideoTrack(
           _localVideoTrack!,
-          publishOptions: VideoPublishOptions(
-            videoEncoding: optimalEncoding,
-            simulcast: _isSimulcastEnabled, // Critical: Never use simulcast for 1-to-1
-          ),
+          publishOptions: _buildVideoPublishOptions(optimalEncoding),
         );
         debugPrint('✅ FaceTime-quality video track published');
       }
@@ -678,7 +901,7 @@ class LiveKitService extends ChangeNotifier {
     if (!_adaptiveBitrateEnabled) return;
     if (_room == null || _localVideoTrack == null) return;
 
-    final baseEncoding = _getOptimalVideoEncoding();
+    final baseEncoding = _getOptimalVideoEncoding(_currentCapturePreset);
     final baseBitrate = baseEncoding.maxBitrate ?? 0;
     if (baseBitrate <= 0) return;
 
@@ -752,7 +975,7 @@ class LiveKitService extends ChangeNotifier {
 
       await oldTrack?.stop();
 
-      final optimalEncoding = _getOptimalVideoEncoding();
+      final optimalEncoding = _getOptimalVideoEncoding(preset);
       final encoding = maxBitrateOverride != null 
         ? VideoEncoding(
             maxBitrate: maxBitrateOverride,
@@ -771,10 +994,7 @@ class LiveKitService extends ChangeNotifier {
 
       await localParticipant?.publishVideoTrack(
         _localVideoTrack!,
-        publishOptions: VideoPublishOptions(
-          videoEncoding: encoding,
-          simulcast: _isSimulcastEnabled,
-        ),
+        publishOptions: _buildVideoPublishOptions(encoding),
       );
 
       if (wasMuted) {
@@ -798,9 +1018,8 @@ class LiveKitService extends ChangeNotifier {
   /// External entrypoint: apply observed stats
   Future<void> applyObservedStats(CallStats stats) async {
     await _maybeAdjustVideoForStats(stats);
-    // Android-only cautious upgrade gate (safe, single upgrade per call)
     try {
-      _maybePerformUpgradeGate(stats);
+      await _maybeAdjustCaptureQualityForStats(stats);
     } catch (_) {}
   }
 
@@ -1011,8 +1230,7 @@ class LiveKitService extends ChangeNotifier {
         if (shouldReconnect) {
           _scheduleReconnect();
         }
-        _localVideoTrack = null;
-        _localAudioTrack = null;
+        _stopAndUnpublishLocalTracks();
         _room = null;
         _isUltraHQMode = false;
         _isSimulcastEnabled = false;
@@ -1021,14 +1239,22 @@ class LiveKitService extends ChangeNotifier {
       ..on<ParticipantConnectedEvent>((event) {
         debugPrint('👤 Participant connected: ${event.participant.identity}');
         debugPrint('   - Call type may have changed, reclassifying...');
-        _currentCallType = _classifyCallType();
-        _isUltraHQMode = _shouldEnableUltraHQ();
+        final updatedCallType = _classifyCallType();
+        if (updatedCallType != _currentCallType) {
+          _currentCallType = updatedCallType;
+          _isUltraHQMode = _shouldEnableUltraHQ();
+          if (_room != null && _localVideoTrack != null) {
+            unawaited(_recreateAndPublishVideoTrack(_selectCapturePreset()));
+          }
+        }
+        unawaited(_applySimulcastPolicyIfNeeded());
         debugPrint('   📞 New Call Type: $_currentCallType');
         debugPrint('   🚀 Ultra-HQ Mode: $_isUltraHQMode');
         notifyListeners();
       })
       ..on<ParticipantDisconnectedEvent>((event) {
         debugPrint('👋 Participant disconnected: ${event.participant.identity}');
+        unawaited(_applySimulcastPolicyIfNeeded());
         notifyListeners();
       })
       ..on<TrackPublishedEvent>((event) {
@@ -1062,18 +1288,40 @@ class LiveKitService extends ChangeNotifier {
       if (videoTrack != null) {
         debugPrint('📊 ACTUAL CODEC VERIFICATION:');
         debugPrint('   🎯 Requested: $_currentVideoCodec');
-        debugPrint('   ✅ LiveKit Server Accepted: ${videoTrack.source}');
-        
-        // Check if AV1 was requested but H.264 is being used (indicates no AV1 support)
-        if (_currentVideoCodec == 'av1' && !videoTrack.source.toString().toLowerCase().contains('av1')) {
-          debugPrint('   ⚠️ AV1 requested but not used - LiveKit server may not support AV1');
-          debugPrint('   📝 Recommendation: Check LiveKit Cloud plan or server configuration');
-        }
+        debugPrint('   ℹ️ Codec introspection not available via LiveKit SDK; verify via server stats or WebRTC getStats');
       } else {
         debugPrint('⚠️ Could not verify codec - no video track found');
       }
     } catch (e) {
       debugPrint('Error checking actual codec: $e');
+    }
+  }
+
+  Future<void> _stopAndUnpublishLocalTracks() async {
+    try {
+      final localParticipant = _room?.localParticipant;
+      if (localParticipant != null) {
+        final videoPub = localParticipant.getTrackPublicationBySource(TrackSource.camera);
+        final audioPub = localParticipant.getTrackPublicationBySource(TrackSource.microphone);
+        if (videoPub != null) {
+          await localParticipant.removePublishedTrack(videoPub.sid);
+        }
+        if (audioPub != null) {
+          await localParticipant.removePublishedTrack(audioPub.sid);
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to unpublish local tracks: $e');
+    }
+
+    try {
+      await _localVideoTrack?.stop();
+      await _localAudioTrack?.stop();
+    } catch (e) {
+      debugPrint('⚠️ Failed to stop local tracks: $e');
+    } finally {
+      _localVideoTrack = null;
+      _localAudioTrack = null;
     }
   }
 
@@ -1100,6 +1348,9 @@ class LiveKitService extends ChangeNotifier {
 
   RTCConfiguration _buildRtcConfiguration() {
     final iceServers = _parseIceServers();
+    if (iceServers == null || iceServers.isEmpty) {
+      debugPrint('⚠️ No ICE servers configured. TURN is required for reliable NAT traversal.');
+    }
     return RTCConfiguration(
       iceServers: iceServers,
       iceTransportPolicy:

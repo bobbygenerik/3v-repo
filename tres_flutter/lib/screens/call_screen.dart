@@ -22,7 +22,6 @@ import '../services/call_stats_service.dart';
 // MediaPipe removed: settings and processing removed
 import '../config/environment.dart';
 import '../widgets/participant_video.dart';
-import '../widgets/stats_overlay.dart';
 import '../widgets/call_waiting_banner.dart';
 import '../widgets/video_call_quality_dashboard.dart';
 import '../widgets/modern_chat_overlay.dart';
@@ -79,6 +78,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   Offset? _pipPosition; // null = use default top-right position
   bool _pipExpanded = false;
   bool _pipSwapped = false;
+  bool _isInAndroidPip = false;
   
   // Remote PIPs state
   final Map<String, Offset?> _remotePipPositions = {}; // Track position for each remote PIP
@@ -113,7 +113,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   bool _wasReconnecting = false;
   bool _pipEnabled = true;
   // Developer diagnostics overlay
-  bool _showDevDiagnostics = false;
   
   @override
   void initState() {
@@ -266,6 +265,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     
     try {
       debugPrint('📞 Ending call and cleaning up...');
+
+      await _disableAndroidPipAfterCall();
       
       // Fire and forget cleanup operations
       widget.signalingService.endCall(widget.roomName).catchError((e) {
@@ -278,9 +279,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       
       // Disconnect from LiveKit
       final livekit = Provider.of<LiveKitService>(context, listen: false);
-      livekit.disconnect().catchError((e) {
+      try {
+        await livekit.disconnect().timeout(const Duration(seconds: 3));
+      } catch (e) {
         debugPrint('Error disconnecting from LiveKit: $e');
-      });
+      }
       
       // Small delay to show ending state, then navigate
       await Future.delayed(const Duration(milliseconds: 500));
@@ -295,6 +298,20 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       if (mounted) {
         Navigator.of(context).pop();
       }
+    }
+  }
+
+  Future<void> _disableAndroidPipAfterCall() async {
+    try {
+      await AndroidPipService.setCallActive(false);
+      await AndroidPipService.setAutoPipEnabled(false);
+      if (mounted) {
+        setState(() {
+          _isInAndroidPip = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to disable Android PiP after call: $e');
     }
   }
   
@@ -532,14 +549,24 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     debugPrint('📱 App lifecycle changed: $state');
     
     switch (state) {
-      case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
-        // App moved to background or lost focus
-        _isAppInBackground = true;
+        // Transient loss of focus (e.g., notification shade). Keep video rendering.
+        debugPrint('📱 App inactive (transient) - keeping video active');
+        break;
+      case AppLifecycleState.paused:
+        // App moved to background or entered PiP.
         debugPrint('📱 App backgrounded during call - call continues');
+        _handlePausedState();
+        break;
         
-        // Show brief confirmation that call is still active
-        if (mounted && state == AppLifecycleState.paused) {
+      case AppLifecycleState.resumed:
+        // App returned to foreground
+        final wasBackgrounded = _isAppInBackground;
+        _isAppInBackground = false;
+        _isInAndroidPip = false;
+        _loadPipPreference();
+        debugPrint('📱 App resumed - refreshing UI');
+        if (mounted && wasBackgrounded) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Row(
@@ -548,7 +575,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Call continues in background',
+                      'Call resumed',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -565,28 +592,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           );
-          
-          // Try to enter Android PiP mode
-          _tryEnterAndroidPip();
         }
-        // Call continues running - LiveKit maintains connection
-        // Web: PiP already handles this via setupAutoPip
-        // Android: Will enter native PiP if supported
-        break;
         
-      case AppLifecycleState.resumed:
-        // App returned to foreground
-        if (_isAppInBackground) {
-          _isAppInBackground = false;
-          debugPrint('📱 App resumed - refreshing UI');
-          _loadPipPreference();
-          
-          // Refresh UI state
-          if (mounted) {
-            setState(() {
-              // Force UI rebuild to ensure everything is current
-            });
-          }
+        // Refresh UI state
+        if (mounted) {
+          setState(() {
+            // Force UI rebuild to ensure everything is current
+          });
         }
         break;
         
@@ -597,20 +609,74 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         break;
     }
   }
+
+  void _handlePausedState() {
+    if (Theme.of(context).platform == TargetPlatform.android) {
+      _tryEnterAndroidPip().then((enteredPip) {
+        if (!mounted) return;
+        _isAppInBackground = !enteredPip;
+        if (!enteredPip) {
+          _showBackgroundCallSnack();
+        }
+      });
+      return;
+    }
+
+    _isAppInBackground = true;
+    _showBackgroundCallSnack();
+  }
+
+  void _showBackgroundCallSnack() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Call continues in background',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 2),
+        backgroundColor: const Color(0xFF6B7FB8),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
   
-  Future<void> _tryEnterAndroidPip() async {
+  Future<bool> _tryEnterAndroidPip() async {
     try {
-      if (!_pipEnabled) return;
+      if (!_pipEnabled) return false;
       final available = await AndroidPipService.isPipAvailable();
       if (available) {
         final entered = await AndroidPipService.enterPipMode();
         if (entered) {
           debugPrint('✅ Entered Android PiP mode');
+          if (mounted) {
+            setState(() {
+              _isInAndroidPip = true;
+              _pipSwapped = false;
+              _pipExpanded = false;
+            });
+          }
         }
+        return entered;
       }
     } catch (e) {
       debugPrint('❌ Error entering Android PiP: $e');
     }
+    return false;
   }
 
   Future<void> _loadPipPreference() async {
@@ -659,7 +725,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     if (Theme.of(context).platform == TargetPlatform.android) {
       final available = await AndroidPipService.isPipAvailable();
       if (!available) return false;
-      return AndroidPipService.enterPipMode();
+      final entered = await AndroidPipService.enterPipMode();
+      if (entered && mounted) {
+        setState(() {
+          _isInAndroidPip = true;
+          _pipSwapped = false;
+          _pipExpanded = false;
+        });
+      }
+      return entered;
     }
     return livekit.pipService.enterPip();
   }
@@ -818,7 +892,14 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       token: widget.token,
       roomName: widget.roomName,
     );
-    
+
+    if (!mounted || _isCallEnding) {
+      if (success) {
+        await livekit.disconnect();
+      }
+      return;
+    }
+
     // Initialize coordinator with room (now async)
     if (success && livekit.room != null) {
       await _coordinator.initialize(livekit.room!);
@@ -837,7 +918,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _coordinator.statsService.startCollecting();
     }
     
-    setState(() => _isConnecting = false);
+    if (mounted) {
+      setState(() => _isConnecting = false);
+    }
     if (success) {
       // subtle haptic to indicate call connected (no-op on Safari PWA)
       VibrationService.lightImpact();
@@ -981,14 +1064,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         body: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: _toggleControls,
-          onLongPress: () {
-            if (!Environment.isDevelopment) return;
-            setState(() {
-              _showDevDiagnostics = !_showDevDiagnostics;
-            });
-            // subtle haptic feedback when toggling diagnostics (native only)
-            VibrationService.lightImpact();
-          },
           onHorizontalDragStart: (details) {
             // Track if drag started from left edge
             if (details.globalPosition.dx < 50) {
@@ -1015,6 +1090,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           child: SafeArea(
             child: Consumer2<LiveKitService, CallFeaturesCoordinator>(
               builder: (context, livekit, coordinator, child) {
+                final isAndroidPipView =
+                    _isInAndroidPip && Theme.of(context).platform == TargetPlatform.android;
+                if (isAndroidPipView) {
+                  return _buildAndroidPipLayout(livekit);
+                }
                 return Stack(
                   children: [
                     // Main participant view
@@ -1118,6 +1198,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                         right: 16,
                         child: VideoCallQualityDashboard(
                           isExpanded: true,
+                          statsService: _coordinator.statsService,
                           onToggle: () {
                             setState(() {
                               _qualityDashboardVisible = false;
@@ -1146,13 +1227,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                         });
                       },
                     ),
-                    // Developer diagnostics overlay (hidden, dev-only)
-                    if (_showDevDiagnostics && Environment.isDevelopment)
-                      Positioned(
-                        top: 16,
-                        right: 16,
-                        child: StatsOverlay(statsService: coordinator.statsService),
-                      ),
                   ],
                 );
               },
@@ -1160,6 +1234,33 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildAndroidPipLayout(LiveKitService livekit) {
+    final localParticipant = livekit.localParticipant;
+    return Stack(
+      children: [
+        _buildMainParticipantView(livekit, fit: VideoViewFit.contain),
+        if (localParticipant != null)
+          Positioned(
+            right: 12,
+            bottom: 12,
+            child: SizedBox(
+              width: 120,
+              height: 160,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: ParticipantVideo(
+                  key: const ValueKey('android-pip-local'),
+                  participant: localParticipant,
+                  isLocal: true,
+                  fit: VideoViewFit.cover,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
   
@@ -1295,7 +1396,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     return Icons.signal_cellular_alt_1_bar;
   }
   
-  Widget _buildMainParticipantView(LiveKitService livekit) {
+  Widget _buildMainParticipantView(
+    LiveKitService livekit, {
+    VideoViewFit fit = VideoViewFit.cover,
+  }) {
     final remoteParticipants = livekit.remoteParticipants;
     
     // If PIP is swapped, show local participant in main view
@@ -1305,6 +1409,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           key: const ValueKey('main-local-swapped'),
           participant: livekit.localParticipant!,
           isLocal: true,
+          fit: fit,
         ),
       );
     }
@@ -1348,6 +1453,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       child: ParticipantVideo(
         key: ValueKey('main-remote-${remoteParticipants[mainIndex].sid}'),
         participant: remoteParticipants[mainIndex],
+        fit: fit,
       ),
     );
   }
@@ -2286,6 +2392,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       final response = await callable.call({
         'calleeId': incomingCall['callerId'],
         'roomName': widget.roomName, // Add them to THIS room
+        'platform': DeviceModeService.platformLabel(),
       });
       
       final theirToken = response.data['token'] as String;
@@ -2411,10 +2518,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     try {
       final livekit = context.read<LiveKitService>();
       livekit.removeListener(_handleLiveKitUpdate);
-      // Disconnect if not already disconnected (fire and forget)
-      if (livekit.isConnected) {
-        livekit.disconnect();
-      }
+      // Always disconnect to cancel pending connects and release camera.
+      livekit.disconnect();
     } catch (e) {
       debugPrint('Error during LiveKit cleanup: $e');
     }
@@ -2430,6 +2535,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     _controlsAnimationController.dispose();
     _reactionsAnimationController.dispose();
     _setAndroidCallActive(false);
+    AndroidPipService.setAutoPipEnabled(false);
     
     super.dispose();
   }

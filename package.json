@@ -23,5 +23,8 @@
   "homepage": "https://github.com/bobbygenerik/3v-repo#readme",
   "devDependencies": {
     "@google/gemini-cli": "^0.21.3"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.6.0"
   }
 }
