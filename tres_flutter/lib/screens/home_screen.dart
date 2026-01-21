@@ -7,6 +7,7 @@ import '../utils/web_reload_stub.dart'
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
@@ -42,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   bool _isLoadingHistory = true;
   bool _searchHasFocus = false;
   StreamSubscription<QuerySnapshot>? _callHistorySub;
+  StreamSubscription<User?>? _authSub;
   final Map<String, Map<String, dynamic>> _userCache = {};
   
   // Call services
@@ -79,6 +81,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         _loadContacts();
         _loadCallHistory();
       }
+    });
+
+    _authSub = context.read<AuthService>().authStateChanges.listen((user) {
+      if (!mounted) return;
+      if (user == null) {
+        setState(() {
+          _contacts = [];
+          _filteredContacts = [];
+          _callHistory = [];
+          _isLoadingContacts = false;
+          _isLoadingHistory = false;
+        });
+        _callHistorySub?.cancel();
+        return;
+      }
+
+      _loadContacts();
+      _loadCallHistory();
     });
     
     _searchController.addListener(_filterContacts);
@@ -291,6 +311,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   @override
   @override
   void dispose() {
+    _authSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -374,6 +395,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     if (currentUser == null) {
       setState(() => _isLoadingHistory = false);
       return;
+    }
+
+    if (mounted) {
+      setState(() => _isLoadingHistory = true);
     }
 
     // Cancel any previous subscription

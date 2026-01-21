@@ -289,9 +289,32 @@ class CallSignalingService {
       // can show call history without requiring backend functions.
       try {
         final participants = <String>[currentUser.uid];
-        if (otherUserId != null && otherUserId.isNotEmpty && otherUserId != currentUser.uid) {
+
+        if (otherUserId != null &&
+            otherUserId.isNotEmpty &&
+            otherUserId != currentUser.uid) {
           participants.add(otherUserId);
+        } else {
+          try {
+            final sessionSnapshot = await _firestore
+                .collection('call_sessions')
+                .where('roomName', isEqualTo: roomName)
+                .limit(1)
+                .get();
+            if (sessionSnapshot.docs.isNotEmpty) {
+              final data = sessionSnapshot.docs.first.data();
+              final sessionParticipants = List<String>.from(data['participants'] ?? []);
+              for (final uid in sessionParticipants) {
+                if (!participants.contains(uid)) {
+                  participants.add(uid);
+                }
+              }
+            }
+          } catch (e) {
+            debugPrint('⚠️ Failed to load call session participants: $e');
+          }
         }
+
         await _firestore.collection('calls').add({
           'roomName': roomName,
           'participants': participants,
