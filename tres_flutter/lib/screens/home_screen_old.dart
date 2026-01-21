@@ -43,7 +43,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _loadFavorites();
     _loadContacts();
     _loadCallHistory();
     _favoritesSub = _contactService.getFavoritesStream().listen((favorites) {
@@ -89,29 +88,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _favoritesSub?.cancel();
     _tickerController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadFavorites() async {
-    final currentUser = context.read<AuthService>().currentUser;
-    if (currentUser == null) return;
-
-    _favoritesSub?.cancel();
-    _favoritesSub = FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser.uid)
-        .snapshots()
-        .listen((snapshot) {
-      if (snapshot.exists) {
-        final data = snapshot.data();
-        if (data != null && data.containsKey('favorites')) {
-          setState(() {
-            _favoriteIds = List<String>.from(data['favorites'] ?? []);
-          });
-        }
-      }
-    }, onError: (e) {
-      debugPrint('Error listening to favorites: $e');
-    });
   }
 
   Future<void> _loadContacts() async {

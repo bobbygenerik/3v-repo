@@ -478,7 +478,6 @@ class LiveKitService extends ChangeNotifier {
             ? FaceTimeVideoPresets.androidExtreme1440p60
             : FaceTimeVideoPresets.h1440;
       case QualityTier.high:
-      default:
         return _selectCapturePreset();
     }
   }
