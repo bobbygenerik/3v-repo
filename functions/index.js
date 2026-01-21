@@ -351,32 +351,36 @@ exports.markStaleCallSignals = functions.scheduler.onSchedule(
       const db = admin.firestore();
       const cutoff = new Date(Date.now() - 60 * 1000); // 60 seconds ago
 
-      // Iterate users in batches to avoid memory spikes
-      const usersSnapshot = await db.collection('users').get();
+      // Use Collection Group Query to find all stale signals across all users efficiently
+      const pendingQuery = await db.collectionGroup('callSignals')
+        .where('status', '==', 'pending')
+        .where('timestamp', '<', cutoff)
+        .get();
+
       let totalMarked = 0;
 
-      for (const userDoc of usersSnapshot.docs) {
-        const pendingQuery = await db
-          .collection('users')
-          .doc(userDoc.id)
-          .collection('callSignals')
-          .where('status', '==', 'pending')
-          .where('timestamp', '<', cutoff)
-          .get();
+      if (!pendingQuery.empty) {
+        // Process in batches of 500 (Firestore batch limit)
+        const chunks = [];
+        const docs = pendingQuery.docs;
+        const BATCH_SIZE = 500;
 
-        if (pendingQuery.empty) continue;
+        for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+          chunks.push(docs.slice(i, i + BATCH_SIZE));
+        }
 
-        const batch = db.batch();
-        pendingQuery.forEach(doc => {
-          batch.update(doc.ref, {
-            status: 'missed',
-            missedTimestamp: admin.firestore.FieldValue.serverTimestamp(),
-            missedByCleanup: true
+        for (const chunk of chunks) {
+          const batch = db.batch();
+          chunk.forEach(doc => {
+            batch.update(doc.ref, {
+              status: 'missed',
+              missedTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+              missedByCleanup: true
+            });
+            totalMarked++;
           });
-          totalMarked++;
-        });
-
-        await batch.commit();
+          await batch.commit();
+        }
       }
 
       console.log(`✅ markStaleCallSignals complete: Marked ${totalMarked} pending call signals as missed`);
