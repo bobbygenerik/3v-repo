@@ -518,8 +518,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               // Star icon
               IconButton(
                 icon: Icon(
-                  _favoriteIds.contains(contact['uid']) ? Icons.star : Icons.star_border,
-                  color: _favoriteIds.contains(contact['uid']) ? AppColors.accentBlue : Colors.white54,
+                  _favoriteIds.contains(contact['uid'])
+                      ? Icons.star
+                      : Icons.star_border,
+                  color: _favoriteIds.contains(contact['uid'])
+                      ? AppColors.accentBlue
+                      : Colors.white54,
                   size: 24,
                 ),
                 onPressed: () async {

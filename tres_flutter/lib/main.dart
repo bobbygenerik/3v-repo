@@ -14,6 +14,7 @@ import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
 import 'services/livekit_service.dart';
 import 'services/guest_link_service.dart';
+import 'services/contact_service.dart';
 import 'services/notification_service.dart';
 import 'services/audio_device_service.dart';
 // MediaPipe removed: settings and processing removed
@@ -90,6 +91,7 @@ class TresApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => GuestLinkService()),
         ChangeNotifierProvider(create: (_) => AudioDeviceService()),
+        ChangeNotifierProvider(create: (_) => ContactService()),
       ],
       child: MaterialApp(
         title: 'Três3',
