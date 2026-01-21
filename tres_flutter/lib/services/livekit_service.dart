@@ -161,6 +161,8 @@ class LiveKitService extends ChangeNotifier {
   final WebPipService _pipService = WebPipService();
   // MediaPipe removed: no processor or settings retained
   
+  AudioCaptureOptions? _customAudioCaptureOptions;
+
   /// Get the PiP service for web platforms
   WebPipService get pipService => _pipService;
   
@@ -791,11 +793,22 @@ class LiveKitService extends ChangeNotifier {
   }
 
   AudioCaptureOptions _buildAudioCaptureOptions() {
+    if (_customAudioCaptureOptions != null) {
+      return _customAudioCaptureOptions!;
+    }
     return const AudioCaptureOptions(
       echoCancellation: true,
       noiseSuppression: true,
       autoGainControl: true,
     );
+  }
+
+  /// Update audio capture options and apply if microphone is active
+  Future<void> updateAudioCaptureOptions(AudioCaptureOptions options) async {
+    _customAudioCaptureOptions = options;
+    if (isMicrophoneEnabled) {
+      await recoverAudio(forceRecreate: true);
+    }
   }
   
   /// Disconnect from room and cleanup
