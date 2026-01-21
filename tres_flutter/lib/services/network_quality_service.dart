@@ -97,13 +97,13 @@ class NetworkQualityService extends ChangeNotifier {
   int getRecommendedVideoBitrate() {
     switch (_currentQuality) {
       case NetworkQuality.excellent:
-        return 10000 * 1000; // 10 Mbps (1080p/1440p)
+        return 25000 * 1000; // 25 Mbps (4K/1440p headroom)
       case NetworkQuality.good:
-        return 6500 * 1000; // 6.5 Mbps (1080p)
+        return 20000 * 1000; // 20 Mbps (1440p 60fps)
       case NetworkQuality.fair:
-        return 3500 * 1000; // 3.5 Mbps (720p)
+        return 12000 * 1000; // 12 Mbps (enhanced 1080p)
       case NetworkQuality.poor:
-        return 1200 * 1000;  // 1.2 Mbps (360-480p)
+        return 6000 * 1000;  // 6 Mbps (720p floor)
       case NetworkQuality.offline:
         return 0;
     }

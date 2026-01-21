@@ -254,15 +254,15 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
   int getRecommendedVideoBitrate() {
     switch (_currentStats.quality) {
       case NetworkQuality.excellent:
-        return 8000000; // 8 Mbps
+        return 15000000; // 15 Mbps
       case NetworkQuality.good:
-        return 5000000; // 5 Mbps
+        return 10000000; // 10 Mbps
       case NetworkQuality.fair:
-        return 2500000; // 2.5 Mbps
+        return 6000000; // 6 Mbps
       case NetworkQuality.poor:
-        return 1000000; // 1 Mbps
+        return 3000000; // 3 Mbps
       default:
-        return 1500000; // 1.5 Mbps fallback
+        return 5000000; // 5 Mbps fallback
     }
   }
 

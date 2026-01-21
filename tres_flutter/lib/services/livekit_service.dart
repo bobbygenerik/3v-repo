@@ -26,27 +26,27 @@ class FaceTimeVideoPresets {
   // Cross-Platform 1080p HQ
   static final h1080 = VideoParameters(
     dimensions: VideoDimensions(1920, 1080),
-    // Target 1080p at ~5 Mbps as per brief (conservative)
-    encoding: VideoEncoding(maxBitrate: 6_000_000, maxFramerate: 30),
+    // Target 1080p at ~8 Mbps for FaceTime-level quality
+    encoding: VideoEncoding(maxBitrate: 8_000_000, maxFramerate: 30),
   );
 
   // Cross-Platform 720p Fallback
   static final h720 = VideoParameters(
     dimensions: VideoDimensions(1280, 720),
-    // Target 720p at ~2 Mbps as per brief
-    encoding: VideoEncoding(maxBitrate: 2_000_000, maxFramerate: 30),
+    // Target 720p at ~3 Mbps for improved clarity
+    encoding: VideoEncoding(maxBitrate: 3_000_000, maxFramerate: 30),
   );
 
   // 720p Low-FPS Stability (never drop below 720p)
   static final h720LowFps = VideoParameters(
     dimensions: VideoDimensions(1280, 720),
-    encoding: VideoEncoding(maxBitrate: 1_500_000, maxFramerate: 12),
+    encoding: VideoEncoding(maxBitrate: 2_000_000, maxFramerate: 12),
   );
 
   // 720p Emergency (minimum FPS, last resort)
   static final h720Emergency = VideoParameters(
     dimensions: VideoDimensions(1280, 720),
-    encoding: VideoEncoding(maxBitrate: 1_200_000, maxFramerate: 10),
+    encoding: VideoEncoding(maxBitrate: 1_800_000, maxFramerate: 10),
   );
 
   // Android Ultra-HQ 1080p+
@@ -85,16 +85,6 @@ class FaceTimeVideoPresets {
     encoding: VideoEncoding(maxBitrate: 5_000_000, maxFramerate: 30),
   );
 
-  // LOW-END DEVICE OPTIMIZATIONS
-  static final lowEnd480p = VideoParameters(
-    dimensions: VideoDimensions(640, 480),
-    encoding: VideoEncoding(maxBitrate: 2_000_000, maxFramerate: 15),
-  );
-
-  static final lowEnd360p = VideoParameters(
-    dimensions: VideoDimensions(480, 360),
-    encoding: VideoEncoding(maxBitrate: 1_000_000, maxFramerate: 15),
-  );
 }
 
 class LiveKitService extends ChangeNotifier {
@@ -114,6 +104,8 @@ class LiveKitService extends ChangeNotifier {
   QualityTier _currentQualityTier = QualityTier.high;
   DateTime? _lastQualityTierChange;
   DateTime? _qualityUpgradeGateStart;
+  DateTime? _qualityDownshiftStart;
+  DateTime? _qualityUpshiftStart;
   final List<double> _recentSendBitrates = [];
   final List<double> _recentAvailableOutgoingBitrates = [];
   VideoParameters? _currentCapturePreset;
@@ -412,13 +404,13 @@ class LiveKitService extends ChangeNotifier {
   }
 
   QualityTier _determineTargetQualityTier(CallStats stats) {
-    if (_isSafariPwa) return QualityTier.medium;
+    if (_isSafariPwa) return QualityTier.high;
     if (_currentCallType != CallType.androidAndroid) return QualityTier.high;
 
     final networkType = _networkService.getCurrentNetworkType();
     if (networkType != 'wifi' && networkType != '5g') {
       _qualityUpgradeGateStart = null;
-      return QualityTier.medium;
+      return QualityTier.high;
     }
 
     final packetLoss = stats.videoPacketLoss;
@@ -427,11 +419,11 @@ class LiveKitService extends ChangeNotifier {
 
     if (packetLoss >= 8.0 || rttMs >= 450.0 || jitterMs >= 80.0) {
       _qualityUpgradeGateStart = null;
-      return QualityTier.low;
+      return QualityTier.medium;
     }
     if (packetLoss >= 4.0 || rttMs >= 300.0 || jitterMs >= 50.0) {
       _qualityUpgradeGateStart = null;
-      return QualityTier.medium;
+      return QualityTier.high;
     }
 
     if (!_supports1440p60() && !_supports4K()) {
@@ -521,12 +513,28 @@ class LiveKitService extends ChangeNotifier {
 
     final now = DateTime.now();
     if (_lastQualityTierChange != null &&
-        now.difference(_lastQualityTierChange!) < const Duration(seconds: 15)) {
+        now.difference(_lastQualityTierChange!) < const Duration(seconds: 30)) {
       return;
+    }
+
+    if (targetTier.index < _currentQualityTier.index) {
+      _qualityUpshiftStart = null;
+      _qualityDownshiftStart ??= now;
+      if (now.difference(_qualityDownshiftStart!) < const Duration(seconds: 20)) {
+        return;
+      }
+    } else {
+      _qualityDownshiftStart = null;
+      _qualityUpshiftStart ??= now;
+      if (now.difference(_qualityUpshiftStart!) < const Duration(seconds: 30)) {
+        return;
+      }
     }
 
     _currentQualityTier = targetTier;
     _lastQualityTierChange = now;
+    _qualityDownshiftStart = null;
+    _qualityUpshiftStart = null;
 
     final preset = _selectPresetForTier(targetTier);
     await _recreateAndPublishVideoTrack(preset);
@@ -590,9 +598,22 @@ class LiveKitService extends ChangeNotifier {
       factor = 0.85;
     }
 
-    final minBitrate = _isUltraHQMode ? 4_000_000 : 1_500_000;
+    final minBitrate = _getMinBitrateForPreset(_currentCapturePreset) ??
+        (_isUltraHQMode ? 6_000_000 : 3_000_000);
     final target = (baseBitrate * factor).round();
     return target.clamp(minBitrate, baseBitrate);
+  }
+
+  int? _getMinBitrateForPreset(VideoParameters? preset) {
+    final dims = preset?.dimensions;
+    if (dims == null) return null;
+    if (dims.width >= 1920) {
+      return 6_000_000;
+    }
+    if (dims.width >= 1280) {
+      return 3_000_000;
+    }
+    return 2_000_000;
   }
 
   bool _shouldEnableSimulcast() {
@@ -642,9 +663,11 @@ class LiveKitService extends ChangeNotifier {
       case CallType.androidAndroid:
         return FaceTimeVideoPresets.h1080;
       case CallType.androidIOSPWA:
-        return FaceTimeVideoPresets.h720;
+        return FaceTimeVideoPresets.h1080;
+      case CallType.iosPWAIOSPWA:
+        return FaceTimeVideoPresets.h1080;
       default:
-        return FaceTimeVideoPresets.h720;
+        return FaceTimeVideoPresets.h1080;
     }
   }
   
@@ -922,13 +945,22 @@ class LiveKitService extends ChangeNotifier {
 
     final now = DateTime.now();
     if (_lastAdaptiveChange != null &&
-        now.difference(_lastAdaptiveChange!) < const Duration(seconds: 12)) {
+        now.difference(_lastAdaptiveChange!) < const Duration(seconds: 30)) {
       return;
     }
 
     final previous = _currentAdaptiveBitrate ?? baseBitrate;
     final changeRatio = (targetBitrate - previous).abs() / previous;
     if (changeRatio < 0.1) return;
+
+    if (targetBitrate < previous) {
+      _qualityDownshiftStart ??= now;
+      if (now.difference(_qualityDownshiftStart!) < const Duration(seconds: 12)) {
+        return;
+      }
+    } else {
+      _qualityDownshiftStart = null;
+    }
 
     final preset = _currentCapturePreset ?? FaceTimeVideoPresets.h720;
     final processor = null;
