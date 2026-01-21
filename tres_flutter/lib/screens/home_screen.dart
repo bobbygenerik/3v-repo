@@ -315,9 +315,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       // Get full user data for each contact using batched queries
       final List<Map<String, dynamic>> loadedContacts = [];
       final contactIds = contactsSnapshot.docs.map((doc) => doc.id).toList();
-      
-      // Bolt Optimization: Fetch contacts in batches of 10 to avoid N+1 queries
-      // This reduces reads from N to N/10 and significantly speeds up loading
+      final Map<String, Map<String, dynamic>> contactsMap = {};
+
+      // Bolt Optimization: Fetch contacts in batches of 10 to avoid N+1 queries.
+      // This reduces reads from N to N/10 and significantly speeds up loading.
       for (var i = 0; i < contactIds.length; i += 10) {
         final end = (i + 10 < contactIds.length) ? i + 10 : contactIds.length;
         final chunk = contactIds.sublist(i, end);
@@ -325,33 +326,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         if (chunk.isEmpty) continue;
 
         try {
-          final usersSnapshot = await FirebaseFirestore.instance
+          final chunkSnapshot = await FirebaseFirestore.instance
               .collection('users')
               .where(FieldPath.documentId, whereIn: chunk)
               .get();
-          
-          for (var userDoc in usersSnapshot.docs) {
-            if (userDoc.exists) {
-              final data = userDoc.data();
-              // data is Map<String, dynamic> in cloud_firestore
 
-              final contactUid = userDoc.id;
-              final photoURL = data['photoURL'];
-              // debugPrint('📸 Contact ${data['displayName']}: photoURL = "$photoURL"');
+          for (var userDoc in chunkSnapshot.docs) {
+            if (!userDoc.exists) continue;
+            final data = userDoc.data();
+            final contactUid = userDoc.id;
 
-              loadedContacts.add({
-                'uid': contactUid,
-                'name': data['displayName'] ?? data['name'] ?? 'Unknown',
-                'email': data['email'] ?? '',
-                'photoURL': data['photoURL'],
-              });
-            }
+            contactsMap[contactUid] = {
+              'uid': contactUid,
+              'name': data['displayName'] ?? data['name'] ?? 'Unknown',
+              'email': data['email'] ?? '',
+              'photoURL': data['photoURL'],
+            };
           }
         } catch (e) {
           debugPrint('Error loading contact chunk: $e');
         }
       }
 
+      // Reconstruct list in original order
+      for (var contactId in contactIds) {
+        if (contactsMap.containsKey(contactId)) {
+          loadedContacts.add(contactsMap[contactId]!);
+        } else {
+          debugPrint('⚠️ Contact $contactId exists in list but user data not found');
+        }
+      }
       setState(() {
         _contacts = loadedContacts;
         _filteredContacts = _contacts;
