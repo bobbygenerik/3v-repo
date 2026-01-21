@@ -42,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   bool _isLoadingHistory = true;
   bool _searchHasFocus = false;
   StreamSubscription<QuerySnapshot>? _callHistorySub;
+  final Map<String, Map<String, dynamic>> _userCache = {};
   
   // Call services
   final CallListenerService _callListener = CallListenerService();
@@ -386,6 +387,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         .limit(50)
         .snapshots()
         .listen((snapshot) async {
+      // 1. Collect all unique participant IDs that need fetching
+      final Set<String> participantIdsToFetch = {};
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final participants = List<String>.from(data['participants'] ?? []);
+
+        for (final participantId in participants) {
+          if (participantId != currentUser.uid && !_userCache.containsKey(participantId)) {
+            participantIdsToFetch.add(participantId);
+          }
+        }
+      }
+
+      // 2. Fetch missing users in parallel
+      if (participantIdsToFetch.isNotEmpty) {
+        await Future.wait(participantIdsToFetch.map((uid) async {
+          try {
+            final userDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(uid)
+                .get();
+            if (userDoc.exists) {
+              final userData = userDoc.data();
+              if (userData != null) {
+                _userCache[uid] = userData;
+              }
+            }
+          } catch (e) {
+            debugPrint('Error fetching user $uid: $e');
+          }
+        }));
+      }
+
+      // 3. Construct history list using cache
       final List<Map<String, dynamic>> history = [];
 
       for (var doc in snapshot.docs) {
@@ -396,17 +432,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         String otherParticipantName = 'Unknown';
         for (final participantId in participants) {
           if (participantId != currentUser.uid) {
-            try {
-              final userDoc = await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(participantId)
-                  .get();
-              if (userDoc.exists) {
-                final userData = userDoc.data();
-                otherParticipantName = userData?['displayName'] ?? userData?['name'] ?? userData?['email']?.split('@')[0] ?? 'Unknown User';
-              }
-            } catch (e) {
-              debugPrint('Error resolving participant name: $e');
+            final userData = _userCache[participantId];
+            if (userData != null) {
+              otherParticipantName = userData['displayName'] ?? userData['name'] ?? userData['email']?.split('@')[0] ?? 'Unknown User';
             }
             break;
           }
