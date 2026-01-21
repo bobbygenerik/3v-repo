@@ -86,36 +86,31 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
   
   void _setupVideoTrack() async {
     VideoTrack? track;
-    RemoteTrackPublication? remotePub;
     
     for (final pub in widget.participant.videoTrackPublications) {
       if (pub.subscribed && pub.track != null) {
         track = pub.track as VideoTrack;
-        if (pub is RemoteTrackPublication) {
-          remotePub = pub;
-        }
         break;
       }
     }
     
     // Subscribe if needed
     if (track == null && !widget.isLocal) {
+      final futures = <Future>[];
       for (final pub in widget.participant.videoTrackPublications) {
         if (!pub.subscribed && pub is RemoteTrackPublication) {
-          try {
-            await pub.subscribe();
-            remotePub = pub;
-          } catch (e) {
+          futures.add(pub.subscribe().catchError((e) {
             debugPrint('❌ Failed to subscribe to video: $e');
-          }
+          }));
         }
+      }
+      if (futures.isNotEmpty) {
+        await Future.wait(futures);
       }
     }
     
     // Request appropriate quality for this view
-    if (remotePub != null) {
-      _requestQualityForPublication(remotePub);
-    }
+    _requestAppropriateQuality();
     
     if (mounted && track != _videoTrack) {
       setState(() => _videoTrack = track);
