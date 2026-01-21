@@ -296,28 +296,36 @@ exports.cleanupOldCallSignals = functions.scheduler.onSchedule(
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
       const db = admin.firestore();
       
-      // Get all users
-      const usersSnapshot = await db.collection('users').get();
+      // Use Collection Group query to find all callSignals across all users efficiently
+      const oldSignalsSnapshot = await db.collectionGroup('callSignals')
+        .where('timestamp', '<', oneHourAgo)
+        .get();
+
       let totalDeleted = 0;
-      
-      for (const userDoc of usersSnapshot.docs) {
-        const oldSignals = await db
-          .collection('users')
-          .doc(userDoc.id)
-          .collection('callSignals')
-          .where('timestamp', '<', oneHourAgo)
-          .get();
-        
-        // Delete old signals in batches
-        const batch = db.batch();
-        oldSignals.forEach(doc => {
-          batch.delete(doc.ref);
+
+      if (!oldSignalsSnapshot.empty) {
+        // Delete in batches of 500 (Firestore limit)
+        const batches = [];
+        let currentBatch = db.batch();
+        let operationCount = 0;
+
+        oldSignalsSnapshot.forEach((doc) => {
+          currentBatch.delete(doc.ref);
+          operationCount++;
           totalDeleted++;
+
+          if (operationCount >= 500) {
+            batches.push(currentBatch.commit());
+            currentBatch = db.batch();
+            operationCount = 0;
+          }
         });
-        
-        if (oldSignals.size > 0) {
-          await batch.commit();
+
+        if (operationCount > 0) {
+          batches.push(currentBatch.commit());
         }
+
+        await Promise.all(batches);
       }
       
       console.log(`✅ Cleanup complete: Deleted ${totalDeleted} old call signals`);
