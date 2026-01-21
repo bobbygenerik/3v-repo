@@ -3,7 +3,7 @@ const admin = require('firebase-admin');
 const { AccessToken, EgressClient, EncodedFileOutput, RoomCompositeEgressRequest } = require('livekit-server-sdk');
 const { onRequest } = require('firebase-functions/v2/https');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
-// const { queueFailedNotification } = require('./retryQueue');  // Temporarily disabled - needs firebase-functions upgrade
+const { queueFailedNotification } = require('./retryQueue');
 
 admin.initializeApp();
 
@@ -709,13 +709,12 @@ exports.joinGuest = onRequest(async (req, res) => {
           console.log('✅ Notification sent to host, response:', resp);
         } catch (sendErr) {
           console.error('❌ Failed to send notification to host:', sendErr);
-          // TODO: Queue for retry with exponential backoff (requires firebase-functions upgrade)
-          // await queueFailedNotification(messagePayload, sendErr, {
-          //   guestName: invitation.guestName,
-          //   roomName: invitation.roomName,
-          //   invitationId: invitationId,
-          //   hostUserId: invitation.hostUserId
-          // });
+          await queueFailedNotification(messagePayload, sendErr, {
+            guestName: invitation.guestName,
+            roomName: invitation.roomName,
+            invitationId: invitationId,
+            hostUserId: invitation.hostUserId
+          });
         }
       } else {
         console.warn('⚠️ Host has no FCM token');
@@ -822,10 +821,10 @@ exports.debugSendTestNotification = onRequest(async (req, res) => {
   }
 });
 
-// Export retry queue functions (temporarily disabled - requires firebase-functions upgrade)
-// const retryQueue = require('./retryQueue');
-// exports.retryFailedNotifications = retryQueue.retryFailedNotifications;
-// exports.cleanupOldNotifications = retryQueue.cleanupOldNotifications;
+// Export retry queue functions
+const retryQueue = require('./retryQueue');
+exports.retryFailedNotifications = retryQueue.retryFailedNotifications;
+exports.cleanupOldNotifications = retryQueue.cleanupOldNotifications;
 
 /**
  * Cloud Function: Start LiveKit Egress recording
