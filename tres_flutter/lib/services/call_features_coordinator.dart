@@ -5,7 +5,6 @@ import 'device_capability_service.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'chat_service.dart' as chat;
 import 'reaction_service.dart';
-import 'cloud_recording_service.dart';
 import 'e2e_encryption_service.dart';
 // ScreenShare feature removed; keep no-op compatibility methods below.
 import 'call_stats_service.dart';
@@ -24,7 +23,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   // Services
   final chat.ChatService chatService = chat.ChatService();
   final ReactionService reactionService = ReactionService();
-  final CloudRecordingService recordingService = CloudRecordingService();
   final E2EEncryptionService encryptionService = E2EEncryptionService();
   // ScreenShareService removed to fully disable feature.
   final CallStatsService statsService = CallStatsService();
@@ -40,7 +38,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
   // Feature states
   bool _isChatOpen = false;
-  bool _isRecording = false;
   bool _isEncrypted = false;
   bool _isScreenSharing = false;
   bool _isSpatialAudioEnabled = false;
@@ -55,7 +52,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
   // Getters for feature states
   bool get isChatOpen => _isChatOpen;
-  bool get isRecording => _isRecording;
   bool get isEncrypted => _isEncrypted;
   bool get isScreenSharing => _isScreenSharing;
   bool get isSpatialAudioEnabled => _isSpatialAudioEnabled;
@@ -84,9 +80,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   double get beautyIntensity => 0.0;
 
   // Recording & Encryption status
-  RecordingStatus get recordingStatus => recordingService.status;
   EncryptionStatus get encryptionStatus => encryptionService.status;
-  RecordingMetadata? get currentRecording => recordingService.currentRecording;
   CallStats get currentCallStats => statsService.currentStats;
   CallConnectionQuality get connectionQuality => statsService.currentQuality;
   List<ParticipantTile> get participantTiles => layoutManager.participants.isEmpty
@@ -112,8 +106,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     // Initialize services
     chatService.initialize(room);
     reactionService.initialize(room);
-
-    debugPrint('⚠️ MediaPipe support removed; ML features disabled');
 
     // Apply user preferences (if present) so features the user enabled in Settings
     try {
@@ -156,7 +148,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     // Initialize Phase 5 services
     try {
       // ScreenShare removed; skip initialization.
-      debugPrint('ℹ️ ScreenShare feature removed: skipping initialization');
       await statsService.initialize(room);
       await layoutManager.initialize(room);
       debugPrint('✅ Phase 5 services initialized');
@@ -168,7 +159,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     chatService.addListener(_onChatChanged);
     reactionService.addListener(_onReactionChanged);
     // ML service listeners removed
-    recordingService.addListener(_onRecordingChanged);
     encryptionService.addListener(_onEncryptionChanged);
     // No-op: screen share listeners removed
     // Stats overlay handles its own updates directly from statsService
@@ -191,12 +181,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
   /// Reaction callbacks
   void _onReactionChanged() {
-    notifyListeners();
-  }
-
-  /// Recording callback
-  void _onRecordingChanged() {
-    _isRecording = recordingService.status == RecordingStatus.recording;
     notifyListeners();
   }
 
@@ -238,41 +222,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   /// Send reaction
   Future<bool> sendReaction(ReactionType type) async {
     return await reactionService.sendReaction(type);
-  }
-
-  /// Toggle recording
-  Future<void> toggleRecording() async {
-    if (_isRecording) {
-      // Stop recording
-      final metadata = await recordingService.stopRecording();
-      if (metadata != null) {
-        debugPrint('Recording stopped: ${metadata.fileName}');
-      }
-    } else {
-      // Start recording
-      // Note: callId should be passed from the call screen
-      final callId = 'call_${DateTime.now().millisecondsSinceEpoch}';
-      final success = await recordingService.startRecording(callId);
-      if (success) {
-        debugPrint('Recording started');
-      }
-    }
-    notifyListeners();
-  }
-
-  /// Start recording with explicit call ID
-  Future<bool> startRecording(String callId, {String? roomName}) async {
-    return await recordingService.startRecording(callId, roomName: roomName);
-  }
-
-  /// Stop recording
-  Future<RecordingMetadata?> stopRecording() async {
-    return await recordingService.stopRecording();
-  }
-
-  /// Get recording metadata
-  RecordingMetadata? getRecording(String callId) {
-    return recordingService.getRecording(callId);
   }
 
   /// Toggle encryption
@@ -446,7 +395,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     chatService.removeListener(_onChatChanged);
     reactionService.removeListener(_onReactionChanged);
     // ML service listeners removed
-    recordingService.removeListener(_onRecordingChanged);
     encryptionService.removeListener(_onEncryptionChanged);
     // Stats listener removed to prevent unnecessary rebuilds
     layoutManager.removeListener(_onLayoutChanged);
@@ -457,7 +405,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     // ML services removed - no disposal needed
 
     // Dispose Phase 4 services
-    recordingService.dispose();
     encryptionService.dispose();
 
     // Dispose Phase 5 services

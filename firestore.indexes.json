@@ -47,6 +47,24 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "callerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "recipientId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "call_invitations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "recipientId",
           "order": "ASCENDING"
         },

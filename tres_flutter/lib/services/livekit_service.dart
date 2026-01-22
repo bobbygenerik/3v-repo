@@ -368,12 +368,17 @@ class LiveKitService extends ChangeNotifier {
     final presetEncoding = preset?.encoding;
     
     int finalBitrate = presetEncoding?.maxBitrate ?? deviceMaxBitrate;
-    int finalFramerate = deviceMaxFramerate;
+    int finalFramerate = presetEncoding?.maxFramerate ?? deviceMaxFramerate;
     
     if (_isUltraHQMode) {
-      // Android Ultra-HQ mode: Higher bitrates allowed
-      finalBitrate = _supports60fps() ? 10_000_000 : 8_000_000;
-      if (_supports60fps()) finalFramerate = 60;
+      // Android Ultra-HQ mode: Prefer preset target, then fall back to device caps.
+      if (presetEncoding != null) {
+        finalBitrate = presetEncoding.maxBitrate ?? finalBitrate;
+        finalFramerate = presetEncoding.maxFramerate ?? finalFramerate;
+      } else {
+        finalBitrate = _supports60fps() ? 10_000_000 : 8_000_000;
+        if (_supports60fps()) finalFramerate = 60;
+      }
     } else {
       // Standard mode: Respect preset and clamp to device + network conditions.
       final networkCap = _networkService.getRecommendedVideoBitrate();
@@ -381,13 +386,15 @@ class LiveKitService extends ChangeNotifier {
         finalBitrate = finalBitrate.clamp(1_000_000, networkCap);
       }
       finalBitrate = finalBitrate.clamp(1_000_000, deviceMaxBitrate);
-      if (presetEncoding?.maxFramerate != null) {
-        finalFramerate = presetEncoding!.maxFramerate!;
-      }
     }
+    finalBitrate = finalBitrate.clamp(1_000_000, deviceMaxBitrate);
+    finalFramerate = finalFramerate.clamp(10, deviceMaxFramerate);
     
+    final callTypeLabel = (_currentCallType == CallType.mixedUnknown && remoteParticipants.isEmpty)
+        ? 'pending'
+        : _currentCallType.toString();
     debugPrint('🎥 FaceTime-Quality Encoding:');
-    debugPrint('   📞 Call Type: $_currentCallType');
+    debugPrint('   📞 Call Type: $callTypeLabel');
     debugPrint('   🚀 Ultra-HQ Mode: $_isUltraHQMode');
     debugPrint('   📡 Codec: $_currentVideoCodec');
     debugPrint('   📊 Bitrate: ${finalBitrate / 1000000} Mbps');
@@ -711,8 +718,11 @@ class LiveKitService extends ChangeNotifier {
       // Default simulcast behavior: disable for 1:1 until multiparty detected.
       _isSimulcastEnabled = _shouldEnableSimulcast();
       
+      final callTypeLabel = (_currentCallType == CallType.mixedUnknown && remoteParticipants.isEmpty)
+          ? 'pending'
+          : _currentCallType.toString();
       debugPrint('🎯 FaceTime-Quality Connection Setup:');
-      debugPrint('   📞 Call Type: $_currentCallType');
+      debugPrint('   📞 Call Type: $callTypeLabel');
       debugPrint('   🚀 Ultra-HQ Mode: $_isUltraHQMode');
       debugPrint('   📡 Preferred Codec: $_currentVideoCodec');
       debugPrint('   🔄 Simulcast: $_isSimulcastEnabled (disabled for 1-to-1)');
@@ -1410,9 +1420,11 @@ class LiveKitService extends ChangeNotifier {
   }
 
   RTCConfiguration _buildRtcConfiguration() {
-    final iceServers = _parseIceServers();
-    if (iceServers == null || iceServers.isEmpty) {
+    final iceServers = _parseIceServers() ?? _defaultIceServers();
+    if (iceServers.isEmpty) {
       debugPrint('⚠️ No ICE servers configured. TURN is required for reliable NAT traversal.');
+    } else if (!IceServerConfig.isConfigured) {
+      debugPrint('⚠️ Using STUN-only fallback ICE servers. Configure TURN for reliability.');
     }
     return RTCConfiguration(
       iceServers: iceServers,
@@ -1454,6 +1466,14 @@ class LiveKitService extends ChangeNotifier {
       debugPrint('⚠️ Failed to parse LIVEKIT_ICE_SERVERS_JSON: $e');
       return null;
     }
+  }
+
+  List<RTCIceServer> _defaultIceServers() {
+    // STUN-only fallback to avoid empty ICE config; TURN strongly recommended.
+    return const [
+      RTCIceServer(urls: ['stun:stun.l.google.com:19302']),
+      RTCIceServer(urls: ['stun:stun1.l.google.com:19302']),
+    ];
   }
 
   List<String> _buildUrlCandidates(String primaryUrl) {

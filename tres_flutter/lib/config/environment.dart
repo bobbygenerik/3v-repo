@@ -45,7 +45,7 @@ class Environment {
   // Feature Flags
   static const bool enableMLFeatures = false;
   static const bool enableE2EEncryption = true;
-  static const bool enableCloudRecording = true;
+  static const bool enableCloudRecording = false;
   static const bool enableScreenShare = false;
   static const bool enableBackgroundMode = true;
   
@@ -63,11 +63,6 @@ class Environment {
   static const int maxMessageLength = 500;
   static const int maxChatHistory = 100;
   
-  // Recording Configuration
-  static const int maxRecordingDuration = 3600; // 1 hour in seconds
-  static const String recordingFormat = 'mp4';
-  static const String recordingQuality = 'high';
-  
   // Development Mode
   static const bool isDevelopment = bool.fromEnvironment(
     'DEVELOPMENT',
@@ -79,9 +74,6 @@ class Environment {
   
   // API Endpoints
   static String get generateTokenEndpoint => '$functionsBaseUrl/generateGuestToken';
-  static String get startRecordingEndpoint => '$functionsBaseUrl/startRecording';
-  static String get stopRecordingEndpoint => '$functionsBaseUrl/stopRecording';
-  
   /// Validate that all required configuration is set
   static bool validate() {
     if (liveKitUrl.contains('your-livekit-server.com')) {

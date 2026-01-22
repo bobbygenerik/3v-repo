@@ -1968,22 +1968,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                         },
                       ),
                     ],
-                    ListTile(
-                      leading: Icon(
-                        menuCoordinator.isRecording ? Icons.stop : Icons.fiber_manual_record,
-                        color: menuCoordinator.isRecording ? Colors.red : const Color(0xFF6B7FB8),
-                      ),
-                      title: Text(
-                        menuCoordinator.isRecording ? 'Stop Recording' : 'Start Recording',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      onTap: () async {
-                        await menuCoordinator.toggleRecording();
-                        if (!mounted) return;
-                        Navigator.pop(context);
-                      },
-                    ),
-
                     const Divider(color: Color(0xFF2C2C2E)),
                     _buildMoreSectionLabel('Insights'),
                     ListTile(

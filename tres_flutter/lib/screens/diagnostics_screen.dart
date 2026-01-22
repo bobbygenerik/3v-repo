@@ -83,7 +83,6 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           'Features': {
             'MediaPipe Vision Features': Environment.enableMLFeatures.toString(),
             'E2E Encryption': Environment.enableE2EEncryption.toString(),
-            'Recording': Environment.enableCloudRecording.toString(),
           },
           'App': {
             'Platform': Platform.operatingSystem,

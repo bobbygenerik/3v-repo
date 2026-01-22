@@ -17,8 +17,24 @@ const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
 const LIVEKIT_WS_URL = process.env.LIVEKIT_URL || 'wss://livekit.iptvsubz.fun';
 const LIVEKIT_HTTP_URL = process.env.LIVEKIT_HTTP_URL || 'https://livekit.iptvsubz.fun';
 const LIVEKIT_ICE_SERVERS_JSON = process.env.LIVEKIT_ICE_SERVERS_JSON || '';
+const TURN_HOST = process.env.TURN_HOST || 'livekit.iptvsubz.fun';
+const TURN_USERNAME = process.env.TURN_USERNAME || 'tres-turn';
+const TURN_PASSWORD = process.env.TURN_PASSWORD || 'uOed6dZmbnWEtCiEI4/dhSLn';
 const WEB_URL = process.env.WEB_URL || 'https://tres3.web.app';
 const STALE_SESSION_MINUTES = Number(process.env.CALL_SESSION_STALE_MINUTES || 2);
+
+const buildDefaultIceServersJson = () => JSON.stringify([
+  { urls: ['stun:stun.l.google.com:19302'] },
+  { urls: ['stun:stun1.l.google.com:19302'] },
+  {
+    urls: [
+      `turn:${TURN_HOST}:3478?transport=udp`,
+      `turn:${TURN_HOST}:3478?transport=tcp`,
+    ],
+    username: TURN_USERNAME,
+    credential: TURN_PASSWORD,
+  },
+]);
 
 const normalizeCallableRequest = (requestOrData, context) => {
   if (requestOrData && typeof requestOrData === 'object' && 'data' in requestOrData) {
@@ -120,10 +136,14 @@ exports.getLiveKitToken = functions.https.onCall(async (requestOrData, context) 
     console.log('Room name:', roomName);
     console.log('WSS URL:', LIVEKIT_WS_URL);
 
+    const iceServersJson = LIVEKIT_ICE_SERVERS_JSON && LIVEKIT_ICE_SERVERS_JSON.trim().length > 0
+      ? LIVEKIT_ICE_SERVERS_JSON
+      : buildDefaultIceServersJson();
+
     return {
       token: token,
       wsUrl: LIVEKIT_WS_URL,
-      iceServersJson: LIVEKIT_ICE_SERVERS_JSON,
+      iceServersJson,
     };
 
   } catch (error) {
