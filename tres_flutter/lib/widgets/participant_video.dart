@@ -107,6 +107,13 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
       if (futures.isNotEmpty) {
         await Future.wait(futures);
       }
+      // Re-check after subscription to pick up the newly attached track.
+      for (final pub in widget.participant.videoTrackPublications) {
+        if (pub.subscribed && pub.track != null) {
+          track = pub.track as VideoTrack;
+          break;
+        }
+      }
     }
     
     // Request appropriate quality for this view

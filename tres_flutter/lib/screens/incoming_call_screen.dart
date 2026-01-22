@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/call_signaling_service.dart';
@@ -42,6 +44,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
   final CallSignalingService _signalingService = CallSignalingService();
   bool _isAccepting = false;
   bool _showActions = true;
+  StreamSubscription<DocumentSnapshot>? _invitationSubscription;
+  bool _dismissed = false;
 
   @override
   void initState() {
@@ -49,6 +53,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     
     // Start vibration for incoming call
     VibrationService.vibrateIncomingCall();
+    _listenForCancellation();
     
     // Setup pulse animation for avatar
     _pulseController = AnimationController(
@@ -72,10 +77,34 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     });
   }
 
+  void _listenForCancellation() {
+    _invitationSubscription = FirebaseFirestore.instance
+        .collection('call_invitations')
+        .doc(widget.invitationId)
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted || _dismissed) return;
+      if (!snapshot.exists) return;
+      final data = snapshot.data();
+      if (data == null) return;
+      final status = data['status'] as String?;
+      if (status == null) return;
+      if (status == 'cancelled' || status == 'timeout' || status == 'declined') {
+        _dismissed = true;
+        VibrationService.stopVibration();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Call ${status == 'cancelled' ? 'cancelled' : status}')),
+        );
+        Navigator.pop(context);
+      }
+    });
+  }
+
   @override
   void dispose() {
     // Stop vibration when screen is disposed
     VibrationService.stopVibration();
+    _invitationSubscription?.cancel();
     _pulseController.dispose();
     super.dispose();
   }

@@ -53,6 +53,7 @@ class CallScreen extends StatefulWidget {
 class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   bool _isConnecting = true;
   late CallFeaturesCoordinator _coordinator;
+  LiveKitService? _livekit;
   final TextEditingController _chatController = TextEditingController();
   final CallListenerService _callListener = CallListenerService();
   
@@ -193,6 +194,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     
     // Start auto-hide timer for controls
     _startControlsHideTimer();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _livekit ??= context.read<LiveKitService>();
   }
   
   /// Handle session end by other participant
@@ -954,235 +961,251 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   @override
   Widget build(BuildContext context) {
     if (_isConnecting) {
-      return const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Connecting to call...'),
-            ],
+      return WillPopScope(
+        onWillPop: () async {
+          await _endCallAndNavigateBack();
+          return false;
+        },
+        child: const Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Connecting to call...'),
+              ],
+            ),
           ),
         ),
       );
     }
-    
-    if (_isCallEnding) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.call_end,
-                  size: 64,
-                  color: Colors.red,
-                ),
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                'Call ended',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Duration: ${_formatDuration(_callDuration)}',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    
-    return ChangeNotifierProvider<CallFeaturesCoordinator>.value(
-      value: _coordinator,
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: _toggleControls,
-          onHorizontalDragStart: (details) {
-            // Track if drag started from left edge
-            if (details.globalPosition.dx < 50) {
-              setState(() {
-                _reactionsVisible = true;
-                _reactionsAnimationController.forward();
-              });
-            }
-          },
-          onHorizontalDragEnd: (details) {
-            // Swipe right from left edge to show reactions
-            if (details.primaryVelocity != null && details.primaryVelocity! > 500) {
-              if (!_reactionsVisible) {
-                _toggleReactions();
-              }
-            }
-            // Swipe left to hide reactions
-            else if (details.primaryVelocity != null && details.primaryVelocity! < -500) {
-              if (_reactionsVisible) {
-                _toggleReactions();
-              }
-            }
-          },
-          child: SafeArea(
-            child: Consumer2<LiveKitService, CallFeaturesCoordinator>(
-              builder: (context, livekit, coordinator, child) {
-                final isAndroidPipView =
-                    _isInAndroidPip && Theme.of(context).platform == TargetPlatform.android;
-                if (isAndroidPipView) {
-                  return _buildAndroidPipLayout(livekit);
-                }
-                return Stack(
-                  children: [
-                    // Main participant view
-                    _buildMainParticipantView(livekit),
-                    
-                    // Placeholder overlay (when backgrounded OR video is disabled)
-                    if (_shouldShowPlaceholder(livekit))
-                      _buildBackgroundPlaceholder(livekit),
-                    
-                    // Reaction overlay (floating emojis)
-                    ReactionOverlay(reactions: coordinator.activeReactions),
-                    
-                    // Reactions panel (slide from left)
-                    _buildReactionsPanel(coordinator),
-                    
-                    // Remote participant PIPs (bottom-left, stacked vertically)
-                    ..._buildRemotePips(livekit),
-                    
-                    // Local video preview (PIP - repositionable, starts at fixed top-right)
-                    Positioned(
-                      left: _pipPosition?.dx ?? (MediaQuery.of(context).size.width - (_pipExpanded ? 169 : 135) - 16),
-                      top: _pipPosition?.dy ?? 16,
-                      child: _buildLocalVideoPreview(livekit),
-                    ),
-                    
-                    // Room info (top-left)
-                    Positioned(
-                      top: 16,
-                      left: 16,
-                      child: _buildRoomInfo(coordinator),
-                    ),
 
-                    if (livekit.isReconnecting)
+    if (_isCallEnding) {
+      return WillPopScope(
+        onWillPop: () async {
+          await _endCallAndNavigateBack();
+          return false;
+        },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.call_end,
+                    size: 64,
+                    color: Colors.red,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  'Call ended',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Duration: ${_formatDuration(_callDuration)}',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return WillPopScope(
+      onWillPop: () async {
+        await _endCallAndNavigateBack();
+        return false;
+      },
+      child: ChangeNotifierProvider<CallFeaturesCoordinator>.value(
+        value: _coordinator,
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _toggleControls,
+            onHorizontalDragStart: (details) {
+              // Track if drag started from left edge
+              if (details.globalPosition.dx < 50) {
+                setState(() {
+                  _reactionsVisible = true;
+                  _reactionsAnimationController.forward();
+                });
+              }
+            },
+            onHorizontalDragEnd: (details) {
+              // Swipe right from left edge to show reactions
+              if (details.primaryVelocity != null && details.primaryVelocity! > 500) {
+                if (!_reactionsVisible) {
+                  _toggleReactions();
+                }
+              }
+              // Swipe left to hide reactions
+              else if (details.primaryVelocity != null && details.primaryVelocity! < -500) {
+                if (_reactionsVisible) {
+                  _toggleReactions();
+                }
+              }
+            },
+            child: SafeArea(
+              child: Consumer2<LiveKitService, CallFeaturesCoordinator>(
+                builder: (context, livekit, coordinator, child) {
+                  final isAndroidPipView =
+                      _isInAndroidPip && Theme.of(context).platform == TargetPlatform.android;
+                  if (isAndroidPipView) {
+                    return _buildAndroidPipLayout(livekit);
+                  }
+                  return Stack(
+                    children: [
+                      // Main participant view
+                      _buildMainParticipantView(livekit),
+
+                      // Placeholder overlay (when backgrounded OR video is disabled)
+                      if (_shouldShowPlaceholder(livekit))
+                        _buildBackgroundPlaceholder(livekit),
+
+                      // Reaction overlay (floating emojis)
+                      ReactionOverlay(reactions: coordinator.activeReactions),
+
+                      // Reactions panel (slide from left)
+                      _buildReactionsPanel(coordinator),
+
+                      // Remote participant PIPs (bottom-left, stacked vertically)
+                      ..._buildRemotePips(livekit),
+
+                      // Local video preview (PIP - repositionable, starts at fixed top-right)
+                      Positioned(
+                        left: _pipPosition?.dx ?? (MediaQuery.of(context).size.width - (_pipExpanded ? 169 : 135) - 16),
+                        top: _pipPosition?.dy ?? 16,
+                        child: _buildLocalVideoPreview(livekit),
+                      ),
+
+                      // Room info (top-left)
                       Positioned(
                         top: 16,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.7),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withOpacity(0.2)),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.sync, color: Colors.white, size: 16),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Reconnecting...',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
+                        left: 16,
+                        child: _buildRoomInfo(coordinator),
+                      ),
+
+                      if (livekit.isReconnecting)
+                        Positioned(
+                          top: 16,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.sync, color: Colors.white, size: 16),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Reconnecting...',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    
 
-                    
-                    // Call-waiting banner (shows when receiving a call while in call)
-                    if (_callListener.hasIncomingCall)
-                      Positioned(
-                        top: 80,
-                        left: 16,
-                        right: 16,
-                        child: CallWaitingBanner(
-                          callerName: _callListener.currentIncomingCall!['callerName'],
-                          callerPhotoUrl: _callListener.currentIncomingCall!['callerPhotoUrl'],
-                          isVideoCall: _callListener.currentIncomingCall!['isVideoCall'],
-                          onAccept: _acceptWaitingCall,
-                          onDecline: _declineWaitingCall,
+                      // Call-waiting banner (shows when receiving a call while in call)
+                      if (_callListener.hasIncomingCall)
+                        Positioned(
+                          top: 80,
+                          left: 16,
+                          right: 16,
+                          child: CallWaitingBanner(
+                            callerName: _callListener.currentIncomingCall!['callerName'],
+                            callerPhotoUrl: _callListener.currentIncomingCall!['callerPhotoUrl'],
+                            isVideoCall: _callListener.currentIncomingCall!['isVideoCall'],
+                            onAccept: _acceptWaitingCall,
+                            onDecline: _declineWaitingCall,
+                          ),
+                        ),
+
+                      // Call controls (bottom) - always rendered, visibility controlled by animation
+                      AnimatedPositioned(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                        bottom: _controlsVisible ? 0 : -120,
+                        left: 0,
+                        right: 0,
+                        child: SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _buildCallControls(livekit, coordinator),
+                          ),
                         ),
                       ),
-                    
-                    // Call controls (bottom) - always rendered, visibility controlled by animation
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                      bottom: _controlsVisible ? 0 : -120,
-                      left: 0,
-                      right: 0,
-                      child: SafeArea(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _buildCallControls(livekit, coordinator),
+
+                      // Quality Dashboard (positioned to avoid overlap)
+                      if (_qualityDashboardVisible)
+                        Positioned(
+                          top: 100,
+                          right: 16,
+                          child: VideoCallQualityDashboard(
+                            isExpanded: true,
+                            statsService: _coordinator.statsService,
+                            onToggle: () {
+                              setState(() {
+                                _qualityDashboardVisible = false;
+                              });
+                            },
+                          ),
                         ),
-                      ),
-                    ),
-                    
-                    // Quality Dashboard (positioned to avoid overlap)
-                    if (_qualityDashboardVisible)
-                      Positioned(
-                        top: 100,
-                        right: 16,
-                        child: VideoCallQualityDashboard(
-                          isExpanded: true,
-                          statsService: _coordinator.statsService,
-                          onToggle: () {
-                            setState(() {
-                              _qualityDashboardVisible = false;
-                            });
-                          },
-                        ),
-                      ),
-                    
-                    // Modern Chat Overlay
-                    ModernChatOverlay(
-                      messages: coordinator.chatMessages,
-                      onSendMessage: (message) {
-                        coordinator.sendChatMessage(message);
-                        setState(() {
-                          _hasNewMessage = false;
-                        });
-                      },
-                      isVisible: _chatOverlayVisible,
-                      onToggleExpanded: () {
-                        setState(() {
-                          _chatOverlayVisible = !_chatOverlayVisible;
-                          if (_chatOverlayVisible) {
-                            _unreadMessageCount = 0;
+
+                      // Modern Chat Overlay
+                      ModernChatOverlay(
+                        messages: coordinator.chatMessages,
+                        onSendMessage: (message) {
+                          coordinator.sendChatMessage(message);
+                          setState(() {
                             _hasNewMessage = false;
-                          }
-                        });
-                      },
-                    ),
-                  ],
-                );
-              },
+                          });
+                        },
+                        isVisible: _chatOverlayVisible,
+                        onToggleExpanded: () {
+                          setState(() {
+                            _chatOverlayVisible = !_chatOverlayVisible;
+                            if (_chatOverlayVisible) {
+                              _unreadMessageCount = 0;
+                              _hasNewMessage = false;
+                            }
+                          });
+                        },
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -2471,10 +2494,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     
     // Remove listeners safely
     try {
-      final livekit = context.read<LiveKitService>();
-      livekit.removeListener(_handleLiveKitUpdate);
-      // Always disconnect to cancel pending connects and release camera.
-      livekit.disconnect();
+      final livekit = _livekit;
+      if (livekit != null) {
+        livekit.removeListener(_handleLiveKitUpdate);
+        // Always disconnect to cancel pending connects and release camera.
+        livekit.disconnect();
+      }
     } catch (e) {
       debugPrint('Error during LiveKit cleanup: $e');
     }
