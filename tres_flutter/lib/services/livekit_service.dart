@@ -8,6 +8,7 @@ import 'device_mode_service.dart';
 import 'call_stats_service.dart';
 import '../config/environment.dart';
 import 'feature_flags.dart';
+import 'ice_server_config.dart';
 // MediaPipe removed: no mediapipe_settings import
 import 'web_pip_helper.dart';
 import 'web_pip_bridge_stub.dart'
@@ -282,7 +283,7 @@ class LiveKitService extends ChangeNotifier {
       simulcast: _isSimulcastEnabled,
       videoCodec: codec,
       backupVideoCodec: backup ?? VideoPublishOptions.defualtBackupVideoCodec,
-      degradationPreference: DegradationPreference.maintainResolution,
+      degradationPreference: DegradationPreference.balanced,
     );
   }
 
@@ -433,13 +434,17 @@ class LiveKitService extends ChangeNotifier {
 
     final avgSendBitrate = _getAverageSendBitrate();
     final baselineTarget = FaceTimeVideoPresets.h1080.encoding?.maxBitrate ?? 0;
-    if (baselineTarget > 0 && avgSendBitrate < baselineTarget * 0.4) {
+    if (baselineTarget > 0 && avgSendBitrate < baselineTarget * 0.5) {
       _qualityUpgradeGateStart = null;
       return QualityTier.high;
     }
 
     final avgAvailableOutgoing = _getAverageAvailableOutgoingBitrate();
-    if (avgAvailableOutgoing > 0 && avgAvailableOutgoing < 8_000_000) {
+    if (avgAvailableOutgoing > 0 && avgAvailableOutgoing < 6_000_000) {
+      _qualityUpgradeGateStart = null;
+      return QualityTier.medium;
+    }
+    if (avgAvailableOutgoing > 0 && avgAvailableOutgoing < 12_000_000) {
       _qualityUpgradeGateStart = null;
       return QualityTier.high;
     }
@@ -588,6 +593,7 @@ class LiveKitService extends ChangeNotifier {
         : stats.audioPacketLoss;
     final rttMs = stats.roundTripTime * 1000.0;
     final jitterMs = stats.jitter * 1000.0;
+    final availableOutgoing = stats.availableOutgoingBitrate;
 
     double factor = 1.0;
     if (packetLoss >= 5.0 || rttMs >= 300.0 || jitterMs >= 40.0) {
@@ -601,12 +607,24 @@ class LiveKitService extends ChangeNotifier {
     final minBitrate = _getMinBitrateForPreset(_currentCapturePreset) ??
         (_isUltraHQMode ? 6_000_000 : 3_000_000);
     final target = (baseBitrate * factor).round();
-    return target.clamp(minBitrate, baseBitrate);
+    final outgoingCap = availableOutgoing > 0
+        ? (availableOutgoing * 0.85).round()
+        : null;
+    final cap = (outgoingCap != null && outgoingCap < baseBitrate)
+        ? outgoingCap
+        : baseBitrate;
+    return target.clamp(minBitrate, cap);
   }
 
   int? _getMinBitrateForPreset(VideoParameters? preset) {
     final dims = preset?.dimensions;
     if (dims == null) return null;
+    if (dims.width >= 3840) {
+      return 12_000_000;
+    }
+    if (dims.width >= 2560) {
+      return 8_000_000;
+    }
     if (dims.width >= 1920) {
       return 6_000_000;
     }
@@ -744,7 +762,7 @@ class LiveKitService extends ChangeNotifier {
                     backupVideoCodec: _getPublishVideoCodec() == 'av1'
                         ? const BackupVideoCodec(codec: 'h264', simulcast: true)
                         : VideoPublishOptions.defualtBackupVideoCodec,
-                    degradationPreference: DegradationPreference.maintainResolution,
+                    degradationPreference: DegradationPreference.balanced,
                   ),
               defaultAudioPublishOptions: AudioPublishOptions(
                 audioBitrate: _getOptimalAudioBitrate(),
@@ -1061,6 +1079,7 @@ class LiveKitService extends ChangeNotifier {
 
   /// External entrypoint: apply observed stats
   Future<void> applyObservedStats(CallStats stats) async {
+    _networkService.updateFromCallStats(stats);
     await _maybeAdjustVideoForStats(stats);
     try {
       await _maybeAdjustCaptureQualityForStats(stats);
@@ -1403,7 +1422,7 @@ class LiveKitService extends ChangeNotifier {
   }
 
   List<RTCIceServer>? _parseIceServers() {
-    final raw = Environment.liveKitIceServersJson.trim();
+    final raw = IceServerConfig.iceServersJson.trim();
     if (raw.isEmpty) return null;
 
     try {
@@ -1413,9 +1432,17 @@ class LiveKitService extends ChangeNotifier {
       final servers = <RTCIceServer>[];
       for (final entry in decoded) {
         if (entry is! Map) continue;
-        final urls = (entry['urls'] as List?)?.map((e) => e.toString()).toList();
+        final rawUrls = entry['urls'];
+        final urls = rawUrls is List
+            ? rawUrls.map((e) => e.toString()).toList()
+            : rawUrls is String
+                ? [rawUrls]
+                : null;
         final username = entry['username']?.toString();
         final credential = entry['credential']?.toString();
+        if (urls == null || urls.isEmpty) {
+          continue;
+        }
         servers.add(RTCIceServer(
           urls: urls,
           username: username,

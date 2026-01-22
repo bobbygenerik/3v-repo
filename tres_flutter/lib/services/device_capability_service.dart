@@ -178,11 +178,11 @@ class DeviceCapabilityService {
   static int getMaxVideoBitrate() {
     switch (_capability) {
       case DeviceCapability.highEnd:
-        return 10000 * 1000; // 10 Mbps for high-end 1080p/1440p
+        return 25000 * 1000; // 25 Mbps for high-end 1080p/1440p/4K bursts
       case DeviceCapability.midRange:
-        return 4000 * 1000; // 4 Mbps for mid-range 720p/1080p
+        return 8000 * 1000; // 8 Mbps for mid-range 720p/1080p
       case DeviceCapability.lowEnd:
-        return 1500 * 1000; // 1.5 Mbps for low-end (stability first)
+        return 2500 * 1000; // 2.5 Mbps for low-end (stability first)
     }
   }
 
@@ -214,7 +214,7 @@ class DeviceCapabilityService {
   static int getMaxFramerate() {
     switch (_capability) {
       case DeviceCapability.highEnd:
-        return 30; // 30fps is smooth and efficient (FaceTime uses 30fps)
+        return 30; // Default 30fps; 60fps is gated by chipset checks elsewhere
       case DeviceCapability.midRange:
         return 30;
       case DeviceCapability.lowEnd:

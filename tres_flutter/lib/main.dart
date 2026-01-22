@@ -17,6 +17,7 @@ import 'services/guest_link_service.dart';
 import 'services/contact_service.dart';
 import 'services/notification_service.dart';
 import 'services/audio_device_service.dart';
+import 'services/ice_server_config.dart';
 // MediaPipe removed: settings and processing removed
 import 'firebase_background_handler.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -67,6 +68,7 @@ void main() async {
   });
   
   // Print environment configuration in debug mode
+  await IceServerConfig.load();
   Environment.printConfig();
   
   // Validate environment configuration

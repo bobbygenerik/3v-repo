@@ -7,7 +7,7 @@ class FeatureFlags {
   static const bool enableScreenShare = false;
 
   // Allow ultra/high quality presets (set to false to keep conservative defaults).
-  static const bool enableUltraQuality = false;
+  static const bool enableUltraQuality = true;
 
   // Enable simulcast (default true for non-PWA environments).
   static const bool enableSimulcast = true;

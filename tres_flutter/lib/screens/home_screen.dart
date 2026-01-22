@@ -20,6 +20,7 @@ import '../widgets/responsive_container.dart';
 import '../widgets/skeleton_loader.dart';
 import '../services/vibration_service.dart';
 import '../services/device_mode_service.dart';
+import '../services/ice_server_config.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 import 'call_screen.dart';
@@ -1387,6 +1388,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       final invitationId = results[1] as String?;
 
       final callerToken = callerResponse.data['token'] as String;
+      await IceServerConfig.updateFromTokenResponse(
+        Map<String, dynamic>.from(callerResponse.data as Map),
+      );
       // We can use the returned URL if we want, but we already used the default for the invite
       // final wsUrl = callerResponse.data['wsUrl'] as String? ?? defaultWsUrl;
 

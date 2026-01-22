@@ -16,6 +16,7 @@ const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
 const LIVEKIT_WS_URL = process.env.LIVEKIT_URL || 'wss://livekit.iptvsubz.fun';
 const LIVEKIT_HTTP_URL = process.env.LIVEKIT_HTTP_URL || 'https://livekit.iptvsubz.fun';
+const LIVEKIT_ICE_SERVERS_JSON = process.env.LIVEKIT_ICE_SERVERS_JSON || '';
 const WEB_URL = process.env.WEB_URL || 'https://tres3.web.app';
 const STALE_SESSION_MINUTES = Number(process.env.CALL_SESSION_STALE_MINUTES || 2);
 
@@ -117,11 +118,12 @@ exports.getLiveKitToken = functions.https.onCall(async (requestOrData, context) 
     console.log('SUCCESS: Token generated for user', userId);
     console.log('Token preview (first 10 chars):', token.substring(0, 10) + '...');
     console.log('Room name:', roomName);
-    console.log('WSS URL:', 'wss://livekit.iptvsubz.fun');
+    console.log('WSS URL:', LIVEKIT_WS_URL);
 
     return {
       token: token,
-      wsUrl: 'wss://livekit.iptvsubz.fun'
+      wsUrl: LIVEKIT_WS_URL,
+      iceServersJson: LIVEKIT_ICE_SERVERS_JSON,
     };
 
   } catch (error) {

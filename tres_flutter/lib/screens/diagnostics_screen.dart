@@ -286,6 +286,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     );
   }
 
+
   bool _isSystemHealthy() {
     final livekit = _diagnostics['LiveKit'] as Map<String, dynamic>?;
     final network = _diagnostics['Network'] as Map<String, dynamic>?;

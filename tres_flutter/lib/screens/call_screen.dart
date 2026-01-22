@@ -19,6 +19,7 @@ import '../services/reaction_service.dart';
 import '../services/chat_service.dart' as chat;
 import '../services/vibration_service.dart';
 import '../services/call_stats_service.dart';
+import '../services/ice_server_config.dart';
 // MediaPipe removed: settings and processing removed
 import '../config/environment.dart';
 import '../widgets/participant_video.dart';
@@ -2348,6 +2349,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       });
       
       final theirToken = response.data['token'] as String;
+      await IceServerConfig.updateFromTokenResponse(
+        Map<String, dynamic>.from(response.data as Map),
+      );
       
       // Accept the invitation - this will signal them to join
       await widget.signalingService.acceptInvitation(incomingCall['id']);

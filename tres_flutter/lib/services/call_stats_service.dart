@@ -14,6 +14,7 @@ class CallStatsService extends ChangeNotifier {
   CallStats _currentStats = const CallStats();
   bool _isCollecting = false;
   EventsListener<RoomEvent>? _roomListener;
+  DateTime? _lastStatsLogAt;
 
   // Latest metrics updated by LiveKit events
   double _lastVideoSendBitrate = 0.0;
@@ -281,7 +282,29 @@ class CallStatsService extends ChangeNotifier {
       _statsHistory.removeAt(0);
     }
 
+    _maybeLogStatsSnapshot();
     notifyListeners();
+  }
+
+  void _maybeLogStatsSnapshot() {
+    final now = DateTime.now();
+    if (_lastStatsLogAt != null &&
+        now.difference(_lastStatsLogAt!) < const Duration(seconds: 10)) {
+      return;
+    }
+    _lastStatsLogAt = now;
+    debugPrint(
+      '📊 CallStats '
+      'send=${_currentStats.videoSendBitrateFormatted} '
+      'recv=${_currentStats.videoRecvBitrateFormatted} '
+      'loss=${_currentStats.videoPacketLossFormatted} '
+      'rtt=${_currentStats.roundTripTimeFormatted} '
+      'jitter=${_currentStats.jitterFormatted} '
+      'fps=${_currentStats.videoFps} '
+      'res=${_currentStats.videoResolution} '
+      'avail=${_currentStats.availableOutgoingBitrateFormatted} '
+      'quality=${_currentStats.quality.label}',
+    );
   }
 
   /// Calculate a simple quality metric from RTT (ms) and packet loss (%)

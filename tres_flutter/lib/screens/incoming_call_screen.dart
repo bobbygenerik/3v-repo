@@ -6,6 +6,7 @@ import '../services/call_signaling_service.dart';
 import '../services/call_session_service.dart';
 import '../services/device_mode_service.dart';
 import '../services/vibration_service.dart';
+import '../services/ice_server_config.dart';
 import 'call_screen.dart';
 
 class IncomingCallScreen extends StatefulWidget {
@@ -122,6 +123,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
       });
 
       final myToken = response.data['token'] as String;
+      await IceServerConfig.updateFromTokenResponse(
+        Map<String, dynamic>.from(response.data as Map),
+      );
       debugPrint('✅ Got recipient token');
 
       if (!mounted) return;

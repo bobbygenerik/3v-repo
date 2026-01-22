@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import 'call_stats_model.dart';
 
 enum NetworkQuality { excellent, good, fair, poor, offline }
 
@@ -9,6 +10,7 @@ class NetworkQualityService extends ChangeNotifier {
   Timer? _qualityTimer;
   bool _isMonitoring = false;
   int _lastLatencyMs = 0;
+  DateTime? _lastStatsAt;
   
   NetworkQuality get currentQuality => _currentQuality;
   bool get isMonitoring => _isMonitoring;
@@ -35,6 +37,11 @@ class NetworkQualityService extends ChangeNotifier {
   
   /// Check network quality by measuring latency
   Future<void> _checkNetworkQuality() async {
+    final now = DateTime.now();
+    if (_lastStatsAt != null &&
+        now.difference(_lastStatsAt!) < const Duration(seconds: 10)) {
+      return;
+    }
     try {
       final endpoints = <Uri>[
         Uri.parse('https://www.gstatic.com/generate_204'),
@@ -90,6 +97,57 @@ class NetworkQualityService extends ChangeNotifier {
         notifyListeners();
         debugPrint('📶 Network offline');
       }
+    }
+  }
+
+  /// Update quality from LiveKit stats (preferred over latency probes).
+  void updateFromCallStats(CallStats stats) {
+    final packetLoss = stats.videoPacketLoss > stats.audioPacketLoss
+        ? stats.videoPacketLoss
+        : stats.audioPacketLoss;
+    final rttMs = stats.roundTripTime * 1000.0;
+    final jitterMs = stats.jitter * 1000.0;
+    final outgoing = stats.availableOutgoingBitrate;
+
+    if (packetLoss <= 0 &&
+        rttMs <= 0 &&
+        jitterMs <= 0 &&
+        outgoing <= 0) {
+      return;
+    }
+
+    _lastStatsAt = DateTime.now();
+    if (rttMs > 0) {
+      _lastLatencyMs = rttMs.round();
+    }
+
+    NetworkQuality newQuality;
+    if (outgoing >= 15_000_000 &&
+        packetLoss < 1.0 &&
+        rttMs < 80 &&
+        jitterMs < 10) {
+      newQuality = NetworkQuality.excellent;
+    } else if (outgoing >= 8_000_000 &&
+        packetLoss < 2.5 &&
+        rttMs < 150 &&
+        jitterMs < 20) {
+      newQuality = NetworkQuality.good;
+    } else if (outgoing >= 3_000_000 &&
+        packetLoss < 5.0 &&
+        rttMs < 250 &&
+        jitterMs < 40) {
+      newQuality = NetworkQuality.fair;
+    } else {
+      newQuality = NetworkQuality.poor;
+    }
+
+    if (newQuality != _currentQuality) {
+      _currentQuality = newQuality;
+      notifyListeners();
+      debugPrint(
+        '📶 Network quality (stats): ${newQuality.name} '
+        '(loss ${packetLoss.toStringAsFixed(1)}%, rtt ${rttMs.toStringAsFixed(0)}ms)',
+      );
     }
   }
   
