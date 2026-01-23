@@ -2041,45 +2041,19 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               setDialogState(() => isLoading = false);
               return;
             }
-            
+
             try {
-              final contactsSnapshot = await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(currentUser.uid)
-                  .collection('contacts')
-                  .get();
-              
-              final List<Map<String, dynamic>> contacts = [];
-              for (var contactDoc in contactsSnapshot.docs) {
-                final contactUid = contactDoc.id;
-                final userDoc = await FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(contactUid)
-                    .get();
-                
-                if (userDoc.exists) {
-                  final data = userDoc.data();
-                  if (data != null) {
-                    contacts.add({
-                      'uid': contactUid,
-                      'name': data['displayName'] ?? data['name'] ?? 'Unknown',
-                      'email': data['email'] ?? '',
-                    });
-                  }
-                }
+              // Optimized search using ContactService
+              final contactService = context.read<ContactService>();
+              final contacts =
+                  await contactService.searchContacts(query, limit: 5);
+
+              if (mounted) {
+                setDialogState(() {
+                  filteredContacts = contacts;
+                  isLoading = false;
+                });
               }
-              
-              final filtered = contacts.where((contact) {
-                final name = (contact['name'] as String).toLowerCase();
-                final email = (contact['email'] as String).toLowerCase();
-                final searchQuery = query.toLowerCase();
-                return name.contains(searchQuery) || email.contains(searchQuery);
-              }).take(5).toList();
-              
-              setDialogState(() {
-                filteredContacts = filtered;
-                isLoading = false;
-              });
             } catch (e) {
               debugPrint('Error loading contacts: $e');
               setDialogState(() => isLoading = false);

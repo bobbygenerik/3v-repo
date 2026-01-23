@@ -108,4 +108,86 @@ void main() {
       expect(favorites, isNot(contains('contact-1')));
     });
   });
+
+  group('ContactService searchContacts', () {
+    late FakeFirebaseFirestore fakeFirestore;
+    late MockFirebaseAuth mockAuth;
+    late ContactService contactService;
+    late MockUser user;
+
+    setUp(() async {
+      fakeFirestore = FakeFirebaseFirestore();
+      user = MockUser(uid: 'user1', email: 'user@example.com');
+      mockAuth = MockFirebaseAuth(mockUser: user, signedIn: true);
+      contactService = ContactService(firestore: fakeFirestore, auth: mockAuth);
+
+      // Seed data
+      // 1. Create contacts in subcollection
+      // 2. Create actual user docs for those contacts
+      for (int i = 0; i < 15; i++) {
+        final uid = 'contact-$i';
+        // Add to contacts subcollection
+        await fakeFirestore
+            .collection('users')
+            .doc('user1')
+            .collection('contacts')
+            .doc(uid)
+            .set({});
+
+        // Add user profile
+        await fakeFirestore.collection('users').doc(uid).set({
+          'name': 'Contact $i',
+          'email': 'contact$i@example.com',
+        });
+      }
+
+      // Add one more contact that doesn't match search
+      await fakeFirestore
+          .collection('users')
+          .doc('user1')
+          .collection('contacts')
+          .doc('other-guy')
+          .set({});
+      await fakeFirestore.collection('users').doc('other-guy').set({
+        'name': 'Other Guy',
+        'email': 'other@example.com',
+      });
+    });
+
+    test('returns correct filtered contacts', () async {
+      final results = await contactService.searchContacts('Contact 1');
+      // Should match Contact 1, Contact 10, Contact 11, Contact 12, Contact 13, Contact 14
+      // But default limit is 5.
+
+      expect(results.length, 5);
+      expect(results.first['name'], contains('Contact'));
+    });
+
+    test('returns correct contact by exact email', () async {
+      final results =
+          await contactService.searchContacts('contact5@example.com');
+      expect(results.length, 1);
+      expect(results.first['uid'], 'contact-5');
+      expect(results.first['name'], 'Contact 5');
+    });
+
+    test('handles pagination/batches correctly (finds item in second batch)',
+        () async {
+      // 'Contact 14' is the last one (index 14).
+      // If batching works (10 then 5), it should be found in the second batch.
+      final results = await contactService.searchContacts('Contact 14');
+      expect(results.length, 1);
+      expect(results.first['uid'], 'contact-14');
+    });
+
+    test('returns empty list if no matches', () async {
+      final results = await contactService.searchContacts('NonExistent');
+      expect(results, isEmpty);
+    });
+
+    test('respects limit parameter', () async {
+      final results = await contactService.searchContacts('Contact', limit: 10);
+      expect(results.length, 10);
+    });
+  });
 }
