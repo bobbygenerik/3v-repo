@@ -395,7 +395,7 @@ exports.markStaleCallSignals = functions.scheduler.onSchedule(
           chunks.push(docs.slice(i, i + BATCH_SIZE));
         }
 
-        for (const chunk of chunks) {
+        const batchPromises = chunks.map(chunk => {
           const batch = db.batch();
           chunk.forEach(doc => {
             batch.update(doc.ref, {
@@ -405,8 +405,10 @@ exports.markStaleCallSignals = functions.scheduler.onSchedule(
             });
             totalMarked++;
           });
-          await batch.commit();
-        }
+          return batch.commit();
+        });
+
+        await Promise.all(batchPromises);
       }
 
       console.log(`✅ markStaleCallSignals complete: Marked ${totalMarked} pending call signals as missed`);
