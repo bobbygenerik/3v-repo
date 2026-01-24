@@ -17,6 +17,7 @@ import '../services/call_signaling_service.dart';
 import '../services/call_listener_service.dart';
 import '../services/reaction_service.dart';
 import '../services/chat_service.dart' as chat;
+import '../services/contact_service.dart';
 import '../services/vibration_service.dart';
 import '../services/call_stats_service.dart';
 import '../services/ice_server_config.dart';
