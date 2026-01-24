@@ -206,36 +206,6 @@ exports.sendCallNotification = functions.firestore.onDocumentCreated(
               failureTimestamp: admin.firestore.FieldValue.serverTimestamp()
   });
 
-/**
- * Cleanup stale call sessions that stopped heartbeating.
- */
-exports.cleanupStaleCallSessions = onSchedule('every 5 minutes', async () => {
-  const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - 2 * 60 * 1000);
-
-  const snapshot = await admin.firestore()
-    .collection('call_sessions')
-    .where('status', '==', 'active')
-    .where('lastHeartbeat', '<', cutoff)
-    .get();
-
-  if (snapshot.empty) {
-    return null;
-  }
-
-  const batch = admin.firestore().batch();
-  for (const doc of snapshot.docs) {
-    batch.update(doc.ref, {
-      status: 'ended',
-      endTime: admin.firestore.FieldValue.serverTimestamp(),
-      endedBy: 'system',
-      endedReason: 'stale_heartbeat',
-    });
-  }
-
-  await batch.commit();
-  console.log(`✅ Cleaned up ${snapshot.size} stale call sessions`);
-  return null;
-});
           console.log(`✅ Marked call invitation as failed (no FCM token)`);
         } catch (updateError) {
           console.error(`Failed to update call invitation status: ${updateError}`);
@@ -952,7 +922,7 @@ exports.stopRecording = functions.https.onCall(async (requestOrData, context) =>
   }
 });
 
-exports.cleanupStaleCallSessions = onSchedule('every 15 minutes', async () => {
+exports.cleanupStaleCallSessions = onSchedule('every 5 minutes', async () => {
     const staleThresholdMs = STALE_SESSION_MINUTES * 60 * 1000;
     const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - staleThresholdMs);
 
