@@ -675,11 +675,100 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 return;
               }
               Navigator.pop(context);
-              // TODO: Add contact to Firestore
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Added $email to contacts')),
-              );
-              _loadContacts(); // Reload contacts
+
+              try {
+                final currentUser = context.read<AuthService>().currentUser;
+                if (currentUser == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('You must be signed in to add contacts')),
+                  );
+                  return;
+                }
+
+                final searchEmail = email.toLowerCase();
+
+                // Search for user by email (case-insensitive)
+                final snapshot = await FirebaseFirestore.instance
+                    .collection('users')
+                    .where('email', isEqualTo: searchEmail)
+                    .limit(1)
+                    .get();
+
+                if (!mounted) return;
+
+                if (snapshot.docs.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('No user found with that email'),
+                    ),
+                  );
+                  return;
+                }
+
+                final userData = snapshot.docs.first.data();
+                final contactUid = snapshot.docs.first.id;
+
+                // Don't add yourself as a contact
+                if (contactUid == currentUser.uid) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('You cannot add yourself as a contact')),
+                  );
+                  return;
+                }
+
+                // Check if contact already exists
+                final existingContact = await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser.uid)
+                    .collection('contacts')
+                    .doc(contactUid)
+                    .get();
+
+                if (!mounted) return;
+
+                if (existingContact.exists) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Contact already added')),
+                  );
+                  return;
+                }
+
+                // Save to Firestore contacts subcollection (bidirectional)
+                // Add them to your contacts
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser.uid)
+                    .collection('contacts')
+                    .doc(contactUid)
+                    .set({
+                      'addedAt': FieldValue.serverTimestamp(),
+                    });
+
+                // Add yourself to their contacts
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(contactUid)
+                    .collection('contacts')
+                    .doc(currentUser.uid)
+                    .set({
+                      'addedAt': FieldValue.serverTimestamp(),
+                    });
+
+                if (!mounted) return;
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Added ${userData['displayName'] ?? email} to contacts')),
+                );
+
+                _loadContacts(); // Reload contacts
+              } catch (e) {
+                debugPrint('Error adding contact: $e');
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryBlue),
             child: const Text('ADD', style: TextStyle(color: Colors.white)),
