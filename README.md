@@ -1,34 +1,41 @@
 # Tres3 Video Calling App
 
-A production-ready Android video calling application with LiveKit integration, Firebase Cloud Functions, and native Android ConnectionService UI.
+A Flutter video calling application with LiveKit WebRTC and Firebase backend.
 
 ## Features
 
-✅ **1-to-1 Video Calls** with LiveKit WebRTC  
-✅ **Native Android UI** via ConnectionService (system call screens)  
-✅ **Background Call Reception** with FCM push notifications  
-✅ **Guest Invite Links** for web users (no app required)  
-✅ **Call Signaling** via Firestore real-time database  
-✅ **Cloud Functions** for token generation and notifications  
-✅ **Advanced Camera Controls** (switch, filters, effects)  
-✅ **Professional UI** with Jetpack Compose Material3
+### Core Features ✅
+- **HD Video Calling** - LiveKit-powered video calls with adaptive bitrate
+- **Group Calls** - Multi-participant support with grid layout
+- **Real-time Chat** - In-call messaging with Firestore sync
+- **Live Reactions** - Animated emoji reactions
+- **Guest Links** - Share call links for quick join without sign-up
+
+### Advanced Features ✅
+- **E2E Encryption** - Secure peer-to-peer encryption
+- **Quality Stats** - Real-time monitoring of call quality
+- **Call History** - Track past calls with participants and duration
+- **Contact Management** - Add and manage contacts
+
+### Authentication ✅
+- Email/Password sign-up and sign-in
+- Google Sign-In
+- Profile management
 
 ## Architecture
 
-- **Android App** (Kotlin + Jetpack Compose)
-- **Firebase Backend** (Cloud Functions, Firestore, FCM)
+- **Flutter App** (Dart + Material3)
+- **Firebase Backend** (Cloud Functions, Firestore, FCM, Storage)
 - **LiveKit** for WebRTC video/audio infrastructure
-- **ConnectionService** for native Android call UI
 
 ## Quick Start
 
 ### Prerequisites
 
-- **JDK 17** (required for Android Gradle Plugin 8.7.3)
-- **Android SDK** (API 24-35)
+- **Flutter SDK** 3.24.5+ (https://flutter.dev/docs/get-started/install)
 - **Node.js 20+** (for Cloud Functions)
 - **Firebase CLI** (`npm install -g firebase-tools`)
-- **LiveKit Cloud Account** (https://cloud.livekit.io/)
+- **LiveKit Cloud Account** (https://cloud.livekit.io/) - Free tier: 10K minutes/month
 
 ### 1. Clone and Setup
 
@@ -37,18 +44,20 @@ git clone <your-repo-url>
 cd 3v-repo
 ```
 
-### 2. Configure Android App
+### 2. Configure Flutter App
 
 ```bash
-# Copy and edit local.properties
-cp local.properties.example local.properties
+cd tres_flutter
 
-# Edit local.properties with:
-# - Your Android SDK path
-# - LiveKit credentials from https://cloud.livekit.io/
+# Run Firebase setup script (auto-configures Firebase)
+./setup_firebase.sh
+
+# Or manually:
+flutterfire configure
+
+# Edit environment config
+# Update lib/config/environment.dart with your LiveKit URL
 ```
-
-**Important**: `local.properties` is gitignored. Never commit credentials!
 
 ### 3. Configure Cloud Functions
 
@@ -86,69 +95,87 @@ firebase functions:config:set \
   livekit.url="wss://your-project.livekit.cloud"
 ```
 
-### 5. Build Android App
+### 5. Run Flutter App
 
 ```bash
-# Return to project root
-cd ..
+cd tres_flutter
 
-# Build debug APK
-./gradlew :app:assembleDebug
+# Get dependencies
+flutter pub get
 
-# Install on device/emulator
-./gradlew :app:installDebug
+# Run on connected device
+flutter run
+
+# Or build APK
+flutter build apk --release
 ```
 
 ## Project Structure
 
 ```
 3v-repo/
-├── app/                          # Android app source
-│   ├── src/main/java/com/example/tres3/
-│   │   ├── HomeActivity.kt       # Main screen, contacts list
-│   │   ├── InCallActivity.kt     # Active call UI
-│   │   ├── IncomingCallActivity.kt # Incoming call handler
-│   │   ├── Tres3ConnectionService.kt # Native call UI integration
-│   │   ├── MyFirebaseMessagingService.kt # FCM push handler
-│   │   ├── CallSignalingManager.kt # Firestore signaling
-│   │   └── LiveKitManager.kt     # LiveKit connection manager
-│   └── build.gradle              # App dependencies
+├── tres_flutter/                 # Flutter app (main application)
+│   ├── lib/
+│   │   ├── screens/              # AuthScreen, HomeScreen, CallScreen
+│   │   ├── services/             # Core services
+│   │   │   ├── livekit_service.dart
+│   │   │   ├── auth_service.dart
+│   │   │   ├── chat_service.dart
+│   │   │   └── ... (more)
+│   │   ├── widgets/              # Reusable UI components
+│   │   └── config/               # Environment configuration
+│   ├── android/                  # Android-specific code
+│   ├── ios/                      # iOS-specific code
+│   ├── web/                      # Web-specific code
+│   └── pubspec.yaml              # Flutter dependencies
 ├── functions/                    # Firebase Cloud Functions
-│   ├── index.js                  # Main functions (token gen, notifications)
+│   ├── index.js                  # Token generation, notifications
 │   └── package.json              # Node dependencies
-├── docs/                         # Comprehensive documentation
-├── build.gradle                  # Root build config
-└── local.properties.example      # Template for local config
+├── docs/                         # Documentation
+└── docs/                         # Documentation
 ```
 
 ## Key Components
 
-### Android App
+### Flutter App Services
 
-- **HomeActivity**: Contact list, call initiation, FCM token registration
-- **InCallActivity**: Active call UI with video rendering and controls
-- **IncomingCallActivity**: Full-screen incoming call handler
-- **Tres3ConnectionService**: Native Android call UI via Telecom framework
-- **MyFirebaseMessagingService**: FCM push notification receiver
-- **CallSignalingManager**: Firestore-based call invitation signaling
-- **LiveKitManager**: LiveKit room connection and media management
+**Video/Audio:**
+- **LiveKitService**: WebRTC connection, adaptive bitrate, quality optimization
+- **CallSignalingService**: Call invitations and room management
+- **AudioDeviceService**: Audio device management
+
+**Communication:**
+- **ChatService**: Real-time messaging during calls
+- **ReactionService**: Live emoji reactions
+- **GuestLinkService**: Shareable call links
+- **ContactService**: Contact management
+
+**Advanced:**
+- **E2EEncryptionService**: Peer-to-peer encryption
+- **CallStatsService**: Real-time quality monitoring
+- **GridLayoutManager**: Multi-participant layouts
+- **NetworkQualityService**: Network monitoring
+
+**Core:**
+- **AuthService**: Firebase authentication
+- **NotificationService**: Push notifications
+- **CallSessionService**: Call session tracking
 
 ### Cloud Functions
 
-- **getLiveKitToken**: Generates LiveKit access tokens for authenticated users
-- **sendCallNotification**: Sends FCM push when call invitation is created
-- **generateGuestToken**: Creates shareable links for web guests
-- **joinGuest**: Handles guest invitation claims and redirects
-- **cleanupOldCallSignals**: Periodic cleanup of expired invitations
+- **getLiveKitToken**: Generates LiveKit access tokens
+- **sendCallNotification**: FCM push notifications
+- **generateGuestToken**: Guest link generation
+- **cleanupOldCallSignals**: Cleanup expired invitations
 
 ## Development
 
 ### Running Locally
 
-**Android App:**
+**Flutter App:**
 ```bash
-./gradlew :app:assembleDebug
-./gradlew :app:installDebug
+cd tres_flutter
+flutter run
 ```
 
 **Cloud Functions (Emulator):**
@@ -160,50 +187,58 @@ npm run serve
 ### Testing
 
 ```bash
-# Unit tests
-./gradlew test
+cd tres_flutter
 
-# Instrumentation tests
-./gradlew connectedAndroidTest
+# Analyze code
+flutter analyze
+
+# Run unit tests
+flutter test
+
+# Run integration tests
+flutter test integration_test/
 ```
 
 ### Common Issues
 
-#### 1. Missing LiveKit Credentials
-**Error**: "LiveKit credentials not configured"  
-**Fix**: Ensure `local.properties` (app) and `.env` (functions) have valid LiveKit credentials
+#### 1. Firebase Not Initialized
+**Error**: "Firebase not initialized"  
+**Fix**: Run `./setup_firebase.sh` or `flutterfire configure`
 
-#### 2. Node Version Mismatch
-**Error**: Firebase Functions deployment fails  
-**Fix**: Use Node.js 20 (run `nvm use 20` or install from nodejs.org)
+#### 2. LiveKit Connection Failed
+**Error**: "Connection failed"  
+**Fix**: Check WebSocket URL format (`wss://` not `https://`) in `lib/config/environment.dart`
 
-#### 3. Java Version Issues
-**Error**: Gradle build fails with version errors  
-**Fix**: Use JDK 17 (`export JAVA_HOME=/path/to/jdk-17`)
+#### 3. Functions Timeout
+**Error**: Cloud Functions timeout  
+**Fix**: Check `firebase functions:log` and verify `.env` is deployed
 
-#### 4. FCM Token Not Registered
-**Error**: Notifications not received  
-**Fix**: Ensure `google-services.json` is in `app/` directory and app has run at least once
+#### 4. Permission Denied
+**Error**: Camera/microphone access denied  
+**Fix**: Grant permissions in device settings
 
 ## Documentation
 
-Detailed documentation is available in the `docs/` directory:
+**Flutter App Documentation:**
+- `tres_flutter/QUICKSTART.md` - 15-minute setup guide
+- `tres_flutter/FIREBASE_SETUP_GUIDE.md` - Complete Firebase configuration
+- `tres_flutter/INTEGRATION_CHECKLIST.md` - Testing & deployment guide
+- `tres_flutter/FEATURE_STATUS.md` - Feature implementation status
 
-- **CONNECTIONSERVICE_INTEGRATION.md**: Native Android UI implementation
-- **FCM_PUSH_NOTIFICATIONS.md**: Background notification setup
-- **CALL_SIGNALING_IMPLEMENTATION.md**: Firestore signaling architecture
-- **NOTIFICATION_TROUBLESHOOTING.md**: FCM debugging guide
-- **COMPLETE_FIXES_SUMMARY.md**: Recent fixes and improvements
+**Root Documentation:**
+- `VIDEO_CALL_QUALITY_AUDIT_REPORT.md` - Video quality optimization
+- `OPTIMIZATION_AUDIT_REPORT.md` - Performance improvements
+- `docs/` - Legacy Android documentation
 
 ## Technology Stack
 
-- **Language**: Kotlin
-- **UI**: Jetpack Compose + Material3
-- **Backend**: Firebase (Firestore, Functions, FCM)
-- **Video**: LiveKit WebRTC
-- **Build**: Gradle 8.9, AGP 8.7.3
-- **Min SDK**: 24 (Android 7.0)
-- **Target SDK**: 35 (Android 15)
+- **Framework**: Flutter 3.24.5
+- **Language**: Dart 3.9.2
+- **UI**: Material3 + Custom widgets
+- **Backend**: Firebase (Firestore, Functions, FCM, Storage)
+- **Video**: LiveKit Client 2.6.1 (WebRTC)
+- **State**: Provider 6.1.2
+- **Platforms**: Android, iOS, Web
 
 ## Contributing
 
@@ -222,5 +257,6 @@ For issues or questions, check the documentation in `docs/` or open an issue.
 
 ---
 
-**Last Updated**: October 30, 2025  
-**Version**: 1.4 (call-fixes)
+**Last Updated**: January 27, 2026  
+**Version**: 2.0 (Flutter)  
+**Status**: Production-ready
