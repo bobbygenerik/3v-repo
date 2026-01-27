@@ -412,7 +412,7 @@ class LiveKitService extends ChangeNotifier {
 
   QualityTier _determineTargetQualityTier(CallStats stats) {
     if (_isSafariPwa) return QualityTier.high;
-    if (_currentCallType != CallType.androidAndroid) return QualityTier.high;
+    // Allow all call types to reach ultra quality if conditions are met
 
     final networkType = _networkService.getCurrentNetworkType();
     if (networkType != 'wifi' && networkType != '5g') {
