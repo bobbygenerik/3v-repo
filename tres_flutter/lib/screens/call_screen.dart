@@ -2578,6 +2578,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              title: const Text('English', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                _startTranslation('eng_Latn');
+              },
+            ),
+            ListTile(
               title: const Text('Spanish', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(dialogContext);
@@ -2645,6 +2652,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   
   Future<void> _captureAndTranslate() async {
     try {
+      // Check if translation is still active
+      if (!_translationActive || _translationTargetLang == null) return;
+      
       final path = '/tmp/audio_${DateTime.now().millisecondsSinceEpoch}.wav';
       
       // Record 5 seconds of audio
@@ -2652,6 +2662,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         await _audioRecorder.start(const RecordConfig(), path: path);
         await Future.delayed(const Duration(seconds: 5));
         await _audioRecorder.stop();
+        
+        // Check again after recording
+        if (!_translationActive || !mounted) {
+          // Cleanup and exit
+          try {
+            await File(path).delete();
+          } catch (_) {}
+          return;
+        }
         
         // Upload to Firebase Storage and get URL
         final file = File(path);
@@ -2663,18 +2682,20 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         final translation = TranslationService();
         final result = await translation.translateAudio(audioUrl, tgtLang: _translationTargetLang!);
         
-        if (mounted) {
+        if (mounted && _translationActive) {
           setState(() {
             _translatedText = result['text'] ?? 'No translation';
           });
         }
         
         // Cleanup
-        await file.delete();
+        try {
+          await file.delete();
+        } catch (_) {}
       }
     } catch (e) {
       debugPrint('Translation error: $e');
-      if (mounted) {
+      if (mounted && _translationActive) {
         setState(() {
           _translatedText = 'Error: $e';
         });
