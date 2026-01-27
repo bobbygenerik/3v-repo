@@ -47,6 +47,7 @@ class CallStatsService extends ChangeNotifier {
 
       _roomListener
         ?..on<VideoSenderStatsEvent>((e) {
+          debugPrint('📊 VideoSenderStatsEvent: bitrate=${e.currentBitrate}');
           _lastVideoSendBitrate = (e.currentBitrate ?? 0).toDouble();
           if (e.bitrateForLayers.isNotEmpty) {
             final sum = e.bitrateForLayers.values.fold<num>(0, (p, c) => p + (c ?? 0));
@@ -108,8 +109,10 @@ class CallStatsService extends ChangeNotifier {
     if (_isCollecting) return;
     if (_room == null) return;
 
+    debugPrint('📊 CallStatsService: Starting stats collection');
     _isCollecting = true;
     _statsTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      debugPrint('📊 CallStatsService: Flushing stats - video send=${_lastVideoSendBitrate}, recv=${_lastVideoRecvBitrate}');
       _flushCurrentStats();
     });
     notifyListeners();
