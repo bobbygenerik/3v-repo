@@ -2686,15 +2686,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           return;
         }
         
-        // Upload to Firebase Storage and get URL
-        final file = File(path);
-        final storageRef = FirebaseStorage.instance.ref().child('translations/${DateTime.now().millisecondsSinceEpoch}.wav');
-        await storageRef.putFile(file);
-        final audioUrl = await storageRef.getDownloadURL();
-        
-        // Translate
+        // Translate by uploading directly to VPS
         final translation = TranslationService();
-        final result = await translation.translateAudio(audioUrl, tgtLang: _translationTargetLang!);
+        final result = await translation.translateAudio(path, tgtLang: _translationTargetLang!);
         
         if (mounted && _translationActive) {
           setState(() {
@@ -2704,7 +2698,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         
         // Cleanup
         try {
-          await file.delete();
+          await File(path).delete();
         } catch (_) {}
       }
     } catch (e) {
