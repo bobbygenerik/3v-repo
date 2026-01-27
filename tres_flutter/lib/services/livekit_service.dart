@@ -1141,6 +1141,9 @@ class LiveKitService extends ChangeNotifier {
           _buildAudioCaptureOptions(),
         );
         
+        // Explicitly unmute immediately after creation
+        await _localAudioTrack!.unmute();
+        
         await _room!.localParticipant?.publishAudioTrack(
           _localAudioTrack!,
           publishOptions: AudioPublishOptions(
@@ -1151,6 +1154,7 @@ class LiveKitService extends ChangeNotifier {
         );
       }
       
+      // Ensure unmuted
       await _localAudioTrack?.unmute();
       notifyListeners();
     } catch (e) {
