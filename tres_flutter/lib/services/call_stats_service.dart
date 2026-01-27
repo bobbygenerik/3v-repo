@@ -334,9 +334,9 @@ class CallStatsService extends ChangeNotifier {
 
   /// If event-driven fields are missing, try to collect from room
   Future<void> _maybeFillFromNativeIfNeeded() async {
-    // On web, LiveKit stats events may not fire reliably
-    // Use native WebRTC getStats() API
-    if (!kIsWeb || _room == null) return;
+    // LiveKit stats events may not fire reliably on any platform
+    // Use native WebRTC getStats() API as fallback
+    if (_room == null) return;
     
     try {
       final localParticipant = _room!.localParticipant;
