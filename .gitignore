@@ -22,6 +22,11 @@ functions/.env
 # Google Services (keep google-services.json in repo, but not local overrides)
 # google-services.json is intentionally tracked
 
+# VPS Workflow (models should only be on VPS)
+vps-workflow/venv/
+vps-workflow/*.onnx
+vps-workflow/*.onnx.json
+
 # Misc
 captures/
 *.log
