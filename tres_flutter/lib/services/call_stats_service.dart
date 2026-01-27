@@ -334,8 +334,45 @@ class CallStatsService extends ChangeNotifier {
 
   /// If event-driven fields are missing, try to collect from room
   Future<void> _maybeFillFromNativeIfNeeded() async {
-    // Don't provide fake estimates - let dashboard show "Collecting..." for zero values
-    return;
+    // On web, LiveKit stats events may not fire reliably
+    // Use native WebRTC getStats() API
+    if (!kIsWeb || _room == null) return;
+    
+    try {
+      final localParticipant = _room!.localParticipant;
+      if (localParticipant == null) return;
+      
+      // Get video track stats
+      final videoTrack = localParticipant.videoTrackPublications.firstOrNull?.track;
+      if (videoTrack != null) {
+        final stats = await videoTrack.getStats();
+        if (stats != null) {
+          final parsed = _parseStatsObject(stats);
+          if (parsed['packetLoss'] != null) _lastVideoPacketLoss = parsed['packetLoss']!;
+          if (parsed['rttMs'] != null) _lastRtt = (parsed['rttMs']! / 1000.0);
+          if (parsed['jitterMs'] != null) _lastJitter = (parsed['jitterMs']! / 1000.0);
+          if (parsed['availableOutgoingBitrate'] != null) {
+            _lastAvailableOutgoingBitrate = parsed['availableOutgoingBitrate']!;
+          }
+          if (parsed['width'] != null && parsed['height'] != null) {
+            _lastResolution = '${parsed['width']!.toInt()}x${parsed['height']!.toInt()}';
+          }
+          if (parsed['fps'] != null) _lastFps = parsed['fps']!.toInt();
+        }
+      }
+      
+      // Get audio track stats
+      final audioTrack = localParticipant.audioTrackPublications.firstOrNull?.track;
+      if (audioTrack != null) {
+        final stats = await audioTrack.getStats();
+        if (stats != null) {
+          final parsed = _parseStatsObject(stats);
+          if (parsed['packetLoss'] != null) _lastAudioPacketLoss = parsed['packetLoss']!;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to get native stats: $e');
+    }
   }
 
   /// Build CallStats and append to history

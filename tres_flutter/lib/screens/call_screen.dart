@@ -14,6 +14,7 @@ import '../services/livekit_service.dart';
 import 'package:record/record.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../services/feature_flags.dart';
 import '../services/device_mode_service.dart';
 import '../services/android_pip_service.dart';
@@ -2652,6 +2653,16 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   }
   
   Future<void> _captureAndTranslate() async {
+    // Translation not supported on web (requires file system access)
+    if (kIsWeb) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Translation not available on web')),
+        );
+      }
+      return;
+    }
+    
     try {
       // Check if translation is still active
       if (!_translationActive || _translationTargetLang == null) return;
