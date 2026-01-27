@@ -433,7 +433,9 @@ class LiveKitService extends ChangeNotifier {
       return QualityTier.high;
     }
 
-    if (!_supports1440p60() && !_supports4K()) {
+    // On web/PWA, allow ultra quality based on network conditions alone
+    // On Android, require hardware capability
+    if (!kIsWeb && !_supports1440p60() && !_supports4K()) {
       _qualityUpgradeGateStart = null;
       return QualityTier.high;
     }
@@ -477,6 +479,10 @@ class LiveKitService extends ChangeNotifier {
       case QualityTier.medium:
         return FaceTimeVideoPresets.h720LowFps;
       case QualityTier.ultra:
+        // On web/PWA, use 1440p preset; on Android, use 1440p60 if supported
+        if (kIsWeb) {
+          return FaceTimeVideoPresets.h1440;
+        }
         return _supports1440p60()
             ? FaceTimeVideoPresets.androidExtreme1440p60
             : FaceTimeVideoPresets.h1440;
