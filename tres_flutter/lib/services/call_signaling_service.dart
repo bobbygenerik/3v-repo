@@ -12,6 +12,7 @@ class CallSignalingService {
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
+  static final Map<String, DateTime> _recentCallAttemptsByRecipient = {};
 
   /// Send a call invitation to a recipient
   /// Returns the invitation ID if successful
@@ -28,6 +29,16 @@ class CallSignalingService {
         debugPrint('❌ Cannot send invitation: No current user');
         return null;
       }
+
+      // Local throttle to prevent rapid double-taps even if Firestore check fails.
+      final now = DateTime.now();
+      final lastAttempt = _recentCallAttemptsByRecipient[recipientUserId];
+      if (lastAttempt != null &&
+          now.difference(lastAttempt) < const Duration(seconds: 10)) {
+        debugPrint('⏰ Recent call attempt detected locally, waiting before allowing new call');
+        return null;
+      }
+      _recentCallAttemptsByRecipient[recipientUserId] = now;
       
       // Check for recent calls between these users (prevent spam)
       try {
@@ -35,29 +46,46 @@ class CallSignalingService {
           DateTime.now().subtract(const Duration(seconds: 10))
         );
 
-        // Check outgoing calls (Me -> Them)
-        final outgoingCalls = await _firestore
+        // Query with a single filter to avoid composite index requirements.
+        // Outgoing calls (Me -> Them)
+        final outgoingSnapshot = await _firestore
             .collection('call_invitations')
-            .where('callerId', isEqualTo: currentUser.uid)
             .where('recipientId', isEqualTo: recipientUserId)
-            .where('timestamp', isGreaterThan: tenSecondsAgo)
+            .limit(50)
             .get();
 
-        // Check incoming calls (Them -> Me)
-        final incomingCalls = await _firestore
+        final outgoingCalls = outgoingSnapshot.docs.where((doc) {
+          final data = doc.data();
+          final callerId = data['callerId'] as String?;
+          final timestamp = data['timestamp'] as Timestamp?;
+          if (callerId != currentUser.uid || timestamp == null) return false;
+          return timestamp.compareTo(tenSecondsAgo) > 0;
+        });
+
+        // Incoming calls (Them -> Me)
+        final incomingSnapshot = await _firestore
             .collection('call_invitations')
-            .where('callerId', isEqualTo: recipientUserId)
             .where('recipientId', isEqualTo: currentUser.uid)
-            .where('timestamp', isGreaterThan: tenSecondsAgo)
+            .limit(50)
             .get();
+
+        final incomingCalls = incomingSnapshot.docs.where((doc) {
+          final data = doc.data();
+          final callerId = data['callerId'] as String?;
+          final timestamp = data['timestamp'] as Timestamp?;
+          if (callerId != recipientUserId || timestamp == null) return false;
+          return timestamp.compareTo(tenSecondsAgo) > 0;
+        });
         
-        if (outgoingCalls.docs.isNotEmpty || incomingCalls.docs.isNotEmpty) {
+        if (outgoingCalls.isNotEmpty || incomingCalls.isNotEmpty) {
           debugPrint('⏰ Recent call found, waiting before allowing new call');
           return null;
         }
       } catch (e) {
         // If index is missing or other error, log it but allow the call to proceed
-        debugPrint('⚠️ Error checking recent calls (likely missing index), proceeding anyway: $e');
+        if (kDebugMode) {
+          debugPrint('⚠️ Error checking recent calls, proceeding anyway: $e');
+        }
       }
 
       // Get caller info from Firestore

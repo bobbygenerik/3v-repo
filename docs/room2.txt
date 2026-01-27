@@ -1,0 +1,242 @@
+--------- beginning of main
+01-21 23:25:46.264 17846 17846 I flutter : ✅ Using provided recipient UID: ulUDkAF45ISEE4fCdHkRyaqswat2
+01-21 23:25:46.265 17846 17846 I flutter : 🚀 Starting parallel initialization (Token + Invitation)
+01-21 23:25:46.473 17846 17846 I flutter : ⚠️ Error checking recent calls (likely missing index), proceeding anyway: [cloud_firestore/failed-precondition] The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/tres3-5fdba/firestore/indexes?create_composite=ClRwcm9qZWN0cy90cmVzMy01ZmRiYS9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvY2FsbF9pbnZpdGF0aW9ucy9pbmRleGVzL18QARoMCghjYWxsZXJJZBABGg8KC3JlY2lwaWVudElkEAEaDQoJdGltZXN0YW1wEAEaDAoIX19uYW1lX18QAQ
+01-21 23:25:46.666 17846 17846 I flutter : 📞 Sending call invitation:
+01-21 23:25:46.667 17846 17846 I flutter :   From: Bobby Generik (62gRfr3LHIO1Anx5w6KEzV1USdF2)
+01-21 23:25:46.667 17846 17846 I flutter :   To: ulUDkAF45ISEE4fCdHkRyaqswat2
+01-21 23:25:46.667 17846 17846 I flutter :   Room: call_1769055946264
+01-21 23:25:46.667 17846 17846 I flutter :   Type: Video
+01-21 23:25:47.142 17846 17846 I flutter : ✅ Call invitation sent: SGelgbplMUenEW19uncg
+01-21 23:25:47.142 17846 17846 I flutter : ✅ Parallel initialization complete
+01-21 23:25:47.192 17846 17846 I flutter : 📞 Invitation status: pending
+01-21 23:25:49.837 17846 17846 I flutter : 📞 Invitation status: accepted
+01-21 23:25:49.995 17846 17846 I flutter : ❌ Error starting session: [cloud_firestore/permission-denied] The caller does not have permission to execute the specified operation.
+01-21 23:25:50.001 17846 17846 I flutter : 🎯 FaceTime-Quality Connection Setup:
+01-21 23:25:50.001 17846 17846 I flutter :    📞 Call Type: CallType.mixedUnknown
+01-21 23:25:50.001 17846 17846 I flutter :    🚀 Ultra-HQ Mode: false
+01-21 23:25:50.001 17846 17846 I flutter :    📡 Preferred Codec: h264
+01-21 23:25:50.001 17846 17846 I flutter :    🔄 Simulcast: false (disabled for 1-to-1)
+01-21 23:25:50.002 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:25:50.003 17846 17846 I flutter :    📞 Call Type: CallType.mixedUnknown
+01-21 23:25:50.003 17846 17846 I flutter :    🚀 Ultra-HQ Mode: false
+01-21 23:25:50.003 17846 17846 I flutter :    📡 Codec: h264
+01-21 23:25:50.003 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:25:50.003 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:25:50.003 17846 17846 I flutter : ⚠️ No ICE servers configured. TURN is required for reliable NAT traversal.
+01-21 23:25:50.003 17846 17846 I flutter : 👂 Starting to listen for incoming calls for 62gRfr3LHIO1Anx5w6KEzV1USdF2
+01-21 23:25:50.199 17846 17846 I flutter : 📶 Network quality: fair (197ms)
+01-21 23:25:50.489 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:50.490 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:50.490 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:50.491 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:51.529 17846 17846 I flutter : 📹 enableCamera() called with FaceTime-quality settings
+01-21 23:25:51.529 17846 17846 I flutter : 📹 Creating camera track with FaceTime-quality preset...
+01-21 23:25:51.529 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:25:51.529 17846 17846 I flutter :    📞 Call Type: CallType.mixedUnknown
+01-21 23:25:51.529 17846 17846 I flutter :    🚀 Ultra-HQ Mode: false
+01-21 23:25:51.529 17846 17846 I flutter :    📡 Codec: h264
+01-21 23:25:51.529 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:25:51.529 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:25:51.530 17846 17846 I flutter : 📹 FaceTime-quality capture params:
+01-21 23:25:51.530 17846 17846 I flutter :    📐 Resolution: 1920x1080
+01-21 23:25:51.530 17846 17846 I flutter :    📊 Max Bitrate: 8.0 Mbps
+01-21 23:25:51.530 17846 17846 I flutter :    🎬 Max FPS: 30
+01-21 23:25:52.096 17846 17846 I flutter : 📤 Publishing video track with FaceTime-quality encoding...
+01-21 23:25:52.240 17846 17846 I flutter : ✅ FaceTime-quality video track published
+01-21 23:25:52.240 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.240 17846 17846 I flutter : ✅ Video track unmuted
+01-21 23:25:52.240 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.241 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.241 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.370 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.370 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.371 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.384 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.384 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.384 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.384 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.384 17846 17846 I flutter : 👤 Participant connected: ulUDkAF45ISEE4fCdHkRyaqswat2
+01-21 23:25:52.384 17846 17846 I flutter :    - Call type may have changed, reclassifying...
+01-21 23:25:52.385 17846 17846 I flutter :    📞 New Call Type: CallType.androidAndroid
+01-21 23:25:52.385 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:25:52.385 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.385 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.385 17846 17846 I flutter : 📢 Track published: TR_VCDJRsDMFYTYRv by ulUDkAF45ISEE4fCdHkRyaqswat2
+01-21 23:25:52.385 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.515 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.517 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.517 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:25:52.517 17846 17846 I flutter :    📞 Call Type: CallType.androidAndroid
+01-21 23:25:52.517 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:25:52.517 17846 17846 I flutter :    📡 Codec: av1
+01-21 23:25:52.517 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:25:52.517 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:25:52.525 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:52.525 17846 17846 I flutter : ✅ Track subscribed: TR_VCDJRsDMFYTYRv
+01-21 23:25:52.525 17846 17846 I flutter :    - Kind: TrackType.VIDEO
+01-21 23:25:52.525 17846 17846 I flutter :    - Participant: ulUDkAF45ISEE4fCdHkRyaqswat2
+01-21 23:25:52.525 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:53.065 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:53.151 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:53.151 17846 17846 I flutter : 🔁 Recreated video track with FaceTime-quality preset
+01-21 23:25:53.151 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:53.188 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:53.193 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:53.412 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:53.453 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:54.243 17846 17846 I flutter : 📊 ACTUAL CODEC VERIFICATION:
+01-21 23:25:54.243 17846 17846 I flutter :    🎯 Requested: av1
+01-21 23:25:54.243 17846 17846 I flutter :    ℹ️ Codec introspection not available via LiveKit SDK; verify via server stats or WebRTC getStats
+01-21 23:25:54.243 17846 17846 I flutter : ✅ Connected to LiveKit room with FaceTime-quality tuning: call_1769055946264
+01-21 23:25:54.243 17846 17846 I flutter : 🎯 CallFeaturesCoordinator initializing...
+01-21 23:25:54.243 17846 17846 I flutter : ✅ DataChannel listener setup complete
+01-21 23:25:54.243 17846 17846 I flutter : ChatService initialized for room: call_1769055946264
+01-21 23:25:54.243 17846 17846 I flutter : Reaction DataChannel listener setup complete
+01-21 23:25:54.243 17846 17846 I flutter : ReactionService initialized
+01-21 23:25:54.243 17846 17846 I flutter : ⚠️ MediaPipe support removed; ML features disabled
+01-21 23:25:54.244 17846 17846 I flutter : E2EEncryption: Initializing E2E encryption...
+01-21 23:25:54.745 17846 17846 I flutter : E2EEncryption: ✅ Encryption system initialized
+01-21 23:25:54.745 17846 17846 I flutter : ✅ Encryption service initialized
+01-21 23:25:54.745 17846 17846 I flutter : ℹ️ ScreenShare feature removed: skipping initialization
+01-21 23:25:54.745 17846 17846 I flutter : GridLayout: Updated participants: 2
+01-21 23:25:54.745 17846 17846 I flutter : GridLayout: Manager initialized with 2 participants
+01-21 23:25:54.745 17846 17846 I flutter : ✅ Phase 5 services initialized
+01-21 23:25:54.745 17846 17846 I flutter : ✅ CallFeaturesCoordinator initialized
+01-21 23:25:54.745 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:25:54.745 17846 17846 I flutter :    📞 Call Type: CallType.androidAndroid
+01-21 23:25:54.745 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:25:54.745 17846 17846 I flutter :    📡 Codec: av1
+01-21 23:25:54.745 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:25:54.745 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:25:54.756 17846 17846 I flutter : 📹 [ulUDkAF45ISEE4fCdHkRyaqswat2] Requested HIGH quality (main view)
+01-21 23:25:55.438 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:55.439 17846 17846 I flutter : GridLayout: Updated participants: 2
+01-21 23:25:55.439 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:55.439 17846 17846 I flutter : 📹 [ulUDkAF45ISEE4fCdHkRyaqswat2] Requested HIGH quality (main view)
+01-21 23:25:55.439 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:55.439 17846 17846 I flutter : GridLayout: Updated participants: 2
+01-21 23:25:55.439 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:55.440 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:55.440 17846 17846 I flutter : GridLayout: Updated participants: 2
+01-21 23:25:55.440 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:25:57.746 17846 17846 I flutter : 📊 CallStats send=0 kbps recv=0 kbps loss=0.0% rtt=0 ms jitter=0.0 ms fps=0 res=N/A avail=0 kbps quality=Excellent
+01-21 23:25:57.746 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:25:57.746 17846 17846 I flutter :    📞 Call Type: CallType.androidAndroid
+01-21 23:25:57.746 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:25:57.746 17846 17846 I flutter :    📡 Codec: av1
+01-21 23:25:57.746 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:25:57.746 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:26:00.746 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:26:00.746 17846 17846 I flutter :    📞 Call Type: CallType.androidAndroid
+01-21 23:26:00.746 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:26:00.746 17846 17846 I flutter :    📡 Codec: av1
+01-21 23:26:00.746 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:26:00.746 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:26:03.746 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:26:03.746 17846 17846 I flutter :    📞 Call Type: CallType.androidAndroid
+01-21 23:26:03.746 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:26:03.746 17846 17846 I flutter :    📡 Codec: av1
+01-21 23:26:03.746 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:26:03.746 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:26:06.746 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:26:06.746 17846 17846 I flutter :    📞 Call Type: CallType.androidAndroid
+01-21 23:26:06.746 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:26:06.746 17846 17846 I flutter :    📡 Codec: av1
+01-21 23:26:06.746 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:26:06.746 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:26:09.747 17846 17846 I flutter : 📊 CallStats send=0 kbps recv=0 kbps loss=0.0% rtt=0 ms jitter=0.0 ms fps=0 res=N/A avail=0 kbps quality=Excellent
+01-21 23:26:09.748 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:26:09.748 17846 17846 I flutter :    📞 Call Type: CallType.androidAndroid
+01-21 23:26:09.748 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:26:09.748 17846 17846 I flutter :    📡 Codec: av1
+01-21 23:26:09.748 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:26:09.748 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:26:12.746 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:26:12.746 17846 17846 I flutter :    📞 Call Type: CallType.androidAndroid
+01-21 23:26:12.746 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:26:12.746 17846 17846 I flutter :    📡 Codec: av1
+01-21 23:26:12.746 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:26:12.746 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:26:15.746 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:26:15.746 17846 17846 I flutter :    📞 Call Type: CallType.androidAndroid
+01-21 23:26:15.746 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:26:15.746 17846 17846 I flutter :    📡 Codec: av1
+01-21 23:26:15.746 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:26:15.746 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:26:18.746 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:26:18.746 17846 17846 I flutter :    📞 Call Type: CallType.androidAndroid
+01-21 23:26:18.746 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:26:18.746 17846 17846 I flutter :    📡 Codec: av1
+01-21 23:26:18.746 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:26:18.746 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:26:20.149 17846 17846 I flutter : 📶 Network quality: good (146ms)
+01-21 23:26:21.746 17846 17846 I flutter : 📊 CallStats send=0 kbps recv=0 kbps loss=0.0% rtt=0 ms jitter=0.0 ms fps=0 res=N/A avail=0 kbps quality=Excellent
+01-21 23:26:21.746 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:26:21.746 17846 17846 I flutter :    📞 Call Type: CallType.androidAndroid
+01-21 23:26:21.746 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:26:21.746 17846 17846 I flutter :    📡 Codec: av1
+01-21 23:26:21.746 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:26:21.746 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:26:24.746 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:26:24.746 17846 17846 I flutter :    📞 Call Type: CallType.androidAndroid
+01-21 23:26:24.746 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:26:24.746 17846 17846 I flutter :    📡 Codec: av1
+01-21 23:26:24.746 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:26:24.746 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:26:27.746 17846 17846 I flutter : 🎥 FaceTime-Quality Encoding:
+01-21 23:26:27.746 17846 17846 I flutter :    📞 Call Type: CallType.androidAndroid
+01-21 23:26:27.746 17846 17846 I flutter :    🚀 Ultra-HQ Mode: true
+01-21 23:26:27.746 17846 17846 I flutter :    📡 Codec: av1
+01-21 23:26:27.746 17846 17846 I flutter :    📊 Bitrate: 8.0 Mbps
+01-21 23:26:27.746 17846 17846 I flutter :    🎬 FPS: 30
+01-21 23:26:29.816 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:29.817 17846 17846 I flutter : GridLayout: Updated participants: 2
+01-21 23:26:29.817 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:29.826 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:29.826 17846 17846 I flutter : 📞 All participants have left - ending call immediately
+01-21 23:26:29.826 17846 17846 I flutter : 📞 Ending call and cleaning up...
+01-21 23:26:29.826 17846 17846 I flutter : GridLayout: Updated participants: 1
+01-21 23:26:29.826 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:29.827 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:29.827 17846 17846 I flutter : GridLayout: Updated participants: 1
+01-21 23:26:29.827 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:29.827 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:29.827 17846 17846 I flutter : GridLayout: Updated participants: 1
+01-21 23:26:29.827 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:29.827 17846 17846 I flutter : Track unpublished: TR_VCDJRsDMFYTYRv
+01-21 23:26:29.827 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:29.827 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:29.827 17846 17846 I flutter : GridLayout: Updated participants: 1
+01-21 23:26:29.827 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:29.827 17846 17846 I flutter : 👋 Participant disconnected: ulUDkAF45ISEE4fCdHkRyaqswat2
+01-21 23:26:29.827 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:29.834 17846 17846 I flutter : 🔚 Ending call - Room: call_1769055946264, OtherUser: null
+01-21 23:26:29.835 17846 17846 I flutter : 🔌 Disconnecting from LiveKit...
+01-21 23:26:30.016 17846 17846 I flutter : ❌ Error ending call: [cloud_firestore/permission-denied] The caller does not have permission to execute the specified operation.
+01-21 23:26:30.195 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:30.195 17846 17846 I flutter : GridLayout: Updated participants: 1
+01-21 23:26:30.195 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:30.196 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:30.196 17846 17846 I flutter : GridLayout: Updated participants: 1
+01-21 23:26:30.196 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:30.206 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:30.206 17846 17846 I flutter : GridLayout: Updated participants: 0
+01-21 23:26:30.206 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:30.206 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:30.206 17846 17846 I flutter : GridLayout: Updated participants: 0
+01-21 23:26:30.206 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:30.206 17846 17846 I flutter : 🔌 Room disconnected: DisconnectReason.clientInitiated
+01-21 23:26:30.206 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:30.207 17846 17846 I flutter : ✅ LiveKit disconnected successfully
+01-21 23:26:30.207 17846 17846 I flutter : Another exception was thrown: Instance of 'ErrorSummary'
+01-21 23:26:31.192 17846 17846 I flutter : 🛑 Stopping call listener
+01-21 23:26:31.193 17846 17846 I flutter : Error during LiveKit cleanup: Null check operator used on a null value
+01-21 23:26:31.194 17846 17846 I flutter : 🧹 CallFeaturesCoordinator cleaning up...
+01-21 23:26:31.194 17846 17846 I flutter : 🧹 ChatService cleaned up
+01-21 23:26:31.194 17846 17846 I flutter : 🧹 ReactionService cleaned up
+01-21 23:26:31.195 17846 17846 I flutter : CloudRecording: ✅ Service disposed
+01-21 23:26:31.195 17846 17846 I flutter : E2EEncryption: ✅ Service disposed
+01-21 23:26:31.197 17846 17846 I flutter : GridLayout: Cleaning up...
+01-21 23:26:31.197 17846 17846 I flutter : GridLayout: ✅ Cleaned up
+01-21 23:26:31.198 17846 17846 I flutter : ✅ CallFeaturesCoordinator cleaned up

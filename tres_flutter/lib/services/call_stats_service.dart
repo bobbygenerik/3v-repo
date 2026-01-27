@@ -28,6 +28,8 @@ class CallStatsService extends ChangeNotifier {
   double _lastAvailableOutgoingBitrate = 0.0; // bits per second
   String _lastResolution = 'N/A';
   int _lastFps = 0;
+  String _lastVideoCodec = 'unknown';
+  String _lastAudioCodec = 'unknown';
 
   final List<CallStats> _statsHistory = [];
   static const int _maxHistoryLength = 60;
@@ -61,6 +63,8 @@ class CallStatsService extends ChangeNotifier {
             _lastResolution = '${parsed['width']!.toInt()}x${parsed['height']!.toInt()}';
           }
           if (parsed['fps'] != null) _lastFps = parsed['fps']!.toInt();
+          final codec = _extractCodecName(e.stats, isVideo: true);
+          if (codec != null && codec.isNotEmpty) _lastVideoCodec = codec;
         })
         ..on<VideoReceiverStatsEvent>((e) {
           _lastVideoRecvBitrate = (e.currentBitrate ?? 0).toDouble();
@@ -75,11 +79,15 @@ class CallStatsService extends ChangeNotifier {
             _lastResolution = '${parsed['width']!.toInt()}x${parsed['height']!.toInt()}';
           }
           if (parsed['fps'] != null) _lastFps = parsed['fps']!.toInt();
+          final codec = _extractCodecName(e.stats, isVideo: true);
+          if (codec != null && codec.isNotEmpty) _lastVideoCodec = codec;
         })
         ..on<AudioSenderStatsEvent>((e) {
           _lastAudioSendBitrate = (e.currentBitrate ?? 0).toDouble();
           final parsed = _parseStatsObject(e.stats);
           if (parsed['packetLoss'] != null) _lastAudioPacketLoss = parsed['packetLoss']!;
+          final codec = _extractCodecName(e.stats, isVideo: false);
+          if (codec != null && codec.isNotEmpty) _lastAudioCodec = codec;
         })
         ..on<AudioReceiverStatsEvent>((e) {
           _lastAudioRecvBitrate = (e.currentBitrate ?? 0).toDouble();
@@ -87,6 +95,8 @@ class CallStatsService extends ChangeNotifier {
           if (parsed['packetLoss'] != null) _lastAudioPacketLoss = parsed['packetLoss']!;
           if (parsed['rttMs'] != null) _lastRtt = (parsed['rttMs']! / 1000.0);
           if (parsed['jitterMs'] != null) _lastJitter = (parsed['jitterMs']! / 1000.0);
+          final codec = _extractCodecName(e.stats, isVideo: false);
+          if (codec != null && codec.isNotEmpty) _lastAudioCodec = codec;
         });
     } catch (e) {
       debugPrint('$_tag: Failed to register room stats listeners: $e');
@@ -249,6 +259,76 @@ class CallStatsService extends ChangeNotifier {
     };
   }
 
+  String? _extractCodecName(dynamic stats, {required bool isVideo}) {
+    String? found;
+
+    bool matchesCodecValue(String valueLower) {
+      if (isVideo) {
+        return valueLower.contains('video/') ||
+            valueLower.contains('h264') ||
+            valueLower.contains('av1') ||
+            valueLower.contains('vp8') ||
+            valueLower.contains('vp9') ||
+            valueLower.contains('h265') ||
+            valueLower.contains('hevc');
+      }
+      return valueLower.contains('audio/') ||
+          valueLower.contains('opus') ||
+          valueLower.contains('isac') ||
+          valueLower.contains('pcmu') ||
+          valueLower.contains('pcma') ||
+          valueLower.contains('g722');
+    }
+
+    String normalize(String raw) {
+      var value = raw.trim();
+      if (value.contains('/')) {
+        value = value.split('/').last;
+      }
+      value = value.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+      if (value.isEmpty) return raw;
+      return value.toUpperCase();
+    }
+
+    void recurse(dynamic obj) {
+      if (obj == null || found != null) return;
+      if (obj is Map) {
+        for (final entry in obj.entries) {
+          if (found != null) return;
+          final key = entry.key?.toString().toLowerCase() ?? '';
+          final value = entry.value;
+          if (value is String) {
+            final valueLower = value.toLowerCase();
+            if (key.contains('codec') || key.contains('mime')) {
+              if (matchesCodecValue(valueLower)) {
+                found = normalize(value);
+                return;
+              }
+            }
+            if (matchesCodecValue(valueLower)) {
+              found = normalize(value);
+              return;
+            }
+          }
+          if (value is Map || value is Iterable) {
+            recurse(value);
+          }
+        }
+      } else if (obj is Iterable) {
+        for (final item in obj) {
+          if (found != null) return;
+          recurse(item);
+        }
+      }
+    }
+
+    try {
+      recurse(stats);
+    } catch (_) {}
+
+    return found;
+  }
+
   /// If event-driven fields are missing, try to collect from room
   Future<void> _maybeFillFromNativeIfNeeded() async {
     // Don't provide fake estimates - let dashboard show "Collecting..." for zero values
@@ -268,9 +348,11 @@ class CallStatsService extends ChangeNotifier {
       videoPacketLoss: _lastVideoPacketLoss,
       videoResolution: _lastResolution,
       videoFps: _lastFps,
+      videoCodec: _lastVideoCodec,
       audioSendBitrate: _lastAudioSendBitrate,
       audioRecvBitrate: _lastAudioRecvBitrate,
       audioPacketLoss: _lastAudioPacketLoss,
+      audioCodec: _lastAudioCodec,
       roundTripTime: _lastRtt,
       jitter: _lastJitter,
       availableOutgoingBitrate: _lastAvailableOutgoingBitrate,
@@ -297,12 +379,14 @@ class CallStatsService extends ChangeNotifier {
       '📊 CallStats '
       'send=${_currentStats.videoSendBitrateFormatted} '
       'recv=${_currentStats.videoRecvBitrateFormatted} '
+      'codec=${_currentStats.videoCodec} '
       'loss=${_currentStats.videoPacketLossFormatted} '
       'rtt=${_currentStats.roundTripTimeFormatted} '
       'jitter=${_currentStats.jitterFormatted} '
       'fps=${_currentStats.videoFps} '
       'res=${_currentStats.videoResolution} '
       'avail=${_currentStats.availableOutgoingBitrateFormatted} '
+      'audioCodec=${_currentStats.audioCodec} '
       'quality=${_currentStats.quality.label}',
     );
   }
@@ -333,9 +417,11 @@ class CallStatsService extends ChangeNotifier {
       videoPacketLoss: avgDouble(recent.map((s) => s.videoPacketLoss).toList()),
       videoResolution: recent.last.videoResolution,
       videoFps: (avgDouble(recent.map((s) => s.videoFps.toDouble()).toList())).round(),
+      videoCodec: recent.last.videoCodec,
       audioSendBitrate: avgDouble(recent.map((s) => s.audioSendBitrate).toList()),
       audioRecvBitrate: avgDouble(recent.map((s) => s.audioRecvBitrate).toList()),
       audioPacketLoss: avgDouble(recent.map((s) => s.audioPacketLoss).toList()),
+      audioCodec: recent.last.audioCodec,
       roundTripTime: avgDouble(recent.map((s) => s.roundTripTime).toList()),
       jitter: avgDouble(recent.map((s) => s.jitter).toList()),
       availableOutgoingBitrate: avgDouble(recent.map((s) => s.availableOutgoingBitrate).toList()),

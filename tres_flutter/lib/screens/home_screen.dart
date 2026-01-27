@@ -650,7 +650,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     }
   }
 
-  String _getUserInitial(user) {
+  String _getUserInitial(dynamic user) {
     if (user?.displayName != null && user!.displayName!.isNotEmpty) {
       return user.displayName![0].toUpperCase();
     }

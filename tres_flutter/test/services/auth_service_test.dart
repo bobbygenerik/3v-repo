@@ -1,10 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tres_flutter/services/auth_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  
   test('isSignedIn reflects auth state and signOut clears session', () async {
+    SharedPreferences.setMockInitialValues({});
     final user = MockUser(uid: 'user-1', email: 'user1@example.com');
     final auth = MockFirebaseAuth(mockUser: user, signedIn: true);
     final firestore = FakeFirebaseFirestore();

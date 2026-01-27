@@ -140,7 +140,7 @@ final authService = context.read<AuthService>();
 final user = authService.currentUser;
 // Ensure _callHistory and _filteredContacts are referenced to avoid unused-field warnings.
 final _ = _callHistory;
-final __ = _filteredContacts;
+final unused = _filteredContacts;
     
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,

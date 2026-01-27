@@ -84,10 +84,10 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   try {
     await flutterLocalNotificationsPlugin.show(
-      1001, // Stable ID for call notifications
-      '$fromName is calling',
-      'Tap to answer or use the buttons below',
-      platformDetails,
+      id: 1001, // Stable ID for call notifications
+      title: '$fromName is calling',
+      body: 'Tap to answer or use the buttons below',
+      notificationDetails: platformDetails,
       payload: invitationId,
     );
     debugPrint('✅ Background notification shown for $fromName');

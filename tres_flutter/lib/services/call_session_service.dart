@@ -29,28 +29,40 @@ class CallSessionService extends ChangeNotifier {
       final existingQuery = await _firestore
           .collection('call_sessions')
           .where('roomName', isEqualTo: roomName)
-          .where('status', isEqualTo: 'active')
-          .limit(1)
+          .limit(5)
           .get();
 
       if (existingQuery.docs.isNotEmpty) {
-        final doc = existingQuery.docs.first;
-        final data = doc.data();
-        debugPrint('🔁 Joining existing call session: ${doc.id} for room $roomName');
+        DocumentSnapshot<Map<String, dynamic>>? activeDoc;
+        for (final doc in existingQuery.docs) {
+          final data = doc.data();
+          if (data['status'] == 'active') {
+            activeDoc = doc;
+            break;
+          }
+        }
 
-        // Ensure participants array includes current user and any passed participants
-        await _firestore.collection('call_sessions').doc(doc.id).update({
-          'participants': FieldValue.arrayUnion([...participants, currentUser.uid]),
-          'participantStatus.${currentUser.uid}': 'connected',
-          'lastHeartbeat': FieldValue.serverTimestamp(),
-        });
+        if (activeDoc != null) {
+          debugPrint('🔁 Joining existing call session: ${activeDoc.id} for room $roomName');
 
-        _currentSessionId = doc.id;
-        _sessionSubscription = _firestore.collection('call_sessions').doc(_currentSessionId).snapshots().listen(_handleSessionUpdate);
-        _startHeartbeat();
-        debugPrint('📞 Joined call session: $_currentSessionId');
-        notifyListeners();
-        return;
+          // Ensure participants array includes current user and any passed participants
+          await _firestore.collection('call_sessions').doc(activeDoc.id).update({
+            'participants': FieldValue.arrayUnion([...participants, currentUser.uid]),
+            'participantStatus.${currentUser.uid}': 'connected',
+            'lastHeartbeat': FieldValue.serverTimestamp(),
+          });
+
+          _currentSessionId = activeDoc.id;
+          _sessionSubscription = _firestore
+              .collection('call_sessions')
+              .doc(_currentSessionId)
+              .snapshots()
+              .listen(_handleSessionUpdate);
+          _startHeartbeat();
+          debugPrint('📞 Joined call session: $_currentSessionId');
+          notifyListeners();
+          return;
+        }
       }
 
       // No existing session found - create a new one

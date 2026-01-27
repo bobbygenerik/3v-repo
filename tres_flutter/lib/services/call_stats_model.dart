@@ -49,11 +49,13 @@ class CallStats {
   final double videoPacketLoss;
   final String videoResolution;
   final int videoFps;
+  final String videoCodec;
 
   // Audio stats
   final double audioSendBitrate;
   final double audioRecvBitrate;
   final double audioPacketLoss;
+  final String audioCodec;
 
   // Network stats
   final double roundTripTime; // RTT in seconds
@@ -67,9 +69,11 @@ class CallStats {
     this.videoPacketLoss = 0.0,
     this.videoResolution = 'N/A',
     this.videoFps = 0,
+    this.videoCodec = 'unknown',
     this.audioSendBitrate = 0.0,
     this.audioRecvBitrate = 0.0,
     this.audioPacketLoss = 0.0,
+    this.audioCodec = 'unknown',
     this.roundTripTime = 0.0,
     this.jitter = 0.0,
     this.availableOutgoingBitrate = 0.0,
@@ -123,9 +127,11 @@ class CallStats {
       'videoPacketLoss': videoPacketLoss,
       'videoResolution': videoResolution,
       'videoFps': videoFps,
+      'videoCodec': videoCodec,
       'audioSendBitrate': audioSendBitrate,
       'audioRecvBitrate': audioRecvBitrate,
       'audioPacketLoss': audioPacketLoss,
+      'audioCodec': audioCodec,
       'roundTripTime': roundTripTime,
       'jitter': jitter,
       'availableOutgoingBitrate': availableOutgoingBitrate,

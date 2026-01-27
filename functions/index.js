@@ -772,6 +772,25 @@ exports.retryFailedNotifications = retryFailedNotifications;
 exports.cleanupOldNotifications = cleanupOldNotifications;
 
 /**
+ * Cloud Function: Translate audio via VPS
+ */
+exports.translateAudio = functions.https.onCall(async (requestOrData, context) => {
+  const request = normalizeCallableRequest(requestOrData, context);
+  if (!request.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
+  
+  const {audioUrl, srcLang, tgtLang} = request.data;
+  const axios = require('axios');
+  
+  const response = await axios.post(process.env.VPS_TRANSLATION_URL || 'http://YOUR_VPS_IP:5000/translate', {
+    audioUrl,
+    srcLang: srcLang || 'eng_Latn',
+    tgtLang: tgtLang || 'spa_Latn'
+  });
+  
+  return {translatedAudioUrl: response.data.audioUrl, text: response.data.text};
+});
+
+/**
  * Cloud Function: Start LiveKit Egress recording
  * Called by client to start server-side recording of a room
  */

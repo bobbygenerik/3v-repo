@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -6,8 +7,12 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:livekit_client/livekit_client.dart';
+import '../services/translation_service.dart';
 import '../services/livekit_service.dart';
+import 'package:record/record.dart';
+import 'dart:io';
 import '../services/feature_flags.dart';
 import '../services/device_mode_service.dart';
 import '../services/android_pip_service.dart';
@@ -53,6 +58,13 @@ class CallScreen extends StatefulWidget {
 
 class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   bool _isConnecting = true;
+  
+  // Translation state
+  bool _translationActive = false;
+  String? _translationTargetLang;
+  String _translatedText = '';
+  Timer? _translationTimer;
+  final AudioRecorder _audioRecorder = AudioRecorder();
   late CallFeaturesCoordinator _coordinator;
   LiveKitService? _livekit;
   final TextEditingController _chatController = TextEditingController();
@@ -110,6 +122,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   DateTime? _lastNetworkWarning;
   bool _wasReconnecting = false;
   bool _pipEnabled = true;
+  Timer? _remoteEmptyTimer;
   // Developer diagnostics overlay
   
   @override
@@ -297,6 +310,30 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     // Update the PiP service with this track
     livekit.updatePipStream(videoTrack);
   }
+
+  String _displayNameForParticipant(Participant participant) {
+    final name = participant.name;
+    if (name.trim().isNotEmpty) return name;
+
+    final metadata = participant.metadata;
+    if (metadata != null && metadata.trim().isNotEmpty) {
+      try {
+        final parsed = jsonDecode(metadata);
+        if (parsed is Map) {
+          final displayName = parsed['displayName'];
+          if (displayName is String && displayName.trim().isNotEmpty) {
+            return displayName;
+          }
+        }
+      } catch (_) {
+        // Ignore metadata parsing errors and fall back to identity.
+      }
+    }
+
+    final identity = participant.identity;
+    if (identity.trim().isNotEmpty) return identity;
+    return 'Participant';
+  }
   
   /// Handle LiveKit updates - check if all participants left
   void _handleLiveKitUpdate() {
@@ -391,7 +428,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         // Someone new joined (and this isn't the initial call setup)
         for (final sid in newSids) {
           final participant = livekit.remoteParticipants.firstWhere((p) => p.sid == sid);
-          final name = participant.name ?? participant.identity ?? 'Someone';
+          final name = _displayNameForParticipant(participant);
           
           // Show toast notification
           if (mounted) {
@@ -461,41 +498,50 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     }
     
     // Handle case when all remote participants have left (call ended)
-    if (livekit.remoteParticipants.isEmpty && _knownParticipantSids.isNotEmpty && !_callEndedSnackbarShown) {
-      // All remote participants have disconnected
-      debugPrint('📞 All participants have left - ending call immediately');
-      
-      if (mounted) {
-        _callEndedSnackbarShown = true; // Prevent duplicate snackbars
-        
-        // Show brief notification
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.call_end, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'Call ended',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+    if (livekit.remoteParticipants.isEmpty) {
+      if (_knownParticipantSids.isNotEmpty &&
+          !_callEndedSnackbarShown &&
+          _remoteEmptyTimer == null) {
+        _remoteEmptyTimer = Timer(const Duration(seconds: 5), () {
+          if (!mounted) return;
+          final livekitNow = context.read<LiveKitService>();
+          if (livekitNow.isReconnecting || _isConnecting) return;
+          if (livekitNow.remoteParticipants.isNotEmpty) return;
+          if (_callEndedSnackbarShown) return;
+
+          debugPrint('📞 All participants have left - ending call after grace period');
+          _callEndedSnackbarShown = true; // Prevent duplicate snackbars
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.call_end, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Call ended',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              duration: const Duration(seconds: 1),
+              backgroundColor: const Color(0xFF6B7FB8),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            duration: const Duration(seconds: 1),
-            backgroundColor: const Color(0xFF6B7FB8),
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-        
-        // End call immediately without delay to prevent black screen
-        _endCallAndNavigateBack();
+          );
+
+          _endCallAndNavigateBack();
+        });
       }
+    } else {
+      _remoteEmptyTimer?.cancel();
+      _remoteEmptyTimer = null;
     }
   }
   
@@ -748,7 +794,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   Widget _buildBackgroundPlaceholder(LiveKitService livekit) {
     final remoteCount = livekit.remoteParticipants.length;
     final participantText = remoteCount == 1 
-        ? livekit.remoteParticipants.first.name ?? livekit.remoteParticipants.first.identity ?? 'participant'
+        ? _displayNameForParticipant(livekit.remoteParticipants.first)
         : '$remoteCount participants';
     
     return Container(
@@ -1183,6 +1229,35 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                           ),
                         ),
 
+                      // Translation overlay
+                      if (_translationActive && _translatedText.isNotEmpty)
+                        Positioned(
+                          bottom: 100,
+                          left: 16,
+                          right: 16,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.8),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _translatedText,
+                                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                                  onPressed: _stopTranslation,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
                       // Modern Chat Overlay
                       ModernChatOverlay(
                         messages: coordinator.chatMessages,
@@ -1317,8 +1392,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     // Get remote participant name or use room name
     final livekit = context.read<LiveKitService>();
     final remoteParticipants = livekit.remoteParticipants;
-    final callerName = remoteParticipants.isNotEmpty 
-        ? (remoteParticipants.first.name.isNotEmpty ? remoteParticipants.first.name : remoteParticipants.first.identity)
+    final callerName = remoteParticipants.isNotEmpty
+        ? _displayNameForParticipant(remoteParticipants.first)
         : widget.roomName;
     
     return Column(
@@ -1679,8 +1754,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                 ),
                 child: Text(
                   _pipSwapped && livekit.remoteParticipants.isNotEmpty
-                      ? (livekit.remoteParticipants.first.name.isNotEmpty ? livekit.remoteParticipants.first.name : livekit.remoteParticipants.first.identity)
-                      : (livekit.localParticipant?.name.isNotEmpty == true ? livekit.localParticipant!.name : (livekit.localParticipant?.identity?.isNotEmpty == true ? livekit.localParticipant!.identity! : 'You')),
+                      ? _displayNameForParticipant(livekit.remoteParticipants.first)
+                      : (livekit.localParticipant != null
+                          ? _displayNameForParticipant(livekit.localParticipant!)
+                          : 'You'),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white,
@@ -1943,6 +2020,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
 
                     const Divider(color: Color(0xFF2C2C2E)),
                     _buildMoreSectionLabel('Call Tools'),
+                    ListTile(
+                      leading: const Icon(Icons.translate, color: Color(0xFF6B7FB8)),
+                      title: const Text('Translate Audio', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('Real-time translation', style: TextStyle(color: Color(0xFF8E8E93))),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showTranslationDialog();
+                      },
+                    ),
                     if (Theme.of(context).platform == TargetPlatform.android || livekit.pipService.isPipSupported) ...[
                       ListTile(
                         leading: const Icon(Icons.picture_in_picture, color: Color(0xFF6B7FB8)),
@@ -2446,6 +2532,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   @override
   void dispose() {
     _controlsHideTimer?.cancel();
+    _translationTimer?.cancel();
+    _audioRecorder.dispose();
+    _remoteEmptyTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     widget.sessionService?.removeListener(_handleSessionEnd);
     _callListener.removeListener(_handleIncomingCallWhileInCall);
@@ -2477,5 +2566,119 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     AndroidPipService.setAutoPipEnabled(false);
     
     super.dispose();
+  }
+  
+  void _showTranslationDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2E),
+        title: const Text('Select Translation Language', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Spanish', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                _startTranslation('spa_Latn');
+              },
+            ),
+            ListTile(
+              title: const Text('French', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                _startTranslation('fra_Latn');
+              },
+            ),
+            ListTile(
+              title: const Text('German', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                _startTranslation('deu_Latn');
+              },
+            ),
+            ListTile(
+              title: const Text('Chinese', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                _startTranslation('zho_Hans');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _startTranslation(String targetLang) {
+    setState(() {
+      _translationActive = true;
+      _translationTargetLang = targetLang;
+      _translatedText = 'Listening...';
+    });
+    
+    // Start periodic translation every 5 seconds
+    _translationTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _captureAndTranslate();
+    });
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Translation started'),
+          backgroundColor: Color(0xFF2C2C2E),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+  
+  void _stopTranslation() {
+    _translationTimer?.cancel();
+    setState(() {
+      _translationActive = false;
+      _translatedText = '';
+    });
+  }
+  
+  Future<void> _captureAndTranslate() async {
+    try {
+      final path = '/tmp/audio_${DateTime.now().millisecondsSinceEpoch}.wav';
+      
+      // Record 5 seconds of audio
+      if (await _audioRecorder.hasPermission()) {
+        await _audioRecorder.start(const RecordConfig(), path: path);
+        await Future.delayed(const Duration(seconds: 5));
+        await _audioRecorder.stop();
+        
+        // Upload to Firebase Storage and get URL
+        final file = File(path);
+        final storageRef = FirebaseStorage.instance.ref().child('translations/${DateTime.now().millisecondsSinceEpoch}.wav');
+        await storageRef.putFile(file);
+        final audioUrl = await storageRef.getDownloadURL();
+        
+        // Translate
+        final translation = TranslationService();
+        final result = await translation.translateAudio(audioUrl, tgtLang: _translationTargetLang!);
+        
+        if (mounted) {
+          setState(() {
+            _translatedText = result['text'] ?? 'No translation';
+          });
+        }
+        
+        // Cleanup
+        await file.delete();
+      }
+    } catch (e) {
+      debugPrint('Translation error: $e');
+      if (mounted) {
+        setState(() {
+          _translatedText = 'Error: $e';
+        });
+      }
+    }
   }
 }

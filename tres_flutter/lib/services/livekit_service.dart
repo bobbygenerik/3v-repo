@@ -27,8 +27,7 @@ class FaceTimeVideoPresets {
   // Cross-Platform 1080p HQ
   static final h1080 = VideoParameters(
     dimensions: VideoDimensions(1920, 1080),
-    // Target 1080p at ~8 Mbps for FaceTime-level quality
-    encoding: VideoEncoding(maxBitrate: 8_000_000, maxFramerate: 30),
+    encoding: VideoEncoding(maxBitrate: 12_000_000, maxFramerate: 30),
   );
 
   // Cross-Platform 720p Fallback
@@ -461,7 +460,7 @@ class LiveKitService extends ChangeNotifier {
       final now = DateTime.now();
       _qualityUpgradeGateStart ??= now;
       final elapsed = now.difference(_qualityUpgradeGateStart!);
-      if (elapsed >= const Duration(seconds: 30)) {
+      if (elapsed >= const Duration(seconds: 10)) {
         return QualityTier.ultra;
       }
     } else {
@@ -525,20 +524,20 @@ class LiveKitService extends ChangeNotifier {
 
     final now = DateTime.now();
     if (_lastQualityTierChange != null &&
-        now.difference(_lastQualityTierChange!) < const Duration(seconds: 30)) {
+        now.difference(_lastQualityTierChange!) < const Duration(seconds: 15)) {
       return;
     }
 
     if (targetTier.index < _currentQualityTier.index) {
       _qualityUpshiftStart = null;
       _qualityDownshiftStart ??= now;
-      if (now.difference(_qualityDownshiftStart!) < const Duration(seconds: 20)) {
+      if (now.difference(_qualityDownshiftStart!) < const Duration(seconds: 15)) {
         return;
       }
     } else {
       _qualityDownshiftStart = null;
       _qualityUpshiftStart ??= now;
-      if (now.difference(_qualityUpshiftStart!) < const Duration(seconds: 30)) {
+      if (now.difference(_qualityUpshiftStart!) < const Duration(seconds: 10)) {
         return;
       }
     }
@@ -604,11 +603,11 @@ class LiveKitService extends ChangeNotifier {
 
     double factor = 1.0;
     if (packetLoss >= 5.0 || rttMs >= 300.0 || jitterMs >= 40.0) {
-      factor = 0.5;
+      factor = 0.85;  // 15% reduction (gentler)
     } else if (packetLoss >= 2.0 || rttMs >= 200.0 || jitterMs >= 30.0) {
-      factor = 0.7;
+      factor = 0.90;  // 10% reduction
     } else if (packetLoss >= 1.0 || rttMs >= 150.0 || jitterMs >= 20.0) {
-      factor = 0.85;
+      factor = 0.95;  // 5% reduction
     }
 
     final minBitrate = _getMinBitrateForPreset(_currentCapturePreset) ??
@@ -817,7 +816,7 @@ class LiveKitService extends ChangeNotifier {
       
       // Verify actual codec being used after connection
       await Future.delayed(const Duration(seconds: 2)); // Wait for negotiation
-      _logActualCodecUsed();
+      await _logActualCodecUsed();
       
       debugPrint('✅ Connected to LiveKit room with FaceTime-quality tuning: $roomName');
       return true;
@@ -973,7 +972,7 @@ class LiveKitService extends ChangeNotifier {
 
     final now = DateTime.now();
     if (_lastAdaptiveChange != null &&
-        now.difference(_lastAdaptiveChange!) < const Duration(seconds: 30)) {
+        now.difference(_lastAdaptiveChange!) < const Duration(seconds: 3)) {
       return;
     }
 
@@ -1352,16 +1351,59 @@ class LiveKitService extends ChangeNotifier {
     notifyListeners();
   }
   
+  /// Verify hardware encoder is being used
+  Future<bool> _verifyHardwareEncoder() async {
+    try {
+      final stats = await collectCallStats();
+      final codec = stats.videoCodec.toLowerCase();
+      
+      // Check for hardware encoder indicators
+      final isHardware = codec.contains('hardware') ||
+          codec.contains('qcom') ||      // Qualcomm
+          codec.contains('exynos') ||    // Samsung
+          codec.contains('mtk') ||       // MediaTek
+          codec.contains('kirin') ||     // Huawei
+          codec.contains('videotoolbox'); // Apple
+      
+      if (!isHardware && codec.isNotEmpty && codec != 'unknown') {
+        debugPrint('⚠️ Software encoder detected: $codec');
+        debugPrint('   This may cause performance issues and battery drain');
+      }
+      
+      return isHardware;
+    } catch (e) {
+      debugPrint('⚠️ Could not verify encoder type: $e');
+      return false;
+    }
+  }
+
   /// Log actual codec being used after connection
-  void _logActualCodecUsed() {
+  Future<void> _logActualCodecUsed() async {
     try {
       final localParticipant = _room?.localParticipant;
       final videoTrack = localParticipant?.videoTrackPublications.firstOrNull?.track;
       
       if (videoTrack != null) {
-        debugPrint('📊 ACTUAL CODEC VERIFICATION:');
+        final stats = await collectCallStats();
+        final hasCodec = stats.videoCodec.isNotEmpty && stats.videoCodec != 'unknown';
+        final hasResolution = stats.videoResolution != 'N/A';
+        debugPrint('📊 ACTUAL MEDIA STATS:');
         debugPrint('   🎯 Requested: $_currentVideoCodec');
-        debugPrint('   ℹ️ Codec introspection not available via LiveKit SDK; verify via server stats or WebRTC getStats');
+        if (hasCodec || hasResolution || stats.videoFps > 0) {
+          debugPrint('   ✅ Video codec: ${stats.videoCodec}');
+          debugPrint('   ✅ Resolution: ${stats.videoResolution}');
+          debugPrint('   ✅ FPS: ${stats.videoFps}');
+          debugPrint('   ✅ Send bitrate: ${stats.videoSendBitrateFormatted}');
+          debugPrint('   ✅ Recv bitrate: ${stats.videoRecvBitrateFormatted}');
+          debugPrint('   ✅ Audio codec: ${stats.audioCodec}');
+          debugPrint('   ✅ Audio send: ${stats.audioSendBitrateFormatted}');
+          debugPrint('   ✅ Audio recv: ${stats.audioRecvBitrateFormatted}');
+          
+          // Verify hardware encoding
+          await _verifyHardwareEncoder();
+        } else if (kDebugMode) {
+          debugPrint('   ℹ️ Codec stats not available yet; waiting for stats events');
+        }
       } else {
         debugPrint('⚠️ Could not verify codec - no video track found');
       }
