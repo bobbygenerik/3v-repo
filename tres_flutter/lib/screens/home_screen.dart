@@ -446,9 +446,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             for (var userDoc in chunkSnapshot.docs) {
               if (userDoc.exists) {
                 final userData = userDoc.data();
-                if (userData != null) {
-                  _userCache[userDoc.id] = userData;
-                }
+                _userCache[userDoc.id] = userData;
               }
             }
           } catch (e) {
@@ -768,10 +766,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                       child: CircleAvatar(
                         radius: 20,
                         backgroundColor: const Color(0xFF2C2C2E),
-                        backgroundImage: (user?.photoURL != null && user!.photoURL!.isNotEmpty)
-                            ? CachedNetworkImageProvider(user.photoURL!)
+                        backgroundImage: (user?.photoURL?.isNotEmpty ?? false)
+                            ? CachedNetworkImageProvider(user!.photoURL!)
                             : null,
-                        child: (user?.photoURL == null || user!.photoURL!.isEmpty)
+                        child: (user?.photoURL?.isEmpty ?? true)
                             ? Text(
                                 _getUserInitial(user),
                                 style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
