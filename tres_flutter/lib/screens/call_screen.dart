@@ -13,6 +13,7 @@ import '../services/translation_service.dart';
 import '../services/livekit_service.dart';
 import 'package:record/record.dart';
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import '../services/feature_flags.dart';
 import '../services/device_mode_service.dart';
 import '../services/android_pip_service.dart';
@@ -2655,7 +2656,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       // Check if translation is still active
       if (!_translationActive || _translationTargetLang == null) return;
       
-      final path = '/tmp/audio_${DateTime.now().millisecondsSinceEpoch}.wav';
+      // Use app's temporary directory instead of /tmp/
+      final tempDir = await getTemporaryDirectory();
+      final path = '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.wav';
       
       // Record 5 seconds of audio
       if (await _audioRecorder.hasPermission()) {
