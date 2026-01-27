@@ -411,8 +411,8 @@ class LiveKitService extends ChangeNotifier {
   }
 
   QualityTier _determineTargetQualityTier(CallStats stats) {
-    if (_isSafariPwa) return QualityTier.high;
-    // Allow all call types to reach ultra quality if conditions are met
+    // Allow all platforms to reach ultra quality if conditions are met
+    // Safari PWA will naturally downgrade if it can't handle it
 
     final networkType = _networkService.getCurrentNetworkType();
     if (networkType != 'wifi' && networkType != '5g') {
