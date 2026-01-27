@@ -19,7 +19,6 @@ A Flutter video calling application with LiveKit WebRTC and Firebase backend.
 
 ### Authentication ✅
 - Email/Password sign-up and sign-in
-- Google Sign-In
 - Profile management
 
 ## Architecture
