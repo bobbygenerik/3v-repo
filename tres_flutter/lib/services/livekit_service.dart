@@ -1337,10 +1337,18 @@ class LiveKitService extends ChangeNotifier {
         debugPrint('📢 Track published: ${event.publication.sid} by ${event.participant.identity}');
         notifyListeners();
       })
-      ..on<TrackSubscribedEvent>((event) {
+      ..on<TrackSubscribedEvent>((event) async {
         debugPrint('✅ Track subscribed: ${event.track.sid}');
         debugPrint('   - Kind: ${event.track.kind}');
         debugPrint('   - Participant: ${event.participant.identity}');
+        
+        // Enable audio track immediately after subscription
+        if (event.track.kind == TrackType.AUDIO) {
+          final audioTrack = event.track as RemoteAudioTrack;
+          await audioTrack.start();
+          debugPrint('   🔊 Remote audio track started');
+        }
+        
         notifyListeners();
       })
       ..on<TrackUnpublishedEvent>((event) {
