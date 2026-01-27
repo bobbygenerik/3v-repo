@@ -2,4 +2,3 @@ faster-whisper
 ctranslate2
 transformers
 torch
-piper-tts
