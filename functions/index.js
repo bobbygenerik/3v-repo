@@ -512,18 +512,34 @@ exports.cleanupExpiredInvitations = functions.scheduler.onSchedule(
     try {
       console.log('🧹 Cleaning up expired guest invitations');
       const now = admin.firestore.Timestamp.now();
-      const expiredQuery = await admin.firestore()
-        .collection('guestInvitations')
-        .where('expiresAt', '<', now)
-        .get();
+      const BATCH_SIZE = 300;
+      let totalDeleted = 0;
 
-      const batch = admin.firestore().batch();
-      expiredQuery.docs.forEach(doc => {
-        batch.delete(doc.ref);
-      });
+      while (true) {
+        const snapshot = await admin.firestore()
+          .collection('guestInvitations')
+          .where('expiresAt', '<', now)
+          .limit(BATCH_SIZE)
+          .get();
 
-      await batch.commit();
-      console.log(`✅ Cleaned up ${expiredQuery.size} expired guest invitations`);
+        if (snapshot.empty) {
+          break;
+        }
+
+        const batch = admin.firestore().batch();
+        snapshot.docs.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        totalDeleted += snapshot.size;
+
+        if (snapshot.size < BATCH_SIZE) {
+          break;
+        }
+      }
+
+      console.log(`✅ Cleaned up ${totalDeleted} expired guest invitations`);
       return null;
     } catch (error) {
       console.error('❌ Error cleaning up invitations:', error);
