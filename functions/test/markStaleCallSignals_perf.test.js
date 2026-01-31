@@ -33,19 +33,30 @@ const mockFirestore = {
       where: (field, op, value) => {
         return {
            where: (field2, op2, value2) => {
-              return {
-                 get: async () => {
+              const queryObj = {
+                 _limit: null,
+                 limit: function(limitVal) { this._limit = limitVal; return this; },
+                 get: async function() {
                     queriesCount++;
+                    // Simple filter for status='pending'
+                    let results = staleDocs.filter(d => d.data.status === 'pending');
+
+                    if (this._limit) {
+                        results = results.slice(0, this._limit);
+                    }
+
                     return {
-                      empty: staleDocs.length === 0,
-                      docs: staleDocs.map(d => ({
+                      empty: results.length === 0,
+                      size: results.length,
+                      docs: results.map(d => ({
                         id: d.id,
                         ref: { path: `callSignals/${d.id}` },
                         data: () => d.data
                       }))
                     };
                  }
-              }
+              };
+              return queryObj;
            }
         }
       }
@@ -54,6 +65,12 @@ const mockFirestore = {
   batch: () => ({
     update: (ref, data) => {
       updatedCount++;
+      // Update in memory to support pagination loop
+      const id = ref.path.split('/')[1];
+      const doc = staleDocs.find(d => d.id === id);
+      if (doc) {
+        doc.data.status = data.status;
+      }
     },
     commit: async () => {
       currentConcurrentCommits++;
