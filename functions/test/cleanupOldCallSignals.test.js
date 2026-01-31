@@ -48,6 +48,9 @@ function createQueryMock(collectionId, parentDocId, isGroup = false) {
        }
        return queryObj; // Return self for chaining if needed, but 'get' is what we want next
     },
+    limit: (val) => {
+        return queryObj;
+    },
     get: async () => {
        queriesCount++;
        return {
