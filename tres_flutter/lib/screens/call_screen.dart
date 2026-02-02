@@ -1863,6 +1863,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _buildAnimatedButton(
         index: 0,
         icon: Icons.more_vert,
+        label: 'More options',
         onPressed: () => _showMoreMenu(livekit, coordinator),
         backgroundColor: Colors.white.withOpacity(0.2),
         size: buttonSize,
@@ -1873,6 +1874,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _buildAnimatedButton(
         index: 1,
         icon: livekit.isMicrophoneEnabled ? Icons.mic : Icons.mic_off,
+        label: livekit.isMicrophoneEnabled ? 'Mute microphone' : 'Unmute microphone',
         onPressed: () async {
           await livekit.toggleMicrophone();
           if (mounted) {
@@ -1890,6 +1892,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _buildAnimatedButton(
         index: 2,
         icon: Icons.call_end,
+        label: 'End call',
         onPressed: () async {
           if (!mounted) return;
           
@@ -1908,6 +1911,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _buildAnimatedButton(
         index: 3,
         icon: livekit.isCameraEnabled ? Icons.videocam : Icons.videocam_off,
+        label: livekit.isCameraEnabled ? 'Turn camera off' : 'Turn camera on',
         onPressed: () async {
           await livekit.toggleCamera();
           if (mounted) {
@@ -1925,6 +1929,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _buildAnimatedButton(
         index: 4,
         icon: Icons.cameraswitch,
+        label: 'Switch camera',
         onPressed: livekit.switchCamera,
         backgroundColor: Colors.white.withOpacity(0.2),
         size: buttonSize,
@@ -1945,6 +1950,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   Widget _buildAnimatedButton({
     required int index,
     required IconData icon,
+    required String label,
     required VoidCallback onPressed,
     required Color backgroundColor,
     required double size,
@@ -1959,10 +1965,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Material(
-              color: Colors.transparent,
-              child: Tooltip(
-                message: tooltip,
+            Tooltip(
+              message: label,
+              child: Material(
+                color: Colors.transparent,
                 child: InkWell(
                   onTap: onPressed,
                   customBorder: const CircleBorder(),
