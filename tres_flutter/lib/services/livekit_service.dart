@@ -1349,21 +1349,17 @@ class LiveKitService extends ChangeNotifier {
         debugPrint('   - Participant: ${event.participant.identity}');
         debugPrint('   - Muted: ${event.track.muted}');
         
-        // Start and unmute tracks immediately after subscription
+        // Start tracks immediately after subscription
         if (event.track.kind == TrackType.AUDIO) {
           final audioTrack = event.track as RemoteAudioTrack;
           await audioTrack.start();
-          if (audioTrack.muted ?? false) {
-            await audioTrack.unmute();
-          }
-          debugPrint('   🔊 Remote audio track started and unmuted');
+          // Remote tracks cannot be unmuted locally - sender controls mute state
+          debugPrint('   🔊 Remote audio track started');
         } else if (event.track.kind == TrackType.VIDEO) {
           final videoTrack = event.track as RemoteVideoTrack;
           await videoTrack.start();
-          if (videoTrack.muted ?? false) {
-            await videoTrack.unmute();
-          }
-          debugPrint('   📹 Remote video track started and unmuted');
+          // Remote tracks cannot be unmuted locally - sender controls mute state
+          debugPrint('   📹 Remote video track started');
         }
         
         notifyListeners();
