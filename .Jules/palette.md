@@ -6,6 +6,10 @@
 **Learning:** Flutter `TextField`s do not automatically support password managers or efficient keyboard navigation (e.g., "Next" vs "Done") unless explicitly configured with `AutofillGroup`, `autofillHints`, and `textInputAction`.
 **Action:** Always wrap form fields in `AutofillGroup` and define specific hints and actions for each input to ensure a native-feeling experience.
 
+## 2026-02-03 - Custom Button Accessibility
+**Learning:** Custom interactive widgets built with `InkWell` + `Icon` (instead of standard `IconButton`) lack default accessibility traits. They require explicit wrapping with `Tooltip` (or `Semantics`) to be perceptible to screen readers.
+**Action:** When building custom button widgets, always add a `tooltip` parameter and wrap the interactive area in a `Tooltip` widget.
+
 ## 2026-02-07 - Dynamic Tooltips for Call Controls
 **Learning:** Call control buttons (Mute, Camera) often have static labels or none at all. Dynamic tooltips (e.g., "Mute microphone" vs "Unmute microphone") provide clearer feedback and accessibility than static "Mic" labels.
 **Action:** Use conditional logic to swap tooltip strings based on the active state of the control.
@@ -33,3 +37,4 @@
 ## 2026-02-19 - Grouping Semantics for Compound Buttons
 **Learning:** Common Flutter pattern of `InkWell` (Icon) + `Text` label below results in double announcement for screen readers ("Decline call button" then "Decline").
 **Action:** Wrap the interactive element (`InkWell`) in `Semantics` with a comprehensive label, and wrap the separate `Text` widget in `ExcludeSemantics` to provide a single, clear focusable target.
+>>>>>>> 40ff4b35 (🎨 Palette: Add tooltips to call control buttons)
