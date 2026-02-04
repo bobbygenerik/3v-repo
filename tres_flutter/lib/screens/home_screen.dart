@@ -886,11 +886,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                                 contentPadding: EdgeInsets.zero,
                                 fillColor: Colors.transparent,
                                 filled: false,
+                                // Accessible label (hidden visually but read by screen readers)
+                                hintText: 'Search contacts',
+                                hintStyle: TextStyle(color: Colors.transparent),
                               ),
                             ),
                           ],
                         ),
                       ),
+                      // Clear button
+                      if (_searchController.text.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.close,
+                            color: Color(0xFF8E8E93),
+                            size: 20,
+                          ),
+                          onPressed: () => _searchController.clear(),
+                          tooltip: 'Clear search',
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          constraints: const BoxConstraints(),
+                        ),
                       // Add person icon - opens add contact dialog
                       IconButton(
                         icon: const Icon(
