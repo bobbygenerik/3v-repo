@@ -160,11 +160,12 @@ class _AuthScreenState extends State<AuthScreen> {
             top: 32,
             bottom: 32 + (kIsWeb ? 0 : MediaQuery.of(context).viewInsets.bottom),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 20),
-              // Logo
+          child: AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 20),
+                // Logo
               Center(
                 child: Image.asset(
                   'assets/images/logo.png',
@@ -201,6 +202,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   child: TextField(
                     controller: _emailController,
+                    autofillHints: const [AutofillHints.email],
+                    textInputAction: TextInputAction.next,
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Email',
@@ -234,6 +237,9 @@ class _AuthScreenState extends State<AuthScreen> {
                   child: TextField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
+                    autofillHints: const [AutofillHints.password],
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _handleSignIn(),
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Password',
@@ -328,6 +334,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ],
             ),
           ),
+        ),
       ),
     );
   }
@@ -413,11 +420,12 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
             top: 32,
             bottom: 32 + MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 20),
-              // Logo
+          child: AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 20),
+                // Logo
               Center(
                 child: Image.asset(
                   'assets/images/logo.png',
@@ -453,6 +461,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   ),
                   child: TextField(
                     controller: _emailController,
+                    autofillHints: const [AutofillHints.email],
+                    textInputAction: TextInputAction.next,
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Email',
@@ -486,6 +496,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   child: TextField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
+                    autofillHints: const [AutofillHints.newPassword],
+                    textInputAction: TextInputAction.next,
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Password',
@@ -528,6 +540,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   child: TextField(
                     controller: _confirmPasswordController,
                     obscureText: _obscureConfirmPassword,
+                    autofillHints: const [AutofillHints.newPassword],
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _handleCreateAccount(),
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Confirm Password',
@@ -592,6 +607,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
               ],
             ),
           ),
+        ),
       ),
     );
   }
