@@ -46,13 +46,13 @@ void main() {
     contactService = ContactService(firestore: fakeFirestore, auth: mockAuth);
 
     // This should trigger batched queries internally
-    final results = await contactService.searchContacts('Contact');
+    final results = await contactService.searchContacts('Contact', limit: 20);
 
     // Verify we got all 15 contacts
     expect(results.length, 15, reason: 'Should return all 15 contacts');
     
     // Verify contact data is properly loaded
-    expect(results.first['displayName'], contains('Contact'));
+    expect(results.first['name'], contains('Contact'));
     expect(results.first['email'], contains('@example.com'));
   });
 }
