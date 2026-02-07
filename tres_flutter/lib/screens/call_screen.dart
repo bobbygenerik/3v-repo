@@ -14,7 +14,6 @@ import '../services/livekit_service.dart';
 import 'package:record/record.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import '../services/feature_flags.dart';
 import '../services/device_mode_service.dart';
 import '../services/android_pip_service.dart';
@@ -1800,6 +1799,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         backgroundColor: Colors.white.withOpacity(0.2),
         size: buttonSize,
         spacing: buttonSpacing,
+        tooltip: 'More options',
       ),
       // 1: Mic (left of center)
       _buildAnimatedButton(
@@ -1811,6 +1811,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             : Colors.red.shade600,
         size: buttonSize,
         spacing: buttonSpacing,
+        tooltip: livekit.isMicrophoneEnabled ? 'Mute microphone' : 'Unmute microphone',
       ),
       // 2: END CALL (center - larger)
       _buildAnimatedButton(
@@ -1828,6 +1829,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         backgroundColor: Colors.red.shade600,
         size: centerButtonSize, // Larger center button
         spacing: buttonSpacing,
+        tooltip: 'End call',
       ),
       // 3: Camera (right of center)
       _buildAnimatedButton(
@@ -1839,6 +1841,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             : Colors.red.shade600,
         size: buttonSize,
         spacing: buttonSpacing,
+        tooltip: livekit.isCameraEnabled ? 'Turn camera off' : 'Turn camera on',
       ),
       // 4: Flip camera (rightmost)
       _buildAnimatedButton(
@@ -1848,6 +1851,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         backgroundColor: Colors.white.withOpacity(0.2),
         size: buttonSize,
         spacing: buttonSpacing,
+        tooltip: 'Switch camera',
       ),
     ];
 
@@ -1867,6 +1871,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     required Color backgroundColor,
     required double size,
     required double spacing,
+    required String tooltip,
     String? badge,
   }) {
     return SlideTransition(
@@ -1878,29 +1883,32 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           children: [
             Material(
               color: Colors.transparent,
-              child: InkWell(
-                onTap: onPressed,
-                customBorder: const CircleBorder(),
-                splashColor: Colors.white.withOpacity(0.3),
-                highlightColor: Colors.white.withOpacity(0.1),
-                child: Container(
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    color: backgroundColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    icon,
-                    color: Colors.white,
-                    size: size * 0.5,
+              child: Tooltip(
+                message: tooltip,
+                child: InkWell(
+                  onTap: onPressed,
+                  customBorder: const CircleBorder(),
+                  splashColor: Colors.white.withOpacity(0.3),
+                  highlightColor: Colors.white.withOpacity(0.1),
+                  child: Container(
+                    width: size,
+                    height: size,
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      icon,
+                      color: Colors.white,
+                      size: size * 0.5,
+                    ),
                   ),
                 ),
               ),
