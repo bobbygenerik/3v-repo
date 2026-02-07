@@ -293,35 +293,34 @@ exports.cleanupOldCallSignals = functions.scheduler.onSchedule(
       const db = admin.firestore();
       
       // Use Collection Group query to find all callSignals across all users efficiently
-      const oldSignalsSnapshot = await db.collectionGroup('callSignals')
-        .where('timestamp', '<', oneHourAgo)
-        .get();
-
+      // Optimize with pagination (limit + loop) to avoid unbounded queries
+      const BATCH_SIZE = 500;
       let totalDeleted = 0;
+      let hasMore = true;
 
-      if (!oldSignalsSnapshot.empty) {
-        // Delete in batches of 500 (Firestore limit)
-        const batches = [];
-        let currentBatch = db.batch();
-        let operationCount = 0;
+      while (hasMore) {
+        const snapshot = await db.collectionGroup('callSignals')
+          .where('timestamp', '<', oneHourAgo)
+          .limit(BATCH_SIZE)
+          .get();
 
-        oldSignalsSnapshot.forEach((doc) => {
-          currentBatch.delete(doc.ref);
-          operationCount++;
-          totalDeleted++;
-
-          if (operationCount >= 500) {
-            batches.push(currentBatch.commit());
-            currentBatch = db.batch();
-            operationCount = 0;
-          }
-        });
-
-        if (operationCount > 0) {
-          batches.push(currentBatch.commit());
+        if (snapshot.empty) {
+          hasMore = false;
+          break;
         }
 
-        await Promise.all(batches);
+        const batch = db.batch();
+        snapshot.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        totalDeleted += snapshot.size;
+
+        // If we fetched fewer than BATCH_SIZE, we are done
+        if (snapshot.size < BATCH_SIZE) {
+          hasMore = false;
+        }
       }
       
       console.log(`✅ Cleanup complete: Deleted ${totalDeleted} old call signals`);
