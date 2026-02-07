@@ -348,37 +348,45 @@ exports.markStaleCallSignals = functions.scheduler.onSchedule(
       const cutoff = new Date(Date.now() - 60 * 1000); // 60 seconds ago
 
       // Use Collection Group Query to find all stale signals across all users efficiently
-      const pendingQuery = await db.collectionGroup('callSignals')
-        .where('status', '==', 'pending')
-        .where('timestamp', '<', cutoff)
-        .get();
-
+      // Process in chunks to avoid memory issues with large result sets
+      const BATCH_SIZE = 500;
       let totalMarked = 0;
+      let iterations = 0;
+      const MAX_ITERATIONS = 10; // Safety cap to prevent infinite loops (max 5000 docs per run)
 
-      if (!pendingQuery.empty) {
-        // Process in batches of 500 (Firestore batch limit)
-        const chunks = [];
-        const docs = pendingQuery.docs;
-        const BATCH_SIZE = 500;
+      while (iterations < MAX_ITERATIONS) {
+        iterations++;
 
-        for (let i = 0; i < docs.length; i += BATCH_SIZE) {
-          chunks.push(docs.slice(i, i + BATCH_SIZE));
+        const snapshot = await db.collectionGroup('callSignals')
+          .where('status', '==', 'pending')
+          .where('timestamp', '<', cutoff)
+          .limit(BATCH_SIZE)
+          .get();
+
+        if (snapshot.empty) {
+          break;
         }
 
-        const batchPromises = chunks.map(chunk => {
-          const batch = db.batch();
-          chunk.forEach(doc => {
-            batch.update(doc.ref, {
-              status: 'missed',
-              missedTimestamp: admin.firestore.FieldValue.serverTimestamp(),
-              missedByCleanup: true
-            });
-            totalMarked++;
+        const batch = db.batch();
+        snapshot.docs.forEach((doc) => {
+          batch.update(doc.ref, {
+            status: 'missed',
+            missedTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+            missedByCleanup: true
           });
-          return batch.commit();
+          totalMarked++;
         });
 
-        await Promise.all(batchPromises);
+        await batch.commit();
+
+        // If we fetched fewer than the limit, we've processed everything
+        if (snapshot.size < BATCH_SIZE) {
+          break;
+        }
+      }
+
+      if (iterations >= MAX_ITERATIONS) {
+        console.warn(`⚠️ markStaleCallSignals hit max iterations (${MAX_ITERATIONS}). Stopping.`);
       }
 
       console.log(`✅ markStaleCallSignals complete: Marked ${totalMarked} pending call signals as missed`);
