@@ -1253,6 +1253,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                                 IconButton(
                                   icon: const Icon(Icons.close, color: Colors.white, size: 20),
                                   onPressed: _stopTranslation,
+                                  tooltip: 'Close translation',
                                 ),
                               ],
                             ),
@@ -1976,6 +1977,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                         IconButton(
                           icon: const Icon(Icons.close, color: Color(0xFF8E8E93)),
                           onPressed: () => Navigator.pop(context),
+                          tooltip: 'Close menu',
                         ),
                       ],
                     ),
@@ -2096,17 +2098,20 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   }
 
   Widget _buildMoreSectionLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 4),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Color(0xFF8E8E93),
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+    return Semantics(
+      header: true,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 8, bottom: 4),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: Color(0xFF8E8E93),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
       ),
