@@ -9,3 +9,7 @@
 ## 2026-02-07 - Dynamic Tooltips for Call Controls
 **Learning:** Call control buttons (Mute, Camera) often have static labels or none at all. Dynamic tooltips (e.g., "Mute microphone" vs "Unmute microphone") provide clearer feedback and accessibility than static "Mic" labels.
 **Action:** Use conditional logic to swap tooltip strings based on the active state of the control.
+
+## 2026-02-12 - Accessible Loading Buttons
+**Learning:** When replacing button text with a `CircularProgressIndicator` during loading, screen readers often lose context or announce "disabled button" with no label.
+**Action:** Wrap the `CircularProgressIndicator` (or other loading widget) in a `Semantics` widget with a descriptive `label` (e.g., "Signing in...") to maintain context during async operations.
