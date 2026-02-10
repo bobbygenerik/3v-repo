@@ -23,6 +23,8 @@ import '../widgets/skeleton_loader.dart';
 import '../services/vibration_service.dart';
 import '../services/device_mode_service.dart';
 import '../services/ice_server_config.dart';
+import '../services/contact_service.dart';
+import '../config/app_theme.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 import 'call_screen.dart';
@@ -1202,19 +1204,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 ),
                 // Star icon
                 Consumer<ContactService>(
-                  builder: (context, contactService, child) {
+                  builder: (context, contactService, _) {
                     final isFavorite = contactService.isFavorite(contact['uid']);
                     return IconButton(
-                      icon: Icon(
-                        isFavorite ? Icons.star : Icons.star_border,
-                        color: isFavorite ? AppColors.accentBlue : const Color(0xFF8E8E93),
-                        size: 22,
+                      icon: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (child, animation) {
+                          return ScaleTransition(scale: animation, child: child);
+                        },
+                        child: Icon(
+                          isFavorite ? Icons.star : Icons.star_border,
+                          key: ValueKey(isFavorite),
+                          color: isFavorite ? AppColors.accentBlue : const Color(0xFF8E8E93),
+                          size: 22,
+                        ),
                       ),
                       onPressed: () {
                         VibrationService.lightImpact();
                         contactService.toggleFavorite(contact['uid']);
                       },
-                      tooltip: isFavorite ? 'Unfavorite' : 'Favorite',
+                      tooltip: isFavorite ? 'Remove from favorites' : 'Add to favorites',
                     );
                   },
                 ),
