@@ -13,3 +13,7 @@
 ## 2026-02-12 - Accessible Loading Buttons
 **Learning:** When replacing button text with a `CircularProgressIndicator` during loading, screen readers often lose context or announce "disabled button" with no label.
 **Action:** Wrap the `CircularProgressIndicator` (or other loading widget) in a `Semantics` widget with a descriptive `label` (e.g., "Signing in...") to maintain context during async operations.
+
+## 2026-02-14 - Placeholder to Functional Micro-UX
+**Learning:** Static "placeholder" buttons (like a favorite star that does nothing) degrade trust and perceived quality more than their absence. Implementing even basic client-side toggling (with haptic feedback) significantly improves the feeling of responsiveness and polish.
+**Action:** Identify and activate static icon buttons using existing services (like `ContactService`) whenever possible, adding immediate visual and tactile feedback.

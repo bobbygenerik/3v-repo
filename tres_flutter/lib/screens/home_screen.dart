@@ -11,6 +11,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import '../services/contact_service.dart';
+import '../config/app_theme.dart';
 import '../services/guest_link_service.dart';
 import '../services/call_listener_service.dart';
 import '../services/call_signaling_service.dart';
@@ -1185,10 +1187,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   ),
                 ),
                 // Star icon
-                IconButton(
-                  icon: const Icon(Icons.star_border, color: Color(0xFF8E8E93), size: 22),
-                  onPressed: () {},
-                  tooltip: 'Favorite',
+                Consumer<ContactService>(
+                  builder: (context, contactService, child) {
+                    final isFavorite = contactService.isFavorite(contact['uid']);
+                    return IconButton(
+                      icon: Icon(
+                        isFavorite ? Icons.star : Icons.star_border,
+                        color: isFavorite ? AppColors.accentBlue : const Color(0xFF8E8E93),
+                        size: 22,
+                      ),
+                      onPressed: () {
+                        VibrationService.lightImpact();
+                        contactService.toggleFavorite(contact['uid']);
+                      },
+                      tooltip: isFavorite ? 'Unfavorite' : 'Favorite',
+                    );
+                  },
                 ),
                 // Phone icon
                 IconButton(
