@@ -17,3 +17,7 @@
 ## 2026-02-14 - Placeholder to Functional Micro-UX
 **Learning:** Static "placeholder" buttons (like a favorite star that does nothing) degrade trust and perceived quality more than their absence. Implementing even basic client-side toggling (with haptic feedback) significantly improves the feeling of responsiveness and polish.
 **Action:** Identify and activate static icon buttons using existing services (like `ContactService`) whenever possible, adding immediate visual and tactile feedback.
+
+## 2026-02-15 - Enhancing Tap Feedback in Custom Widgets
+**Learning:** `GestureDetector` lacks built-in visual feedback (ripple effect) and accessibility semantics, making custom interactive elements like reaction emojis feel unresponsive and invisible to screen readers.
+**Action:** Replace `GestureDetector` with `InkWell` wrapped in a `Material` widget (even transparent) to provide ripple effects, and always wrap custom interactive elements in `Semantics` with a descriptive `label` and `button: true`.

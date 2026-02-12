@@ -1370,16 +1370,28 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: ReactionType.values.map((type) {
-              return GestureDetector(
-                onTap: () {
-                  coordinator.sendReaction(type);
-                  _toggleReactions(); // Hide after selection
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    type.emoji,
-                    style: const TextStyle(fontSize: 32),
+              final label = _getReactionLabel(type);
+              return Material(
+                color: Colors.transparent,
+                child: Tooltip(
+                  message: 'Send $label reaction',
+                  child: InkWell(
+                    onTap: () {
+                      coordinator.sendReaction(type);
+                      _toggleReactions(); // Hide after selection
+                    },
+                    borderRadius: BorderRadius.circular(24),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Semantics(
+                        label: 'Send $label reaction',
+                        button: true,
+                        child: Text(
+                          type.emoji,
+                          style: const TextStyle(fontSize: 32),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -1388,6 +1400,23 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         ),
       ),
     );
+  }
+
+  String _getReactionLabel(ReactionType type) {
+    switch (type) {
+      case ReactionType.heart:
+        return 'Heart';
+      case ReactionType.laugh:
+        return 'Laugh';
+      case ReactionType.clap:
+        return 'Clap';
+      case ReactionType.party:
+        return 'Party';
+      case ReactionType.surprised:
+        return 'Surprised';
+      case ReactionType.thumbsUp:
+        return 'Thumbs Up';
+    }
   }
   
   Widget _buildRoomInfo(CallFeaturesCoordinator coordinator) {
