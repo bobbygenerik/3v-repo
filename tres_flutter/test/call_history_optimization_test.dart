@@ -25,6 +25,7 @@ void main() {
 
     // Optimized logic implementation (simulating what will go into HomeScreen)
     final List<String> idsList = participantIdsToFetch.toList();
+    final futures = <Future<void>>[];
 
     for (var i = 0; i < idsList.length; i += 10) {
       final end = (i + 10 < idsList.length) ? i + 10 : idsList.length;
@@ -32,25 +33,29 @@ void main() {
 
       if (chunk.isEmpty) continue;
 
-      try {
-        final chunkSnapshot = await instance
-            .collection('users')
-            .where(FieldPath.documentId, whereIn: chunk)
-            .get();
+      futures.add(() async {
+        try {
+          final chunkSnapshot = await instance
+              .collection('users')
+              .where(FieldPath.documentId, whereIn: chunk)
+              .get();
 
-        for (var userDoc in chunkSnapshot.docs) {
-          if (!userDoc.exists) continue;
-          final userData = userDoc.data();
-          // ignore: unnecessary_null_comparison
-          if (userData != null) {
-            userCache[userDoc.id] = userData;
+          for (var userDoc in chunkSnapshot.docs) {
+            if (!userDoc.exists) continue;
+            final userData = userDoc.data();
+            // ignore: unnecessary_null_comparison
+            if (userData != null) {
+              userCache[userDoc.id] = userData;
+            }
           }
+        } catch (e) {
+          // In a real app we might log this
+          print('Error loading chunk: $e');
         }
-      } catch (e) {
-        // In a real app we might log this
-        print('Error loading chunk: $e');
-      }
+      }());
     }
+
+    await Future.wait(futures);
 
     // Assertions
     expect(userCache.length, 25, reason: 'Should have fetched all 25 users');
