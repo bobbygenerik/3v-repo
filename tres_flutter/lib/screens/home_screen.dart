@@ -433,28 +433,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       // Bolt Optimization: Fetch users in batches of 10 to avoid N+1 queries
       if (participantIdsToFetch.isNotEmpty) {
         final idsList = participantIdsToFetch.toList();
+        final futures = <Future<void>>[];
+
         for (var i = 0; i < idsList.length; i += 10) {
           final end = (i + 10 < idsList.length) ? i + 10 : idsList.length;
           final chunk = idsList.sublist(i, end);
 
           if (chunk.isEmpty) continue;
 
-          try {
-            final chunkSnapshot = await FirebaseFirestore.instance
-                .collection('users')
-                .where(FieldPath.documentId, whereIn: chunk)
-                .get();
+          futures.add(() async {
+            try {
+              final chunkSnapshot = await FirebaseFirestore.instance
+                  .collection('users')
+                  .where(FieldPath.documentId, whereIn: chunk)
+                  .get();
 
-            for (var userDoc in chunkSnapshot.docs) {
-              if (userDoc.exists) {
-                final userData = userDoc.data();
-                _userCache[userDoc.id] = userData;
+              for (var userDoc in chunkSnapshot.docs) {
+                if (userDoc.exists) {
+                  final userData = userDoc.data();
+                  _userCache[userDoc.id] = userData;
+                }
               }
+            } catch (e) {
+              debugPrint('Error fetching user chunk: $e');
             }
-          } catch (e) {
-            debugPrint('Error fetching user chunk: $e');
-          }
+          }());
         }
+
+        await Future.wait(futures);
       }
 
       // 3. Construct history list using cache
