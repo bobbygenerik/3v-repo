@@ -17,8 +17,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _nameController = TextEditingController();
   final _bioController = TextEditingController();
-  bool _isEditing = false;
-  bool _isLoading = false;
+  bool _isSaving = false;
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -41,7 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    setState(() => _isLoading = true);
+    setState(() => _isSaving = true);
     
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -66,7 +66,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully')),
         );
-        setState(() => _isEditing = false);
       }
     } catch (e) {
       if (mounted) {
@@ -75,7 +74,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -122,7 +123,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      setState(() => _isLoading = true);
+      setState(() => _isUploading = true);
 
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -166,7 +167,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isUploading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -178,8 +179,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       debugPrint('Error uploading photo: $e');
-      setState(() => _isLoading = false);
       if (mounted) {
+        setState(() => _isUploading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error uploading photo: $e'),
@@ -202,6 +203,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    final isBusy = _isSaving || _isUploading;
     
     return Scaffold(
       backgroundColor: const Color(0xFF1C1C1E), // Dark background matching Android
@@ -221,321 +223,355 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
-            )
-          : SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                child: Column(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            children: [
+              // Profile Picture with ring
+              GestureDetector(
+                onTap: isBusy ? null : _uploadPhoto,
+                child: Stack(
+                  alignment: Alignment.center,
                   children: [
-                    // Profile Picture with ring
-                    GestureDetector(
-                      onTap: _uploadPhoto,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color(0xFF6B7FB8), // App's main blue color
-                            width: 4,
-                          ),
-                        ),
-                        child: CircleAvatar(
-                          radius: 80,
-                          backgroundColor: const Color(0xFF2C2C2E),
-                          backgroundImage: user?.photoURL != null && user!.photoURL!.isNotEmpty
-                              ? NetworkImage(user.photoURL!) 
-                              : null,
-                          child: user?.photoURL == null || user!.photoURL!.isEmpty
-                              ? Text(
-                                  (user?.displayName?.isNotEmpty == true
-                                      ? user!.displayName![0].toUpperCase()
-                                      : user?.email?[0].toUpperCase() ?? 'U'),
-                                  style: const TextStyle(
-                                    fontSize: 48,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : null,
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF6B7FB8), // App's main blue color
+                          width: 4,
                         ),
                       ),
+                      child: CircleAvatar(
+                        radius: 80,
+                        backgroundColor: const Color(0xFF2C2C2E),
+                        backgroundImage: user?.photoURL != null && user!.photoURL!.isNotEmpty
+                            ? NetworkImage(user.photoURL!)
+                            : null,
+                        child: user?.photoURL == null || user!.photoURL!.isEmpty
+                            ? Text(
+                                (user?.displayName?.isNotEmpty == true
+                                    ? user!.displayName![0].toUpperCase()
+                                    : user?.email?[0].toUpperCase() ?? 'U'),
+                                style: const TextStyle(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : null,
+                      ),
                     ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // "Tap to change profile picture" text
-                    const Text(
-                      'Tap to change profile picture',
+                    if (_isUploading)
+                      Container(
+                        width: 160,
+                        height: 160,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // "Tap to change profile picture" text
+              const Text(
+                'Tap to change profile picture',
+                style: TextStyle(
+                  color: Color(0xFF8E8E93),
+                  fontSize: 14,
+                ),
+              ),
+
+              const SizedBox(height: 48),
+
+              // Display Name input
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(left: 8, bottom: 8),
+                    child: Text(
+                      'Display Name',
                       style: TextStyle(
                         color: Color(0xFF8E8E93),
                         fontSize: 14,
                       ),
                     ),
-                    
-                    const SizedBox(height: 48),
-                    
-                    // Display Name input
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(left: 8, bottom: 8),
-                          child: Text(
-                            'Display Name',
-                            style: TextStyle(
-                              color: Color(0xFF8E8E93),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2C2C2E),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0xFF3A3A3C),
-                              width: 1,
-                            ),
-                          ),
-                          child: TextField(
-                            controller: _nameController,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                              hintText: 'Enter your name',
-                              hintStyle: TextStyle(
-                                color: Color(0xFF8E8E93),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2C2C2E),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF3A3A3C),
+                        width: 1,
+                      ),
                     ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // Save Profile button - large rounded button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: _saveProfile,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6B7FB8),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(28), // Very rounded like Android
-                          ),
+                    child: TextField(
+                      controller: _nameController,
+                      enabled: !isBusy,
+                      style: TextStyle(
+                        color: isBusy ? Colors.white54 : Colors.white,
+                        fontSize: 16,
+                      ),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
                         ),
-                        child: const Text(
+                        hintText: 'Enter your name',
+                        hintStyle: TextStyle(
+                          color: Color(0xFF8E8E93),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 32),
+
+              // Save Profile button - large rounded button
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: isBusy ? null : _saveProfile,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6B7FB8),
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: const Color(0xFF6B7FB8).withOpacity(0.5),
+                    disabledForegroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28), // Very rounded like Android
+                    ),
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
                           'Save Profile',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 48),
-                    
-                    // Additional options section (collapsible/expandable)
-                    ExpansionTile(
-                      title: const Text(
-                        'Additional Options',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      iconColor: const Color(0xFF6B7FB8),
-                      collapsedIconColor: const Color(0xFF8E8E93),
-                      backgroundColor: const Color(0xFF2C2C2E),
-                      collapsedBackgroundColor: const Color(0xFF2C2C2E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      collapsedShape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      children: [
-                        // Email/Phone info
-                        Container(
-                          color: const Color(0xFF2C2C2E),
-                          child: ListTile(
-                            leading: Icon(
-                              user?.email != null ? Icons.email : Icons.phone,
-                              color: const Color(0xFF6B7FB8),
-                              size: 20,
-                            ),
-                            title: const Text(
-                              'Contact',
-                              style: TextStyle(color: Colors.white, fontSize: 14),
-                            ),
-                            subtitle: Text(
-                              user?.email ?? user?.phoneNumber ?? 'Not set',
-                              style: const TextStyle(
-                                color: Color(0xFF8E8E93),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ),
-                        
-                        // User ID
-                        Container(
-                          color: const Color(0xFF2C2C2E),
-                          child: ListTile(
-                            leading: const Icon(
-                              Icons.fingerprint,
-                              color: Color(0xFF6B7FB8),
-                              size: 20,
-                            ),
-                            title: const Text(
-                              'User ID',
-                              style: TextStyle(color: Colors.white, fontSize: 14),
-                            ),
-                            subtitle: Text(
-                              user?.uid ?? 'Unknown',
-                              style: const TextStyle(
-                                color: Color(0xFF8E8E93),
-                                fontSize: 10,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                        
-                        // Member Since
-                        Container(
-                          color: const Color(0xFF2C2C2E),
-                          child: ListTile(
-                            leading: const Icon(
-                              Icons.calendar_today,
-                              color: Color(0xFF6B7FB8),
-                              size: 20,
-                            ),
-                            title: const Text(
-                              'Member Since',
-                              style: TextStyle(color: Colors.white, fontSize: 14),
-                            ),
-                            subtitle: Text(
-                              user?.metadata.creationTime?.toString().split(' ')[0] ?? 'Unknown',
-                              style: const TextStyle(
-                                color: Color(0xFF8E8E93),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ),
-                        
-                        const Divider(color: Color(0xFF3A3A3C), height: 1),
-                        
-                        // Change Password
-                        Container(
-                          color: const Color(0xFF2C2C2E),
-                          child: ListTile(
-                            leading: const Icon(
-                              Icons.lock,
-                              color: Color(0xFF6B7FB8),
-                              size: 20,
-                            ),
-                            title: const Text(
-                              'Change Password',
-                              style: TextStyle(color: Colors.white, fontSize: 14),
-                            ),
-                            trailing: const Icon(
-                              Icons.chevron_right,
-                              color: Color(0xFF8E8E93),
-                              size: 20,
-                            ),
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Password change coming soon'),
-                                  backgroundColor: Color(0xFF2C2C2E),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        
-                        // Privacy Settings
-                        Container(
-                          color: const Color(0xFF2C2C2E),
-                          child: ListTile(
-                            leading: const Icon(
-                              Icons.security,
-                              color: Color(0xFF6B7FB8),
-                              size: 20,
-                            ),
-                            title: const Text(
-                              'Privacy Settings',
-                              style: TextStyle(color: Colors.white, fontSize: 14),
-                            ),
-                            trailing: const Icon(
-                              Icons.chevron_right,
-                              color: Color(0xFF8E8E93),
-                              size: 20,
-                            ),
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Privacy settings coming soon'),
-                                  backgroundColor: Color(0xFF2C2C2E),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        
-                        // Delete Account
-                        Container(
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF2C2C2E),
-                            borderRadius: BorderRadius.only(
-                              bottomLeft: Radius.circular(12),
-                              bottomRight: Radius.circular(12),
-                            ),
-                          ),
-                          child: ListTile(
-                            leading: const Icon(
-                              Icons.delete_forever,
-                              color: Colors.red,
-                              size: 20,
-                            ),
-                            title: const Text(
-                              'Delete Account',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontSize: 14,
-                              ),
-                            ),
-                            trailing: const Icon(
-                              Icons.chevron_right,
-                              color: Color(0xFF8E8E93),
-                              size: 20,
-                            ),
-                            onTap: () => _showDeleteAccountDialog(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
                 ),
               ),
-            ),
+
+              const SizedBox(height: 48),
+
+              // Additional options section (collapsible/expandable)
+              IgnorePointer(
+                ignoring: isBusy,
+                child: Opacity(
+                  opacity: isBusy ? 0.6 : 1.0,
+                  child: ExpansionTile(
+                    title: const Text(
+                      'Additional Options',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    iconColor: const Color(0xFF6B7FB8),
+                    collapsedIconColor: const Color(0xFF8E8E93),
+                    backgroundColor: const Color(0xFF2C2C2E),
+                    collapsedBackgroundColor: const Color(0xFF2C2C2E),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    collapsedShape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    children: [
+                      // Email/Phone info
+                      Container(
+                        color: const Color(0xFF2C2C2E),
+                        child: ListTile(
+                          leading: Icon(
+                            user?.email != null ? Icons.email : Icons.phone,
+                            color: const Color(0xFF6B7FB8),
+                            size: 20,
+                          ),
+                          title: const Text(
+                            'Contact',
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                          subtitle: Text(
+                            user?.email ?? user?.phoneNumber ?? 'Not set',
+                            style: const TextStyle(
+                              color: Color(0xFF8E8E93),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // User ID
+                      Container(
+                        color: const Color(0xFF2C2C2E),
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.fingerprint,
+                            color: Color(0xFF6B7FB8),
+                            size: 20,
+                          ),
+                          title: const Text(
+                            'User ID',
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                          subtitle: Text(
+                            user?.uid ?? 'Unknown',
+                            style: const TextStyle(
+                              color: Color(0xFF8E8E93),
+                              fontSize: 10,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+
+                      // Member Since
+                      Container(
+                        color: const Color(0xFF2C2C2E),
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.calendar_today,
+                            color: Color(0xFF6B7FB8),
+                            size: 20,
+                          ),
+                          title: const Text(
+                            'Member Since',
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                          subtitle: Text(
+                            user?.metadata.creationTime?.toString().split(' ')[0] ?? 'Unknown',
+                            style: const TextStyle(
+                              color: Color(0xFF8E8E93),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const Divider(color: Color(0xFF3A3A3C), height: 1),
+
+                      // Change Password
+                      Container(
+                        color: const Color(0xFF2C2C2E),
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.lock,
+                            color: Color(0xFF6B7FB8),
+                            size: 20,
+                          ),
+                          title: const Text(
+                            'Change Password',
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                          trailing: const Icon(
+                            Icons.chevron_right,
+                            color: Color(0xFF8E8E93),
+                            size: 20,
+                          ),
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Password change coming soon'),
+                                backgroundColor: Color(0xFF2C2C2E),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      // Privacy Settings
+                      Container(
+                        color: const Color(0xFF2C2C2E),
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.security,
+                            color: Color(0xFF6B7FB8),
+                            size: 20,
+                          ),
+                          title: const Text(
+                            'Privacy Settings',
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                          trailing: const Icon(
+                            Icons.chevron_right,
+                            color: Color(0xFF8E8E93),
+                            size: 20,
+                          ),
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Privacy settings coming soon'),
+                                backgroundColor: Color(0xFF2C2C2E),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      // Delete Account
+                      Container(
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF2C2C2E),
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.circular(12),
+                            bottomRight: Radius.circular(12),
+                          ),
+                        ),
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.delete_forever,
+                            color: Colors.red,
+                            size: 20,
+                          ),
+                          title: const Text(
+                            'Delete Account',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                            ),
+                          ),
+                          trailing: const Icon(
+                            Icons.chevron_right,
+                            color: Color(0xFF8E8E93),
+                            size: 20,
+                          ),
+                          onTap: () => _showDeleteAccountDialog(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

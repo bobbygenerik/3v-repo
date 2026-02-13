@@ -21,3 +21,7 @@
 ## 2026-02-15 - Enhancing Tap Feedback in Custom Widgets
 **Learning:** `GestureDetector` lacks built-in visual feedback (ripple effect) and accessibility semantics, making custom interactive elements like reaction emojis feel unresponsive and invisible to screen readers.
 **Action:** Replace `GestureDetector` with `InkWell` wrapped in a `Material` widget (even transparent) to provide ripple effects, and always wrap custom interactive elements in `Semantics` with a descriptive `label` and `button: true`.
+
+## 2026-02-16 - Granular vs Global Loading States
+**Learning:** Replacing full-screen blocking loading states with granular, contextual loading (e.g., button spinner, avatar overlay) significantly improves perceived performance and prevents jarring layout shifts.
+**Action:** Always prefer localized loading indicators on the specific interactive element triggering the action over global "busy" overlays, unless the entire context must be blocked.
