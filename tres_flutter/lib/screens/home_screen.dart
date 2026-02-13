@@ -344,35 +344,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       final Map<String, Map<String, dynamic>> contactsMap = {};
 
       // Bolt Optimization: Fetch contacts in batches of 10 to avoid N+1 queries.
-      // This reduces reads from N to N/10 and significantly speeds up loading.
+      // We use Future.wait to fetch all batches in parallel, reducing total wait time.
+      final List<Future<void>> futures = [];
       for (var i = 0; i < contactIds.length; i += 10) {
         final end = (i + 10 < contactIds.length) ? i + 10 : contactIds.length;
         final chunk = contactIds.sublist(i, end);
 
         if (chunk.isEmpty) continue;
 
-        try {
-          final chunkSnapshot = await FirebaseFirestore.instance
-              .collection('users')
-              .where(FieldPath.documentId, whereIn: chunk)
-              .get();
+        futures.add(() async {
+          try {
+            final chunkSnapshot = await FirebaseFirestore.instance
+                .collection('users')
+                .where(FieldPath.documentId, whereIn: chunk)
+                .get();
 
-          for (var userDoc in chunkSnapshot.docs) {
-            if (!userDoc.exists) continue;
-            final data = userDoc.data();
-            final contactUid = userDoc.id;
+            for (var userDoc in chunkSnapshot.docs) {
+              if (!userDoc.exists) continue;
+              final data = userDoc.data();
+              final contactUid = userDoc.id;
 
-            contactsMap[contactUid] = {
-              'uid': contactUid,
-              'name': data['displayName'] ?? data['name'] ?? 'Unknown',
-              'email': data['email'] ?? '',
-              'photoURL': data['photoURL'],
-            };
+              contactsMap[contactUid] = {
+                'uid': contactUid,
+                'name': data['displayName'] ?? data['name'] ?? 'Unknown',
+                'email': data['email'] ?? '',
+                'photoURL': data['photoURL'],
+              };
+            }
+          } catch (e) {
+            debugPrint('Error loading contact chunk: $e');
           }
-        } catch (e) {
-          debugPrint('Error loading contact chunk: $e');
-        }
+        }());
       }
+      await Future.wait(futures);
 
       // Reconstruct list in original order
       for (var contactId in contactIds) {
@@ -433,7 +437,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       // Bolt Optimization: Fetch users in batches of 10 to avoid N+1 queries
       if (participantIdsToFetch.isNotEmpty) {
         final idsList = participantIdsToFetch.toList();
-        final futures = <Future<void>>[];
+        final List<Future<void>> futures = [];
 
         for (var i = 0; i < idsList.length; i += 10) {
           final end = (i + 10 < idsList.length) ? i + 10 : idsList.length;
