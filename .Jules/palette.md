@@ -25,3 +25,7 @@
 ## 2026-02-16 - Granular vs Global Loading States
 **Learning:** Replacing full-screen blocking loading states with granular, contextual loading (e.g., button spinner, avatar overlay) significantly improves perceived performance and prevents jarring layout shifts.
 **Action:** Always prefer localized loading indicators on the specific interactive element triggering the action over global "busy" overlays, unless the entire context must be blocked.
+
+## 2026-02-18 - Semantics for Toggle Buttons
+**Learning:** Custom toggle buttons (like tabs implemented as buttons) often lack screen reader context for their selected state, making navigation confusing.
+**Action:** Wrap such buttons in `Semantics` with the `selected: true/false` property and a descriptive `label` to clearly communicate the active state and purpose.
