@@ -938,69 +938,77 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               child: Row(
                 children: [
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                  VibrationService.lightImpact();
-                  setState(() => _showContactsView = true);
-                },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _showContactsView
-                            ? const Color(0xFF6B7FB8)
-                            : const Color(0xFF2C2C2E),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                            color: _showContactsView
-                                ? const Color(0xFF6B7FB8)
-                                : const Color(0xFF3A3A3C),
-                            width: 1,
+                    child: Semantics(
+                      selected: _showContactsView,
+                      label: 'Show contacts list',
+                      child: ElevatedButton(
+                        onPressed: () {
+                          VibrationService.lightImpact();
+                          setState(() => _showContactsView = true);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _showContactsView
+                              ? const Color(0xFF6B7FB8)
+                              : const Color(0xFF2C2C2E),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: _showContactsView
+                                  ? const Color(0xFF6B7FB8)
+                                  : const Color(0xFF3A3A3C),
+                              width: 1,
+                            ),
                           ),
                         ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.people, size: 18),
-                          SizedBox(width: 8),
-                          Text('Contacts', style: TextStyle(fontSize: 15)),
-                        ],
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.people, size: 18),
+                            SizedBox(width: 8),
+                            Text('Contacts', style: TextStyle(fontSize: 15)),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                  VibrationService.lightImpact();
-                  setState(() => _showContactsView = false);
-                },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: !_showContactsView
-                            ? const Color(0xFF6B7FB8)
-                            : const Color(0xFF2C2C2E),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                            color: !_showContactsView
-                                ? const Color(0xFF6B7FB8)
-                                : const Color(0xFF3A3A3C),
-                            width: 1,
+                    child: Semantics(
+                      selected: !_showContactsView,
+                      label: 'Show call history',
+                      child: ElevatedButton(
+                        onPressed: () {
+                          VibrationService.lightImpact();
+                          setState(() => _showContactsView = false);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: !_showContactsView
+                              ? const Color(0xFF6B7FB8)
+                              : const Color(0xFF2C2C2E),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: !_showContactsView
+                                  ? const Color(0xFF6B7FB8)
+                                  : const Color(0xFF3A3A3C),
+                              width: 1,
+                            ),
                           ),
                         ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.history, size: 18),
-                          SizedBox(width: 8),
-                          Text('History', style: TextStyle(fontSize: 15)),
-                        ],
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.history, size: 18),
+                            SizedBox(width: 8),
+                            Text('History', style: TextStyle(fontSize: 15)),
+                          ],
+                        ),
                       ),
                     ),
                   ),
