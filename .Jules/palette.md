@@ -29,3 +29,7 @@
 ## 2026-02-18 - Semantics for Toggle Buttons
 **Learning:** Custom toggle buttons (like tabs implemented as buttons) often lack screen reader context for their selected state, making navigation confusing.
 **Action:** Wrap such buttons in `Semantics` with the `selected: true/false` property and a descriptive `label` to clearly communicate the active state and purpose.
+
+## 2026-02-19 - Grouping Semantics for Compound Buttons
+**Learning:** Common Flutter pattern of `InkWell` (Icon) + `Text` label below results in double announcement for screen readers ("Decline call button" then "Decline").
+**Action:** Wrap the interactive element (`InkWell`) in `Semantics` with a comprehensive label, and wrap the separate `Text` widget in `ExcludeSemantics` to provide a single, clear focusable target.
