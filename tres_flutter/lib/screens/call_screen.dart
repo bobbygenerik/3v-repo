@@ -1602,58 +1602,70 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         Positioned(
           left: position.dx,
           top: position.dy,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
+          child: Semantics(
+            label: 'Remote video of ${_displayNameForParticipant(participant)}',
+            hint: 'Double tap to swap to main view',
+            button: true,
             onTap: () {
-              // Tapping does nothing now - removed expand/collapse to keep consistent sizing
-            },
-            onDoubleTap: () {
-              // Swap this participant to main view
               setState(() {
                 _mainParticipantIndex = participantIndex;
                 _mainParticipantSid = participant.sid;
               });
-              
-              // Update PiP stream to show new main participant (web only)
               _updatePipForMainParticipant();
             },
-            onPanUpdate: (details) {
-              setState(() {
-                _remotePipPositions[pipKey] = Offset(
-                  (position.dx + details.delta.dx).clamp(16.0, screenSize.width - width - 16),
-                  (position.dy + details.delta.dy).clamp(16.0, screenSize.height - height - 16),
-                );
-              });
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 500),
-              width: width,
-              height: height,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: _highlightedParticipants.contains(pipKey) 
-                      ? const Color(0xFF4CAF50) 
-                      : Colors.white,
-                  width: _highlightedParticipants.contains(pipKey) ? 4 : 2,
-                ),
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                // Tapping does nothing now - removed expand/collapse to keep consistent sizing
+              },
+              onDoubleTap: () {
+                // Swap this participant to main view
+                setState(() {
+                  _mainParticipantIndex = participantIndex;
+                  _mainParticipantSid = participant.sid;
+                });
+
+                // Update PiP stream to show new main participant (web only)
+                _updatePipForMainParticipant();
+              },
+              onPanUpdate: (details) {
+                setState(() {
+                  _remotePipPositions[pipKey] = Offset(
+                    (position.dx + details.delta.dx).clamp(16.0, screenSize.width - width - 16),
+                    (position.dy + details.delta.dy).clamp(16.0, screenSize.height - height - 16),
+                  );
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 500),
+                width: width,
+                height: height,
+                decoration: BoxDecoration(
+                  border: Border.all(
                     color: _highlightedParticipants.contains(pipKey)
-                        ? const Color(0xFF4CAF50).withOpacity(0.6)
-                        : Colors.black.withOpacity(0.5),
-                    blurRadius: _highlightedParticipants.contains(pipKey) ? 20 : 10,
-                    offset: const Offset(0, 4),
-                    spreadRadius: _highlightedParticipants.contains(pipKey) ? 2 : 0,
+                        ? const Color(0xFF4CAF50)
+                        : Colors.white,
+                    width: _highlightedParticipants.contains(pipKey) ? 4 : 2,
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: RepaintBoundary(
-                  child: ParticipantVideo(
-                    key: ValueKey('remote-pip-$pipKey'),
-                    participant: participant,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _highlightedParticipants.contains(pipKey)
+                          ? const Color(0xFF4CAF50).withOpacity(0.6)
+                          : Colors.black.withOpacity(0.5),
+                      blurRadius: _highlightedParticipants.contains(pipKey) ? 20 : 10,
+                      offset: const Offset(0, 4),
+                      spreadRadius: _highlightedParticipants.contains(pipKey) ? 2 : 0,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: RepaintBoundary(
+                    child: ParticipantVideo(
+                      key: ValueKey('remote-pip-$pipKey'),
+                      participant: participant,
+                    ),
                   ),
                 ),
               ),
@@ -1702,115 +1714,141 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       }
     }
 
-    return GestureDetector(
-      behavior: HitTestBehavior.deferToChild,
+    return Semantics(
+      label: 'Local video preview',
+      hint: 'Tap to expand, double tap to swap cameras',
+      button: true,
+      expanded: _pipExpanded,
       onTap: () {
-        // Single tap: toggle size
         setState(() {
           _pipExpanded = !_pipExpanded;
-          // Dimensions will be recalculated on rebuild based on orientation
         });
       },
-      onDoubleTap: () {
-        // Double tap: swap feeds
-        setState(() {
-          _pipSwapped = !_pipSwapped;
-        });
-      },
-      onPanUpdate: (details) {
-        // Get screen dimensions
-        final screenWidth = MediaQuery.of(context).size.width;
-        final screenHeight = MediaQuery.of(context).size.height;
-        
-        // Get current position (if null, calculate from top-right with 16px margin)
-        final currentPos = _pipPosition ?? Offset(
-          screenWidth - width - 16,
-          16,
-        );
-        
-        // Drag to reposition with proper bounds checking
-        setState(() {
-          _pipPosition = Offset(
-            (currentPos.dx + details.delta.dx).clamp(16.0, screenWidth - width - 16),
-            (currentPos.dy + details.delta.dy).clamp(16.0, screenHeight - height - 16),
+      child: GestureDetector(
+        behavior: HitTestBehavior.deferToChild,
+        onTap: () {
+          // Single tap: toggle size
+          setState(() {
+            _pipExpanded = !_pipExpanded;
+            // Dimensions will be recalculated on rebuild based on orientation
+          });
+        },
+        onDoubleTap: () {
+          // Double tap: swap feeds
+          setState(() {
+            _pipSwapped = !_pipSwapped;
+          });
+        },
+        onPanUpdate: (details) {
+          // Get screen dimensions
+          final screenWidth = MediaQuery.of(context).size.width;
+          final screenHeight = MediaQuery.of(context).size.height;
+
+          // Get current position (if null, calculate from top-right with 16px margin)
+          final currentPos = _pipPosition ?? Offset(
+            screenWidth - width - 16,
+            16,
           );
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20), // Rounder corners
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.5),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            // Show appropriate participant based on swap state
-            if (_pipSwapped && livekit.remoteParticipants.isNotEmpty)
-              ParticipantVideo(
-                key: const ValueKey('pip-remote-swapped'),
-                participant: livekit.remoteParticipants.first,
-              )
-            else
-              ParticipantVideo(
-                key: const ValueKey('pip-local-normal'),
-                participant: localParticipant,
-                isLocal: true,
+
+          // Drag to reposition with proper bounds checking
+          setState(() {
+            _pipPosition = Offset(
+              (currentPos.dx + details.delta.dx).clamp(16.0, screenWidth - width - 16),
+              (currentPos.dy + details.delta.dy).clamp(16.0, screenHeight - height - 16),
+            );
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20), // Rounder corners
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
               ),
-            // Label at bottom
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.8),
-                      Colors.transparent,
-                    ],
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              // Show appropriate participant based on swap state
+              if (_pipSwapped && livekit.remoteParticipants.isNotEmpty)
+                ParticipantVideo(
+                  key: const ValueKey('pip-remote-swapped'),
+                  participant: livekit.remoteParticipants.first,
+                )
+              else
+                ParticipantVideo(
+                  key: const ValueKey('pip-local-normal'),
+                  participant: localParticipant,
+                  isLocal: true,
+                ),
+              // Label at bottom
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.8),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                  child: Text(
+                    _pipSwapped && livekit.remoteParticipants.isNotEmpty
+                        ? _displayNameForParticipant(livekit.remoteParticipants.first)
+                        : (livekit.localParticipant != null
+                            ? _displayNameForParticipant(livekit.localParticipant!)
+                            : 'You'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black,
+                          offset: Offset(0, 1),
+                          blurRadius: 2,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                child: Text(
-                  _pipSwapped && livekit.remoteParticipants.isNotEmpty
-                      ? _displayNameForParticipant(livekit.remoteParticipants.first)
-                      : (livekit.localParticipant != null
-                          ? _displayNameForParticipant(livekit.localParticipant!)
-                          : 'You'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black,
-                        offset: Offset(0, 1),
-                        blurRadius: 2,
-                      ),
-                    ],
-                  ),
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
   
+  void _showToggleFeedback(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(milliseconds: 1500),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF2C2C2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
+      ),
+    );
+  }
+
   Widget _buildCallControls(LiveKitService livekit, CallFeaturesCoordinator coordinator) {
     // Calculate responsive button sizes based on screen width
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1835,7 +1873,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _buildAnimatedButton(
         index: 1,
         icon: livekit.isMicrophoneEnabled ? Icons.mic : Icons.mic_off,
-        onPressed: () => livekit.toggleMicrophone(),
+        onPressed: () async {
+          await livekit.toggleMicrophone();
+          if (mounted) {
+            _showToggleFeedback(livekit.isMicrophoneEnabled ? 'Microphone unmuted' : 'Microphone muted');
+          }
+        },
         backgroundColor: livekit.isMicrophoneEnabled
             ? Colors.white.withOpacity(0.2)
             : Colors.red.shade600,
@@ -1865,7 +1908,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _buildAnimatedButton(
         index: 3,
         icon: livekit.isCameraEnabled ? Icons.videocam : Icons.videocam_off,
-        onPressed: livekit.toggleCamera,
+        onPressed: () async {
+          await livekit.toggleCamera();
+          if (mounted) {
+            _showToggleFeedback(livekit.isCameraEnabled ? 'Camera on' : 'Camera off');
+          }
+        },
         backgroundColor: livekit.isCameraEnabled
             ? Colors.white.withOpacity(0.2)
             : Colors.red.shade600,
