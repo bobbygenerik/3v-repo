@@ -9,3 +9,7 @@
 ## 2024-05-25 - Accessibility in Modal Sheets
 **Learning:** Section headers in custom modal sheets (like `showModalBottomSheet`) often lack semantic meaning for screen readers, making navigation difficult.
 **Action:** Wrap section header text in `Semantics(header: true, ...)` so users can navigate by headings within the modal.
+
+## 2024-05-26 - Accessibility in Video Feeds
+**Learning:** Video previews (like PIP) with complex interactions (double-tap to swap, drag to move) are completely invisible to screen readers if implemented with raw `GestureDetector`.
+**Action:** Wrap `GestureDetector` in `Semantics` widget, mapping complex gestures (like double-tap) to the primary `onTap` semantic action, and providing clear `label` and `hint` text explaining the available interactions.
