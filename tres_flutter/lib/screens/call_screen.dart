@@ -1884,7 +1884,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             : Colors.red.shade600,
         size: buttonSize,
         spacing: buttonSpacing,
-        tooltip: livekit.isMicrophoneEnabled ? 'Mute microphone' : 'Unmute microphone',
+        tooltip: livekit.isMicrophoneEnabled
+            ? 'Mute microphone'
+            : 'Unmute microphone',
       ),
       // 2: END CALL (center - larger)
       _buildAnimatedButton(
@@ -1956,13 +1958,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       position: _buttonSlideAnimations[index],
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: spacing),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Material(
-              color: Colors.transparent,
-              child: Tooltip(
-                message: tooltip,
+        child: Tooltip(
+          message: tooltip,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Material(
+                color: Colors.transparent,
                 child: InkWell(
                   onTap: onPressed,
                   customBorder: const CircleBorder(),
@@ -1990,7 +1992,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                   ),
                 ),
               ),
-            ),
             if (badge != null)
               Positioned(
                 right: 0,
@@ -2021,6 +2022,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               ),
           ],
         ),
+      ),
       ),
     );
   }
