@@ -13,3 +13,7 @@
 ## 2024-05-26 - Accessibility in Video Feeds
 **Learning:** Video previews (like PIP) with complex interactions (double-tap to swap, drag to move) are completely invisible to screen readers if implemented with raw `GestureDetector`.
 **Action:** Wrap `GestureDetector` in `Semantics` widget, mapping complex gestures (like double-tap) to the primary `onTap` semantic action, and providing clear `label` and `hint` text explaining the available interactions.
+
+## 2026-01-27 - Custom Button Accessibility
+**Learning:** Custom buttons built with `InkWell` or `GestureDetector` + `Container` often lack accessibility semantics. Wrapping them in a `Tooltip` widget is an easy way to provide both visual tooltips (for mouse/long-press) and semantic labels (for screen readers).
+**Action:** When creating custom animated buttons, always include a `Tooltip` wrapper with a descriptive message.
