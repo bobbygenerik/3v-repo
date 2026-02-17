@@ -29,7 +29,18 @@ import 'call_screen.dart';
 import 'incoming_call_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final FirebaseFirestore? firestore;
+  final CallListenerService? callListener;
+  final CallSignalingService? signalingService;
+  final CallSessionService? sessionService;
+
+  const HomeScreen({
+    super.key,
+    this.firestore,
+    this.callListener,
+    this.signalingService,
+    this.sessionService,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -49,10 +60,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   StreamSubscription<User?>? _authSub;
   final Map<String, Map<String, dynamic>> _userCache = {};
   
-  // Call services
-  final CallListenerService _callListener = CallListenerService();
-  final CallSignalingService _signalingService = CallSignalingService();
-  final CallSessionService _sessionService = CallSessionService();
+  late final FirebaseFirestore _firestore;
+  late final CallListenerService _callListener;
+  late final CallSignalingService _signalingService;
+  late final CallSessionService _sessionService;
   
   // Ticker animation for search placeholder
   int _currentPlaceholderIndex = 0;
@@ -76,6 +87,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   @override
   void initState() {
     super.initState();
+    _firestore = widget.firestore ?? FirebaseFirestore.instance;
+    _callListener = widget.callListener ?? CallListenerService(firestore: _firestore);
+    _signalingService = widget.signalingService ?? CallSignalingService(firestore: _firestore);
+    _sessionService = widget.sessionService ?? CallSessionService(firestore: _firestore);
+
     WidgetsBinding.instance.addObserver(this);
     
     // Defer data loading until after first frame to avoid context issues
@@ -332,7 +348,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       if (currentUser == null) return;
 
       // Load contacts from the user's contacts subcollection
-      final contactsSnapshot = await FirebaseFirestore.instance
+      final contactsSnapshot = await _firestore
           .collection('users')
           .doc(currentUser.uid)
           .collection('contacts')
@@ -352,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         if (chunk.isEmpty) continue;
 
         try {
-          final chunkSnapshot = await FirebaseFirestore.instance
+          final chunkSnapshot = await _firestore
               .collection('users')
               .where(FieldPath.documentId, whereIn: chunk)
               .get();
@@ -408,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     _callHistorySub?.cancel();
 
     // Listen in real-time to the 'calls' collection where this user participated.
-    _callHistorySub = FirebaseFirestore.instance
+    _callHistorySub = _firestore
         .collection('calls')
         .where('participants', arrayContains: currentUser.uid)
         .orderBy('timestamp', descending: true)
@@ -443,7 +459,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
           futures.add(() async {
             try {
-              final chunkSnapshot = await FirebaseFirestore.instance
+              final chunkSnapshot = await _firestore
                   .collection('users')
                   .where(FieldPath.documentId, whereIn: chunk)
                   .get();
@@ -623,7 +639,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         throw Exception('Missing contact uid');
       }
 
-      await FirebaseFirestore.instance
+      await _firestore
           .collection('users')
           .doc(currentUser.uid)
           .collection('contacts')
@@ -699,6 +715,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   Padding(
                     padding: const EdgeInsets.only(top: 10), // Lower profile button by 10px
                     child: PopupMenuButton<String>(
+                    tooltip: 'Account Menu',
                     offset: const Offset(0, 50),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     color: const Color(0xFF2C2C2E),
@@ -1390,7 +1407,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         debugPrint('✅ Using provided recipient UID: $recipientUserId');
       } else {
         debugPrint('🔍 Looking up recipient by email: $recipientEmail');
-        final recipientQuery = await FirebaseFirestore.instance
+        final recipientQuery = await _firestore
             .collection('users')
             .where('email', isEqualTo: recipientEmail.toLowerCase())
             .limit(1)
@@ -1592,7 +1609,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 debugPrint('🔍 Searching for user with email: $searchEmail');
                 
                 // Search for user by email (case-insensitive)
-                final snapshot = await FirebaseFirestore.instance
+                final snapshot = await _firestore
                     .collection('users')
                     .where('email', isEqualTo: searchEmail)
                     .limit(1)
@@ -1603,7 +1620,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   debugPrint('❌ No users found with email: $searchEmail');
                   // Try to get all users to see what's in the database
                   try {
-                    final allUsers = await FirebaseFirestore.instance
+                    final allUsers = await _firestore
                         .collection('users')
                         .limit(10)
                         .get();
@@ -1646,7 +1663,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 }
                 
                 // Check if contact already exists
-                final existingContact = await FirebaseFirestore.instance
+                final existingContact = await _firestore
                     .collection('users')
                     .doc(currentUser.uid)
                     .collection('contacts')
@@ -1666,7 +1683,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 
                 // Save to Firestore contacts subcollection (bidirectional)
                 // Add them to your contacts
-                await FirebaseFirestore.instance
+                await _firestore
                     .collection('users')
                     .doc(currentUser.uid)
                     .collection('contacts')
@@ -1676,7 +1693,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                     });
                 
                 // Add yourself to their contacts
-                await FirebaseFirestore.instance
+                await _firestore
                     .collection('users')
                     .doc(contactUid)
                     .collection('contacts')
