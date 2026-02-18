@@ -359,12 +359,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   child: _isSaving
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
+                      ? Semantics(
+                          label: 'Saving profile...',
+                          child: const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           ),
                         )
                       : const Text(
