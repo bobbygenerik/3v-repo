@@ -2240,6 +2240,125 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               setDialogState(() => isLoading = false);
             }
           }
+
+          Future<void> addPerson() async {
+            final email = emailController.text.trim();
+            if (email.isEmpty) return;
+
+            Navigator.pop(dialogContext);
+
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => const Center(
+                child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+              ),
+            );
+
+            try {
+              final userQuery = await FirebaseFirestore.instance
+                  .collection('users')
+                  .where('email', isEqualTo: email.toLowerCase())
+                  .limit(1)
+                  .get();
+
+              if (userQuery.docs.isEmpty) {
+                if (mounted) Navigator.pop(context);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Row(
+                        children: [
+                          Icon(Icons.person_off, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'User not found',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: const Color(0xFF2C2C2E),
+                      behavior: SnackBarBehavior.floating,
+                      margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              final recipientUserId = userQuery.docs.first.id;
+
+              final signalingService = CallSignalingService();
+              await signalingService.sendCallInvitation(
+                recipientUserId: recipientUserId,
+                roomName: widget.roomName,
+                token: '',
+                livekitUrl: widget.livekitUrl,
+                isVideoCall: true,
+              );
+
+              if (mounted) Navigator.pop(context);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Icon(Icons.send, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Invitation sent to $email',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: const Color(0xFF6B7FB8),
+                    behavior: SnackBarBehavior.floating,
+                    margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+              }
+            } catch (e) {
+              if (mounted) Navigator.pop(context);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Failed to send invitation: $e',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: const Color(0xFFE53E3E),
+                    behavior: SnackBarBehavior.floating,
+                    margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+              }
+            }
+          }
           
           return AlertDialog(
             backgroundColor: const Color(0xFF2C2C2E),
@@ -2251,6 +2370,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                 TextField(
                   controller: emailController,
                   style: const TextStyle(color: Colors.white),
+                  autofillHints: const [AutofillHints.email],
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => addPerson(),
                   decoration: const InputDecoration(
                     hintText: 'Enter name or email',
                     hintStyle: TextStyle(color: Colors.white60),
@@ -2329,124 +2451,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                 child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
               ),
               TextButton(
-                onPressed: () async {
-                  final email = emailController.text.trim();
-                  if (email.isEmpty) return;
-                  
-                  Navigator.pop(dialogContext);
-                  
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (context) => const Center(
-                      child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
-                    ),
-                  );
-                  
-                  try {
-                    final userQuery = await FirebaseFirestore.instance
-                        .collection('users')
-                        .where('email', isEqualTo: email.toLowerCase())
-                        .limit(1)
-                        .get();
-                    
-                    if (userQuery.docs.isEmpty) {
-                      if (mounted) Navigator.pop(context);
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Row(
-                              children: [
-                                Icon(Icons.person_off, color: Colors.white, size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  'User not found',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            backgroundColor: const Color(0xFF2C2C2E),
-                            behavior: SnackBarBehavior.floating,
-                            margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        );
-                      }
-                      return;
-                    }
-                    
-                    final recipientUserId = userQuery.docs.first.id;
-                    
-                    final signalingService = CallSignalingService();
-                    await signalingService.sendCallInvitation(
-                      recipientUserId: recipientUserId,
-                      roomName: widget.roomName,
-                      token: '',
-                      livekitUrl: widget.livekitUrl,
-                      isVideoCall: true,
-                    );
-                    
-                    if (mounted) Navigator.pop(context);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Row(
-                            children: [
-                              const Icon(Icons.send, color: Colors.white, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Invitation sent to $email',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          backgroundColor: const Color(0xFF6B7FB8),
-                          behavior: SnackBarBehavior.floating,
-                          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) Navigator.pop(context);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Row(
-                            children: [
-                              const Icon(Icons.error_outline, color: Colors.white, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Failed to send invitation: $e',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          backgroundColor: const Color(0xFFE53E3E),
-                          behavior: SnackBarBehavior.floating,
-                          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      );
-                    }
-                  }
-                },
+                onPressed: () => addPerson(),
                 child: const Text('Add', style: TextStyle(color: Color(0xFF6B7FB8))),
               ),
             ],
