@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Environment configuration for the app
 /// 
 /// After setting up Firebase with FlutterFire CLI, update the values below
@@ -70,19 +72,19 @@ class Environment {
   );
   
   // Debug Logging
-  static const bool enableDebugLogging = isDevelopment;
+  static const bool enableDebugLogging = kDebugMode;
   
   // API Endpoints
   static String get generateTokenEndpoint => '$functionsBaseUrl/generateGuestToken';
   /// Validate that all required configuration is set
   static bool validate() {
     if (liveKitUrl.contains('your-livekit-server.com')) {
-      print('❌ LiveKit URL not configured');
+      debugPrint('❌ LiveKit URL not configured');
       return false;
     }
     
     if (functionsBaseUrl.contains('YOUR_PROJECT_ID')) {
-      print('❌ Firebase Functions URL not configured');
+      debugPrint('❌ Firebase Functions URL not configured');
       return false;
     }
     
@@ -93,25 +95,25 @@ class Environment {
   static void printConfig() {
     if (!enableDebugLogging) return;
     
-    print('=== Environment Configuration ===');
-    print('App Name: $appName');
-    print('App Version: $appVersion');
-    print('LiveKit URL: $liveKitUrl');
-    print('Functions Base URL: $functionsBaseUrl');
-    print('ML Features: $enableMLFeatures');
-    print('E2E Encryption: $enableE2EEncryption');
-    print('Cloud Recording: $enableCloudRecording');
-    print('Screen Share: $enableScreenShare');
+    debugPrint('=== Environment Configuration ===');
+    debugPrint('App Name: $appName');
+    debugPrint('App Version: $appVersion');
+    debugPrint('LiveKit URL: $liveKitUrl');
+    debugPrint('Functions Base URL: $functionsBaseUrl');
+    debugPrint('ML Features: $enableMLFeatures');
+    debugPrint('E2E Encryption: $enableE2EEncryption');
+    debugPrint('Cloud Recording: $enableCloudRecording');
+    debugPrint('Screen Share: $enableScreenShare');
     if (liveKitFallbackUrls.isNotEmpty) {
-      print('LiveKit Fallback URLs: $liveKitFallbackUrls');
+      debugPrint('LiveKit Fallback URLs: $liveKitFallbackUrls');
     }
     if (liveKitIceServersJson.isNotEmpty) {
-      print('LiveKit ICE Servers: configured');
+      debugPrint('LiveKit ICE Servers: configured');
     }
     if (liveKitForceRelay) {
-      print('LiveKit Force Relay: enabled');
+      debugPrint('LiveKit Force Relay: enabled');
     }
-    print('Development Mode: $isDevelopment');
-    print('================================');
+    debugPrint('Development Mode: $isDevelopment');
+    debugPrint('================================');
   }
 }
