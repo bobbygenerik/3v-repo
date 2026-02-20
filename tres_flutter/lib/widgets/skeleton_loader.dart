@@ -40,6 +40,8 @@ class _SkeletonLoaderState extends State<SkeletonLoader>
     super.dispose();
   }
 
+  static final BorderRadius _defaultBorderRadius = BorderRadius.circular(8);
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -49,26 +51,45 @@ class _SkeletonLoaderState extends State<SkeletonLoader>
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+            borderRadius: widget.borderRadius ?? _defaultBorderRadius,
             gradient: LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
-              stops: [
-                (_animation.value - 1).clamp(0.0, 1.0),
-                _animation.value.clamp(0.0, 1.0),
-                (_animation.value + 1).clamp(0.0, 1.0),
-              ],
               colors: const [
                 Color(0xFF2C2C2E),
                 Color(0xFF3A3A3C),
                 Color(0xFF2C2C2E),
               ],
+              stops: const [0.0, 0.5, 1.0],
+              transform: _SlidingGradientTransform(_animation.value),
             ),
           ),
         );
       },
     );
   }
+}
+
+class _SlidingGradientTransform extends GradientTransform {
+  const _SlidingGradientTransform(this.slidePercent);
+
+  final double slidePercent;
+
+  @override
+  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
+    return Matrix4.translationValues(bounds.width * (slidePercent - 1.0), 0.0, 0.0)
+      ..scale(2.0, 1.0, 1.0);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is _SlidingGradientTransform &&
+        other.slidePercent == slidePercent;
+  }
+
+  @override
+  int get hashCode => slidePercent.hashCode;
 }
 
 class ContactSkeleton extends StatelessWidget {
