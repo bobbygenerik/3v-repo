@@ -23,8 +23,6 @@ import '../widgets/skeleton_loader.dart';
 import '../services/vibration_service.dart';
 import '../services/device_mode_service.dart';
 import '../services/ice_server_config.dart';
-import '../services/contact_service.dart';
-import '../config/app_theme.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 import 'call_screen.dart';
@@ -1541,6 +1539,153 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   void _showAddContactDialog() {
     final TextEditingController emailController = TextEditingController();
 
+    Future<void> addContact() async {
+      final email = emailController.text.trim();
+      if (email.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter an email address')),
+        );
+        return;
+      }
+
+      if (!email.contains('@')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid email address')),
+        );
+        return;
+      }
+
+      Navigator.pop(context);
+
+      try {
+        final currentUser = context.read<AuthService>().currentUser;
+        if (currentUser == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('You must be signed in to add contacts')),
+            );
+          }
+          return;
+        }
+
+        // Convert to lowercase for case-insensitive search
+        final searchEmail = email.toLowerCase();
+        debugPrint('🔍 Searching for user with email: $searchEmail');
+
+        // Search for user by email (case-insensitive)
+        final snapshot = await _firestore
+            .collection('users')
+            .where('email', isEqualTo: searchEmail)
+            .limit(1)
+            .get();
+
+        debugPrint('🔍 Search results: ${snapshot.docs.length} users found');
+        if (snapshot.docs.isEmpty) {
+          debugPrint('❌ No users found with email: $searchEmail');
+          // Try to get all users to see what's in the database
+          try {
+            final allUsers = await _firestore
+                .collection('users')
+                .limit(10)
+                .get();
+            debugPrint('📋 Total users in database: ${allUsers.docs.length}');
+            debugPrint('📋 Sample users in database:');
+            for (var doc in allUsers.docs) {
+              final data = doc.data();
+              debugPrint('  - ${doc.id}: email="${data['email']}", displayName="${data['displayName']}"');
+            }
+          } catch (e) {
+            debugPrint('❌ Error fetching sample users: $e');
+          }
+        }
+
+        if (snapshot.docs.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No user found with that email. They may need to sign in first.'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        }
+
+        final userData = snapshot.docs.first.data();
+        final contactUid = snapshot.docs.first.id;
+
+        debugPrint('✅ Found user: $contactUid, data: $userData');
+
+        // Don't add yourself as a contact
+        if (contactUid == currentUser.uid) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('You cannot add yourself as a contact')),
+            );
+          }
+          return;
+        }
+
+        // Check if contact already exists
+        final existingContact = await _firestore
+            .collection('users')
+            .doc(currentUser.uid)
+            .collection('contacts')
+            .doc(contactUid)
+            .get();
+
+        if (existingContact.exists) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Contact already added')),
+            );
+          }
+          return;
+        }
+
+        debugPrint('💾 Saving contact to Firestore (bidirectional)...');
+
+        // Save to Firestore contacts subcollection (bidirectional)
+        // Add them to your contacts
+        await _firestore
+            .collection('users')
+            .doc(currentUser.uid)
+            .collection('contacts')
+            .doc(contactUid)
+            .set({
+              'addedAt': FieldValue.serverTimestamp(),
+            });
+
+        // Add yourself to their contacts
+        await _firestore
+            .collection('users')
+            .doc(contactUid)
+            .collection('contacts')
+            .doc(currentUser.uid)
+            .set({
+              'addedAt': FieldValue.serverTimestamp(),
+            });
+
+        debugPrint('✅ Contact saved successfully (both ways)!');
+
+        // Reload contacts to show the new one
+        await _loadContacts();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Added ${userData['displayName'] ?? email} to contacts!')),
+          );
+        }
+      } catch (e) {
+        debugPrint('Error adding contact: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
+      }
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1559,6 +1704,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               controller: emailController,
               style: const TextStyle(color: Colors.white),
               keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => addContact(),
               decoration: InputDecoration(
                 labelText: 'Email Address',
                 labelStyle: const TextStyle(color: Color(0xFF8E8E93)),
@@ -1584,152 +1732,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             child: const Text('CANCEL', style: TextStyle(color: Color(0xFF8E8E93))),
           ),
           ElevatedButton(
-            onPressed: () async {
-              final email = emailController.text.trim();
-              if (email.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter an email address')),
-                );
-                return;
-              }
-              
-              if (!email.contains('@')) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a valid email address')),
-                );
-                return;
-              }
-              
-              Navigator.pop(context);
-              
-              try {
-                final currentUser = context.read<AuthService>().currentUser;
-                if (currentUser == null) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('You must be signed in to add contacts')),
-                    );
-                  }
-                  return;
-                }
-                
-                // Convert to lowercase for case-insensitive search
-                final searchEmail = email.toLowerCase();
-                debugPrint('🔍 Searching for user with email: $searchEmail');
-                
-                // Search for user by email (case-insensitive)
-                final snapshot = await _firestore
-                    .collection('users')
-                    .where('email', isEqualTo: searchEmail)
-                    .limit(1)
-                    .get();
-                
-                debugPrint('🔍 Search results: ${snapshot.docs.length} users found');
-                if (snapshot.docs.isEmpty) {
-                  debugPrint('❌ No users found with email: $searchEmail');
-                  // Try to get all users to see what's in the database
-                  try {
-                    final allUsers = await _firestore
-                        .collection('users')
-                        .limit(10)
-                        .get();
-                    debugPrint('📋 Total users in database: ${allUsers.docs.length}');
-                    debugPrint('📋 Sample users in database:');
-                    for (var doc in allUsers.docs) {
-                      final data = doc.data();
-                      debugPrint('  - ${doc.id}: email="${data['email']}", displayName="${data['displayName']}"');
-                    }
-                  } catch (e) {
-                    debugPrint('❌ Error fetching sample users: $e');
-                  }
-                }
-                
-                if (snapshot.docs.isEmpty) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('No user found with that email. They may need to sign in first.'),
-                        duration: Duration(seconds: 3),
-                      ),
-                    );
-                  }
-                  return;
-                }
-                
-                final userData = snapshot.docs.first.data();
-                final contactUid = snapshot.docs.first.id;
-                
-                debugPrint('✅ Found user: $contactUid, data: $userData');
-                
-                // Don't add yourself as a contact
-                if (contactUid == currentUser.uid) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('You cannot add yourself as a contact')),
-                    );
-                  }
-                  return;
-                }
-                
-                // Check if contact already exists
-                final existingContact = await _firestore
-                    .collection('users')
-                    .doc(currentUser.uid)
-                    .collection('contacts')
-                    .doc(contactUid)
-                    .get();
-                
-                if (existingContact.exists) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Contact already added')),
-                    );
-                  }
-                  return;
-                }
-                
-                debugPrint('💾 Saving contact to Firestore (bidirectional)...');
-                
-                // Save to Firestore contacts subcollection (bidirectional)
-                // Add them to your contacts
-                await _firestore
-                    .collection('users')
-                    .doc(currentUser.uid)
-                    .collection('contacts')
-                    .doc(contactUid)
-                    .set({
-                      'addedAt': FieldValue.serverTimestamp(),
-                    });
-                
-                // Add yourself to their contacts
-                await _firestore
-                    .collection('users')
-                    .doc(contactUid)
-                    .collection('contacts')
-                    .doc(currentUser.uid)
-                    .set({
-                      'addedAt': FieldValue.serverTimestamp(),
-                    });
-                
-                debugPrint('✅ Contact saved successfully (both ways)!');
-                
-                // Reload contacts to show the new one
-                await _loadContacts();
-                
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Added ${userData['displayName'] ?? email} to contacts!')),
-                  );
-                }
-              } catch (e) {
-                debugPrint('Error adding contact: $e');
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
-                }
-              }
-            },
+            onPressed: addContact,
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6B7FB8)),
             child: const Text('ADD', style: TextStyle(color: Colors.white)),
           ),
@@ -1740,6 +1743,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   void _showGuestLinkDialog() {
     final TextEditingController nameController = TextEditingController();
+
+    Future<void> generateLink() async {
+      final name = nameController.text.trim();
+      if (name.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a guest name')),
+        );
+        return;
+      }
+
+      Navigator.pop(context);
+
+      try {
+        final guestLinkService = GuestLinkService();
+        final roomName = 'guest_${DateTime.now().millisecondsSinceEpoch}';
+        final link = await guestLinkService.generateGuestLink(
+          roomName: roomName,
+          guestName: name,
+        );
+
+        if (mounted && link != null) {
+          await Clipboard.setData(ClipboardData(text: link));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Guest link copied to clipboard!')),
+          );
+        }
+      } catch (e) {
+        debugPrint('Error generating guest link: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
+      }
+    }
 
     showDialog(
       context: context,
@@ -1758,6 +1796,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             TextField(
               controller: nameController,
               style: const TextStyle(color: Colors.white),
+              textCapitalization: TextCapitalization.words,
+              autofillHints: const [AutofillHints.name],
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => generateLink(),
               decoration: InputDecoration(
                 labelText: 'Guest Name',
                 labelStyle: const TextStyle(color: Color(0xFF8E8E93)),
@@ -1775,40 +1817,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             child: const Text('CANCEL', style: TextStyle(color: Color(0xFF8E8E93))),
           ),
           ElevatedButton(
-            onPressed: () async {
-              final name = nameController.text.trim();
-              if (name.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a guest name')),
-                );
-                return;
-              }
-              
-              Navigator.pop(context);
-              
-              try {
-                final guestLinkService = GuestLinkService();
-                final roomName = 'guest_${DateTime.now().millisecondsSinceEpoch}';
-                final link = await guestLinkService.generateGuestLink(
-                  roomName: roomName,
-                  guestName: name,
-                );
-                
-                if (mounted && link != null) {
-                  await Clipboard.setData(ClipboardData(text: link));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Guest link copied to clipboard!')),
-                  );
-                }
-              } catch (e) {
-                debugPrint('Error generating guest link: $e');
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
-                }
-              }
-            },
+            onPressed: generateLink,
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6B7FB8)),
             child: const Text('GENERATE', style: TextStyle(color: Colors.white)),
           ),
