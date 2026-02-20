@@ -19,10 +19,21 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_updateState);
+  }
+
+  @override
   void dispose() {
+    _emailController.removeListener(_updateState);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _updateState() {
+    setState(() {});
   }
 
   Future<void> _handleSignIn() async {
@@ -201,6 +212,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                   child: TextField(
+                    key: const ValueKey('email_field'),
                     controller: _emailController,
                     autofillHints: const [AutofillHints.email],
                     textInputAction: TextInputAction.next,
@@ -215,6 +227,16 @@ class _AuthScreenState extends State<AuthScreen> {
                           color: Colors.white.withOpacity(0.7),
                         ),
                       ),
+                      suffixIcon: _emailController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.clear,
+                                color: Colors.white.withOpacity(0.7),
+                              ),
+                              onPressed: () => _emailController.clear(),
+                              tooltip: 'Clear email',
+                            )
+                          : null,
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                     ),
@@ -360,11 +382,22 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   bool _obscureConfirmPassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_updateState);
+  }
+
+  @override
   void dispose() {
+    _emailController.removeListener(_updateState);
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  void _updateState() {
+    setState(() {});
   }
 
   Future<void> _handleCreateAccount() async {
@@ -463,6 +496,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     ),
                   ),
                   child: TextField(
+                    key: const ValueKey('signup_email_field'),
                     controller: _emailController,
                     autofillHints: const [AutofillHints.email],
                     textInputAction: TextInputAction.next,
@@ -477,6 +511,16 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           color: Colors.white.withOpacity(0.7),
                         ),
                       ),
+                      suffixIcon: _emailController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.clear,
+                                color: Colors.white.withOpacity(0.7),
+                              ),
+                              onPressed: () => _emailController.clear(),
+                              tooltip: 'Clear email',
+                            )
+                          : null,
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                     ),
