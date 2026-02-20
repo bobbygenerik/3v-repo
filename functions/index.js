@@ -95,15 +95,20 @@ exports.getLiveKitToken = functions.https.onCall(async (requestOrData, context) 
     }
 
     // Get user info (fallback to a safe default if Firestore is unavailable)
-    let userName = 'User';
-    try {
-      const userDoc = await admin.firestore()
-        .collection('users')
-        .doc(userId)
-        .get();
-      userName = userDoc.data()?.name || userDoc.data()?.displayName || 'User';
-    } catch (error) {
-      console.warn('User lookup failed, using fallback name:', error.message);
+    // Optimization: Check if name is available in auth token or request data first to avoid DB read
+    let userName = request.auth.token?.name || request.data.userName;
+
+    if (!userName) {
+      userName = 'User';
+      try {
+        const userDoc = await admin.firestore()
+          .collection('users')
+          .doc(userId)
+          .get();
+        userName = userDoc.data()?.name || userDoc.data()?.displayName || 'User';
+      } catch (error) {
+        console.warn('User lookup failed, using fallback name:', error.message);
+      }
     }
     console.log('User name:', userName);
 
