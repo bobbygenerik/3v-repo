@@ -685,6 +685,14 @@ exports.joinGuest = onRequest(async (req, res) => {
 
     const inviteRef = invitationsQuery.docs[0].ref;
 
+    // Fetch host FCM token in parallel (start before transaction to save time)
+    // We catch errors here so they don't become unhandled rejections if transaction fails early
+    const hostUserPromise = admin.firestore().collection('users').doc(invitation.hostUserId).get()
+      .catch(err => {
+        console.warn('⚠️ Background fetch of host user failed:', err);
+        return { exists: false, data: () => ({}) };
+      });
+
     // Atomically claim the invitation using a transaction to prevent races/duplicate uses
     try {
       await admin.firestore().runTransaction(async (tx) => {
@@ -711,8 +719,8 @@ exports.joinGuest = onRequest(async (req, res) => {
 
       console.log('✅ Invitation claimed atomically');
 
-      // Fetch host FCM token (after claiming to ensure single-use semantics)
-      const hostUserDoc = await admin.firestore().collection('users').doc(invitation.hostUserId).get();
+      // Await the host user fetch (started before transaction)
+      const hostUserDoc = await hostUserPromise;
       const fcmToken = hostUserDoc.data()?.fcmToken;
 
       console.log('Host user data:', hostUserDoc.exists ? 'exists' : 'NOT FOUND');
