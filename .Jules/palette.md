@@ -37,4 +37,7 @@
 ## 2026-02-19 - Grouping Semantics for Compound Buttons
 **Learning:** Common Flutter pattern of `InkWell` (Icon) + `Text` label below results in double announcement for screen readers ("Decline call button" then "Decline").
 **Action:** Wrap the interactive element (`InkWell`) in `Semantics` with a comprehensive label, and wrap the separate `Text` widget in `ExcludeSemantics` to provide a single, clear focusable target.
->>>>>>> 40ff4b35 (🎨 Palette: Add tooltips to call control buttons)
+
+## 2026-02-23 - Clearable Input Fields
+**Learning:** Standard `TextField`s lack a native "clear" action, forcing users to manually backspace. This is especially tedious for email fields on mobile.
+**Action:** Always implement a conditional `suffixIcon` with a clear button (using `TextEditingController` listener) for text inputs that are likely to need full clearing (like search or email).
