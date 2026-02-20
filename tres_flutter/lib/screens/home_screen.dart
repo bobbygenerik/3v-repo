@@ -23,8 +23,6 @@ import '../widgets/skeleton_loader.dart';
 import '../services/vibration_service.dart';
 import '../services/device_mode_service.dart';
 import '../services/ice_server_config.dart';
-import '../services/contact_service.dart';
-import '../config/app_theme.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 import 'call_screen.dart';
@@ -385,6 +383,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               'name': data['displayName'] ?? data['name'] ?? 'Unknown',
               'email': data['email'] ?? '',
               'photoURL': data['photoURL'],
+              'fcmToken': data['fcmToken'],
             };
           }
         } catch (e) {
@@ -1358,7 +1357,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                       orElse: () => '',
                     );
                     if (otherUserId.isNotEmpty) {
-                      _startCall('', recipientUid: otherUserId);
+                      final fcmToken = _userCache[otherUserId]?['fcmToken'];
+                      _startCall('', recipientUid: otherUserId, recipientFcmToken: fcmToken);
                     }
                   }
                 },
@@ -1392,10 +1392,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   void _startCallWithContact(Map<String, dynamic> contact) async {
     final email = contact['email'] as String;
     final uid = contact['uid'] as String?;
-    await _startCall(email, recipientUid: uid);
+    final fcmToken = contact['fcmToken'] as String?;
+    await _startCall(email, recipientUid: uid, recipientFcmToken: fcmToken);
   }
 
-  Future<void> _startCall(String recipientEmail, {String? recipientUid}) async {
+  Future<void> _startCall(String recipientEmail, {String? recipientUid, String? recipientFcmToken}) async {
     try {
       final currentUser = context.read<AuthService>().currentUser;
       if (currentUser == null) return;
@@ -1409,11 +1410,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       );
 
       String recipientUserId;
+      String? fcmToken = recipientFcmToken;
 
       // 1. Get Recipient ID (Use provided UID or lookup by email)
       if (recipientUid != null) {
         recipientUserId = recipientUid;
         debugPrint('✅ Using provided recipient UID: $recipientUserId');
+
+        // If token missing, try to find in cache/contacts
+        if (fcmToken == null) {
+           // Try contacts list
+           final contact = _contacts.firstWhere(
+             (c) => c['uid'] == recipientUserId,
+             orElse: () => {},
+           );
+           if (contact.isNotEmpty && contact['fcmToken'] != null) {
+             fcmToken = contact['fcmToken'];
+           }
+
+           // Try user cache (from history)
+           if (fcmToken == null && _userCache.containsKey(recipientUserId)) {
+             fcmToken = _userCache[recipientUserId]?['fcmToken'];
+           }
+        }
       } else {
         debugPrint('🔍 Looking up recipient by email: $recipientEmail');
         final recipientQuery = await _firestore
@@ -1431,7 +1450,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           }
           return;
         }
-        recipientUserId = recipientQuery.docs.first.id;
+        final userDoc = recipientQuery.docs.first;
+        recipientUserId = userDoc.id;
+        fcmToken = userDoc.data()['fcmToken'];
         debugPrint('✅ Found recipient: $recipientUserId');
       }
 
@@ -1459,6 +1480,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           token: '', // Recipient generates their own
           livekitUrl: defaultWsUrl,
           isVideoCall: true,
+          recipientFcmToken: fcmToken,
         ),
       ]);
 

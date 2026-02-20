@@ -2379,7 +2379,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                       return;
                     }
                     
-                    final recipientUserId = userQuery.docs.first.id;
+                    final userDoc = userQuery.docs.first;
+                    final recipientUserId = userDoc.id;
+                    final fcmToken = userDoc.data()['fcmToken'];
                     
                     final signalingService = CallSignalingService();
                     await signalingService.sendCallInvitation(
@@ -2388,6 +2390,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                       token: '',
                       livekitUrl: widget.livekitUrl,
                       isVideoCall: true,
+                      recipientFcmToken: fcmToken,
                     );
                     
                     if (mounted) Navigator.pop(context);

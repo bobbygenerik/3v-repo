@@ -22,6 +22,7 @@ class CallSignalingService {
     required String token,
     required String livekitUrl,
     bool isVideoCall = true,
+    String? recipientFcmToken,
   }) async {
     try {
       final currentUser = _auth.currentUser;
@@ -108,9 +109,7 @@ class CallSignalingService {
       debugPrint('  Type: ${isVideoCall ? "Video" : "Audio"}');
 
       // Create invitation document
-      final invitationRef = await _firestore
-          .collection('call_invitations')
-          .add({
+      final Map<String, dynamic> invitationData = {
         'callerId': currentUser.uid,
         'callerName': callerName,
         'callerEmail': currentUser.email,
@@ -125,7 +124,15 @@ class CallSignalingService {
         'expiresAt': Timestamp.fromDate(
           DateTime.now().add(const Duration(seconds: 60)),
         ),
-      });
+      };
+
+      if (recipientFcmToken != null && recipientFcmToken.isNotEmpty) {
+        invitationData['recipientFcmToken'] = recipientFcmToken;
+      }
+
+      final invitationRef = await _firestore
+          .collection('call_invitations')
+          .add(invitationData);
 
       debugPrint('✅ Call invitation sent: ${invitationRef.id}');
       return invitationRef.id;

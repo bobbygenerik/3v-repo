@@ -178,19 +178,23 @@ exports.sendCallNotification = functions.firestore.onDocumentCreated(
       }
       
       const recipientId = callData.recipientId;
+      let fcmToken = callData.recipientFcmToken;
       
-      // Get recipient's FCM token
-      const userDoc = await admin.firestore()
-        .collection('users')
-        .doc(recipientId)
-        .get();
-      
-      if (!userDoc.exists) {
-        console.error(`Recipient user ${recipientId} not found`);
-        return null;
+      // If token not provided in callData, fetch from Firestore (backward compatibility)
+      if (!fcmToken) {
+        // Get recipient's FCM token
+        const userDoc = await admin.firestore()
+          .collection('users')
+          .doc(recipientId)
+          .get();
+
+        if (!userDoc.exists) {
+          console.error(`Recipient user ${recipientId} not found`);
+          return null;
+        }
+
+        fcmToken = userDoc.data()?.fcmToken;
       }
-      
-      const fcmToken = userDoc.data().fcmToken;
       
       if (!fcmToken) {
         console.log(`❌ Recipient ${recipientId} has no FCM token registered`);
