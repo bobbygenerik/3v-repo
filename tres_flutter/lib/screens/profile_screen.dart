@@ -229,55 +229,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             children: [
               // Profile Picture with ring
-              GestureDetector(
-                onTap: isBusy ? null : _uploadPhoto,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFF6B7FB8), // App's main blue color
-                          width: 4,
-                        ),
-                      ),
-                      child: CircleAvatar(
-                        radius: 80,
-                        backgroundColor: const Color(0xFF2C2C2E),
-                        backgroundImage: user?.photoURL != null && user!.photoURL!.isNotEmpty
-                            ? NetworkImage(user.photoURL!)
-                            : null,
-                        child: user?.photoURL == null || user!.photoURL!.isEmpty
-                            ? Text(
-                                (user?.displayName?.isNotEmpty == true
-                                    ? user!.displayName![0].toUpperCase()
-                                    : user?.email?[0].toUpperCase() ?? 'U'),
-                                style: const TextStyle(
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : null,
-                      ),
-                    ),
-                    if (_isUploading)
+              Semantics(
+                label: 'Change profile picture',
+                button: true,
+                child: GestureDetector(
+                  onTap: isBusy ? null : _uploadPhoto,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
                       Container(
-                        width: 160,
-                        height: 160,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
                           shape: BoxShape.circle,
-                        ),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 3,
+                          border: Border.all(
+                            color: const Color(0xFF6B7FB8), // App's main blue color
+                            width: 4,
                           ),
                         ),
+                        child: CircleAvatar(
+                          radius: 80,
+                          backgroundColor: const Color(0xFF2C2C2E),
+                          backgroundImage: user?.photoURL != null && user!.photoURL!.isNotEmpty
+                              ? NetworkImage(user.photoURL!)
+                              : null,
+                          child: user?.photoURL == null || user!.photoURL!.isEmpty
+                              ? Text(
+                                  (user?.displayName?.isNotEmpty == true
+                                      ? user!.displayName![0].toUpperCase()
+                                      : user?.email?[0].toUpperCase() ?? 'U'),
+                                  style: const TextStyle(
+                                    fontSize: 48,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : null,
+                        ),
                       ),
-                  ],
+                      if (_isUploading)
+                        Container(
+                          width: 160,
+                          height: 160,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.5),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 3,
+                            ),
+                          ),
+                        ),
+                      if (!_isUploading)
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF6B7FB8),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFF1C1C1E),
+                                width: 3,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
 
@@ -320,6 +345,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: TextField(
                       controller: _nameController,
                       enabled: !isBusy,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _saveProfile(),
                       style: TextStyle(
                         color: isBusy ? Colors.white54 : Colors.white,
                         fontSize: 16,

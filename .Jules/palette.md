@@ -41,3 +41,7 @@
 ## 2026-02-23 - Clearable Input Fields
 **Learning:** Standard `TextField`s lack a native "clear" action, forcing users to manually backspace. This is especially tedious for email fields on mobile.
 **Action:** Always implement a conditional `suffixIcon` with a clear button (using `TextEditingController` listener) for text inputs that are likely to need full clearing (like search or email).
+
+## 2026-02-27 - Profile Picture Editability
+**Learning:** Users may not realize a profile picture is editable if relying solely on text below it. Screen readers also miss the interactivity of simple `GestureDetector` on images.
+**Action:** Overlay a camera icon badge on editable avatars for immediate visual affordance, and wrap the interaction in `Semantics(button: true, label: 'Change profile picture')`.
