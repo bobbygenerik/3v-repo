@@ -7,7 +7,7 @@ class ParticipantVideo extends StatefulWidget {
   final bool isLocal;
   final bool isMainView;
   final VideoViewFit fit;
-  
+
   const ParticipantVideo({
     super.key,
     required this.participant,
@@ -26,7 +26,7 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
   String _displayName = '';
   String _photoUrl = '';
   String _lastIdentity = '';
-  
+
   @override
   void initState() {
     super.initState();
@@ -34,13 +34,13 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
     _resolveParticipantProfile();
     widget.participant.addListener(_onParticipantChanged);
   }
-  
+
   @override
   void dispose() {
     widget.participant.removeListener(_onParticipantChanged);
     super.dispose();
   }
-  
+
   @override
   void didUpdateWidget(ParticipantVideo oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -52,29 +52,31 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
       _resolveParticipantProfile();
     }
   }
-  
+
   void _onParticipantChanged() {
     _setupTracks();
     if (_lastIdentity != widget.participant.identity) {
       _resolveParticipantProfile();
     }
+    // Always rebuild to reflect mute status changes even if tracks didn't change
+    if (mounted) setState(() {});
   }
-  
+
   void _setupTracks() {
     _setupVideoTrack();
     _setupAudioTrack();
   }
-  
+
   void _setupAudioTrack() async {
     AudioTrack? track;
-    
+
     for (final pub in widget.participant.audioTrackPublications) {
       if (pub.subscribed && pub.track != null) {
         track = pub.track as AudioTrack;
         break;
       }
     }
-    
+
     if (track == null && !widget.isLocal) {
       for (final pub in widget.participant.audioTrackPublications) {
         if (!pub.subscribed && pub is RemoteTrackPublication) {
@@ -89,30 +91,32 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
         }
       }
     }
-    
+
     if (mounted && track != _audioTrack) {
       setState(() => _audioTrack = track);
     }
   }
-  
+
   void _setupVideoTrack() async {
     VideoTrack? track;
-    
+
     for (final pub in widget.participant.videoTrackPublications) {
       if (pub.subscribed && pub.track != null) {
         track = pub.track as VideoTrack;
         break;
       }
     }
-    
+
     // Subscribe if needed
     if (track == null && !widget.isLocal) {
       final futures = <Future>[];
       for (final pub in widget.participant.videoTrackPublications) {
         if (!pub.subscribed && pub is RemoteTrackPublication) {
-          futures.add(pub.subscribe().catchError((e) {
-            debugPrint('❌ Failed to subscribe to video: $e');
-          }));
+          futures.add(
+            pub.subscribe().catchError((e) {
+              debugPrint('❌ Failed to subscribe to video: $e');
+            }),
+          );
         }
       }
       if (futures.isNotEmpty) {
@@ -126,33 +130,39 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
         }
       }
     }
-    
+
     // Request appropriate quality for this view
     _requestAppropriateQuality();
-    
+
     if (mounted && track != _videoTrack) {
       setState(() => _videoTrack = track);
     }
   }
-  
+
   void _requestAppropriateQuality() {
     for (final pub in widget.participant.videoTrackPublications) {
-      if (pub is RemoteTrackPublication && pub.subscribed && pub.track != null) {
+      if (pub is RemoteTrackPublication &&
+          pub.subscribed &&
+          pub.track != null) {
         _requestQualityForPublication(pub);
       }
     }
   }
-  
+
   void _requestQualityForPublication(RemoteTrackPublication pub) {
     try {
       if (widget.isMainView) {
         // Main view: Request highest quality
         pub.setVideoQuality(VideoQuality.HIGH);
-        debugPrint('📹 [${widget.participant.identity}] Requested HIGH quality (main view)');
+        debugPrint(
+          '📹 [${widget.participant.identity}] Requested HIGH quality (main view)',
+        );
       } else {
         // PIP/thumbnail: Request lower quality to protect main view stability.
         pub.setVideoQuality(VideoQuality.LOW);
-        debugPrint('📹 [${widget.participant.identity}] Requested LOW quality (pip view)');
+        debugPrint(
+          '📹 [${widget.participant.identity}] Requested LOW quality (pip view)',
+        );
       }
     } catch (e) {
       debugPrint('⚠️ Could not set video quality: $e');
@@ -175,50 +185,99 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
       // Ignore lookup errors; fall back to identity.
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final videoMuted = _videoTrack?.muted ?? true;
-    
+    final audioMuted = _audioTrack?.muted ?? true;
+
+    Widget content;
     if (_videoTrack == null || videoMuted) {
-      return _buildNoVideoPlaceholder();
+      content = _buildNoVideoPlaceholder();
+    } else {
+      content = RepaintBoundary(
+        child: VideoTrackRenderer(_videoTrack!, fit: widget.fit),
+      );
     }
-    
-    return RepaintBoundary(
-      child: VideoTrackRenderer(
-        _videoTrack!,
-        fit: widget.fit,
-      ),
-    );
+
+    // Overlay mute indicator if audio is muted
+    if (audioMuted) {
+      return Stack(
+        fit: StackFit.passthrough,
+        children: [
+          content,
+          Positioned(
+            bottom: 8,
+            right: 8,
+            child: Semantics(
+              label: 'Microphone muted',
+              image: true,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.mic_off,
+                  color: Colors.redAccent,
+                  size: 16,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return content;
   }
-  
+
   Widget _buildNoVideoPlaceholder() {
     final displayName = widget.participant.name.isNotEmpty
         ? widget.participant.name
-        : (_displayName.isNotEmpty ? _displayName : widget.participant.identity);
-    
+        : (_displayName.isNotEmpty
+              ? _displayName
+              : widget.participant.identity);
+
     return Container(
       color: Colors.grey[900],
       child: Center(
-        child: CircleAvatar(
-          radius: 40,
-          backgroundColor: Colors.grey[700],
-          backgroundImage: _photoUrl.isNotEmpty ? NetworkImage(_photoUrl) : null,
-          child: _photoUrl.isNotEmpty
-              ? null
-              : Text(
-                  _getInitials(displayName),
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: Colors.grey[700],
+              backgroundImage: _photoUrl.isNotEmpty
+                  ? NetworkImage(_photoUrl)
+                  : null,
+              child: _photoUrl.isNotEmpty
+                  ? null
+                  : Text(
+                      _getInitials(displayName),
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Camera Off',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
-  
+
   String _getInitials(String name) {
     if (name.isEmpty) return '?';
     if (name.contains('@')) name = name.split('@')[0];
