@@ -23,7 +23,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _nameController.addListener(_onNameChanged);
     _loadUserProfile();
+  }
+
+  void _onNameChanged() {
+    if (mounted) setState(() {});
   }
 
   void _loadUserProfile() {
@@ -35,6 +40,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
+    _nameController.removeListener(_onNameChanged);
     _nameController.dispose();
     _bioController.dispose();
     super.dispose();
@@ -351,16 +357,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: isBusy ? Colors.white54 : Colors.white,
                         fontSize: 16,
                       ),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
+                        contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 16,
                         ),
                         hintText: 'Enter your name',
-                        hintStyle: TextStyle(
+                        hintStyle: const TextStyle(
                           color: Color(0xFF8E8E93),
                         ),
+                        suffixIcon: _nameController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear,
+                                    color: Color(0xFF8E8E93)),
+                                onPressed: () => _nameController.clear(),
+                                tooltip: 'Clear name',
+                              )
+                            : null,
                       ),
                     ),
                   ),
