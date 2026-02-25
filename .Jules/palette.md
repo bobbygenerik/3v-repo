@@ -45,3 +45,7 @@
 ## 2026-02-27 - Profile Picture Editability
 **Learning:** Users may not realize a profile picture is editable if relying solely on text below it. Screen readers also miss the interactivity of simple `GestureDetector` on images.
 **Action:** Overlay a camera icon badge on editable avatars for immediate visual affordance, and wrap the interaction in `Semantics(button: true, label: 'Change profile picture')`.
+
+## 2026-03-05 - Actionable Empty States
+**Learning:** Static "No content" messages (like "No contacts yet") are dead ends that frustrate users. Providing a direct call-to-action (e.g., "Add Contact" button) within the empty state transforms a negative experience into a helpful, guiding one.
+**Action:** Always include a primary action button in empty state views to help users populate content or take the next logical step.

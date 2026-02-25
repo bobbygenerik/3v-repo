@@ -104,4 +104,45 @@ void main() {
     // Pump enough time for pending timers to fire and exit gracefully
     await tester.pump(const Duration(seconds: 5));
   });
+
+  testWidgets('HomeScreen shows empty state buttons', (WidgetTester tester) async {
+    // Populate Firestore with dummy data (but NO contacts)
+    await fakeFirestore.collection('users').doc(mockUser.uid).set({
+      'uid': mockUser.uid,
+      'email': mockUser.email,
+      'displayName': mockUser.displayName,
+    });
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AuthService>.value(value: mockAuthService),
+          ChangeNotifierProvider<ContactService>.value(value: mockContactService),
+        ],
+        child: MaterialApp(
+          home: HomeScreen(
+            firestore: fakeFirestore,
+            callListener: mockCallListenerService,
+            signalingService: mockCallSignalingService,
+            sessionService: mockCallSessionService,
+          ),
+        ),
+      ),
+    );
+
+    // Pump to settle animations/init
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    // Wait for async loading to complete (loading contacts)
+    await tester.pump(const Duration(seconds: 1));
+
+    // Verify "Add Contact" button text
+    expect(find.text('Add Contact'), findsOneWidget);
+    expect(find.text('Start by adding friends to call'), findsOneWidget);
+
+    // Teardown
+    await tester.pumpWidget(const Placeholder());
+    await tester.pump(const Duration(seconds: 5));
+  });
 }
