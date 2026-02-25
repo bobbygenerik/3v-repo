@@ -1110,6 +1110,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   _searchController.text.isEmpty ? 'No contacts yet' : 'No contacts found',
                   style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.5)),
                 ),
+                if (_searchController.text.isEmpty) ...[
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: 200,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        VibrationService.lightImpact();
+                        _showAddContactDialog();
+                      },
+                      icon: const Icon(Icons.person_add, size: 20),
+                      label: const Text('Add Contact'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6B7FB8),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Start by adding friends to call',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF8E8E93),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1286,6 +1317,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 Text(
                   'No call history yet',
                   style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.5)),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: 200,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      VibrationService.lightImpact();
+                      setState(() => _showContactsView = true);
+                    },
+                    icon: const Icon(Icons.people, size: 20),
+                    label: const Text('Find People to Call'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF6B7FB8),
+                      side: const BorderSide(color: Color(0xFF6B7FB8)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
