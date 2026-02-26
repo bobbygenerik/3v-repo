@@ -49,3 +49,7 @@
 ## 2026-03-05 - Actionable Empty States
 **Learning:** Static "No content" messages (like "No contacts yet") are dead ends that frustrate users. Providing a direct call-to-action (e.g., "Add Contact" button) within the empty state transforms a negative experience into a helpful, guiding one.
 **Action:** Always include a primary action button in empty state views to help users populate content or take the next logical step.
+
+## 2026-03-10 - Modal Async Feedback
+**Learning:** Dialogs that close immediately on submission ("fire and forget") can confuse users if errors occur silently or via disconnected snackbars. Keeping the dialog open with a loading state provides better feedback and error recovery context.
+**Action:** Implement `StatefulBuilder` within dialogs to manage local `isLoading` state, only closing the dialog on success.
