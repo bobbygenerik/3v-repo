@@ -17,11 +17,13 @@ void main() {
       contactService = ContactService(firestore: fakeFirestore, auth: mockAuth);
     });
 
-    test('getFavoritesStream returns empty list initially when doc does not exist',
-        () async {
-      final favorites = await contactService.getFavoritesStream().first;
-      expect(favorites, isEmpty);
-    });
+    test(
+      'getFavoritesStream returns empty list initially when doc does not exist',
+      () async {
+        final favorites = await contactService.getFavoritesStream().first;
+        expect(favorites, isEmpty);
+      },
+    );
 
     test('toggleFavorite adds to favorites', () async {
       await fakeFirestore.collection('users').doc('user1').set({});
@@ -35,7 +37,7 @@ void main() {
 
     test('toggleFavorite removes from favorites', () async {
       await fakeFirestore.collection('users').doc('user1').set({
-        'favorites': ['contact1']
+        'favorites': ['contact1'],
       });
 
       await contactService.toggleFavorite('contact1');
@@ -164,21 +166,24 @@ void main() {
     });
 
     test('returns correct contact by exact email', () async {
-      final results =
-          await contactService.searchContacts('contact5@example.com');
+      final results = await contactService.searchContacts(
+        'contact5@example.com',
+      );
       expect(results.length, 1);
       expect(results.first['uid'], 'contact-5');
       expect(results.first['name'], 'Contact 5');
     });
 
-    test('handles pagination/batches correctly (finds item in second batch)',
-        () async {
-      // 'Contact 14' is the last one (index 14).
-      // If batching works (10 then 5), it should be found in the second batch.
-      final results = await contactService.searchContacts('Contact 14');
-      expect(results.length, 1);
-      expect(results.first['uid'], 'contact-14');
-    });
+    test(
+      'handles pagination/batches correctly (finds item in second batch)',
+      () async {
+        // 'Contact 14' is the last one (index 14).
+        // If batching works (10 then 5), it should be found in the second batch.
+        final results = await contactService.searchContacts('Contact 14');
+        expect(results.length, 1);
+        expect(results.first['uid'], 'contact-14');
+      },
+    );
 
     test('returns empty list if no matches', () async {
       final results = await contactService.searchContacts('NonExistent');

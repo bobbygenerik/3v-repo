@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart';
 
 /// Environment configuration for the app
-/// 
+///
 /// After setting up Firebase with FlutterFire CLI, update the values below
 /// with your actual project credentials.
 class Environment {
   // App Configuration
   static const String appName = 'Tres';
   static const String appVersion = '1.0.0';
-  
+
   // LiveKit Configuration
   // Self-hosted on Contabo VPS (Saves $8,040/year!)
   static const String liveKitUrl = String.fromEnvironment(
@@ -35,7 +35,7 @@ class Environment {
     'LIVEKIT_FORCE_RELAY',
     defaultValue: false,
   );
-  
+
   // Firebase Functions Base URL
   // Format: https://REGION-PROJECT_ID.cloudfunctions.net
   // Example: https://us-central1-my-project.cloudfunctions.net
@@ -43,58 +43,60 @@ class Environment {
     'FUNCTIONS_BASE_URL',
     defaultValue: 'https://us-central1-tres3-5fdba.cloudfunctions.net',
   );
-  
+
   // Feature Flags
   static const bool enableMLFeatures = false;
   static const bool enableE2EEncryption = true;
   static const bool enableCloudRecording = false;
   static const bool enableScreenShare = false;
   static const bool enableBackgroundMode = true;
-  
+
   // ML Configuration
   static const double backgroundBlurStrength = 0.85;
   static const int maxFacesDetected = 5;
-  
+
   // Call Quality Settings
   static const int defaultVideoBitrate = 2000; // kbps
   static const int defaultAudioBitrate = 128; // kbps
   static const String defaultVideoResolution = '720p';
   static const int defaultFrameRate = 30;
-  
+
   // Chat Configuration
   static const int maxMessageLength = 500;
   static const int maxChatHistory = 100;
-  
+
   // Development Mode
   static const bool isDevelopment = bool.fromEnvironment(
     'DEVELOPMENT',
     defaultValue: true,
   );
-  
+
   // Debug Logging
   static const bool enableDebugLogging = kDebugMode;
-  
+
   // API Endpoints
-  static String get generateTokenEndpoint => '$functionsBaseUrl/generateGuestToken';
+  static String get generateTokenEndpoint =>
+      '$functionsBaseUrl/generateGuestToken';
+
   /// Validate that all required configuration is set
   static bool validate() {
     if (liveKitUrl.contains('your-livekit-server.com')) {
       debugPrint('❌ LiveKit URL not configured');
       return false;
     }
-    
+
     if (functionsBaseUrl.contains('YOUR_PROJECT_ID')) {
       debugPrint('❌ Firebase Functions URL not configured');
       return false;
     }
-    
+
     return true;
   }
-  
+
   /// Print current configuration (for debugging)
   static void printConfig() {
     if (!enableDebugLogging) return;
-    
+
     debugPrint('=== Environment Configuration ===');
     debugPrint('App Name: $appName');
     debugPrint('App Version: $appVersion');

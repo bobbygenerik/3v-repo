@@ -23,7 +23,9 @@ void main() {
       'isVideoCall': true,
       'status': 'pending',
       'timestamp': Timestamp.now(),
-      'expiresAt': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 1))),
+      'expiresAt': Timestamp.fromDate(
+        DateTime.now().add(const Duration(minutes: 1)),
+      ),
     });
 
     await Future.delayed(const Duration(milliseconds: 10));

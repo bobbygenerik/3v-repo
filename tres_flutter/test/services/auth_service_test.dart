@@ -6,7 +6,7 @@ import 'package:tres_flutter/services/auth_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  
+
   test('isSignedIn reflects auth state and signOut clears session', () async {
     SharedPreferences.setMockInitialValues({});
     final user = MockUser(uid: 'user-1', email: 'user1@example.com');

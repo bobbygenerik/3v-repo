@@ -11,15 +11,16 @@ import 'feature_flags.dart';
 import 'ice_server_config.dart';
 // MediaPipe removed: no mediapipe_settings import
 import 'web_pip_helper.dart';
-import 'web_pip_bridge_stub.dart'
-    if (dart.library.html) 'web_pip_bridge.dart';
+import 'web_pip_bridge_stub.dart' if (dart.library.html) 'web_pip_bridge.dart';
 import 'dart:io' show Platform;
 // `CallStats` and `CallConnectionQuality` are exported via `call_stats_service.dart`
 
 /// LiveKit service managing room connections and participant tracks
 /// Implements FaceTime-quality tuning for maximum video quality
 enum CallType { androidAndroid, androidIOSPWA, iosPWAIOSPWA, mixedUnknown }
+
 enum CaptureProfile { low, medium, high }
+
 enum QualityTier { low, medium, high, ultra }
 
 /// Custom video presets following FaceTime-quality tuning brief
@@ -84,7 +85,6 @@ class FaceTimeVideoPresets {
     dimensions: VideoDimensions(1280, 720),
     encoding: VideoEncoding(maxBitrate: 5_000_000, maxFramerate: 30),
   );
-
 }
 
 class LiveKitService extends ChangeNotifier {
@@ -118,7 +118,7 @@ class LiveKitService extends ChangeNotifier {
   String? _lastUrl;
   String? _lastToken;
   String? _lastRoomName;
-  
+
   Room? get room => _room;
   LocalVideoTrack? get localVideoTrack => _localVideoTrack;
   LocalAudioTrack? get localAudioTrack => _localAudioTrack;
@@ -131,40 +131,42 @@ class LiveKitService extends ChangeNotifier {
     _mediaPipeError = null;
     return error;
   }
+
   String get currentVideoCodec => _currentVideoCodec;
   bool get isReconnecting => _isReconnecting;
-  
+
   bool get isConnected => _room?.connectionState == ConnectionState.connected;
   bool get isMicrophoneEnabled => _localAudioTrack?.muted == false;
   bool get isCameraEnabled => _localVideoTrack?.muted == false;
-  
-  List<Participant> get remoteParticipants => 
+
+  List<Participant> get remoteParticipants =>
       _room?.remoteParticipants.values.toList() ?? [];
-  
+
   LocalParticipant? get localParticipant => _room?.localParticipant;
-  
+
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
-  
+
   final NetworkQualityService _networkService = NetworkQualityService();
   // Runtime mode
   final bool _isSafariPwa = DeviceModeService.isSafariPwa();
   CallStatsService? _internalStatsService;
   final WebPipService _pipService = WebPipService();
   // MediaPipe removed: no processor or settings retained
-  
+
   AudioCaptureOptions? _customAudioCaptureOptions;
 
   /// Get the PiP service for web platforms
   WebPipService get pipService => _pipService;
-  
+
   // Detect device capability on service creation
   LiveKitService() {
     DeviceCapabilityService.detectCapability();
     DeviceCapabilityService.detectCapabilityAsync();
     // Apply conservative defaults with centralized feature flags.
     // Safari PWA gets additional conservative enforcement.
-    _adaptiveBitrateEnabled = FeatureFlags.enableAdaptiveBitrate && !_isSafariPwa;
+    _adaptiveBitrateEnabled =
+        FeatureFlags.enableAdaptiveBitrate && !_isSafariPwa;
     // Use simulcast ladder flag (3-layer) but gate by runtime capability probe on web
     var webSimulcastOk = true;
     if (kIsWeb) {
@@ -172,7 +174,8 @@ class LiveKitService extends ChangeNotifier {
       DeviceCapabilityService.detectCapability();
       webSimulcastOk = DeviceCapabilityService.webSupportsSimulcast();
     }
-    _isSimulcastEnabled = FeatureFlags.enableSimulcastLadder && !_isSafariPwa && webSimulcastOk;
+    _isSimulcastEnabled =
+        FeatureFlags.enableSimulcastLadder && !_isSafariPwa && webSimulcastOk;
   }
 
   /// Determine call type at runtime (Required by brief)
@@ -183,7 +186,8 @@ class LiveKitService extends ChangeNotifier {
     final localIsWeb = kIsWeb;
     final remotePlatform = _inferParticipantPlatform(participant);
     final remoteIsAndroid = remotePlatform.contains('android');
-    final remoteIsWeb = remotePlatform.contains('web') || remotePlatform.contains('ios');
+    final remoteIsWeb =
+        remotePlatform.contains('web') || remotePlatform.contains('ios');
 
     if (!localIsWeb && DeviceModeService.isAndroidNative() && remoteIsAndroid) {
       return CallType.androidAndroid;
@@ -228,17 +232,17 @@ class LiveKitService extends ChangeNotifier {
     // * Same app build
     // * Thermal state = normal
     // * Network = Wi-Fi or strong 5G
-    
+
     if (_currentCallType != CallType.androidAndroid) return false;
-    
+
     // Check network quality
     final networkType = _networkService.getCurrentNetworkType();
     if (networkType != 'wifi' && networkType != '5g') return false;
-    
+
     // Check thermal state (simplified check)
     final deviceInfo = DeviceCapabilityService.getDeviceInfo();
     if (deviceInfo['isThermalThrottling'] == true) return false;
-    
+
     // Check if high-end device
     final deviceLevel = DeviceCapabilityService.getDeviceLevel();
     if (deviceLevel < 8) return false; // Only flagship devices
@@ -254,7 +258,7 @@ class LiveKitService extends ChangeNotifier {
         // Android ↔ Android: AV1 (if supported), H.264 High Profile, VP9 fallback
         if (_supportsAV1()) return 'av1';
         return 'h264';
-        
+
       case CallType.androidIOSPWA:
       case CallType.iosPWAIOSPWA:
       case CallType.mixedUnknown:
@@ -272,10 +276,7 @@ class LiveKitService extends ChangeNotifier {
     final codec = _getPublishVideoCodec();
     BackupVideoCodec? backup;
     if (codec == 'av1') {
-      backup = BackupVideoCodec(
-        codec: 'h264',
-        simulcast: _isSimulcastEnabled,
-      );
+      backup = BackupVideoCodec(codec: 'h264', simulcast: _isSimulcastEnabled);
     }
     return VideoPublishOptions(
       videoEncoding: encoding,
@@ -302,38 +303,38 @@ class LiveKitService extends ChangeNotifier {
   /// Check if device supports 60fps
   bool _supports60fps() {
     final deviceLevel = DeviceCapabilityService.getDeviceLevel();
-    final chipset = DeviceCapabilityService.getDeviceInfo()['chipset']?.toLowerCase() ?? '';
-    
-    return deviceLevel >= 9 && (
-      chipset.contains('snapdragon 8 gen') ||
-      chipset.contains('tensor g') ||
-      chipset.contains('exynos 2')
-    );
+    final chipset =
+        DeviceCapabilityService.getDeviceInfo()['chipset']?.toLowerCase() ?? '';
+
+    return deviceLevel >= 9 &&
+        (chipset.contains('snapdragon 8 gen') ||
+            chipset.contains('tensor g') ||
+            chipset.contains('exynos 2'));
   }
 
   /// Check if device supports 4K recording
   bool _supports4K() {
     final deviceLevel = DeviceCapabilityService.getDeviceLevel();
-    final chipset = DeviceCapabilityService.getDeviceInfo()['chipset']?.toLowerCase() ?? '';
-    
-    return deviceLevel >= 9 && (
-      chipset.contains('snapdragon 8 gen 2') ||
-      chipset.contains('snapdragon 8 gen 3') ||
-      chipset.contains('tensor g3') ||
-      chipset.contains('exynos 2400')
-    );
+    final chipset =
+        DeviceCapabilityService.getDeviceInfo()['chipset']?.toLowerCase() ?? '';
+
+    return deviceLevel >= 9 &&
+        (chipset.contains('snapdragon 8 gen 2') ||
+            chipset.contains('snapdragon 8 gen 3') ||
+            chipset.contains('tensor g3') ||
+            chipset.contains('exynos 2400'));
   }
 
   /// Check if device supports 1440p 60fps
   bool _supports1440p60() {
     final deviceLevel = DeviceCapabilityService.getDeviceLevel();
-    final chipset = DeviceCapabilityService.getDeviceInfo()['chipset']?.toLowerCase() ?? '';
-    
-    return deviceLevel >= 9 && (
-      chipset.contains('snapdragon 8 gen') ||
-      chipset.contains('tensor g') ||
-      chipset.contains('exynos 2')
-    );
+    final chipset =
+        DeviceCapabilityService.getDeviceInfo()['chipset']?.toLowerCase() ?? '';
+
+    return deviceLevel >= 9 &&
+        (chipset.contains('snapdragon 8 gen') ||
+            chipset.contains('tensor g') ||
+            chipset.contains('exynos 2'));
   }
 
   /// Collect call stats from local tracks using LiveKit SDK where available.
@@ -355,20 +356,20 @@ class LiveKitService extends ChangeNotifier {
       return const CallStats();
     }
   }
-  
+
   /// Get FaceTime-quality video encoding
   VideoEncoding _getOptimalVideoEncoding([VideoParameters? preset]) {
     _currentCallType = _classifyCallType();
     _isUltraHQMode = _shouldEnableUltraHQ();
     _currentVideoCodec = _getPreferredCodec();
-    
+
     final deviceMaxBitrate = DeviceCapabilityService.getMaxVideoBitrate();
     final deviceMaxFramerate = DeviceCapabilityService.getMaxFramerate();
     final presetEncoding = preset?.encoding;
-    
+
     int finalBitrate = presetEncoding?.maxBitrate ?? deviceMaxBitrate;
     int finalFramerate = presetEncoding?.maxFramerate ?? deviceMaxFramerate;
-    
+
     if (_isUltraHQMode) {
       // Android Ultra-HQ mode: Prefer preset target, then fall back to device caps.
       if (presetEncoding != null) {
@@ -388,8 +389,10 @@ class LiveKitService extends ChangeNotifier {
     }
     finalBitrate = finalBitrate.clamp(1_000_000, deviceMaxBitrate);
     finalFramerate = finalFramerate.clamp(10, deviceMaxFramerate);
-    
-    final callTypeLabel = (_currentCallType == CallType.mixedUnknown && remoteParticipants.isEmpty)
+
+    final callTypeLabel =
+        (_currentCallType == CallType.mixedUnknown &&
+            remoteParticipants.isEmpty)
         ? 'pending'
         : _currentCallType.toString();
     debugPrint('🎥 FaceTime-Quality Encoding:');
@@ -398,7 +401,7 @@ class LiveKitService extends ChangeNotifier {
     debugPrint('   📡 Codec: $_currentVideoCodec');
     debugPrint('   📊 Bitrate: ${finalBitrate / 1000000} Mbps');
     debugPrint('   🎬 FPS: $finalFramerate');
-    
+
     // If Safari PWA, enforce conservative cap
     if (_isSafariPwa) {
       return _getSafariPwaEncoding();
@@ -515,7 +518,10 @@ class LiveKitService extends ChangeNotifier {
 
   double _getAverageAvailableOutgoingBitrate() {
     if (_recentAvailableOutgoingBitrates.isEmpty) return 0.0;
-    final sum = _recentAvailableOutgoingBitrates.fold<double>(0.0, (a, b) => a + b);
+    final sum = _recentAvailableOutgoingBitrates.fold<double>(
+      0.0,
+      (a, b) => a + b,
+    );
     return sum / _recentAvailableOutgoingBitrates.length;
   }
 
@@ -537,7 +543,8 @@ class LiveKitService extends ChangeNotifier {
     if (targetTier.index < _currentQualityTier.index) {
       _qualityUpshiftStart = null;
       _qualityDownshiftStart ??= now;
-      if (now.difference(_qualityDownshiftStart!) < const Duration(seconds: 15)) {
+      if (now.difference(_qualityDownshiftStart!) <
+          const Duration(seconds: 15)) {
         return;
       }
     } else {
@@ -565,12 +572,16 @@ class LiveKitService extends ChangeNotifier {
   /// Monitor stats to perform a safe one-time upgrade on Android when conditions are excellent
   void _maybePerformUpgradeGate(CallStats stats) {
     if (_upgradePerformed) return;
-    if (!DeviceModeService.isAndroidNative()) return; // Safari PWA never upgrades
+    if (!DeviceModeService.isAndroidNative())
+      return; // Safari PWA never upgrades
     // Require app foreground, no reconnects, low packet loss, low RTT, low jitter
     final packetLoss = stats.videoPacketLoss;
     final rttMs = stats.roundTripTime * 1000.0;
     final jitterMs = stats.jitter * 1000.0;
-    if (packetLoss > 0.5 || rttMs >= 150.0 || jitterMs >= 10.0 || _isReconnecting) {
+    if (packetLoss > 0.5 ||
+        rttMs >= 150.0 ||
+        jitterMs >= 10.0 ||
+        _isReconnecting) {
       _upgradeGateStart = null;
       return;
     }
@@ -590,9 +601,14 @@ class LiveKitService extends ChangeNotifier {
       // Double-check again
       if (!DeviceModeService.isAndroidNative()) return;
       final preset = FaceTimeVideoPresets.h1080;
-      final encoding = preset.encoding ?? VideoEncoding(maxBitrate: 8_000_000, maxFramerate: 30);
+      final encoding =
+          preset.encoding ??
+          VideoEncoding(maxBitrate: 8_000_000, maxFramerate: 30);
       // Recreate & publish track with new preset — this is a one-time upgrade per call
-      await _recreateAndPublishVideoTrack(preset, maxBitrateOverride: encoding.maxBitrate);
+      await _recreateAndPublishVideoTrack(
+        preset,
+        maxBitrateOverride: encoding.maxBitrate,
+      );
       debugPrint('✅ Performed safe upgrade to 1080p (one-time gate)');
     } catch (e) {
       debugPrint('⚠️ Upgrade gate failed or aborted: $e');
@@ -609,14 +625,15 @@ class LiveKitService extends ChangeNotifier {
 
     double factor = 1.0;
     if (packetLoss >= 5.0 || rttMs >= 300.0 || jitterMs >= 40.0) {
-      factor = 0.85;  // 15% reduction (gentler)
+      factor = 0.85; // 15% reduction (gentler)
     } else if (packetLoss >= 2.0 || rttMs >= 200.0 || jitterMs >= 30.0) {
-      factor = 0.90;  // 10% reduction
+      factor = 0.90; // 10% reduction
     } else if (packetLoss >= 1.0 || rttMs >= 150.0 || jitterMs >= 20.0) {
-      factor = 0.95;  // 5% reduction
+      factor = 0.95; // 5% reduction
     }
 
-    final minBitrate = _getMinBitrateForPreset(_currentCapturePreset) ??
+    final minBitrate =
+        _getMinBitrateForPreset(_currentCapturePreset) ??
         (_isUltraHQMode ? 6_000_000 : 3_000_000);
     final target = (baseBitrate * factor).round();
     final outgoingCap = availableOutgoing > 0
@@ -670,7 +687,9 @@ class LiveKitService extends ChangeNotifier {
     final preset = _currentCapturePreset ?? FaceTimeVideoPresets.h720;
     try {
       await _recreateAndPublishVideoTrack(preset);
-      debugPrint('🔄 Simulcast ${_isSimulcastEnabled ? "enabled" : "disabled"} based on participant count');
+      debugPrint(
+        '🔄 Simulcast ${_isSimulcastEnabled ? "enabled" : "disabled"} based on participant count',
+      );
     } catch (e) {
       debugPrint('⚠️ Failed to apply simulcast policy: $e');
     }
@@ -700,7 +719,7 @@ class LiveKitService extends ChangeNotifier {
         return FaceTimeVideoPresets.h1080;
     }
   }
-  
+
   /// Connect to LiveKit room with FaceTime-quality tuning
   Future<bool> connect({
     required String url,
@@ -716,14 +735,16 @@ class LiveKitService extends ChangeNotifier {
     _reconnectAttempts = 0;
     try {
       _errorMessage = null;
-      
+
       _currentCallType = _classifyCallType();
       _isUltraHQMode = _shouldEnableUltraHQ();
       _currentVideoCodec = _getPreferredCodec();
       // Default simulcast behavior: disable for 1:1 until multiparty detected.
       _isSimulcastEnabled = _shouldEnableSimulcast();
-      
-      final callTypeLabel = (_currentCallType == CallType.mixedUnknown && remoteParticipants.isEmpty)
+
+      final callTypeLabel =
+          (_currentCallType == CallType.mixedUnknown &&
+              remoteParticipants.isEmpty)
           ? 'pending'
           : _currentCallType.toString();
       debugPrint('🎯 FaceTime-Quality Connection Setup:');
@@ -731,7 +752,7 @@ class LiveKitService extends ChangeNotifier {
       debugPrint('   🚀 Ultra-HQ Mode: $_isUltraHQMode');
       debugPrint('   📡 Preferred Codec: $_currentVideoCodec');
       debugPrint('   🔄 Simulcast: $_isSimulcastEnabled (disabled for 1-to-1)');
-      
+
       final urlCandidates = _buildUrlCandidates(url);
       Exception? lastError;
 
@@ -749,21 +770,21 @@ class LiveKitService extends ChangeNotifier {
           _currentCapturePreset = captureParams;
           final optimalEncoding = _getOptimalVideoEncoding(captureParams);
 
-        final processor = null;
+          final processor = null;
 
-      await _room!.connect(
-        candidateUrl,
-        token,
-        connectOptions: ConnectOptions(
-          autoSubscribe: true,
-          rtcConfiguration: _buildRtcConfiguration(),
-        ),
-        roomOptions: RoomOptions(
-          defaultCameraCaptureOptions: CameraCaptureOptions(
-            maxFrameRate: (optimalEncoding.maxFramerate ?? 30).toDouble(),
-            params: captureParams,
-            processor: processor,
-          ),
+          await _room!.connect(
+            candidateUrl,
+            token,
+            connectOptions: ConnectOptions(
+              autoSubscribe: true,
+              rtcConfiguration: _buildRtcConfiguration(),
+            ),
+            roomOptions: RoomOptions(
+              defaultCameraCaptureOptions: CameraCaptureOptions(
+                maxFrameRate: (optimalEncoding.maxFramerate ?? 30).toDouble(),
+                params: captureParams,
+                processor: processor,
+              ),
               // Screen share removed: no default screen-share capture options.
               defaultAudioCaptureOptions: AudioCaptureOptions(
                 echoCancellation: true,
@@ -771,14 +792,14 @@ class LiveKitService extends ChangeNotifier {
                 autoGainControl: true,
               ),
               defaultVideoPublishOptions: VideoPublishOptions(
-                    videoEncoding: optimalEncoding,
-                    simulcast: _isSimulcastEnabled,
-                    videoCodec: _getPublishVideoCodec(),
-                    backupVideoCodec: _getPublishVideoCodec() == 'av1'
-                        ? const BackupVideoCodec(codec: 'h264', simulcast: true)
-                        : VideoPublishOptions.defualtBackupVideoCodec,
-                    degradationPreference: DegradationPreference.balanced,
-                  ),
+                videoEncoding: optimalEncoding,
+                simulcast: _isSimulcastEnabled,
+                videoCodec: _getPublishVideoCodec(),
+                backupVideoCodec: _getPublishVideoCodec() == 'av1'
+                    ? const BackupVideoCodec(codec: 'h264', simulcast: true)
+                    : VideoPublishOptions.defualtBackupVideoCodec,
+                degradationPreference: DegradationPreference.balanced,
+              ),
               defaultAudioPublishOptions: AudioPublishOptions(
                 audioBitrate: _getOptimalAudioBitrate(),
                 dtx: true,
@@ -813,18 +834,20 @@ class LiveKitService extends ChangeNotifier {
         return false;
       }
 
-      await Future.wait([
-        enableCamera(),
-        enableMicrophone(),
-      ]).timeout(const Duration(seconds: 12), onTimeout: () {
-        throw Exception('Timed out while enabling local media tracks');
-      });
-      
+      await Future.wait([enableCamera(), enableMicrophone()]).timeout(
+        const Duration(seconds: 12),
+        onTimeout: () {
+          throw Exception('Timed out while enabling local media tracks');
+        },
+      );
+
       // Verify actual codec being used after connection
       await Future.delayed(const Duration(seconds: 2)); // Wait for negotiation
       await _logActualCodecUsed();
-      
-      debugPrint('✅ Connected to LiveKit room with FaceTime-quality tuning: $roomName');
+
+      debugPrint(
+        '✅ Connected to LiveKit room with FaceTime-quality tuning: $roomName',
+      );
       return true;
     } catch (e) {
       _errorMessage = 'Failed to connect: ${e.toString()}';
@@ -832,7 +855,7 @@ class LiveKitService extends ChangeNotifier {
       return false;
     }
   }
-  
+
   /// Get optimal audio bitrate (Audio bandwidth protection from brief)
   int _getOptimalAudioBitrate() {
     // Opus codec, 24–32 kbps (speech), Enable DTX
@@ -865,7 +888,7 @@ class LiveKitService extends ChangeNotifier {
       await recoverAudio(forceRecreate: true);
     }
   }
-  
+
   /// Disconnect from room and cleanup
   Future<void> disconnect() async {
     try {
@@ -877,19 +900,25 @@ class LiveKitService extends ChangeNotifier {
       _networkService.stopMonitoring();
       _pipService.dispose();
       _internalStatsService?.stopCollecting();
-      
+
       await Future.wait([
         _localVideoTrack?.stop() ?? Future.value(),
         _localAudioTrack?.stop() ?? Future.value(),
-      ]).timeout(const Duration(seconds: 3), onTimeout: () {
-        debugPrint('⚠️ Timeout stopping local tracks');
-        return <void>[];
-      });
-      
-      await _room?.disconnect().timeout(const Duration(seconds: 3), onTimeout: () {
-        debugPrint('⚠️ Timeout disconnecting from room');
-      });
-      
+      ]).timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('⚠️ Timeout stopping local tracks');
+          return <void>[];
+        },
+      );
+
+      await _room?.disconnect().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('⚠️ Timeout disconnecting from room');
+        },
+      );
+
       _localVideoTrack = null;
       _localAudioTrack = null;
       _room = null;
@@ -897,7 +926,7 @@ class LiveKitService extends ChangeNotifier {
       _isUltraHQMode = false;
       _isSimulcastEnabled = false;
       _reconnectAttempts = 0;
-      
+
       debugPrint('✅ LiveKit disconnected successfully');
       notifyListeners();
     } catch (e) {
@@ -909,7 +938,7 @@ class LiveKitService extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// Enable camera with FaceTime-quality settings
   Future<void> enableCamera() async {
     try {
@@ -918,22 +947,24 @@ class LiveKitService extends ChangeNotifier {
         debugPrint('❌ Room is null, cannot enable camera');
         return;
       }
-      
+
       if (_localVideoTrack == null) {
         debugPrint('📹 Creating camera track with FaceTime-quality preset...');
-        
+
         VideoParameters captureParams = _selectCapturePreset();
         if (_isSafariPwa) captureParams = FaceTimeVideoPresets.h720;
         final optimalEncoding = _getOptimalVideoEncoding(captureParams);
-        
+
         debugPrint('📹 FaceTime-quality capture params:');
-        debugPrint('   📐 Resolution: ${captureParams.dimensions.width}x${captureParams.dimensions.height}');
+        debugPrint(
+          '   📐 Resolution: ${captureParams.dimensions.width}x${captureParams.dimensions.height}',
+        );
         final encoding = captureParams.encoding;
         final bitrate = encoding?.maxBitrate ?? 6000000;
         final framerate = encoding?.maxFramerate ?? 30;
         debugPrint('   📊 Max Bitrate: ${bitrate / 1000000} Mbps');
         debugPrint('   🎬 Max FPS: $framerate');
-        
+
         final processor = null;
 
         _localVideoTrack = await LocalVideoTrack.createCameraTrack(
@@ -944,15 +975,17 @@ class LiveKitService extends ChangeNotifier {
           ),
         );
         _currentCapturePreset = captureParams;
-        
-        debugPrint('📤 Publishing video track with FaceTime-quality encoding...');
+
+        debugPrint(
+          '📤 Publishing video track with FaceTime-quality encoding...',
+        );
         await _room!.localParticipant?.publishVideoTrack(
           _localVideoTrack!,
           publishOptions: _buildVideoPublishOptions(optimalEncoding),
         );
         debugPrint('✅ FaceTime-quality video track published');
       }
-      
+
       await _localVideoTrack?.unmute();
       debugPrint('✅ Video track unmuted');
       notifyListeners();
@@ -988,7 +1021,8 @@ class LiveKitService extends ChangeNotifier {
 
     if (targetBitrate < previous) {
       _qualityDownshiftStart ??= now;
-      if (now.difference(_qualityDownshiftStart!) < const Duration(seconds: 12)) {
+      if (now.difference(_qualityDownshiftStart!) <
+          const Duration(seconds: 12)) {
         return;
       }
     } else {
@@ -998,7 +1032,9 @@ class LiveKitService extends ChangeNotifier {
     final preset = _currentCapturePreset ?? FaceTimeVideoPresets.h720;
     final processor = null;
 
-    debugPrint('📉 Adaptive bitrate request: ${previous / 1000000} → ${targetBitrate / 1000000} Mbps');
+    debugPrint(
+      '📉 Adaptive bitrate request: ${previous / 1000000} → ${targetBitrate / 1000000} Mbps',
+    );
     // Try setParameters (encoder parameter update) first — prefer no track recreate
     try {
       final trackDyn = _localVideoTrack as dynamic;
@@ -1018,11 +1054,15 @@ class LiveKitService extends ChangeNotifier {
       }
       debugPrint('⚠️ setParameters returned falsey — falling back to recreate');
     } catch (e) {
-      debugPrint('⚠️ setParameters not available or failed: $e — will recreate track');
+      debugPrint(
+        '⚠️ setParameters not available or failed: $e — will recreate track',
+      );
     }
 
     // Fallback: recreate track (ensure UI is notified so preview rebinds)
-    debugPrint('📉 Performing safe recreate to apply bitrate: ${targetBitrate / 1000000} Mbps');
+    debugPrint(
+      '📉 Performing safe recreate to apply bitrate: ${targetBitrate / 1000000} Mbps',
+    );
     await _recreateAndPublishVideoTrack(
       preset,
       maxBitrateOverride: targetBitrate,
@@ -1044,7 +1084,9 @@ class LiveKitService extends ChangeNotifier {
       final oldTrack = _localVideoTrack;
 
       if (localParticipant != null && oldTrack != null) {
-        final oldPub = localParticipant.getTrackPublicationBySource(TrackSource.camera);
+        final oldPub = localParticipant.getTrackPublicationBySource(
+          TrackSource.camera,
+        );
         if (oldPub != null) {
           await localParticipant.removePublishedTrack(oldPub.sid);
         }
@@ -1053,12 +1095,12 @@ class LiveKitService extends ChangeNotifier {
       await oldTrack?.stop();
 
       final optimalEncoding = _getOptimalVideoEncoding(preset);
-      final encoding = maxBitrateOverride != null 
-        ? VideoEncoding(
-            maxBitrate: maxBitrateOverride,
-            maxFramerate: optimalEncoding.maxFramerate,
-          )
-        : optimalEncoding;
+      final encoding = maxBitrateOverride != null
+          ? VideoEncoding(
+              maxBitrate: maxBitrateOverride,
+              maxFramerate: optimalEncoding.maxFramerate,
+            )
+          : optimalEncoding;
 
       _localVideoTrack = await LocalVideoTrack.createCameraTrack(
         CameraCaptureOptions(
@@ -1079,7 +1121,7 @@ class LiveKitService extends ChangeNotifier {
       } else {
         await _localVideoTrack?.unmute();
       }
-      
+
       debugPrint('🔁 Recreated video track with FaceTime-quality preset');
       // Notify UI so any renderer bindings rebind to the new LocalVideoTrack
       notifyListeners();
@@ -1107,16 +1149,20 @@ class LiveKitService extends ChangeNotifier {
       if (_room == null) return;
 
       VideoParameters preset;
-      
+
       switch (profile) {
         case CaptureProfile.low:
           preset = FaceTimeVideoPresets.h720;
           break;
         case CaptureProfile.medium:
-          preset = _isUltraHQMode ? FaceTimeVideoPresets.androidUltraHQ720 : FaceTimeVideoPresets.h720;
+          preset = _isUltraHQMode
+              ? FaceTimeVideoPresets.androidUltraHQ720
+              : FaceTimeVideoPresets.h720;
           break;
         case CaptureProfile.high:
-          preset = _isUltraHQMode ? FaceTimeVideoPresets.androidUltraHQ : FaceTimeVideoPresets.h1080;
+          preset = _isUltraHQMode
+              ? FaceTimeVideoPresets.androidUltraHQ
+              : FaceTimeVideoPresets.h1080;
           break;
       }
 
@@ -1125,7 +1171,7 @@ class LiveKitService extends ChangeNotifier {
       debugPrint('applyCaptureProfile error: $e');
     }
   }
-  
+
   /// Disable camera (mute video track)
   Future<void> disableCamera() async {
     try {
@@ -1136,20 +1182,20 @@ class LiveKitService extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// Enable microphone with optimized audio settings
   Future<void> enableMicrophone() async {
     try {
       if (_room == null) return;
-      
+
       if (_localAudioTrack == null) {
         _localAudioTrack = await LocalAudioTrack.create(
           _buildAudioCaptureOptions(),
         );
-        
+
         // Explicitly unmute immediately after creation
         await _localAudioTrack!.unmute();
-        
+
         await _room!.localParticipant?.publishAudioTrack(
           _localAudioTrack!,
           publishOptions: AudioPublishOptions(
@@ -1159,7 +1205,7 @@ class LiveKitService extends ChangeNotifier {
           ),
         );
       }
-      
+
       // Ensure unmuted
       await _localAudioTrack?.unmute();
       notifyListeners();
@@ -1168,7 +1214,7 @@ class LiveKitService extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// Disable microphone (mute audio track)
   Future<void> disableMicrophone() async {
     try {
@@ -1179,7 +1225,7 @@ class LiveKitService extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// Toggle microphone state
   Future<void> toggleMicrophone() async {
     if (isMicrophoneEnabled) {
@@ -1202,13 +1248,17 @@ class LiveKitService extends ChangeNotifier {
       final localParticipant = room.localParticipant;
       if (localParticipant == null) return;
 
-      final audioPub = localParticipant.getTrackPublicationBySource(TrackSource.microphone);
+      final audioPub = localParticipant.getTrackPublicationBySource(
+        TrackSource.microphone,
+      );
 
       if (forceRecreate || audioPub == null) {
         if (audioPub != null) {
           await localParticipant.removePublishedTrack(audioPub.sid);
         }
-        _localAudioTrack = await LocalAudioTrack.create(_buildAudioCaptureOptions());
+        _localAudioTrack = await LocalAudioTrack.create(
+          _buildAudioCaptureOptions(),
+        );
         await localParticipant.publishAudioTrack(
           _localAudioTrack!,
           publishOptions: AudioPublishOptions(
@@ -1244,7 +1294,7 @@ class LiveKitService extends ChangeNotifier {
       _isRecoveringAudio = false;
     }
   }
-  
+
   /// Toggle camera state
   Future<void> toggleCamera() async {
     if (isCameraEnabled) {
@@ -1253,7 +1303,7 @@ class LiveKitService extends ChangeNotifier {
       await enableCamera();
     }
   }
-  
+
   /// Switch between front and back camera with camera control enhancements
   Future<void> switchCamera() async {
     try {
@@ -1262,19 +1312,21 @@ class LiveKitService extends ChangeNotifier {
         debugPrint('❌ Cannot switch camera: no active video track');
         return;
       }
-      
+
       _currentCameraPosition = (_currentCameraPosition == CameraPosition.front)
           ? CameraPosition.back
           : CameraPosition.front;
-      
+
       // Camera Control enhancements from brief:
       // * Lock exposure after stabilization
       // * Lock focus after autofocus completes
       // * Avoid camera restarts mid-call
-      
+
       await track.setCameraPosition(_currentCameraPosition);
-      
-      debugPrint('✅ Camera switched to: $_currentCameraPosition with FaceTime-quality controls');
+
+      debugPrint(
+        '✅ Camera switched to: $_currentCameraPosition with FaceTime-quality controls',
+      );
       notifyListeners();
     } catch (e) {
       debugPrint('❌ Camera switch error: $e');
@@ -1282,13 +1334,13 @@ class LiveKitService extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// Set up room event listeners
   void _setupRoomListeners() {
     if (_room == null) return;
-    
+
     _room!.addListener(_onRoomDidUpdate);
-    
+
     _room!.createListener()
       ..on<RoomReconnectingEvent>((event) {
         _isReconnecting = true;
@@ -1303,8 +1355,10 @@ class LiveKitService extends ChangeNotifier {
         notifyListeners();
       })
       ..on<RoomAttemptReconnectEvent>((event) {
-        debugPrint('🔁 Reconnect attempt ${event.attempt}/${event.maxAttemptsRetry} '
-            'next in ${event.nextRetryDelaysInMs}ms');
+        debugPrint(
+          '🔁 Reconnect attempt ${event.attempt}/${event.maxAttemptsRetry} '
+          'next in ${event.nextRetryDelaysInMs}ms',
+        );
       })
       ..on<RoomDisconnectedEvent>((event) {
         debugPrint('🔌 Room disconnected: ${event.reason}');
@@ -1335,12 +1389,16 @@ class LiveKitService extends ChangeNotifier {
         notifyListeners();
       })
       ..on<ParticipantDisconnectedEvent>((event) {
-        debugPrint('👋 Participant disconnected: ${event.participant.identity}');
+        debugPrint(
+          '👋 Participant disconnected: ${event.participant.identity}',
+        );
         unawaited(_applySimulcastPolicyIfNeeded());
         notifyListeners();
       })
       ..on<TrackPublishedEvent>((event) {
-        debugPrint('📢 Track published: ${event.publication.sid} by ${event.participant.identity}');
+        debugPrint(
+          '📢 Track published: ${event.publication.sid} by ${event.participant.identity}',
+        );
         notifyListeners();
       })
       ..on<TrackSubscribedEvent>((event) async {
@@ -1348,7 +1406,7 @@ class LiveKitService extends ChangeNotifier {
         debugPrint('   - Kind: ${event.track.kind}');
         debugPrint('   - Participant: ${event.participant.identity}');
         debugPrint('   - Muted: ${event.track.muted}');
-        
+
         // Start tracks immediately after subscription
         if (event.track.kind == TrackType.AUDIO) {
           final audioTrack = event.track as RemoteAudioTrack;
@@ -1361,7 +1419,7 @@ class LiveKitService extends ChangeNotifier {
           // Remote tracks cannot be unmuted locally - sender controls mute state
           debugPrint('   📹 Remote video track started');
         }
-        
+
         notifyListeners();
       })
       ..on<TrackUnpublishedEvent>((event) {
@@ -1371,30 +1429,31 @@ class LiveKitService extends ChangeNotifier {
   }
 
   // MediaPipe removed: no per-frame processing handler required.
-  
+
   void _onRoomDidUpdate() {
     notifyListeners();
   }
-  
+
   /// Verify hardware encoder is being used
   Future<bool> _verifyHardwareEncoder() async {
     try {
       final stats = await collectCallStats();
       final codec = stats.videoCodec.toLowerCase();
-      
+
       // Check for hardware encoder indicators
-      final isHardware = codec.contains('hardware') ||
-          codec.contains('qcom') ||      // Qualcomm
-          codec.contains('exynos') ||    // Samsung
-          codec.contains('mtk') ||       // MediaTek
-          codec.contains('kirin') ||     // Huawei
+      final isHardware =
+          codec.contains('hardware') ||
+          codec.contains('qcom') || // Qualcomm
+          codec.contains('exynos') || // Samsung
+          codec.contains('mtk') || // MediaTek
+          codec.contains('kirin') || // Huawei
           codec.contains('videotoolbox'); // Apple
-      
+
       if (!isHardware && codec.isNotEmpty && codec != 'unknown') {
         debugPrint('⚠️ Software encoder detected: $codec');
         debugPrint('   This may cause performance issues and battery drain');
       }
-      
+
       return isHardware;
     } catch (e) {
       debugPrint('⚠️ Could not verify encoder type: $e');
@@ -1406,11 +1465,13 @@ class LiveKitService extends ChangeNotifier {
   Future<void> _logActualCodecUsed() async {
     try {
       final localParticipant = _room?.localParticipant;
-      final videoTrack = localParticipant?.videoTrackPublications.firstOrNull?.track;
-      
+      final videoTrack =
+          localParticipant?.videoTrackPublications.firstOrNull?.track;
+
       if (videoTrack != null) {
         final stats = await collectCallStats();
-        final hasCodec = stats.videoCodec.isNotEmpty && stats.videoCodec != 'unknown';
+        final hasCodec =
+            stats.videoCodec.isNotEmpty && stats.videoCodec != 'unknown';
         final hasResolution = stats.videoResolution != 'N/A';
         debugPrint('📊 ACTUAL MEDIA STATS:');
         debugPrint('   🎯 Requested: $_currentVideoCodec');
@@ -1423,11 +1484,13 @@ class LiveKitService extends ChangeNotifier {
           debugPrint('   ✅ Audio codec: ${stats.audioCodec}');
           debugPrint('   ✅ Audio send: ${stats.audioSendBitrateFormatted}');
           debugPrint('   ✅ Audio recv: ${stats.audioRecvBitrateFormatted}');
-          
+
           // Verify hardware encoding
           await _verifyHardwareEncoder();
         } else if (kDebugMode) {
-          debugPrint('   ℹ️ Codec stats not available yet; waiting for stats events');
+          debugPrint(
+            '   ℹ️ Codec stats not available yet; waiting for stats events',
+          );
         }
       } else {
         debugPrint('⚠️ Could not verify codec - no video track found');
@@ -1441,8 +1504,12 @@ class LiveKitService extends ChangeNotifier {
     try {
       final localParticipant = _room?.localParticipant;
       if (localParticipant != null) {
-        final videoPub = localParticipant.getTrackPublicationBySource(TrackSource.camera);
-        final audioPub = localParticipant.getTrackPublicationBySource(TrackSource.microphone);
+        final videoPub = localParticipant.getTrackPublicationBySource(
+          TrackSource.camera,
+        );
+        final audioPub = localParticipant.getTrackPublicationBySource(
+          TrackSource.microphone,
+        );
         if (videoPub != null) {
           await localParticipant.removePublishedTrack(videoPub.sid);
         }
@@ -1472,16 +1539,20 @@ class LiveKitService extends ChangeNotifier {
     debugPrint('   🚀 Ultra-HQ Mode: $_isUltraHQMode');
     debugPrint('   📡 Codec: $_currentVideoCodec');
     debugPrint('   🔄 Simulcast: $_isSimulcastEnabled');
-    debugPrint('   🌐 Platform: ${kIsWeb ? "Web/PWA" : Platform.operatingSystem}');
-    debugPrint('   📊 Network Type: ${_networkService.getCurrentNetworkType()}');
-    
+    debugPrint(
+      '   🌐 Platform: ${kIsWeb ? "Web/PWA" : Platform.operatingSystem}',
+    );
+    debugPrint(
+      '   📊 Network Type: ${_networkService.getCurrentNetworkType()}',
+    );
+
     if (kIsWeb) {
       debugPrint('   ⚠️ iOS PWA Constraints: Safari WebRTC limitations apply');
       debugPrint('   - May cap bitrate unpredictably');
       debugPrint('   - May ignore some encoder hints');
       debugPrint('   - May throttle under thermal pressure');
     }
-    
+
     // Check actual codec being used
     _logActualCodecUsed();
   }
@@ -1489,14 +1560,19 @@ class LiveKitService extends ChangeNotifier {
   RTCConfiguration _buildRtcConfiguration() {
     final iceServers = _parseIceServers() ?? _defaultIceServers();
     if (iceServers.isEmpty) {
-      debugPrint('⚠️ No ICE servers configured. TURN is required for reliable NAT traversal.');
+      debugPrint(
+        '⚠️ No ICE servers configured. TURN is required for reliable NAT traversal.',
+      );
     } else if (!IceServerConfig.isConfigured) {
-      debugPrint('⚠️ Using STUN-only fallback ICE servers. Configure TURN for reliability.');
+      debugPrint(
+        '⚠️ Using STUN-only fallback ICE servers. Configure TURN for reliability.',
+      );
     }
     return RTCConfiguration(
       iceServers: iceServers,
-      iceTransportPolicy:
-          Environment.liveKitForceRelay ? RTCIceTransportPolicy.relay : null,
+      iceTransportPolicy: Environment.liveKitForceRelay
+          ? RTCIceTransportPolicy.relay
+          : null,
     );
   }
 
@@ -1515,18 +1591,16 @@ class LiveKitService extends ChangeNotifier {
         final urls = rawUrls is List
             ? rawUrls.map((e) => e.toString()).toList()
             : rawUrls is String
-                ? [rawUrls]
-                : null;
+            ? [rawUrls]
+            : null;
         final username = entry['username']?.toString();
         final credential = entry['credential']?.toString();
         if (urls == null || urls.isEmpty) {
           continue;
         }
-        servers.add(RTCIceServer(
-          urls: urls,
-          username: username,
-          credential: credential,
-        ));
+        servers.add(
+          RTCIceServer(urls: urls, username: username, credential: credential),
+        );
       }
       return servers.isEmpty ? null : servers;
     } catch (e) {
@@ -1602,11 +1676,11 @@ class LiveKitService extends ChangeNotifier {
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
   }
-  
+
   /// Update the PiP video stream with the specified participant's video track
   Future<void> updatePipStream(VideoTrack? track) async {
     if (!kIsWeb) return;
-    
+
     try {
       final mediaStream = WebPipBridge.getMediaStreamFromTrack(track);
       if (mediaStream != null) {
@@ -1619,7 +1693,7 @@ class LiveKitService extends ChangeNotifier {
       debugPrint('❌ Failed to update PiP stream: $e');
     }
   }
-  
+
   /// Setup auto PiP when user switches tabs (web only)
   void setupAutoPip() {
     if (!kIsWeb) return;
@@ -1627,7 +1701,7 @@ class LiveKitService extends ChangeNotifier {
     if (_isSafariPwa) return;
     _pipService.setupAutoEnterPip();
   }
-  
+
   @override
   void dispose() {
     // MediaPipe removed - no listener to remove

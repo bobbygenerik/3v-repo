@@ -8,45 +8,46 @@ import 'web_auth_helper.dart' if (dart.library.io) 'web_auth_helper_stub.dart';
 /// Supports phone number and email/password authentication
 class AuthService extends ChangeNotifier {
   AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
-      : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+    : _auth = auth ?? FirebaseAuth.instance,
+      _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
   ConfirmationResult? _webConfirmationResult;
-  
+
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   bool get isSignedIn => currentUser != null;
-  
+
   String? _verificationId;
   int? _resendToken;
   String? _errorMessage;
-  
+
   String? get errorMessage => _errorMessage;
-  bool get isVerificationPending => _verificationId != null || _webConfirmationResult != null;
-  
+  bool get isVerificationPending =>
+      _verificationId != null || _webConfirmationResult != null;
+
   /// Sign in with email and password
   Future<bool> signInWithEmail(String email, String password) async {
     try {
       _errorMessage = null;
       notifyListeners();
-      
+
       debugPrint('🔐 Attempting to sign in with email: $email');
-      
+
       final credential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      
+
       debugPrint('✅ Sign in successful: ${credential.user?.uid}');
-      
+
       // Ensure user document exists in Firestore
       if (credential.user != null) {
         await _ensureUserDocument(credential.user!);
         await _cacheSignedInUser(credential.user!);
       }
-      
+
       return credential.user != null;
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ Firebase Auth Error: ${e.code} - ${e.message}');
@@ -60,28 +61,28 @@ class AuthService extends ChangeNotifier {
       return false;
     }
   }
-  
+
   /// Create account with email and password
   Future<bool> createAccountWithEmail(String email, String password) async {
     try {
       _errorMessage = null;
       notifyListeners();
-      
+
       debugPrint('🔐 Attempting to create account with email: $email');
-      
+
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      
+
       debugPrint('✅ Account created successfully: ${credential.user?.uid}');
-      
+
       // Create user document in Firestore
       if (credential.user != null) {
         await _ensureUserDocument(credential.user!);
         await _cacheSignedInUser(credential.user!);
       }
-      
+
       return credential.user != null;
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ Firebase Auth Error: ${e.code} - ${e.message}');
@@ -95,22 +96,26 @@ class AuthService extends ChangeNotifier {
       return false;
     }
   }
-  
+
   /// Ensure user document exists in Firestore
   Future<void> _ensureUserDocument(User user) async {
     try {
       final userDoc = _firestore.collection('users').doc(user.uid);
       final docSnapshot = await userDoc.get();
-      
+
       // Always store email in lowercase for consistent searching
       final email = user.email?.toLowerCase();
-      
-      debugPrint('🔧 Ensuring user document for ${user.uid}, email from auth: ${user.email}, lowercase: $email');
-      
+
+      debugPrint(
+        '🔧 Ensuring user document for ${user.uid}, email from auth: ${user.email}, lowercase: $email',
+      );
+
       if (email == null || email.isEmpty) {
-        debugPrint('⚠️ WARNING: User ${user.uid} has no email in Firebase Auth!');
+        debugPrint(
+          '⚠️ WARNING: User ${user.uid} has no email in Firebase Auth!',
+        );
       }
-      
+
       if (!docSnapshot.exists) {
         // Create new user document
         await userDoc.set({
@@ -122,7 +127,9 @@ class AuthService extends ChangeNotifier {
           'lastSeen': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         });
-        debugPrint('✅ Created Firestore user document for ${user.uid} with email: $email');
+        debugPrint(
+          '✅ Created Firestore user document for ${user.uid} with email: $email',
+        );
       } else {
         // Use set with merge to update fields without overwriting manually added ones
         await userDoc.set({
@@ -133,13 +140,15 @@ class AuthService extends ChangeNotifier {
           if (user.photoURL != null && user.photoURL!.isNotEmpty)
             'photoURL': user.photoURL,
         }, SetOptions(merge: true));
-        debugPrint('✅ Updated user document for ${user.uid} with email: $email');
+        debugPrint(
+          '✅ Updated user document for ${user.uid} with email: $email',
+        );
       }
     } catch (e) {
       debugPrint('⚠️ Error ensuring user document: $e');
     }
   }
-  
+
   /// Send verification code to phone number
   /// phoneNumber should be in E.164 format (e.g., +15551234567)
   Future<bool> sendPhoneVerificationCode(String phoneNumber) async {
@@ -148,7 +157,7 @@ class AuthService extends ChangeNotifier {
       _verificationId = null;
       _webConfirmationResult = null;
       notifyListeners();
-      
+
       // Web-specific phone auth with reCAPTCHA
       if (kIsWeb) {
         try {
@@ -157,16 +166,17 @@ class AuthService extends ChangeNotifier {
             _auth,
             phoneNumber,
           );
-          
+
           notifyListeners();
           return true;
         } catch (e) {
-          _errorMessage = 'Failed to send verification code. Make sure you completed the reCAPTCHA. Error: ${e.toString()}';
+          _errorMessage =
+              'Failed to send verification code. Make sure you completed the reCAPTCHA. Error: ${e.toString()}';
           notifyListeners();
           return false;
         }
       }
-      
+
       // Mobile phone auth
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
@@ -193,7 +203,7 @@ class AuthService extends ChangeNotifier {
         },
         forceResendingToken: _resendToken,
       );
-      
+
       return true;
     } catch (e) {
       _errorMessage = 'Failed to send verification code: ${e.toString()}';
@@ -201,13 +211,13 @@ class AuthService extends ChangeNotifier {
       return false;
     }
   }
-  
+
   /// Verify phone number with SMS code
   Future<bool> verifyPhoneCode(String smsCode) async {
     try {
       _errorMessage = null;
       notifyListeners();
-      
+
       // Web phone verification
       if (kIsWeb && _webConfirmationResult != null) {
         try {
@@ -221,23 +231,23 @@ class AuthService extends ChangeNotifier {
           return false;
         }
       }
-      
+
       // Mobile phone verification
       if (_verificationId == null) {
         _errorMessage = 'No verification in progress';
         notifyListeners();
         return false;
       }
-      
+
       final credential = PhoneAuthProvider.credential(
         verificationId: _verificationId!,
         smsCode: smsCode,
       );
-      
+
       await _auth.signInWithCredential(credential);
       _verificationId = null;
       notifyListeners();
-      
+
       return true;
     } on FirebaseAuthException catch (e) {
       _errorMessage = _mapFirebaseError(e);
@@ -249,7 +259,7 @@ class AuthService extends ChangeNotifier {
       return false;
     }
   }
-  
+
   /// Sign out
   Future<void> signOut() async {
     await _auth.signOut();
@@ -276,13 +286,13 @@ class AuthService extends ChangeNotifier {
       debugPrint('⚠️ Failed to clear cached user: $e');
     }
   }
-  
+
   /// Clear error message
   void clearError() {
     _errorMessage = null;
     notifyListeners();
   }
-  
+
   /// Clear verification state
   void clearVerification() {
     _verificationId = null;
@@ -290,7 +300,7 @@ class AuthService extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
-  
+
   /// Map Firebase error codes to user-friendly messages
   String _mapFirebaseError(FirebaseAuthException e) {
     switch (e.code) {

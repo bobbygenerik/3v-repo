@@ -34,7 +34,8 @@ class PerformanceMonitor {
         }
 
         // Adapt based on network quality
-        if (quality == NetworkQuality.poor || quality == NetworkQuality.offline) {
+        if (quality == NetworkQuality.poor ||
+            quality == NetworkQuality.offline) {
           _consecutivePoor++;
         } else {
           _consecutivePoor = 0;

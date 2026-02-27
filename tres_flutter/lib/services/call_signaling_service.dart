@@ -7,8 +7,8 @@ import 'package:flutter/foundation.dart';
 /// Mirrors functionality from Android CallSignalingManager.kt
 class CallSignalingService {
   CallSignalingService({FirebaseFirestore? firestore, FirebaseAuth? auth})
-      : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
@@ -35,15 +35,17 @@ class CallSignalingService {
       final lastAttempt = _recentCallAttemptsByRecipient[recipientUserId];
       if (lastAttempt != null &&
           now.difference(lastAttempt) < const Duration(seconds: 10)) {
-        debugPrint('⏰ Recent call attempt detected locally, waiting before allowing new call');
+        debugPrint(
+          '⏰ Recent call attempt detected locally, waiting before allowing new call',
+        );
         return null;
       }
       _recentCallAttemptsByRecipient[recipientUserId] = now;
-      
+
       // Check for recent calls between these users (prevent spam)
       try {
         final tenSecondsAgo = Timestamp.fromDate(
-          DateTime.now().subtract(const Duration(seconds: 10))
+          DateTime.now().subtract(const Duration(seconds: 10)),
         );
 
         // Query with a single filter to avoid composite index requirements.
@@ -76,7 +78,7 @@ class CallSignalingService {
           if (callerId != recipientUserId || timestamp == null) return false;
           return timestamp.compareTo(tenSecondsAgo) > 0;
         });
-        
+
         if (outgoingCalls.isNotEmpty || incomingCalls.isNotEmpty) {
           debugPrint('⏰ Recent call found, waiting before allowing new call');
           return null;
@@ -95,10 +97,11 @@ class CallSignalingService {
           .get();
 
       final callerData = callerDoc.data();
-      final callerName = callerData?['displayName'] ?? 
-                        callerData?['name'] ?? 
-                        currentUser.email?.split('@')[0] ?? 
-                        'Unknown';
+      final callerName =
+          callerData?['displayName'] ??
+          callerData?['name'] ??
+          currentUser.email?.split('@')[0] ??
+          'Unknown';
       final callerPhotoUrl = callerData?['photoURL'] ?? '';
 
       debugPrint('📞 Sending call invitation:');
@@ -108,24 +111,25 @@ class CallSignalingService {
       debugPrint('  Type: ${isVideoCall ? "Video" : "Audio"}');
 
       // Create invitation document
-      final invitationRef = await _firestore
-          .collection('call_invitations')
-          .add({
-        'callerId': currentUser.uid,
-        'callerName': callerName,
-        'callerEmail': currentUser.email,
-        'callerPhotoUrl': callerPhotoUrl,
-        'recipientId': recipientUserId,
-        'roomName': roomName,
-        'token': token,
-        'livekitUrl': livekitUrl,
-        'isVideoCall': isVideoCall,
-        'status': 'pending', // pending, accepted, declined, cancelled, timeout
-        'timestamp': FieldValue.serverTimestamp(),
-        'expiresAt': Timestamp.fromDate(
-          DateTime.now().add(const Duration(seconds: 60)),
-        ),
-      });
+      final invitationRef = await _firestore.collection('call_invitations').add(
+        {
+          'callerId': currentUser.uid,
+          'callerName': callerName,
+          'callerEmail': currentUser.email,
+          'callerPhotoUrl': callerPhotoUrl,
+          'recipientId': recipientUserId,
+          'roomName': roomName,
+          'token': token,
+          'livekitUrl': livekitUrl,
+          'isVideoCall': isVideoCall,
+          'status':
+              'pending', // pending, accepted, declined, cancelled, timeout
+          'timestamp': FieldValue.serverTimestamp(),
+          'expiresAt': Timestamp.fromDate(
+            DateTime.now().add(const Duration(seconds: 60)),
+          ),
+        },
+      );
 
       debugPrint('✅ Call invitation sent: ${invitationRef.id}');
       return invitationRef.id;
@@ -138,10 +142,7 @@ class CallSignalingService {
   /// Cancel a pending call invitation
   Future<void> cancelInvitation(String invitationId) async {
     try {
-      await _firestore
-          .collection('call_invitations')
-          .doc(invitationId)
-          .update({
+      await _firestore.collection('call_invitations').doc(invitationId).update({
         'status': 'cancelled',
         'cancelledAt': FieldValue.serverTimestamp(),
       });
@@ -176,7 +177,9 @@ class CallSignalingService {
       final expiresAt = data['expiresAt'] as Timestamp?;
 
       // Check if already cancelled or declined
-      if (status == 'cancelled' || status == 'declined' || status == 'timeout') {
+      if (status == 'cancelled' ||
+          status == 'declined' ||
+          status == 'timeout') {
         debugPrint('❌ Invitation already $status: $invitationId');
         return false;
       }
@@ -193,10 +196,7 @@ class CallSignalingService {
       }
 
       // Accept the invitation
-      await _firestore
-          .collection('call_invitations')
-          .doc(invitationId)
-          .update({
+      await _firestore.collection('call_invitations').doc(invitationId).update({
         'status': 'accepted',
         'acceptedAt': FieldValue.serverTimestamp(),
       });
@@ -211,10 +211,7 @@ class CallSignalingService {
   /// Decline a call invitation
   Future<void> declineInvitation(String invitationId) async {
     try {
-      await _firestore
-          .collection('call_invitations')
-          .doc(invitationId)
-          .update({
+      await _firestore.collection('call_invitations').doc(invitationId).update({
         'status': 'declined',
         'declinedAt': FieldValue.serverTimestamp(),
       });
@@ -231,16 +228,13 @@ class CallSignalingService {
           .collection('call_invitations')
           .doc(invitationId)
           .get();
-      
+
       if (!doc.exists) return null;
-      
+
       final data = doc.data();
       if (data == null) return null;
-      
-      return {
-        'id': doc.id,
-        ...data,
-      };
+
+      return {'id': doc.id, ...data};
     } catch (e) {
       debugPrint('❌ Error getting invitation: $e');
       return null;
@@ -266,7 +260,9 @@ class CallSignalingService {
       }
 
       await batch.commit();
-      debugPrint('✅ Cleaned up ${expiredQuery.docs.length} expired invitations');
+      debugPrint(
+        '✅ Cleaned up ${expiredQuery.docs.length} expired invitations',
+      );
     } catch (e) {
       debugPrint('❌ Error cleaning up invitations: $e');
     }
@@ -300,7 +296,8 @@ class CallSignalingService {
       final callEndData = {
         'roomName': roomName,
         'endedBy': currentUser.uid,
-        'endedByName': currentUser.displayName ?? currentUser.email ?? 'Unknown',
+        'endedByName':
+            currentUser.displayName ?? currentUser.email ?? 'Unknown',
         'endedAt': FieldValue.serverTimestamp(),
         'status': 'ended',
       };
@@ -331,7 +328,9 @@ class CallSignalingService {
                 .get();
             if (sessionSnapshot.docs.isNotEmpty) {
               final data = sessionSnapshot.docs.first.data();
-              final sessionParticipants = List<String>.from(data['participants'] ?? []);
+              final sessionParticipants = List<String>.from(
+                data['participants'] ?? [],
+              );
               for (final uid in sessionParticipants) {
                 if (!participants.contains(uid)) {
                   participants.add(uid);
@@ -364,7 +363,8 @@ class CallSignalingService {
           'type': 'call_ended',
           'roomName': roomName,
           'endedBy': currentUser.uid,
-          'endedByName': currentUser.displayName ?? currentUser.email ?? 'Unknown',
+          'endedByName':
+              currentUser.displayName ?? currentUser.email ?? 'Unknown',
           'timestamp': FieldValue.serverTimestamp(),
           'status': 'pending', // Will be processed by recipient
         };
@@ -375,9 +375,13 @@ class CallSignalingService {
             .collection('callSignals')
             .add(notificationData);
 
-        debugPrint('✅ Notified other participant ($otherUserId) via callSignals');
+        debugPrint(
+          '✅ Notified other participant ($otherUserId) via callSignals',
+        );
       } else {
-        debugPrint('⚠️ No other participant ID provided - only using activeCallRooms');
+        debugPrint(
+          '⚠️ No other participant ID provided - only using activeCallRooms',
+        );
       }
 
       debugPrint('✅ Call end signaling completed successfully');

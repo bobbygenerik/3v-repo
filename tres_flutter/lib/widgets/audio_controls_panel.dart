@@ -31,7 +31,7 @@ class AudioControlsPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Audio Output Selection (only show if multiple devices available)
               if (audioService.availableDevices.length > 1) ...[
                 const Text(
@@ -39,24 +39,24 @@ class AudioControlsPanel extends StatelessWidget {
                   style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
                 const SizedBox(height: 8),
-                ...audioService.availableDevices.map((device) => 
-                  ListTile(
+                ...audioService.availableDevices.map(
+                  (device) => ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(
                       audioService.getDeviceIcon(device),
-                      color: audioService.currentOutput == device 
-                          ? const Color(0xFF6B7FB8) 
+                      color: audioService.currentOutput == device
+                          ? const Color(0xFF6B7FB8)
                           : Colors.white70,
                     ),
                     title: Text(
                       audioService.getDeviceName(device),
                       style: TextStyle(
-                        color: audioService.currentOutput == device 
-                            ? const Color(0xFF6B7FB8) 
+                        color: audioService.currentOutput == device
+                            ? const Color(0xFF6B7FB8)
                             : Colors.white,
-                        fontWeight: audioService.currentOutput == device 
-                            ? FontWeight.bold 
+                        fontWeight: audioService.currentOutput == device
+                            ? FontWeight.bold
                             : FontWeight.normal,
                       ),
                     ),
@@ -68,9 +68,9 @@ class AudioControlsPanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
               ],
-              
+
               const SizedBox(height: 16),
-              
+
               // Volume Control
               const Text(
                 'Volume',
@@ -96,7 +96,7 @@ class AudioControlsPanel extends StatelessWidget {
                   ),
                 ],
               ),
-              
+
               if (kIsWeb) ...[
                 const SizedBox(height: 8),
                 Container(

@@ -8,12 +8,23 @@ import 'package:tres_flutter/services/user_lookup_service.dart';
 import 'package:tres_flutter/firebase_options.dart';
 
 class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
-class MockCollectionReference extends Mock implements CollectionReference<Map<String, dynamic>> {}
-class MockDocumentReference extends Mock implements DocumentReference<Map<String, dynamic>> {}
+
+class MockCollectionReference extends Mock
+    implements CollectionReference<Map<String, dynamic>> {}
+
+class MockDocumentReference extends Mock
+    implements DocumentReference<Map<String, dynamic>> {}
+
 class MockQuery extends Mock implements Query<Map<String, dynamic>> {}
-class MockQuerySnapshot extends Mock implements QuerySnapshot<Map<String, dynamic>> {}
-class MockQueryDocumentSnapshot extends Mock implements QueryDocumentSnapshot<Map<String, dynamic>> {}
-class MockDocumentSnapshot extends Mock implements DocumentSnapshot<Map<String, dynamic>> {}
+
+class MockQuerySnapshot extends Mock
+    implements QuerySnapshot<Map<String, dynamic>> {}
+
+class MockQueryDocumentSnapshot extends Mock
+    implements QueryDocumentSnapshot<Map<String, dynamic>> {}
+
+class MockDocumentSnapshot extends Mock
+    implements DocumentSnapshot<Map<String, dynamic>> {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -45,7 +56,9 @@ void main() {
     service.firestore = mockFirestore;
     service.clearCache();
 
-    when(() => mockFirestore.collection('users')).thenReturn(mockUsersCollection);
+    when(
+      () => mockFirestore.collection('users'),
+    ).thenReturn(mockUsersCollection);
   });
 
   test('fetchForIdentity uses batched queries (Optimized O(N/10))', () async {
@@ -54,10 +67,14 @@ void main() {
     final emailQuerySnap = MockQuerySnapshot();
     final emailDocs = <MockQueryDocumentSnapshot>[];
     for (int i = 0; i < 10; i++) {
-       final d = MockQueryDocumentSnapshot();
-       // Note: implementation queries by lowercase email
-       when(() => d.data()).thenReturn({'email': 'user$i@example.com', 'displayName': 'Email User $i', 'photoURL': ''});
-       emailDocs.add(d);
+      final d = MockQueryDocumentSnapshot();
+      // Note: implementation queries by lowercase email
+      when(() => d.data()).thenReturn({
+        'email': 'user$i@example.com',
+        'displayName': 'Email User $i',
+        'photoURL': '',
+      });
+      emailDocs.add(d);
     }
     when(() => emailQuerySnap.docs).thenReturn(emailDocs);
     when(() => emailQuery.get()).thenAnswer((_) async => emailQuerySnap);
@@ -67,22 +84,29 @@ void main() {
     final uidQuerySnap = MockQuerySnapshot();
     final uidDocs = <MockQueryDocumentSnapshot>[];
     for (int i = 0; i < 10; i++) {
-       final d = MockQueryDocumentSnapshot();
-       when(() => d.id).thenReturn('user_$i');
-       when(() => d.data()).thenReturn({'displayName': 'User $i', 'photoURL': ''});
-       uidDocs.add(d);
+      final d = MockQueryDocumentSnapshot();
+      when(() => d.id).thenReturn('user_$i');
+      when(
+        () => d.data(),
+      ).thenReturn({'displayName': 'User $i', 'photoURL': ''});
+      uidDocs.add(d);
     }
     when(() => uidQuerySnap.docs).thenReturn(uidDocs);
     when(() => uidQuery.get()).thenAnswer((_) async => uidQuerySnap);
 
     // Mock where calls
     // We expect 'email' queries
-    when(() => mockUsersCollection.where('email', whereIn: any(named: 'whereIn')))
-      .thenReturn(emailQuery);
+    when(
+      () => mockUsersCollection.where('email', whereIn: any(named: 'whereIn')),
+    ).thenReturn(emailQuery);
 
     // We expect documentId queries
-    when(() => mockUsersCollection.where(FieldPath.documentId, whereIn: any(named: 'whereIn')))
-      .thenReturn(uidQuery);
+    when(
+      () => mockUsersCollection.where(
+        FieldPath.documentId,
+        whereIn: any(named: 'whereIn'),
+      ),
+    ).thenReturn(uidQuery);
 
     final futures = <Future<Map<String, String>>>[];
 
@@ -113,10 +137,17 @@ void main() {
     verifyNever(() => mockUsersCollection.doc(any()));
 
     // Should call where('email', whereIn: ...) once (since 10 items fit in one batch)
-    verify(() => mockUsersCollection.where('email', whereIn: any(named: 'whereIn'))).called(1);
+    verify(
+      () => mockUsersCollection.where('email', whereIn: any(named: 'whereIn')),
+    ).called(1);
 
     // Should call where(FieldPath.documentId, whereIn: ...) once
-    verify(() => mockUsersCollection.where(FieldPath.documentId, whereIn: any(named: 'whereIn'))).called(1);
+    verify(
+      () => mockUsersCollection.where(
+        FieldPath.documentId,
+        whereIn: any(named: 'whereIn'),
+      ),
+    ).called(1);
 
     // If we want to be stricter, we can capture the arguments.
   });

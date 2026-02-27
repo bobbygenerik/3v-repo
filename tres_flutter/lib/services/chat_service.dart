@@ -20,21 +20,24 @@ class ChatMessage {
     required this.message,
     DateTime? timestamp,
     this.isLocal = false,
-  })  : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        timestamp = timestamp ?? DateTime.now();
+  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+       timestamp = timestamp ?? DateTime.now();
 
   String getFormattedTime() {
     return DateFormat('HH:mm').format(timestamp);
   }
 
   Map<String, dynamic> toJson() => {
-        'type': 'chat',
-        'id': id,
-        'message': message,
-        'timestamp': timestamp.millisecondsSinceEpoch,
-      };
+    'type': 'chat',
+    'id': id,
+    'message': message,
+    'timestamp': timestamp.millisecondsSinceEpoch,
+  };
 
-  factory ChatMessage.fromJson(Map<String, dynamic> json, Participant? participant) {
+  factory ChatMessage.fromJson(
+    Map<String, dynamic> json,
+    Participant? participant,
+  ) {
     return ChatMessage(
       id: json['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
       senderId: participant?.sid ?? 'unknown',
@@ -96,9 +99,11 @@ class ChatService extends ChangeNotifier {
     try {
       _roomListener = _room!.createListener();
       _roomListener!.on<DataReceivedEvent>((event) {
-        debugPrint('📨 DataChannel event received from ${event.participant?.name}');
-        final data = event.data is Uint8List 
-            ? event.data as Uint8List 
+        debugPrint(
+          '📨 DataChannel event received from ${event.participant?.name}',
+        );
+        final data = event.data is Uint8List
+            ? event.data as Uint8List
             : Uint8List.fromList(event.data);
         _handleIncomingData(data, event.participant);
       });
@@ -230,16 +235,21 @@ class ChatService extends ChangeNotifier {
   /// Handle received message
   void _handleReceivedMessage(ChatMessage message) {
     // Don't add duplicate messages (check by ID and timestamp)
-    final isDuplicate = _messageHistory.any((existing) => 
-        existing.id == message.id || 
-        (existing.senderId == message.senderId && 
-         existing.message == message.message &&
-         existing.timestamp.difference(message.timestamp).abs().inSeconds < 2));
-    
+    final isDuplicate = _messageHistory.any(
+      (existing) =>
+          existing.id == message.id ||
+          (existing.senderId == message.senderId &&
+              existing.message == message.message &&
+              existing.timestamp.difference(message.timestamp).abs().inSeconds <
+                  2),
+    );
+
     if (!isDuplicate) {
       _addMessageToHistory(message);
       notifyListeners();
-      debugPrint('📬 Received message from ${message.senderName}: ${message.message}');
+      debugPrint(
+        '📬 Received message from ${message.senderName}: ${message.message}',
+      );
     } else {
       debugPrint('⚠️ Duplicate message ignored from ${message.senderName}');
     }
@@ -280,7 +290,9 @@ class ChatService extends ChangeNotifier {
     if (_messageHistory.length > _maxHistorySize) {
       final removeCount = _messageHistory.length - _maxHistorySize;
       _messageHistory.removeRange(0, removeCount);
-      debugPrint('🧹 Trimmed message history, removed $removeCount old messages');
+      debugPrint(
+        '🧹 Trimmed message history, removed $removeCount old messages',
+      );
     }
   }
 
@@ -294,8 +306,9 @@ class ChatService extends ChangeNotifier {
   /// Get unread message count
   int getUnreadCount() {
     return _messageHistory
-        .where((msg) =>
-            msg.timestamp.isAfter(_lastReadTimestamp) && !msg.isLocal)
+        .where(
+          (msg) => msg.timestamp.isAfter(_lastReadTimestamp) && !msg.isLocal,
+        )
         .length;
   }
 

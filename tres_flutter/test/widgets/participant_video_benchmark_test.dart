@@ -3,7 +3,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:livekit_client/livekit_client.dart';
 
 // Mocks
-class MockRemoteTrackPublication extends Mock implements RemoteTrackPublication {}
+class MockRemoteTrackPublication extends Mock
+    implements RemoteTrackPublication {}
 
 void main() {
   test('Parallel subscription benchmark logic', () async {
@@ -12,7 +13,9 @@ void main() {
     for (var p in pubs) {
       when(() => p.subscribed).thenReturn(false);
       // Simulate network delay
-      when(() => p.subscribe()).thenAnswer((_) async => await Future.delayed(const Duration(milliseconds: 100)));
+      when(() => p.subscribe()).thenAnswer(
+        (_) async => await Future.delayed(const Duration(milliseconds: 100)),
+      );
     }
 
     // Baseline: Sequential
@@ -41,6 +44,9 @@ void main() {
 
     // Expect significant improvement (parallel should be close to 100ms, sequential close to 1000ms)
     // We use a loose assertion to avoid flakiness, but check that it is at least 5x faster
-    expect(stopwatchPar.elapsedMilliseconds, lessThan(stopwatchSeq.elapsedMilliseconds ~/ 5));
+    expect(
+      stopwatchPar.elapsedMilliseconds,
+      lessThan(stopwatchSeq.elapsedMilliseconds ~/ 5),
+    );
   });
 }

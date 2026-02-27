@@ -4,7 +4,9 @@ import 'dart:math' as math;
 import 'dart:io' show Platform;
 
 enum DevicePerformanceLevel { low, medium, high, flagship }
+
 enum ThermalState { normal, fair, serious, critical }
+
 enum BatteryState { unknown, unplugged, charging, full }
 
 class DeviceProfile {
@@ -48,14 +50,14 @@ class DeviceProfile {
 
 class AdvancedDeviceProfiler extends ChangeNotifier {
   Timer? _profilingTimer;
-  
+
   bool _isProfiling = false;
   DeviceProfile _currentProfile = DeviceProfile.empty();
-  
+
   // Profiling settings
   Duration _profilingInterval = const Duration(seconds: 15);
   int _maxHistorySize = 20;
-  
+
   // Performance thresholds
   static const double _highCpuThreshold = 80.0;
   static const double _mediumCpuThreshold = 60.0;
@@ -63,35 +65,37 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
   static const double _mediumGpuThreshold = 50.0;
   static const int _lowBatteryThreshold = 20;
   static const int _criticalBatteryThreshold = 10;
-  
+
   // Device capability detection
   bool _capabilityDetected = false;
-  DevicePerformanceLevel _detectedPerformanceLevel = DevicePerformanceLevel.medium;
-  
+  DevicePerformanceLevel _detectedPerformanceLevel =
+      DevicePerformanceLevel.medium;
+
   // Profiling history
   final List<DeviceProfile> _profileHistory = [];
-  
+
   DeviceProfile get currentProfile => _currentProfile;
   bool get isProfiling => _isProfiling;
   List<DeviceProfile> get profileHistory => List.unmodifiable(_profileHistory);
-  DevicePerformanceLevel get detectedPerformanceLevel => _detectedPerformanceLevel;
+  DevicePerformanceLevel get detectedPerformanceLevel =>
+      _detectedPerformanceLevel;
 
   void startProfiling() {
     if (_isProfiling) return;
-    
+
     _isProfiling = true;
-    
+
     // Detect device capabilities if not already done
     if (!_capabilityDetected) {
       _detectDeviceCapabilities();
     }
-    
+
     // Start periodic device profiling
     _profilingTimer = Timer.periodic(
       _profilingInterval,
       (_) => _collectDeviceProfile(),
     );
-    
+
     debugPrint('📱 Advanced device profiler started');
   }
 
@@ -99,7 +103,7 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
     _isProfiling = false;
     _profilingTimer?.cancel();
     _profilingTimer = null;
-    
+
     debugPrint('📱 Advanced device profiler stopped');
   }
 
@@ -115,9 +119,11 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
       } else {
         _detectedPerformanceLevel = DevicePerformanceLevel.medium;
       }
-      
+
       _capabilityDetected = true;
-      debugPrint('📱 Device performance level detected: ${_detectedPerformanceLevel.name}');
+      debugPrint(
+        '📱 Device performance level detected: ${_detectedPerformanceLevel.name}',
+      );
     } catch (e) {
       debugPrint('❌ Error detecting device capabilities: $e');
       _detectedPerformanceLevel = DevicePerformanceLevel.medium;
@@ -127,7 +133,7 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
   DevicePerformanceLevel _detectWebPerformance() {
     // For web, we'll use a heuristic based on user agent and hardware concurrency
     final hardwareConcurrency = kIsWeb ? 4 : 2; // Simulated for now
-    
+
     if (hardwareConcurrency >= 8) {
       return DevicePerformanceLevel.flagship;
     } else if (hardwareConcurrency >= 6) {
@@ -144,11 +150,11 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
     // For simulation, we'll use random assignment with realistic distribution
     final random = math.Random();
     final value = random.nextDouble();
-    
+
     if (value < 0.3) return DevicePerformanceLevel.flagship; // iPhone 14/15 Pro
-    if (value < 0.6) return DevicePerformanceLevel.high;     // iPhone 12/13/14
-    if (value < 0.85) return DevicePerformanceLevel.medium;  // iPhone X/11
-    return DevicePerformanceLevel.low;                       // Older iPhones
+    if (value < 0.6) return DevicePerformanceLevel.high; // iPhone 12/13/14
+    if (value < 0.85) return DevicePerformanceLevel.medium; // iPhone X/11
+    return DevicePerformanceLevel.low; // Older iPhones
   }
 
   DevicePerformanceLevel _detectAndroidPerformance() {
@@ -156,11 +162,11 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
     // For simulation, we'll use random assignment with realistic distribution
     final random = math.Random();
     final value = random.nextDouble();
-    
+
     if (value < 0.2) return DevicePerformanceLevel.flagship; // Flagship Android
-    if (value < 0.4) return DevicePerformanceLevel.high;     // High-end Android
-    if (value < 0.7) return DevicePerformanceLevel.medium;   // Mid-range Android
-    return DevicePerformanceLevel.low;                       // Budget Android
+    if (value < 0.4) return DevicePerformanceLevel.high; // High-end Android
+    if (value < 0.7) return DevicePerformanceLevel.medium; // Mid-range Android
+    return DevicePerformanceLevel.low; // Budget Android
   }
 
   Future<void> _collectDeviceProfile() async {
@@ -168,18 +174,18 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
       // In a real implementation, this would collect actual device metrics
       // For now, we'll simulate realistic device profile data
       final profile = await _simulateDeviceProfile();
-      
+
       _currentProfile = profile;
       _profileHistory.add(profile);
-      
+
       // Keep only recent history
       if (_profileHistory.length > _maxHistorySize) {
         _profileHistory.removeAt(0);
       }
-      
+
       // Analyze device performance and provide recommendations
       _analyzeDevicePerformance(profile);
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('❌ Error collecting device profile: $e');
@@ -188,29 +194,36 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
 
   Future<DeviceProfile> _simulateDeviceProfile() async {
     final random = math.Random();
-    
+
     // Simulate thermal state based on usage
     final thermalState = _simulateThermalState();
-    
+
     // Simulate battery state and level
     final batteryState = _simulateBatteryState();
     final batteryLevel = 20 + random.nextInt(80); // 20-100%
-    
+
     // Simulate CPU usage (higher during video calls)
-    final baseCpuUsage = _detectedPerformanceLevel == DevicePerformanceLevel.low ? 40.0 : 25.0;
+    final baseCpuUsage = _detectedPerformanceLevel == DevicePerformanceLevel.low
+        ? 40.0
+        : 25.0;
     final cpuUsage = baseCpuUsage + random.nextDouble() * 30; // Add variance
-    
+
     // Simulate GPU usage (video rendering)
-    final baseGpuUsage = _detectedPerformanceLevel == DevicePerformanceLevel.low ? 50.0 : 30.0;
+    final baseGpuUsage = _detectedPerformanceLevel == DevicePerformanceLevel.low
+        ? 50.0
+        : 30.0;
     final gpuUsage = baseGpuUsage + random.nextDouble() * 25; // Add variance
-    
+
     // Simulate memory based on device performance level
-    final totalMemory = _getExpectedMemoryForPerformanceLevel(_detectedPerformanceLevel);
-    final availableMemory = totalMemory - 1024 - random.nextInt(1024); // Used memory variance
-    
+    final totalMemory = _getExpectedMemoryForPerformanceLevel(
+      _detectedPerformanceLevel,
+    );
+    final availableMemory =
+        totalMemory - 1024 - random.nextInt(1024); // Used memory variance
+
     // Simulate low power mode (more likely on low battery)
     final isLowPowerMode = batteryLevel < 30 && random.nextBool();
-    
+
     return DeviceProfile(
       performanceLevel: _detectedPerformanceLevel,
       thermalState: thermalState,
@@ -227,7 +240,7 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
 
   ThermalState _simulateThermalState() {
     final random = math.Random();
-    
+
     // Thermal state depends on device performance level and usage
     switch (_detectedPerformanceLevel) {
       case DevicePerformanceLevel.flagship:
@@ -236,21 +249,21 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
         if (value < 0.7) return ThermalState.normal;
         if (value < 0.95) return ThermalState.fair;
         return ThermalState.serious;
-        
+
       case DevicePerformanceLevel.high:
         final value = random.nextDouble();
         if (value < 0.6) return ThermalState.normal;
         if (value < 0.85) return ThermalState.fair;
         if (value < 0.98) return ThermalState.serious;
         return ThermalState.critical;
-        
+
       case DevicePerformanceLevel.medium:
         final value = random.nextDouble();
         if (value < 0.5) return ThermalState.normal;
         if (value < 0.75) return ThermalState.fair;
         if (value < 0.95) return ThermalState.serious;
         return ThermalState.critical;
-        
+
       case DevicePerformanceLevel.low:
         // Low-end devices heat up more easily
         final value = random.nextDouble();
@@ -264,7 +277,7 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
   BatteryState _simulateBatteryState() {
     final random = math.Random();
     final value = random.nextDouble();
-    
+
     if (value < 0.1) return BatteryState.full;
     if (value < 0.4) return BatteryState.charging;
     if (value < 0.9) return BatteryState.unplugged;
@@ -286,44 +299,51 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
 
   void _analyzeDevicePerformance(DeviceProfile profile) {
     final issues = <String>[];
-    
+
     // Check CPU usage
     if (profile.cpuUsage > _highCpuThreshold) {
       issues.add('High CPU usage (${profile.cpuUsage.toStringAsFixed(1)}%)');
     }
-    
+
     // Check GPU usage
     if (profile.gpuUsage > _highGpuThreshold) {
       issues.add('High GPU usage (${profile.gpuUsage.toStringAsFixed(1)}%)');
     }
-    
+
     // Check thermal state
     if (profile.thermalState == ThermalState.critical) {
       issues.add('Critical thermal state - device overheating');
     } else if (profile.thermalState == ThermalState.serious) {
       issues.add('Serious thermal state - device getting hot');
     }
-    
+
     // Check battery level
     if (profile.batteryLevel <= _criticalBatteryThreshold) {
       issues.add('Critical battery level (${profile.batteryLevel}%)');
     } else if (profile.batteryLevel <= _lowBatteryThreshold) {
       issues.add('Low battery level (${profile.batteryLevel}%)');
     }
-    
+
     // Check low power mode
     if (profile.isLowPowerModeEnabled) {
       issues.add('Low power mode enabled');
     }
-    
+
     // Check available memory
-    final memoryUsagePercent = ((profile.totalMemoryMB - profile.availableMemoryMB) / profile.totalMemoryMB) * 100;
+    final memoryUsagePercent =
+        ((profile.totalMemoryMB - profile.availableMemoryMB) /
+            profile.totalMemoryMB) *
+        100;
     if (memoryUsagePercent > 90) {
-      issues.add('Very high memory usage (${memoryUsagePercent.toStringAsFixed(1)}%)');
+      issues.add(
+        'Very high memory usage (${memoryUsagePercent.toStringAsFixed(1)}%)',
+      );
     } else if (memoryUsagePercent > 80) {
-      issues.add('High memory usage (${memoryUsagePercent.toStringAsFixed(1)}%)');
+      issues.add(
+        'High memory usage (${memoryUsagePercent.toStringAsFixed(1)}%)',
+      );
     }
-    
+
     if (issues.isNotEmpty) {
       debugPrint('⚠️ Device performance issues detected:');
       for (final issue in issues) {
@@ -334,18 +354,18 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
 
   bool shouldReduceVideoQuality() {
     return _currentProfile.thermalState == ThermalState.critical ||
-           _currentProfile.cpuUsage > _highCpuThreshold ||
-           _currentProfile.gpuUsage > _highGpuThreshold ||
-           _currentProfile.isLowPowerModeEnabled ||
-           _currentProfile.batteryLevel <= _lowBatteryThreshold;
+        _currentProfile.cpuUsage > _highCpuThreshold ||
+        _currentProfile.gpuUsage > _highGpuThreshold ||
+        _currentProfile.isLowPowerModeEnabled ||
+        _currentProfile.batteryLevel <= _lowBatteryThreshold;
   }
 
   bool shouldEnablePerformanceMode() {
     return _currentProfile.thermalState == ThermalState.normal &&
-           _currentProfile.cpuUsage < _mediumCpuThreshold &&
-           _currentProfile.gpuUsage < _mediumGpuThreshold &&
-           _currentProfile.batteryLevel > 50 &&
-           !_currentProfile.isLowPowerModeEnabled;
+        _currentProfile.cpuUsage < _mediumCpuThreshold &&
+        _currentProfile.gpuUsage < _mediumGpuThreshold &&
+        _currentProfile.batteryLevel > 50 &&
+        !_currentProfile.isLowPowerModeEnabled;
   }
 
   int getRecommendedMaxBitrate() {
@@ -358,7 +378,7 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
         case DevicePerformanceLevel.medium:
           return 1000000; // 1 Mbps
         case DevicePerformanceLevel.low:
-          return 500000;  // 500 kbps
+          return 500000; // 500 kbps
       }
     } else {
       switch (_detectedPerformanceLevel) {
@@ -384,20 +404,23 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
 
   bool shouldUse1080p() {
     return _detectedPerformanceLevel == DevicePerformanceLevel.flagship ||
-           (_detectedPerformanceLevel == DevicePerformanceLevel.high && shouldEnablePerformanceMode());
+        (_detectedPerformanceLevel == DevicePerformanceLevel.high &&
+            shouldEnablePerformanceMode());
   }
 
   void setProfilingInterval(Duration interval) {
     if (_profilingInterval != interval) {
       _profilingInterval = interval;
-      
+
       // Restart profiling with new interval if currently profiling
       if (_isProfiling) {
         stopProfiling();
         startProfiling();
       }
-      
-      debugPrint('⏱️ Device profiling interval changed to: ${interval.inSeconds}s');
+
+      debugPrint(
+        '⏱️ Device profiling interval changed to: ${interval.inSeconds}s',
+      );
     }
   }
 
@@ -411,7 +434,11 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
       'gpuUsage': _currentProfile.gpuUsage,
       'availableMemoryMB': _currentProfile.availableMemoryMB,
       'totalMemoryMB': _currentProfile.totalMemoryMB,
-      'memoryUsagePercent': (((_currentProfile.totalMemoryMB - _currentProfile.availableMemoryMB) / _currentProfile.totalMemoryMB) * 100),
+      'memoryUsagePercent':
+          (((_currentProfile.totalMemoryMB -
+                  _currentProfile.availableMemoryMB) /
+              _currentProfile.totalMemoryMB) *
+          100),
       'isLowPowerModeEnabled': _currentProfile.isLowPowerModeEnabled,
       'shouldReduceQuality': shouldReduceVideoQuality(),
       'shouldEnablePerformanceMode': shouldEnablePerformanceMode(),
@@ -423,7 +450,7 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
 
   double getPerformanceScore() {
     double score = 1.0;
-    
+
     // Thermal penalty
     switch (_currentProfile.thermalState) {
       case ThermalState.critical:
@@ -438,26 +465,26 @@ class AdvancedDeviceProfiler extends ChangeNotifier {
       case ThermalState.normal:
         break;
     }
-    
+
     // CPU usage penalty
     if (_currentProfile.cpuUsage > 80) {
       score -= 0.3;
     } else if (_currentProfile.cpuUsage > 60) {
       score -= 0.15;
     }
-    
+
     // Battery penalty
     if (_currentProfile.batteryLevel < 10) {
       score -= 0.2;
     } else if (_currentProfile.batteryLevel < 20) {
       score -= 0.1;
     }
-    
+
     // Low power mode penalty
     if (_currentProfile.isLowPowerModeEnabled) {
       score -= 0.15;
     }
-    
+
     return math.max(0.0, math.min(1.0, score));
   }
 

@@ -4,13 +4,13 @@ import 'dart:math' as math;
 import 'package:livekit_client/livekit_client.dart';
 import 'enhanced_network_quality_service.dart';
 
-enum StreamingProfile { 
-  ultraLow,    // 240p, 15fps, 500kbps
-  low,         // 360p, 20fps, 800kbps  
-  medium,      // 480p, 24fps, 1.2Mbps
-  high,        // 720p, 30fps, 2.5Mbps
-  ultraHigh,   // 1080p, 30fps, 5Mbps
-  adaptive     // Dynamic based on conditions
+enum StreamingProfile {
+  ultraLow, // 240p, 15fps, 500kbps
+  low, // 360p, 20fps, 800kbps
+  medium, // 480p, 24fps, 1.2Mbps
+  high, // 720p, 30fps, 2.5Mbps
+  ultraHigh, // 1080p, 30fps, 5Mbps
+  adaptive, // Dynamic based on conditions
 }
 
 class StreamingStats {
@@ -52,22 +52,22 @@ class StreamingStats {
 class AdaptiveStreamingManager extends ChangeNotifier {
   Timer? _adaptationTimer;
   StreamSubscription<NetworkStats>? _networkStatsSubscription;
-  
+
   bool _isActive = false;
   StreamingStats _currentStats = StreamingStats.empty();
   StreamingProfile _currentProfile = StreamingProfile.adaptive;
-  
+
   // Adaptation settings
   Duration _adaptationInterval = const Duration(seconds: 5);
   double _adaptationSensitivity = 0.7; // 0-1, higher = more aggressive
   int _stabilityWindow = 3; // Number of measurements before adapting
-  
+
   // Quality thresholds for adaptation
   static const double _excellentThreshold = 0.8;
   static const double _goodThreshold = 0.6;
   static const double _fairThreshold = 0.4;
   static const double _poorThreshold = 0.2;
-  
+
   // Streaming profiles configuration
   static const Map<StreamingProfile, Map<String, dynamic>> _profileConfigs = {
     StreamingProfile.ultraLow: {
@@ -106,30 +106,30 @@ class AdaptiveStreamingManager extends ChangeNotifier {
       'description': 'Ultra High (1080p)',
     },
   };
-  
+
   // Adaptation history for stability
   final List<double> _adaptationScores = [];
-  
+
   StreamingStats get currentStats => _currentStats;
   bool get isActive => _isActive;
   StreamingProfile get currentProfile => _currentProfile;
 
   void startAdaptiveStreaming(EnhancedNetworkQualityService networkService) {
     if (_isActive) return;
-    
+
     _isActive = true;
-    
+
     // Listen to network quality changes
     networkService.addListener(() {
       _handleNetworkQualityChange(networkService.currentStats);
     });
-    
+
     // Start periodic adaptation evaluation
     _adaptationTimer = Timer.periodic(
       _adaptationInterval,
       (_) => _evaluateAdaptation(networkService.currentStats),
     );
-    
+
     debugPrint('🎬 Adaptive streaming manager started');
   }
 
@@ -139,29 +139,29 @@ class AdaptiveStreamingManager extends ChangeNotifier {
     _networkStatsSubscription?.cancel();
     _adaptationTimer = null;
     _networkStatsSubscription = null;
-    
+
     debugPrint('🎬 Adaptive streaming manager stopped');
   }
 
   void _handleNetworkQualityChange(NetworkStats networkStats) {
     // Calculate adaptation score based on network conditions
     final adaptationScore = _calculateAdaptationScore(networkStats);
-    
+
     // Add to history for stability analysis
     _adaptationScores.add(adaptationScore);
     if (_adaptationScores.length > _stabilityWindow * 2) {
       _adaptationScores.removeAt(0);
     }
-    
+
     // Update current stats
     _updateCurrentStats(networkStats, adaptationScore);
-    
+
     notifyListeners();
   }
 
   double _calculateAdaptationScore(NetworkStats networkStats) {
     double score = 1.0;
-    
+
     // Latency impact (0-0.3 penalty)
     if (networkStats.latency > 200) {
       score -= 0.3;
@@ -170,7 +170,7 @@ class AdaptiveStreamingManager extends ChangeNotifier {
     } else if (networkStats.latency > 50) {
       score -= 0.05;
     }
-    
+
     // Jitter impact (0-0.2 penalty)
     if (networkStats.jitter > 50) {
       score -= 0.2;
@@ -179,7 +179,7 @@ class AdaptiveStreamingManager extends ChangeNotifier {
     } else if (networkStats.jitter > 10) {
       score -= 0.05;
     }
-    
+
     // Packet loss impact (0-0.4 penalty)
     if (networkStats.packetLoss > 5) {
       score -= 0.4;
@@ -188,21 +188,21 @@ class AdaptiveStreamingManager extends ChangeNotifier {
     } else if (networkStats.packetLoss > 0.5) {
       score -= 0.1;
     }
-    
+
     // Bandwidth boost (0-0.1 bonus)
     if (networkStats.bandwidth > 100) {
       score += 0.1;
     } else if (networkStats.bandwidth > 50) {
       score += 0.05;
     }
-    
+
     return math.max(0.0, math.min(1.0, score));
   }
 
   void _updateCurrentStats(NetworkStats networkStats, double adaptationScore) {
     final targetProfile = _determineOptimalProfile(adaptationScore);
     final targetConfig = _profileConfigs[targetProfile];
-    
+
     if (targetConfig != null) {
       _currentStats = StreamingStats(
         currentBitrate: _currentStats.currentBitrate,
@@ -222,7 +222,7 @@ class AdaptiveStreamingManager extends ChangeNotifier {
     if (_currentProfile != StreamingProfile.adaptive) {
       return _currentProfile; // Manual profile override
     }
-    
+
     // Determine profile based on adaptation score
     if (adaptationScore >= _excellentThreshold) {
       return StreamingProfile.ultraHigh;
@@ -239,19 +239,22 @@ class AdaptiveStreamingManager extends ChangeNotifier {
 
   Future<void> _evaluateAdaptation(NetworkStats networkStats) async {
     if (!_isActive || _adaptationScores.length < _stabilityWindow) return;
-    
+
     try {
       // Check if conditions are stable enough for adaptation
-      final recentScores = _adaptationScores.length >= _stabilityWindow 
-        ? _adaptationScores.sublist(_adaptationScores.length - _stabilityWindow)
-        : _adaptationScores;
-      final avgScore = recentScores.reduce((a, b) => a + b) / recentScores.length;
+      final recentScores = _adaptationScores.length >= _stabilityWindow
+          ? _adaptationScores.sublist(
+              _adaptationScores.length - _stabilityWindow,
+            )
+          : _adaptationScores;
+      final avgScore =
+          recentScores.reduce((a, b) => a + b) / recentScores.length;
       final scoreVariance = _calculateVariance(recentScores);
-      
+
       // Only adapt if conditions are relatively stable
       if (scoreVariance < 0.1) {
         final optimalProfile = _determineOptimalProfile(avgScore);
-        
+
         if (optimalProfile != _currentStats.activeProfile) {
           await _adaptToProfile(optimalProfile);
         }
@@ -263,7 +266,7 @@ class AdaptiveStreamingManager extends ChangeNotifier {
 
   double _calculateVariance(List<double> values) {
     if (values.isEmpty) return 0.0;
-    
+
     final mean = values.reduce((a, b) => a + b) / values.length;
     final squaredDiffs = values.map((value) => math.pow(value - mean, 2));
     return squaredDiffs.reduce((a, b) => a + b) / values.length;
@@ -273,12 +276,14 @@ class AdaptiveStreamingManager extends ChangeNotifier {
     try {
       final config = _profileConfigs[profile];
       if (config == null) return;
-      
+
       debugPrint('🔄 Adapting to ${config['description']}');
       debugPrint('   - Resolution: ${config['resolution']}');
       debugPrint('   - Framerate: ${config['framerate']}fps');
-      debugPrint('   - Bitrate: ${((config['bitrate'] as int) / 1000000).toStringAsFixed(1)}Mbps');
-      
+      debugPrint(
+        '   - Bitrate: ${((config['bitrate'] as int) / 1000000).toStringAsFixed(1)}Mbps',
+      );
+
       // Update current stats to reflect the adaptation
       _currentStats = StreamingStats(
         currentBitrate: config['bitrate'] as int,
@@ -291,7 +296,7 @@ class AdaptiveStreamingManager extends ChangeNotifier {
         adaptationScore: _currentStats.adaptationScore,
         timestamp: DateTime.now(),
       );
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('❌ Error adapting to profile: $e');
@@ -302,19 +307,21 @@ class AdaptiveStreamingManager extends ChangeNotifier {
     if (_currentProfile != profile) {
       _currentProfile = profile;
       debugPrint('🎬 Streaming profile changed to: ${profile.name}');
-      
+
       if (profile != StreamingProfile.adaptive) {
         // Manual profile - apply immediately
         _adaptToProfile(profile);
       }
-      
+
       notifyListeners();
     }
   }
 
   void setAdaptationSensitivity(double sensitivity) {
     _adaptationSensitivity = math.max(0.0, math.min(1.0, sensitivity));
-    debugPrint('🎛️ Adaptation sensitivity set to: ${(_adaptationSensitivity * 100).toStringAsFixed(0)}%');
+    debugPrint(
+      '🎛️ Adaptation sensitivity set to: ${(_adaptationSensitivity * 100).toStringAsFixed(0)}%',
+    );
   }
 
   VideoParameters getVideoParameters() {
@@ -325,7 +332,7 @@ class AdaptiveStreamingManager extends ChangeNotifier {
         encoding: VideoEncoding(maxBitrate: 1200000, maxFramerate: 24),
       );
     }
-    
+
     final dimensions = config['dimensions'] as List<int>;
     return VideoParameters(
       dimensions: VideoDimensions(dimensions[0], dimensions[1]),
@@ -339,39 +346,45 @@ class AdaptiveStreamingManager extends ChangeNotifier {
   List<VideoParameters> getSimulcastLayers() {
     final baseConfig = _profileConfigs[_currentStats.activeProfile];
     if (baseConfig == null) return [];
-    
+
     final layers = <VideoParameters>[];
-    
+
     // High quality layer (current profile)
     final baseDimensions = baseConfig['dimensions'] as List<int>;
-    layers.add(VideoParameters(
-      dimensions: VideoDimensions(baseDimensions[0], baseDimensions[1]),
-      encoding: VideoEncoding(
-        maxBitrate: baseConfig['bitrate'] as int,
-        maxFramerate: baseConfig['framerate'] as int,
+    layers.add(
+      VideoParameters(
+        dimensions: VideoDimensions(baseDimensions[0], baseDimensions[1]),
+        encoding: VideoEncoding(
+          maxBitrate: baseConfig['bitrate'] as int,
+          maxFramerate: baseConfig['framerate'] as int,
+        ),
       ),
-    ));
-    
+    );
+
     // Medium quality layer (50% resolution, 60% bitrate)
     final mediumWidth = (baseDimensions[0] * 0.7).round();
     final mediumHeight = (baseDimensions[1] * 0.7).round();
-    layers.add(VideoParameters(
-      dimensions: VideoDimensions(mediumWidth, mediumHeight),
-      encoding: VideoEncoding(
-        maxBitrate: ((baseConfig['bitrate'] as int) * 0.6).round(),
-        maxFramerate: baseConfig['framerate'] as int,
+    layers.add(
+      VideoParameters(
+        dimensions: VideoDimensions(mediumWidth, mediumHeight),
+        encoding: VideoEncoding(
+          maxBitrate: ((baseConfig['bitrate'] as int) * 0.6).round(),
+          maxFramerate: baseConfig['framerate'] as int,
+        ),
       ),
-    ));
-    
+    );
+
     // Low quality layer (360p, 30% bitrate)
-    layers.add(VideoParameters(
-      dimensions: VideoDimensions(640, 360),
-      encoding: VideoEncoding(
-        maxBitrate: ((baseConfig['bitrate'] as int) * 0.3).round(),
-        maxFramerate: math.min(20, baseConfig['framerate'] as int),
+    layers.add(
+      VideoParameters(
+        dimensions: VideoDimensions(640, 360),
+        encoding: VideoEncoding(
+          maxBitrate: ((baseConfig['bitrate'] as int) * 0.3).round(),
+          maxFramerate: math.min(20, baseConfig['framerate'] as int),
+        ),
       ),
-    ));
-    
+    );
+
     return layers;
   }
 

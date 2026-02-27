@@ -28,9 +28,10 @@ class _SkeletonLoaderState extends State<SkeletonLoader>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    _animation = Tween<double>(begin: -1.0, end: 2.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _animation = Tween<double>(
+      begin: -1.0,
+      end: 2.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     _controller.repeat();
   }
 
@@ -77,8 +78,11 @@ class _SlidingGradientTransform extends GradientTransform {
 
   @override
   Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
-    return Matrix4.translationValues(bounds.width * (slidePercent - 1.0), 0.0, 0.0)
-      ..scale(2.0, 1.0, 1.0);
+    return Matrix4.translationValues(
+      bounds.width * (slidePercent - 1.0),
+      0.0,
+      0.0,
+    )..scale(2.0, 1.0, 1.0);
   }
 
   @override

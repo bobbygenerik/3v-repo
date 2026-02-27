@@ -9,7 +9,8 @@ class UserLookupService {
   UserLookupService._internal();
 
   FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final Map<String, Map<String, String>> _cache = {}; // identity -> {displayName, photoURL}
+  final Map<String, Map<String, String>> _cache =
+      {}; // identity -> {displayName, photoURL}
 
   // Pending requests for batching
   final Map<String, List<Completer<Map<String, String>>>> _pendingRequests = {};
@@ -57,7 +58,9 @@ class UserLookupService {
     if (_pendingRequests.isEmpty) return;
 
     // Snapshot pending requests and clear queue
-    final currentBatch = Map<String, List<Completer<Map<String, String>>>>.from(_pendingRequests);
+    final currentBatch = Map<String, List<Completer<Map<String, String>>>>.from(
+      _pendingRequests,
+    );
     _pendingRequests.clear();
 
     final emailsToFetch = <String>{};
@@ -109,7 +112,7 @@ class UserLookupService {
       // Add their original identities to uidsToFetch for fallback.
       for (final email in emailToIdentities.keys) {
         for (final identity in emailToIdentities[email]!) {
-           uidsToFetch.add(identity);
+          uidsToFetch.add(identity);
         }
       }
     }
@@ -145,7 +148,11 @@ class UserLookupService {
     });
   }
 
-  void _completeRequest(String identity, Map<String, String> result, Map<String, List<Completer<Map<String, String>>>> batch) {
+  void _completeRequest(
+    String identity,
+    Map<String, String> result,
+    Map<String, List<Completer<Map<String, String>>>> batch,
+  ) {
     _cache[identity] = result;
     if (batch.containsKey(identity)) {
       for (final c in batch[identity]!) {
@@ -164,7 +171,12 @@ class UserLookupService {
   List<List<T>> _chunkList<T>(List<T> list, int chunkSize) {
     final chunks = <List<T>>[];
     for (var i = 0; i < list.length; i += chunkSize) {
-      chunks.add(list.sublist(i, (i + chunkSize < list.length) ? i + chunkSize : list.length));
+      chunks.add(
+        list.sublist(
+          i,
+          (i + chunkSize < list.length) ? i + chunkSize : list.length,
+        ),
+      );
     }
     return chunks;
   }

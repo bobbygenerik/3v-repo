@@ -43,7 +43,7 @@ class CallScreen extends StatefulWidget {
   final String livekitUrl;
   final CallSessionService? sessionService;
   final CallSignalingService signalingService;
-  
+
   const CallScreen({
     super.key,
     required this.roomName,
@@ -57,9 +57,10 @@ class CallScreen extends StatefulWidget {
   State<CallScreen> createState() => _CallScreenState();
 }
 
-class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
+class _CallScreenState extends State<CallScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   bool _isConnecting = true;
-  
+
   // Translation state
   bool _translationActive = false;
   String? _translationTargetLang;
@@ -70,51 +71,54 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   LiveKitService? _livekit;
   final TextEditingController _chatController = TextEditingController();
   final CallListenerService _callListener = CallListenerService();
-  
+
   // Call timer
   Duration _callDuration = Duration.zero;
-  
+
   // Control animations
   bool _controlsVisible = true;
   late AnimationController _controlsAnimationController;
   late List<Animation<Offset>> _buttonSlideAnimations;
   Timer? _controlsHideTimer;
-  
+
   // Reaction panel animation
   bool _reactionsVisible = false;
   late AnimationController _reactionsAnimationController;
   late Animation<Offset> _reactionsSlideAnimation;
-  
+
   // PIP box state (tracks position from top-left corner)
   Offset? _pipPosition; // null = use default top-right position
   bool _pipExpanded = false;
   bool _pipSwapped = false;
   bool _isInAndroidPip = false;
-  
+
   // Remote PIPs state
-  final Map<String, Offset?> _remotePipPositions = {}; // Track position for each remote PIP
-  int _mainParticipantIndex = 0; // Index of participant shown in main view (0 = first remote)
-  String? _mainParticipantSid; // Track SID of participant in main view for stability
-  
+  final Map<String, Offset?> _remotePipPositions =
+      {}; // Track position for each remote PIP
+  int _mainParticipantIndex =
+      0; // Index of participant shown in main view (0 = first remote)
+  String?
+  _mainParticipantSid; // Track SID of participant in main view for stability
+
   // Track if we've ever had a remote participant (to avoid false disconnect on call start)
   bool _hadRemoteParticipant = false;
-  
+
   // Track participant SIDs to detect new joins
   final Set<String> _knownParticipantSids = {};
-  
+
   // Track newly joined participants for highlight animation
   final Set<String> _highlightedParticipants = {};
-  
+
   // Track app lifecycle state
   bool _isAppInBackground = false;
-  
+
   // Quality dashboard state
   bool _qualityDashboardVisible = false;
-  
+
   // Call ending state
   bool _isCallEnding = false;
   bool _callEndedSnackbarShown = false;
-  
+
   // Modern chat state
   bool _chatOverlayVisible = false;
   int _unreadMessageCount = 0;
@@ -125,7 +129,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   bool _pipEnabled = true;
   Timer? _remoteEmptyTimer;
   // Developer diagnostics overlay
-  
+
   @override
   void initState() {
     super.initState();
@@ -133,31 +137,31 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     _connectToRoom();
     _loadPipPreference();
     _setAndroidCallActive(true);
-    
+
     // Register lifecycle observer
     WidgetsBinding.instance.addObserver(this);
-    
+
     // Start listening for incoming calls while in call (for call-waiting)
     _callListener.startListening();
     _callListener.addListener(_handleIncomingCallWhileInCall);
-    
+
     // Listen for session end
     widget.sessionService?.addListener(_handleSessionEnd);
-    
+
     // Listen for LiveKit room changes (participant disconnect) after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final livekit = context.read<LiveKitService>();
         livekit.addListener(_handleLiveKitUpdate);
-        
+
         // Setup auto PiP for web if enabled
         _configureWebPip(livekit);
-        
+
         // Listen for new chat messages
         _coordinator.addListener(_handleNewChatMessage);
       }
     });
-    
+
     // Start call timer
     Future.doWhile(() async {
       await Future.delayed(const Duration(seconds: 1));
@@ -169,44 +173,50 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       }
       return false;
     });
-    
+
     // Initialize controls animation (cascade from bottom)
     _controlsAnimationController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    
+
     // Create staggered animations for 5 buttons
     // LEFT to RIGHT for both rise and fall (0, 1, 2, 3, 4)
     _buttonSlideAnimations = List.generate(5, (index) {
-      final start = index * 0.15; // Left button starts first (0.0, 0.15, 0.3, 0.45, 0.6)
+      final start =
+          index * 0.15; // Left button starts first (0.0, 0.15, 0.3, 0.45, 0.6)
       final end = start + 0.4; // Each animation duration
       return Tween<Offset>(
         begin: const Offset(0, 2), // Start below screen
         end: Offset.zero,
-      ).animate(CurvedAnimation(
-        parent: _controlsAnimationController,
-        curve: Interval(start, end.clamp(0.0, 1.0), curve: Curves.easeOut),
-      ));
+      ).animate(
+        CurvedAnimation(
+          parent: _controlsAnimationController,
+          curve: Interval(start, end.clamp(0.0, 1.0), curve: Curves.easeOut),
+        ),
+      );
     });
-    
+
     // Initialize reactions panel animation (slide from left)
     _reactionsAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
-    _reactionsSlideAnimation = Tween<Offset>(
-      begin: const Offset(-1.5, 0), // Start off-screen left
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _reactionsAnimationController,
-      curve: Curves.easeOut,
-    ));
-    
+
+    _reactionsSlideAnimation =
+        Tween<Offset>(
+          begin: const Offset(-1.5, 0), // Start off-screen left
+          end: Offset.zero,
+        ).animate(
+          CurvedAnimation(
+            parent: _reactionsAnimationController,
+            curve: Curves.easeOut,
+          ),
+        );
+
     // Show controls initially
     _controlsAnimationController.forward();
-    
+
     // Start auto-hide timer for controls
     _startControlsHideTimer();
   }
@@ -216,7 +226,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     super.didChangeDependencies();
     _livekit ??= context.read<LiveKitService>();
   }
-  
+
   /// Handle session end by other participant
   void _handleSessionEnd() {
     if (widget.sessionService?.isInCall == false && mounted) {
@@ -225,29 +235,29 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _endCallAndNavigateBack();
     }
   }
-  
+
   /// End call and navigate back with proper cleanup
   Future<void> _endCallAndNavigateBack() async {
     if (!mounted || _isCallEnding) return;
-    
+
     setState(() {
       _isCallEnding = true;
     });
-    
+
     try {
       debugPrint('📞 Ending call and cleaning up...');
 
       await _disableAndroidPipAfterCall();
-      
+
       // Fire and forget cleanup operations
       widget.signalingService.endCall(widget.roomName).catchError((e) {
         debugPrint('Error ending signaling call: $e');
       });
-      
+
       widget.sessionService?.endSession().catchError((e) {
         debugPrint('Error ending session: $e');
       });
-      
+
       // Disconnect from LiveKit
       final livekit = Provider.of<LiveKitService>(context, listen: false);
       try {
@@ -255,10 +265,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       } catch (e) {
         debugPrint('Error disconnecting from LiveKit: $e');
       }
-      
+
       // Small delay to show ending state, then navigate
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       // Navigate back
       if (mounted) {
         Navigator.of(context).pop();
@@ -285,20 +295,21 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       debugPrint('⚠️ Failed to disable Android PiP after call: $e');
     }
   }
-  
+
   /// Update PiP stream with current main participant's video (web only)
   void _updatePipForMainParticipant() {
     if (!mounted) return;
-    
+
     final livekit = context.read<LiveKitService>();
     final remoteParticipants = livekit.remoteParticipants;
-    
-    if (remoteParticipants.isEmpty || _mainParticipantIndex >= remoteParticipants.length) {
+
+    if (remoteParticipants.isEmpty ||
+        _mainParticipantIndex >= remoteParticipants.length) {
       return;
     }
-    
+
     final mainParticipant = remoteParticipants[_mainParticipantIndex];
-    
+
     // Get the video track from the main participant
     VideoTrack? videoTrack;
     for (final pub in mainParticipant.videoTrackPublications) {
@@ -307,7 +318,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         break;
       }
     }
-    
+
     // Update the PiP service with this track
     livekit.updatePipStream(videoTrack);
   }
@@ -335,13 +346,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     if (identity.trim().isNotEmpty) return identity;
     return 'Participant';
   }
-  
+
   /// Handle LiveKit updates - check if all participants left
   void _handleLiveKitUpdate() {
     final livekit = context.read<LiveKitService>();
 
     // Only surface MediaPipe errors when MediaPipe features are enabled.
-    final mediaPipeError = FeatureFlags.enableMediaPipe ? livekit.consumeMediaPipeError() : null;
+    final mediaPipeError = FeatureFlags.enableMediaPipe
+        ? livekit.consumeMediaPipeError()
+        : null;
     if (mediaPipeError != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -365,7 +378,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           backgroundColor: const Color(0xFFB24A4A),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -400,7 +415,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           backgroundColor: const Color(0xFF6B7FB8),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       if (!livekit.isReconnecting) {
@@ -408,29 +425,31 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         VibrationService.mediumImpact();
       }
     }
-    
+
     // Track if we've ever had a remote participant join
     final hadParticipants = _hadRemoteParticipant;
     if (livekit.remoteParticipants.isNotEmpty) {
       _hadRemoteParticipant = true;
-      
+
       // If this is the first participant joining, update PiP stream
       if (!hadParticipants) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _updatePipForMainParticipant();
         });
       }
-      
+
       // Detect new participant joins
       final currentSids = livekit.remoteParticipants.map((p) => p.sid).toSet();
       final newSids = currentSids.difference(_knownParticipantSids);
-      
+
       if (newSids.isNotEmpty && _knownParticipantSids.isNotEmpty) {
         // Someone new joined (and this isn't the initial call setup)
         for (final sid in newSids) {
-          final participant = livekit.remoteParticipants.firstWhere((p) => p.sid == sid);
+          final participant = livekit.remoteParticipants.firstWhere(
+            (p) => p.sid == sid,
+          );
           final name = _displayNameForParticipant(participant);
-          
+
           // Show toast notification
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -455,14 +474,16 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                 backgroundColor: const Color(0xFF6B7FB8),
                 behavior: SnackBarBehavior.floating,
                 margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             );
           }
-          
+
           // Add to highlighted participants for animation
           _highlightedParticipants.add(sid);
-          
+
           // Remove highlight after 4 seconds
           Future.delayed(const Duration(seconds: 4), () {
             if (mounted) {
@@ -473,31 +494,32 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           });
         }
       }
-      
+
       // Update known participants
       _knownParticipantSids.clear();
       _knownParticipantSids.addAll(currentSids);
     }
-    
+
     // Clean up positions for disconnected participants
     final activeSids = livekit.remoteParticipants.map((p) => p.sid).toSet();
     _remotePipPositions.removeWhere((sid, _) => !activeSids.contains(sid));
-    
+
     // Update main participant tracking if current one disconnected
-    if (_mainParticipantSid != null && !activeSids.contains(_mainParticipantSid)) {
+    if (_mainParticipantSid != null &&
+        !activeSids.contains(_mainParticipantSid)) {
       // Current main participant left - find their index and adjust
       if (livekit.remoteParticipants.isNotEmpty) {
         // Switch to first available participant
         _mainParticipantIndex = 0;
         _mainParticipantSid = livekit.remoteParticipants[0].sid;
-        
+
         // Update PiP to show new main participant
         _updatePipForMainParticipant();
       } else {
         _mainParticipantSid = null;
       }
     }
-    
+
     // Handle case when all remote participants have left (call ended)
     if (livekit.remoteParticipants.isEmpty) {
       if (_knownParticipantSids.isNotEmpty &&
@@ -510,7 +532,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           if (livekitNow.remoteParticipants.isNotEmpty) return;
           if (_callEndedSnackbarShown) return;
 
-          debugPrint('📞 All participants have left - ending call after grace period');
+          debugPrint(
+            '📞 All participants have left - ending call after grace period',
+          );
           _callEndedSnackbarShown = true; // Prevent duplicate snackbars
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -533,7 +557,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               backgroundColor: const Color(0xFF6B7FB8),
               behavior: SnackBarBehavior.floating,
               margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           );
 
@@ -545,13 +571,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _remoteEmptyTimer = null;
     }
   }
-  
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     debugPrint('📱 App lifecycle changed: $state');
-    
+
     switch (state) {
       case AppLifecycleState.inactive:
         // Transient loss of focus (e.g., notification shade). Keep video rendering.
@@ -562,7 +588,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         debugPrint('📱 App backgrounded during call - call continues');
         _handlePausedState();
         break;
-        
+
       case AppLifecycleState.resumed:
         // App returned to foreground
         final wasBackgrounded = _isAppInBackground;
@@ -593,11 +619,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               backgroundColor: const Color(0xFF6B7FB8),
               behavior: SnackBarBehavior.floating,
               margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           );
         }
-        
+
         // Refresh UI state
         if (mounted) {
           setState(() {
@@ -605,7 +633,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           });
         }
         break;
-        
+
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
         // App is terminating or hidden
@@ -658,7 +686,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       ),
     );
   }
-  
+
   Future<bool> _tryEnterAndroidPip() async {
     try {
       if (!_pipEnabled) return false;
@@ -691,7 +719,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       if (!mounted) return;
       final livekit = context.read<LiveKitService>();
       // Respect global PiP feature flag and Safari PWA conservative defaults
-      final pipAllowed = FeatureFlags.enablePictureInPicture && !DeviceModeService.isSafariPwa();
+      final pipAllowed =
+          FeatureFlags.enablePictureInPicture &&
+          !DeviceModeService.isSafariPwa();
       if (pipAllowed) {
         _configureWebPip(livekit);
         await AndroidPipService.setAutoPipEnabled(_pipEnabled);
@@ -706,15 +736,19 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
 
   Future<void> _setAndroidCallActive(bool active) async {
     // Only notify Android PiP if PiP is allowed by flags and not a Safari PWA
-    final pipAllowed = FeatureFlags.enablePictureInPicture && !DeviceModeService.isSafariPwa();
+    final pipAllowed =
+        FeatureFlags.enablePictureInPicture && !DeviceModeService.isSafariPwa();
     await AndroidPipService.setCallActive(active);
     if (active) {
-      await AndroidPipService.setAutoPipEnabled(pipAllowed ? _pipEnabled : false);
+      await AndroidPipService.setAutoPipEnabled(
+        pipAllowed ? _pipEnabled : false,
+      );
     }
   }
 
   void _configureWebPip(LiveKitService livekit) {
-    final pipAllowed = FeatureFlags.enablePictureInPicture && !DeviceModeService.isSafariPwa();
+    final pipAllowed =
+        FeatureFlags.enablePictureInPicture && !DeviceModeService.isSafariPwa();
     livekit.pipService.setAutoEnterPip(pipAllowed && _pipEnabled);
     if (pipAllowed && _pipEnabled) {
       livekit.setupAutoPip();
@@ -724,7 +758,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   }
 
   Future<bool> _enterPipNow(LiveKitService livekit) async {
-    final pipAllowed = FeatureFlags.enablePictureInPicture && !DeviceModeService.isSafariPwa();
+    final pipAllowed =
+        FeatureFlags.enablePictureInPicture && !DeviceModeService.isSafariPwa();
     if (!_pipEnabled || !pipAllowed) return false;
     if (Theme.of(context).platform == TargetPlatform.android) {
       final available = await AndroidPipService.isPipAvailable();
@@ -741,7 +776,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     }
     return livekit.pipService.enterPip();
   }
-  
+
   void _startControlsHideTimer() {
     _controlsHideTimer?.cancel();
     _controlsHideTimer = Timer(const Duration(seconds: 3), () {
@@ -753,7 +788,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       }
     });
   }
-  
+
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -763,41 +798,43 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     }
     return '$minutes:$seconds';
   }
-  
+
   bool _shouldShowPlaceholder(LiveKitService livekit) {
     // Show placeholder when app is backgrounded
     if (_isAppInBackground) return true;
-    
+
     // Show placeholder when main participant has video disabled
     final remoteParticipants = livekit.remoteParticipants;
     if (remoteParticipants.isEmpty) return false;
-    
+
     // Check if main participant has video enabled
     int mainIndex = _mainParticipantIndex;
     if (_mainParticipantSid != null) {
-      final foundIndex = remoteParticipants.indexWhere((p) => p.sid == _mainParticipantSid);
+      final foundIndex = remoteParticipants.indexWhere(
+        (p) => p.sid == _mainParticipantSid,
+      );
       if (foundIndex != -1) mainIndex = foundIndex;
     }
     if (mainIndex >= remoteParticipants.length) mainIndex = 0;
-    
+
     final mainParticipant = remoteParticipants[mainIndex];
-    
+
     // Check if participant has any video track enabled
     for (final pub in mainParticipant.videoTrackPublications) {
       if (!pub.muted && pub.subscribed) {
         return false; // Video is on, don't show placeholder
       }
     }
-    
+
     return true; // No active video, show placeholder
   }
-  
+
   Widget _buildBackgroundPlaceholder(LiveKitService livekit) {
     final remoteCount = livekit.remoteParticipants.length;
-    final participantText = remoteCount == 1 
+    final participantText = remoteCount == 1
         ? _displayNameForParticipant(livekit.remoteParticipants.first)
         : '$remoteCount participants';
-    
+
     return Container(
       color: Colors.black,
       child: Center(
@@ -845,10 +882,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             const SizedBox(height: 12),
             Text(
               'Connected with $participantText',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
             ),
             const SizedBox(height: 8),
             Text(
@@ -862,7 +896,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             const SizedBox(height: 32),
             if (_isAppInBackground)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -874,10 +911,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                     SizedBox(width: 8),
                     Text(
                       'Return to app to see video',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
                     ),
                   ],
                 ),
@@ -887,10 +921,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       ),
     );
   }
-  
+
   Future<void> _connectToRoom() async {
     final livekit = context.read<LiveKitService>();
-    
+
     final success = await livekit.connect(
       url: widget.livekitUrl,
       token: widget.token,
@@ -925,7 +959,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       });
       _coordinator.statsService.startCollecting();
     }
-    
+
     if (mounted) {
       setState(() => _isConnecting = false);
     }
@@ -933,7 +967,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       // subtle haptic to indicate call connected (no-op on Safari PWA)
       VibrationService.lightImpact();
     }
-    
+
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -956,7 +990,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           backgroundColor: const Color(0xFFE53E3E),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -1005,7 +1041,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (_isConnecting) {
@@ -1065,10 +1101,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                 const SizedBox(height: 12),
                 Text(
                   'Duration: ${_formatDuration(_callDuration)}',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
                 ),
               ],
             ),
@@ -1100,13 +1133,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             },
             onHorizontalDragEnd: (details) {
               // Swipe right from left edge to show reactions
-              if (details.primaryVelocity != null && details.primaryVelocity! > 500) {
+              if (details.primaryVelocity != null &&
+                  details.primaryVelocity! > 500) {
                 if (!_reactionsVisible) {
                   _toggleReactions();
                 }
               }
               // Swipe left to hide reactions
-              else if (details.primaryVelocity != null && details.primaryVelocity! < -500) {
+              else if (details.primaryVelocity != null &&
+                  details.primaryVelocity! < -500) {
                 if (_reactionsVisible) {
                   _toggleReactions();
                 }
@@ -1116,7 +1151,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               child: Consumer2<LiveKitService, CallFeaturesCoordinator>(
                 builder: (context, livekit, coordinator, child) {
                   final isAndroidPipView =
-                      _isInAndroidPip && Theme.of(context).platform == TargetPlatform.android;
+                      _isInAndroidPip &&
+                      Theme.of(context).platform == TargetPlatform.android;
                   if (isAndroidPipView) {
                     return _buildAndroidPipLayout(livekit);
                   }
@@ -1140,7 +1176,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
 
                       // Local video preview (PIP - repositionable, starts at fixed top-right)
                       Positioned(
-                        left: _pipPosition?.dx ?? (MediaQuery.of(context).size.width - (_pipExpanded ? 169 : 135) - 16),
+                        left:
+                            _pipPosition?.dx ??
+                            (MediaQuery.of(context).size.width -
+                                (_pipExpanded ? 169 : 135) -
+                                16),
                         top: _pipPosition?.dy ?? 16,
                         child: _buildLocalVideoPreview(livekit),
                       ),
@@ -1159,16 +1199,25 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                           right: 0,
                           child: Center(
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.black.withOpacity(0.7),
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.2),
+                                ),
                               ),
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.sync, color: Colors.white, size: 16),
+                                  Icon(
+                                    Icons.sync,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
                                   SizedBox(width: 8),
                                   Text(
                                     'Reconnecting...',
@@ -1191,9 +1240,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                           left: 16,
                           right: 16,
                           child: CallWaitingBanner(
-                            callerName: _callListener.currentIncomingCall!['callerName'],
-                            callerPhotoUrl: _callListener.currentIncomingCall!['callerPhotoUrl'],
-                            isVideoCall: _callListener.currentIncomingCall!['isVideoCall'],
+                            callerName: _callListener
+                                .currentIncomingCall!['callerName'],
+                            callerPhotoUrl: _callListener
+                                .currentIncomingCall!['callerPhotoUrl'],
+                            isVideoCall: _callListener
+                                .currentIncomingCall!['isVideoCall'],
                             onAccept: _acceptWaitingCall,
                             onDecline: _declineWaitingCall,
                           ),
@@ -1247,11 +1299,18 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                                 Expanded(
                                   child: Text(
                                     _translatedText,
-                                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                                  icon: const Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                   onPressed: _stopTranslation,
                                   tooltip: 'Close translation',
                                 ),
@@ -1317,7 +1376,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       ],
     );
   }
-  
+
   void _toggleControls() {
     setState(() {
       _controlsVisible = !_controlsVisible;
@@ -1330,7 +1389,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       }
     });
   }
-  
+
   void _toggleReactions() {
     setState(() {
       _reactionsVisible = !_reactionsVisible;
@@ -1341,10 +1400,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       }
     });
   }
-  
+
   Widget _buildReactionsPanel(CallFeaturesCoordinator coordinator) {
     if (!_reactionsVisible) return const SizedBox.shrink();
-    
+
     return Positioned(
       left: 16,
       top: MediaQuery.of(context).size.height * 0.3,
@@ -1355,10 +1414,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           decoration: BoxDecoration(
             color: Colors.black.withOpacity(0.8),
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.3),
-              width: 2,
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.5),
@@ -1418,7 +1474,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         return 'Thumbs Up';
     }
   }
-  
+
   Widget _buildRoomInfo(CallFeaturesCoordinator coordinator) {
     // Get remote participant name or use room name
     final livekit = context.read<LiveKitService>();
@@ -1426,7 +1482,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     final callerName = remoteParticipants.isNotEmpty
         ? _displayNameForParticipant(remoteParticipants.first)
         : widget.roomName;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1438,11 +1494,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             fontSize: 18,
             fontWeight: FontWeight.bold,
             shadows: [
-              Shadow(
-                color: Colors.black,
-                offset: Offset(0, 1),
-                blurRadius: 3,
-              ),
+              Shadow(color: Colors.black, offset: Offset(0, 1), blurRadius: 3),
             ],
           ),
         ),
@@ -1455,36 +1507,32 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             fontSize: 14,
             fontWeight: FontWeight.w500,
             shadows: [
-              Shadow(
-                color: Colors.black,
-                offset: Offset(0, 1),
-                blurRadius: 3,
-              ),
+              Shadow(color: Colors.black, offset: Offset(0, 1), blurRadius: 3),
             ],
           ),
         ),
       ],
     );
   }
-  
+
   Color _getQualityColor(int score) {
     if (score >= 80) return Colors.green;
     if (score >= 50) return Colors.orange;
     return Colors.red;
   }
-  
+
   IconData _getQualityIcon(int score) {
     if (score >= 80) return Icons.signal_cellular_4_bar;
     if (score >= 50) return Icons.signal_cellular_alt_2_bar;
     return Icons.signal_cellular_alt_1_bar;
   }
-  
+
   Widget _buildMainParticipantView(
     LiveKitService livekit, {
     VideoViewFit fit = VideoViewFit.cover,
   }) {
     final remoteParticipants = livekit.remoteParticipants;
-    
+
     // If PIP is swapped, show local participant in main view
     if (_pipSwapped && livekit.localParticipant != null) {
       return RepaintBoundary(
@@ -1496,7 +1544,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         ),
       );
     }
-    
+
     if (remoteParticipants.isEmpty) {
       return const Center(
         child: Column(
@@ -1512,25 +1560,27 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         ),
       );
     }
-    
+
     // Find participant by SID, or use index as fallback
     int mainIndex = _mainParticipantIndex;
     if (_mainParticipantSid != null) {
-      final foundIndex = remoteParticipants.indexWhere((p) => p.sid == _mainParticipantSid);
+      final foundIndex = remoteParticipants.indexWhere(
+        (p) => p.sid == _mainParticipantSid,
+      );
       if (foundIndex != -1) {
         mainIndex = foundIndex;
       }
     }
-    
+
     // Ensure index is valid
     if (mainIndex >= remoteParticipants.length) {
       mainIndex = 0;
     }
-    
+
     // Update tracking
     _mainParticipantIndex = mainIndex;
     _mainParticipantSid = remoteParticipants[mainIndex].sid;
-    
+
     // Show selected remote participant in main view
     return RepaintBoundary(
       child: ParticipantVideo(
@@ -1540,27 +1590,28 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       ),
     );
   }
-  
+
   List<Widget> _buildRemotePips(LiveKitService livekit) {
     final remoteParticipants = livekit.remoteParticipants;
-    
+
     // If swapped or only one participant, no remote PIPs needed
     if (_pipSwapped || remoteParticipants.length <= 1) {
       return [];
     }
-    
+
     // Show additional remote participants (skip the one in main view)
     final List<Widget> pips = [];
     final screenSize = MediaQuery.of(context).size;
-    final isLandscape = screenSize.width > screenSize.height && screenSize.width > 800;
-    
+    final isLandscape =
+        screenSize.width > screenSize.height && screenSize.width > 800;
+
     // Count PIPs that will be displayed (excluding main participant)
     final pipCount = remoteParticipants.length - 1;
-    
+
     // Calculate available vertical space (screen height minus margins and controls)
     // Leave space for: top margin (16), bottom margin (16), and controls at bottom (~120)
     final availableHeight = screenSize.height - 16 - 16 - 120;
-    
+
     // Calculate dimensions based on available space
     double width, height;
     if (isLandscape) {
@@ -1570,34 +1621,40 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       width = 135;
       height = 240;
     }
-    
+
     // Calculate spacing between PIPs to fit them all on screen
     final totalPipHeight = pipCount * height;
     final totalGapHeight = availableHeight - totalPipHeight;
-    final gap = pipCount > 1 ? (totalGapHeight / (pipCount - 1)).clamp(4.0, 8.0) : 8.0;
-    
+    final gap = pipCount > 1
+        ? (totalGapHeight / (pipCount - 1)).clamp(4.0, 8.0)
+        : 8.0;
+
     // If PIPs won't fit with minimum spacing, shrink them proportionally
     if (totalPipHeight + (pipCount - 1) * 4 > availableHeight && pipCount > 1) {
       final scale = (availableHeight - (pipCount - 1) * 4) / totalPipHeight;
       width *= scale;
       height *= scale;
     }
-    
-    int pipIndex = 0; // Track position index for PIPs (for stacking calculation)
+
+    int pipIndex =
+        0; // Track position index for PIPs (for stacking calculation)
     for (int i = 0; i < remoteParticipants.length; i++) {
       // Skip the participant currently in main view
       if (i == _mainParticipantIndex) continue;
       final participant = remoteParticipants[i];
       final pipKey = participant.sid;
-      
+
       // Calculate default position: bottom-left, stacked vertically with dynamic spacing
       final defaultBottom = 16.0 + pipIndex * (height + gap);
-      final defaultPosition = Offset(16, screenSize.height - defaultBottom - height);
-      
+      final defaultPosition = Offset(
+        16,
+        screenSize.height - defaultBottom - height,
+      );
+
       final position = _remotePipPositions[pipKey] ?? defaultPosition;
-      
+
       final participantIndex = i; // Capture for closure
-      
+
       pips.add(
         Positioned(
           left: position.dx,
@@ -1631,8 +1688,14 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               onPanUpdate: (details) {
                 setState(() {
                   _remotePipPositions[pipKey] = Offset(
-                    (position.dx + details.delta.dx).clamp(16.0, screenSize.width - width - 16),
-                    (position.dy + details.delta.dy).clamp(16.0, screenSize.height - height - 16),
+                    (position.dx + details.delta.dx).clamp(
+                      16.0,
+                      screenSize.width - width - 16,
+                    ),
+                    (position.dy + details.delta.dy).clamp(
+                      16.0,
+                      screenSize.height - height - 16,
+                    ),
                   );
                 });
               },
@@ -1653,9 +1716,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                       color: _highlightedParticipants.contains(pipKey)
                           ? const Color(0xFF4CAF50).withOpacity(0.6)
                           : Colors.black.withOpacity(0.5),
-                      blurRadius: _highlightedParticipants.contains(pipKey) ? 20 : 10,
+                      blurRadius: _highlightedParticipants.contains(pipKey)
+                          ? 20
+                          : 10,
                       offset: const Offset(0, 4),
-                      spreadRadius: _highlightedParticipants.contains(pipKey) ? 2 : 0,
+                      spreadRadius: _highlightedParticipants.contains(pipKey)
+                          ? 2
+                          : 0,
                     ),
                   ],
                 ),
@@ -1673,24 +1740,25 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           ),
         ),
       );
-      
+
       pipIndex++; // Increment for next PIP's stacking position
     }
-    
+
     return pips;
   }
-  
+
   Widget _buildLocalVideoPreview(LiveKitService livekit) {
     final localParticipant = livekit.localParticipant;
-    
+
     if (localParticipant == null) {
       return const SizedBox.shrink();
     }
 
     // Detect orientation - but for desktop/web, check screen size instead
     final screenSize = MediaQuery.of(context).size;
-    final isLandscape = screenSize.width > screenSize.height && screenSize.width > 800;
-    
+    final isLandscape =
+        screenSize.width > screenSize.height && screenSize.width > 800;
+
     // Calculate dimensions based on orientation
     // Default to PORTRAIT for desktop/web
     double width, height;
@@ -1745,16 +1813,20 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           final screenHeight = MediaQuery.of(context).size.height;
 
           // Get current position (if null, calculate from top-right with 16px margin)
-          final currentPos = _pipPosition ?? Offset(
-            screenWidth - width - 16,
-            16,
-          );
+          final currentPos =
+              _pipPosition ?? Offset(screenWidth - width - 16, 16);
 
           // Drag to reposition with proper bounds checking
           setState(() {
             _pipPosition = Offset(
-              (currentPos.dx + details.delta.dx).clamp(16.0, screenWidth - width - 16),
-              (currentPos.dy + details.delta.dy).clamp(16.0, screenHeight - height - 16),
+              (currentPos.dx + details.delta.dx).clamp(
+                16.0,
+                screenWidth - width - 16,
+              ),
+              (currentPos.dy + details.delta.dy).clamp(
+                16.0,
+                screenHeight - height - 16,
+              ),
             );
           });
         },
@@ -1794,7 +1866,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                 left: 0,
                 right: 0,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 6,
+                    horizontal: 4,
+                  ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.bottomCenter,
@@ -1807,10 +1882,14 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                   ),
                   child: Text(
                     _pipSwapped && livekit.remoteParticipants.isNotEmpty
-                        ? _displayNameForParticipant(livekit.remoteParticipants.first)
+                        ? _displayNameForParticipant(
+                            livekit.remoteParticipants.first,
+                          )
                         : (livekit.localParticipant != null
-                            ? _displayNameForParticipant(livekit.localParticipant!)
-                            : 'You'),
+                              ? _displayNameForParticipant(
+                                  livekit.localParticipant!,
+                                )
+                              : 'You'),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
@@ -1833,7 +1912,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       ),
     );
   }
-  
+
   void _showToggleFeedback(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).removeCurrentSnackBar();
@@ -1849,14 +1928,17 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     );
   }
 
-  Widget _buildCallControls(LiveKitService livekit, CallFeaturesCoordinator coordinator) {
+  Widget _buildCallControls(
+    LiveKitService livekit,
+    CallFeaturesCoordinator coordinator,
+  ) {
     // Calculate responsive button sizes based on screen width
     final screenWidth = MediaQuery.of(context).size.width;
     final buttonSize = screenWidth < 360 ? 45.0 : 50.0;
     final centerButtonSize = screenWidth < 360 ? 56.0 : 64.0;
     final horizontalPadding = screenWidth < 360 ? 12.0 : 16.0;
     final buttonSpacing = screenWidth < 400 ? 4.0 : 8.0;
-    
+
     // Button order: More (leftmost), Mic, END CALL (center), Camera, Flip
     final buttons = [
       // 0: More / Extra (moved to left)
@@ -1876,7 +1958,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         onPressed: () async {
           await livekit.toggleMicrophone();
           if (mounted) {
-            _showToggleFeedback(livekit.isMicrophoneEnabled ? 'Microphone unmuted' : 'Microphone muted');
+            _showToggleFeedback(
+              livekit.isMicrophoneEnabled
+                  ? 'Microphone unmuted'
+                  : 'Microphone muted',
+            );
           }
         },
         backgroundColor: livekit.isMicrophoneEnabled
@@ -1894,10 +1980,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         icon: Icons.call_end,
         onPressed: () async {
           if (!mounted) return;
-          
+
           // Vibrate when call is ended
           VibrationService.vibrateCallEnd();
-          
+
           // End call using the centralized method
           await _endCallAndNavigateBack();
         },
@@ -1913,7 +1999,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         onPressed: () async {
           await livekit.toggleCamera();
           if (mounted) {
-            _showToggleFeedback(livekit.isCameraEnabled ? 'Camera on' : 'Camera off');
+            _showToggleFeedback(
+              livekit.isCameraEnabled ? 'Camera on' : 'Camera off',
+            );
           }
         },
         backgroundColor: livekit.isCameraEnabled
@@ -1943,7 +2031,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       ),
     );
   }
-  
+
   Widget _buildAnimatedButton({
     required int index,
     required IconData icon,
@@ -1984,53 +2072,50 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                         ),
                       ],
                     ),
-                    child: Icon(
-                      icon,
-                      color: Colors.white,
-                      size: size * 0.5,
-                    ),
+                    child: Icon(icon, color: Colors.white, size: size * 0.5),
                   ),
                 ),
               ),
-            if (badge != null)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade600,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.black, width: 2),
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 20,
-                    minHeight: 20,
-                  ),
-                  child: Center(
-                    child: Text(
-                      badge,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+              if (badge != null)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade600,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.black, width: 2),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 20,
+                      minHeight: 20,
+                    ),
+                    child: Center(
+                      child: Text(
+                        badge,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
-  
 
-  
   // More menu
-  void _showMoreMenu(LiveKitService livekit, CallFeaturesCoordinator coordinator) {
+  void _showMoreMenu(
+    LiveKitService livekit,
+    CallFeaturesCoordinator coordinator,
+  ) {
     final parentContext = context;
     showModalBottomSheet(
       context: context,
@@ -2050,11 +2135,18 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                       children: [
                         const Text(
                           'More Options',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const Spacer(),
                         IconButton(
-                          icon: const Icon(Icons.close, color: Color(0xFF8E8E93)),
+                          icon: const Icon(
+                            Icons.close,
+                            color: Color(0xFF8E8E93),
+                          ),
                           onPressed: () => Navigator.pop(context),
                           tooltip: 'Close menu',
                         ),
@@ -2064,8 +2156,14 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
 
                     _buildMoreSectionLabel('People'),
                     ListTile(
-                      leading: const Icon(Icons.person_add, color: Color(0xFF6B7FB8)),
-                      title: const Text('Add Person', style: TextStyle(color: Colors.white)),
+                      leading: const Icon(
+                        Icons.person_add,
+                        color: Color(0xFF6B7FB8),
+                      ),
+                      title: const Text(
+                        'Add Person',
+                        style: TextStyle(color: Colors.white),
+                      ),
                       onTap: () {
                         Navigator.pop(context);
                         _showAddPersonDialog();
@@ -2075,7 +2173,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                       leading: Stack(
                         clipBehavior: Clip.none,
                         children: [
-                          const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8)),
+                          const Icon(
+                            Icons.chat_bubble,
+                            color: Color(0xFF6B7FB8),
+                          ),
                           if (_unreadMessageCount > 0)
                             Positioned(
                               right: -4,
@@ -2092,7 +2193,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                         ],
                       ),
                       title: Text(
-                        _unreadMessageCount > 0 ? 'Chat ($_unreadMessageCount)' : 'Chat',
+                        _unreadMessageCount > 0
+                            ? 'Chat ($_unreadMessageCount)'
+                            : 'Chat',
                         style: const TextStyle(color: Colors.white),
                       ),
                       onTap: () {
@@ -2108,22 +2211,37 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                     ),
 
                     // ML features removed for Safari PWA stability
-
                     const Divider(color: Color(0xFF2C2C2E)),
                     _buildMoreSectionLabel('Call Tools'),
                     ListTile(
-                      leading: const Icon(Icons.translate, color: Color(0xFF6B7FB8)),
-                      title: const Text('Translate Audio', style: TextStyle(color: Colors.white)),
-                      subtitle: const Text('Real-time translation', style: TextStyle(color: Color(0xFF8E8E93))),
+                      leading: const Icon(
+                        Icons.translate,
+                        color: Color(0xFF6B7FB8),
+                      ),
+                      title: const Text(
+                        'Translate Audio',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      subtitle: const Text(
+                        'Real-time translation',
+                        style: TextStyle(color: Color(0xFF8E8E93)),
+                      ),
                       onTap: () {
                         Navigator.pop(context);
                         _showTranslationDialog();
                       },
                     ),
-                    if (Theme.of(context).platform == TargetPlatform.android || livekit.pipService.isPipSupported) ...[
+                    if (Theme.of(context).platform == TargetPlatform.android ||
+                        livekit.pipService.isPipSupported) ...[
                       ListTile(
-                        leading: const Icon(Icons.picture_in_picture, color: Color(0xFF6B7FB8)),
-                        title: const Text('Enter PiP', style: TextStyle(color: Colors.white)),
+                        leading: const Icon(
+                          Icons.picture_in_picture,
+                          color: Color(0xFF6B7FB8),
+                        ),
+                        title: const Text(
+                          'Enter PiP',
+                          style: TextStyle(color: Colors.white),
+                        ),
                         subtitle: const Text(
                           'Keep call visible while multitasking',
                           style: TextStyle(color: Color(0xFF8E8E93)),
@@ -2135,11 +2253,19 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                           if (!entered && mounted) {
                             ScaffoldMessenger.of(parentContext).showSnackBar(
                               SnackBar(
-                                content: Text('PiP not available on this device/browser'),
+                                content: Text(
+                                  'PiP not available on this device/browser',
+                                ),
                                 backgroundColor: Color(0xFF2C2C2E),
                                 behavior: SnackBarBehavior.floating,
-                                margin: EdgeInsets.only(bottom: 80, left: 16, right: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                margin: EdgeInsets.only(
+                                  bottom: 80,
+                                  left: 16,
+                                  right: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                             );
                           }
@@ -2149,8 +2275,14 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                     const Divider(color: Color(0xFF2C2C2E)),
                     _buildMoreSectionLabel('Insights'),
                     ListTile(
-                      leading: const Icon(Icons.analytics, color: Color(0xFF6B7FB8)),
-                      title: const Text('Quality Dashboard', style: TextStyle(color: Colors.white)),
+                      leading: const Icon(
+                        Icons.analytics,
+                        color: Color(0xFF6B7FB8),
+                      ),
+                      title: const Text(
+                        'Quality Dashboard',
+                        style: TextStyle(color: Colors.white),
+                      ),
                       onTap: () {
                         setState(() {
                           _qualityDashboardVisible = !_qualityDashboardVisible;
@@ -2159,8 +2291,14 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                       },
                     ),
                     ListTile(
-                      leading: const Icon(Icons.volume_up, color: Color(0xFF6B7FB8)),
-                      title: const Text('Audio Controls', style: TextStyle(color: Colors.white)),
+                      leading: const Icon(
+                        Icons.volume_up,
+                        color: Color(0xFF6B7FB8),
+                      ),
+                      title: const Text(
+                        'Audio Controls',
+                        style: TextStyle(color: Colors.white),
+                      ),
                       onTap: () {
                         Navigator.pop(context);
                         _showAudioControlsPanel();
@@ -2196,12 +2334,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       ),
     );
   }
-  
+
   void _showAddPersonDialog() {
     final TextEditingController emailController = TextEditingController();
     List<Map<String, dynamic>> filteredContacts = [];
     bool isLoading = false;
-    
+
     showDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -2214,9 +2352,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               });
               return;
             }
-            
+
             setDialogState(() => isLoading = true);
-            
+
             final currentUser = FirebaseAuth.instance.currentUser;
             if (currentUser == null) {
               setDialogState(() => isLoading = false);
@@ -2226,8 +2364,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             try {
               // Optimized search using ContactService
               final contactService = context.read<ContactService>();
-              final contacts =
-                  await contactService.searchContacts(query, limit: 5);
+              final contacts = await contactService.searchContacts(
+                query,
+                limit: 5,
+              );
 
               if (mounted) {
                 setDialogState(() {
@@ -2283,8 +2423,14 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                       ),
                       backgroundColor: const Color(0xFF2C2C2E),
                       behavior: SnackBarBehavior.floating,
-                      margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      margin: const EdgeInsets.only(
+                        bottom: 80,
+                        left: 16,
+                        right: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   );
                 }
@@ -2324,8 +2470,14 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                     ),
                     backgroundColor: const Color(0xFF6B7FB8),
                     behavior: SnackBarBehavior.floating,
-                    margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    margin: const EdgeInsets.only(
+                      bottom: 80,
+                      left: 16,
+                      right: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 );
               }
@@ -2336,7 +2488,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                   SnackBar(
                     content: Row(
                       children: [
-                        const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -2352,17 +2508,26 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                     ),
                     backgroundColor: const Color(0xFFE53E3E),
                     behavior: SnackBarBehavior.floating,
-                    margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    margin: const EdgeInsets.only(
+                      bottom: 80,
+                      left: 16,
+                      right: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 );
               }
             }
           }
-          
+
           return AlertDialog(
             backgroundColor: const Color(0xFF2C2C2E),
-            title: const Text('Add Person to Call', style: TextStyle(color: Colors.white)),
+            title: const Text(
+              'Add Person to Call',
+              style: TextStyle(color: Colors.white),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2419,19 +2584,28 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                             radius: 16,
                             backgroundColor: const Color(0xFF6B7FB8),
                             child: Text(
-                              (contact['name'] as String).isNotEmpty 
+                              (contact['name'] as String).isNotEmpty
                                   ? (contact['name'] as String)[0].toUpperCase()
                                   : '?',
-                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
                             ),
                           ),
                           title: Text(
                             contact['name'] as String,
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
                           ),
                           subtitle: Text(
                             contact['email'] as String,
-                            style: const TextStyle(color: Colors.white60, fontSize: 12),
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 12,
+                            ),
                           ),
                           onTap: () {
                             emailController.text = contact['email'] as String;
@@ -2448,11 +2622,17 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.white60),
+                ),
               ),
               TextButton(
                 onPressed: () => addPerson(),
-                child: const Text('Add', style: TextStyle(color: Color(0xFF6B7FB8))),
+                child: const Text(
+                  'Add',
+                  style: TextStyle(color: Color(0xFF6B7FB8)),
+                ),
               ),
             ],
           );
@@ -2460,27 +2640,27 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       ),
     );
   }
-  
+
   /// Handle incoming call while already in call (call-waiting)
   void _handleIncomingCallWhileInCall() {
     if (_callListener.hasIncomingCall && mounted) {
       setState(() {}); // Trigger rebuild to show banner
     }
   }
-  
+
   /// Handle new chat messages
   void _handleNewChatMessage() {
     final coordinator = context.read<CallFeaturesCoordinator>();
-    
+
     if (coordinator.chatMessages.isNotEmpty) {
       final lastMessage = coordinator.chatMessages.last;
-      
+
       // Check if this is a new message from someone else
       if (!lastMessage.isLocal && lastMessage.id != _lastMessageId) {
         setState(() {
           _lastMessageId = lastMessage.id;
           _hasNewMessage = true;
-          
+
           // Only increment unread count if chat overlay is not visible
           if (!_chatOverlayVisible) {
             _unreadMessageCount++;
@@ -2488,55 +2668,57 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             _chatOverlayVisible = true;
           }
         });
-        
+
         // Vibrate for new message
         VibrationService.vibrateNewMessage();
-        
+
         debugPrint('📬 New chat message received: ${lastMessage.message}');
       }
     }
   }
-  
+
   /// Accept waiting call and add caller to current group call
   Future<void> _acceptWaitingCall() async {
     final incomingCall = _callListener.currentIncomingCall;
     if (incomingCall == null) return;
-    
+
     try {
-      debugPrint('📞 Accepting waiting call from ${incomingCall['callerName']}');
-      
+      debugPrint(
+        '📞 Accepting waiting call from ${incomingCall['callerName']}',
+      );
+
       // Generate token for the new participant
       final functions = FirebaseFunctions.instance;
       final callable = functions.httpsCallable('getLiveKitToken');
-      
+
       final response = await callable.call({
         'calleeId': incomingCall['callerId'],
         'roomName': widget.roomName, // Add them to THIS room
         'platform': DeviceModeService.platformLabel(),
       });
-      
+
       final theirToken = response.data['token'] as String;
       await IceServerConfig.updateFromTokenResponse(
         Map<String, dynamic>.from(response.data as Map),
       );
-      
+
       // Accept the invitation - this will signal them to join
       await widget.signalingService.acceptInvitation(incomingCall['id']);
-      
+
       // Add them to the current session
       if (widget.sessionService != null) {
         final currentUser = FirebaseAuth.instance.currentUser;
         if (currentUser != null) {
-          await widget.sessionService!.startSession(
-            widget.roomName, 
-            [currentUser.uid, incomingCall['callerId']],
-          );
+          await widget.sessionService!.startSession(widget.roomName, [
+            currentUser.uid,
+            incomingCall['callerId'],
+          ]);
         }
       }
-      
+
       // Clear the call from listener
       _callListener.clearIncomingCall();
-      
+
       if (mounted) {
         setState(() {}); // Hide banner
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2561,11 +2743,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             backgroundColor: const Color(0xFF6B7FB8),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
-      
+
       debugPrint('✅ Added ${incomingCall['callerName']} to group call');
     } catch (e) {
       debugPrint('❌ Error accepting waiting call: $e');
@@ -2591,32 +2775,34 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             backgroundColor: const Color(0xFFE53E3E),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
     }
   }
-  
+
   /// Decline waiting call
   Future<void> _declineWaitingCall() async {
     final incomingCall = _callListener.currentIncomingCall;
     if (incomingCall == null) return;
-    
+
     try {
       await widget.signalingService.declineInvitation(incomingCall['id']);
       _callListener.clearIncomingCall();
-      
+
       if (mounted) {
         setState(() {}); // Hide banner
       }
-      
+
       debugPrint('❌ Declined waiting call from ${incomingCall['callerName']}');
     } catch (e) {
       debugPrint('❌ Error declining waiting call: $e');
     }
   }
-  
+
   /// Show audio controls panel
   void _showAudioControlsPanel() {
     showModalBottomSheet(
@@ -2625,9 +2811,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       builder: (context) => const AudioControlsPanel(),
     );
   }
-  
 
-  
   @override
   void dispose() {
     _controlsHideTimer?.cancel();
@@ -2638,7 +2822,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     widget.sessionService?.removeListener(_handleSessionEnd);
     _callListener.removeListener(_handleIncomingCallWhileInCall);
     _callListener.stopListening();
-    
+
     // Remove listeners safely
     try {
       final livekit = _livekit;
@@ -2650,62 +2834,80 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     } catch (e) {
       debugPrint('Error during LiveKit cleanup: $e');
     }
-    
+
     // Remove chat message listener
     _coordinator.removeListener(_handleNewChatMessage);
-    
+
     // Cleanup coordinator (fire and forget)
     _coordinator.cleanup();
-    
+
     // Dispose controllers
     _chatController.dispose();
     _controlsAnimationController.dispose();
     _reactionsAnimationController.dispose();
     _setAndroidCallActive(false);
     AndroidPipService.setAutoPipEnabled(false);
-    
+
     super.dispose();
   }
-  
+
   void _showTranslationDialog() {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF2C2C2E),
-        title: const Text('Select Translation Language', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Select Translation Language',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              title: const Text('English', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'English',
+                style: TextStyle(color: Colors.white),
+              ),
               onTap: () {
                 Navigator.pop(dialogContext);
                 _startTranslation('eng_Latn');
               },
             ),
             ListTile(
-              title: const Text('Spanish', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'Spanish',
+                style: TextStyle(color: Colors.white),
+              ),
               onTap: () {
                 Navigator.pop(dialogContext);
                 _startTranslation('spa_Latn');
               },
             ),
             ListTile(
-              title: const Text('French', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'French',
+                style: TextStyle(color: Colors.white),
+              ),
               onTap: () {
                 Navigator.pop(dialogContext);
                 _startTranslation('fra_Latn');
               },
             ),
             ListTile(
-              title: const Text('German', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'German',
+                style: TextStyle(color: Colors.white),
+              ),
               onTap: () {
                 Navigator.pop(dialogContext);
                 _startTranslation('deu_Latn');
               },
             ),
             ListTile(
-              title: const Text('Chinese', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'Chinese',
+                style: TextStyle(color: Colors.white),
+              ),
               onTap: () {
                 Navigator.pop(dialogContext);
                 _startTranslation('zho_Hans');
@@ -2723,12 +2925,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _translationTargetLang = targetLang;
       _translatedText = 'Listening...';
     });
-    
+
     // Start periodic translation every 5 seconds
     _translationTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _captureAndTranslate();
     });
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -2740,7 +2942,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       );
     }
   }
-  
+
   void _stopTranslation() {
     _translationTimer?.cancel();
     setState(() {
@@ -2748,7 +2950,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       _translatedText = '';
     });
   }
-  
+
   Future<void> _captureAndTranslate() async {
     // Translation not supported on web (requires file system access)
     if (kIsWeb) {
@@ -2759,21 +2961,22 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       }
       return;
     }
-    
+
     try {
       // Check if translation is still active
       if (!_translationActive || _translationTargetLang == null) return;
-      
+
       // Use app's temporary directory instead of /tmp/
       final tempDir = await getTemporaryDirectory();
-      final path = '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.wav';
-      
+      final path =
+          '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.wav';
+
       // Record 5 seconds of audio
       if (await _audioRecorder.hasPermission()) {
         await _audioRecorder.start(const RecordConfig(), path: path);
         await Future.delayed(const Duration(seconds: 5));
         await _audioRecorder.stop();
-        
+
         // Check again after recording
         if (!_translationActive || !mounted) {
           // Cleanup and exit
@@ -2782,17 +2985,20 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           } catch (_) {}
           return;
         }
-        
+
         // Translate by uploading directly to VPS
         final translation = TranslationService();
-        final result = await translation.translateAudio(path, tgtLang: _translationTargetLang!);
-        
+        final result = await translation.translateAudio(
+          path,
+          tgtLang: _translationTargetLang!,
+        );
+
         if (mounted && _translationActive) {
           setState(() {
             _translatedText = result['text'] ?? 'No translation';
           });
         }
-        
+
         // Cleanup
         try {
           await File(path).delete();

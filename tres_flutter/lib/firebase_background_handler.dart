@@ -25,7 +25,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   debugPrint('🔔 Background FCM received: ${message.data}');
-  
+
   // Only handle call invitations in background
   final type = message.data['type'] ?? '';
   if (type != 'call_invite' && type != 'guest_joining') {
@@ -37,16 +37,18 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(_callChannel);
   } catch (e) {
     debugPrint('⚠️ Failed to create notification channel: $e');
   }
 
   // Use data payload fields to populate notification text
-  final fromName = message.data['fromUserName'] ?? message.data['guestName'] ?? 'Unknown';
+  final fromName =
+      message.data['fromUserName'] ?? message.data['guestName'] ?? 'Unknown';
   final invitationId = message.data['invitationId'] ?? '';
-  
+
   // Prepare notification details with full-screen intent
   AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
     _callChannel.id,
@@ -70,7 +72,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         contextual: true,
       ),
       AndroidNotificationAction(
-        'decline', 
+        'decline',
         'Decline',
         icon: DrawableResourceAndroidBitmap('ic_call_decline'),
         contextual: true,

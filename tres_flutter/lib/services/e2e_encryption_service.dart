@@ -2,30 +2,25 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 /// Encryption status enum
-enum EncryptionStatus {
-  disabled,
-  initializing,
-  enabled,
-  failed,
-}
+enum EncryptionStatus { disabled, initializing, enabled, failed }
 
 /// E2E Encryption Service
-/// 
+///
 /// Manages end-to-end encryption for video calls using LiveKit's built-in E2EE.
 /// LiveKit supports end-to-end encryption using the WebRTC Insertable Streams API.
-/// 
+///
 /// Features:
 /// - Enable/disable encryption
 /// - Key management
 /// - Encryption status tracking
 /// - Automatic key rotation
-/// 
+///
 /// Note: LiveKit E2EE implementation:
 /// - Uses AES-GCM encryption
 /// - Supports frame-by-frame encryption
 /// - Keys are shared via secure signaling
 /// - Compatible with all LiveKit SDKs
-/// 
+///
 /// Setup:
 /// 1. Enable E2EE in LiveKit server config
 /// 2. Generate shared key on client
@@ -43,7 +38,7 @@ class E2EEncryptionService extends ChangeNotifier {
   bool get isEnabled => _status == EncryptionStatus.enabled;
   String? get encryptionKey => _encryptionKey;
   int get encryptedFrames => _encryptedFrames;
-  
+
   /// Time until key rotation needed (in hours)
   Duration? get keyAge {
     if (_keyGeneratedAt == null) return null;
@@ -60,7 +55,7 @@ class E2EEncryptionService extends ChangeNotifier {
   Future<bool> initialize() async {
     try {
       debugPrint('$_tag: Initializing E2E encryption...');
-      
+
       _status = EncryptionStatus.initializing;
       notifyListeners();
 
@@ -69,7 +64,7 @@ class E2EEncryptionService extends ChangeNotifier {
       // 1. Generating or receiving encryption key
       // 2. Setting up encryption/decryption processors
       // 3. Registering with LiveKit Room
-      
+
       // Simulate initialization
       await Future.delayed(const Duration(milliseconds: 500));
 
@@ -84,15 +79,15 @@ class E2EEncryptionService extends ChangeNotifier {
   }
 
   /// Enable end-to-end encryption
-  /// 
+  ///
   /// Implementation with LiveKit:
   /// ```dart
   /// // Generate encryption key
   /// final key = generateEncryptionKey();
-  /// 
+  ///
   /// // Enable for local tracks
   /// await room.localParticipant?.setE2EEEnabled(true, key);
-  /// 
+  ///
   /// // Share key with remote participants via secure channel
   /// await shareKeyWithParticipants(key);
   /// ```
@@ -112,7 +107,7 @@ class E2EEncryptionService extends ChangeNotifier {
 
       // In production: Enable LiveKit E2EE
       // Example with livekit_client:
-      // 
+      //
       // await room.localParticipant?.setE2EEEnabled(
       //   true,
       //   keyProvider: () => _encryptionKey!,
@@ -173,7 +168,7 @@ class E2EEncryptionService extends ChangeNotifier {
   }
 
   /// Generate a new encryption key
-  /// 
+  ///
   /// In production, use:
   /// - Secure random generator
   /// - Appropriate key length (256-bit for AES-256)
@@ -181,10 +176,10 @@ class E2EEncryptionService extends ChangeNotifier {
   String _generateEncryptionKey() {
     // In production: Use proper cryptographic key generation
     // Example with crypto package:
-    // 
+    //
     // import 'package:crypto/crypto.dart';
     // import 'dart:math';
-    // 
+    //
     // final random = Random.secure();
     // final values = List<int>.generate(32, (_) => random.nextInt(256));
     // return base64.encode(values);
@@ -196,7 +191,7 @@ class E2EEncryptionService extends ChangeNotifier {
   }
 
   /// Rotate encryption key
-  /// 
+  ///
   /// Should be called periodically (e.g., every 24 hours)
   /// or after certain number of encrypted frames
   Future<bool> rotateKey() async {
@@ -217,7 +212,7 @@ class E2EEncryptionService extends ChangeNotifier {
       // 3. Wait for acknowledgment
       // 4. Switch to new key atomically
       // 5. Keep old key temporarily for decryption
-      
+
       await Future.delayed(const Duration(milliseconds: 500));
 
       _encryptionKey = newKey;
@@ -234,11 +229,11 @@ class E2EEncryptionService extends ChangeNotifier {
   }
 
   /// Update encrypted frame counter
-  /// 
+  ///
   /// Called internally when frames are encrypted
   void _updateFrameCount() {
     _encryptedFrames++;
-    
+
     // Notify listeners every 100 frames to avoid excessive updates
     if (_encryptedFrames % 100 == 0) {
       notifyListeners();
@@ -263,7 +258,7 @@ class E2EEncryptionService extends ChangeNotifier {
   }
 
   /// Verify encryption is working
-  /// 
+  ///
   /// Can be called to check if frames are being encrypted
   Future<bool> verifyEncryption() async {
     if (!isEnabled) return false;
@@ -273,17 +268,18 @@ class E2EEncryptionService extends ChangeNotifier {
       // 1. Checking encrypted frame headers
       // 2. Confirming key exchange completed
       // 3. Validating remote participants' encryption status
-      
+
       await Future.delayed(const Duration(milliseconds: 100));
-      
-      final isWorking = _status == EncryptionStatus.enabled && _encryptionKey != null;
-      
+
+      final isWorking =
+          _status == EncryptionStatus.enabled && _encryptionKey != null;
+
       if (isWorking) {
         debugPrint('$_tag: ✅ Encryption verified');
       } else {
         debugPrint('$_tag: ❌ Encryption verification failed');
       }
-      
+
       return isWorking;
     } catch (e) {
       debugPrint('$_tag: ❌ Verification error: $e');
@@ -292,7 +288,7 @@ class E2EEncryptionService extends ChangeNotifier {
   }
 
   /// Share encryption key with participant
-  /// 
+  ///
   /// In production: Use secure signaling to distribute keys
   /// - Send via LiveKit data channel (encrypted)
   /// - Use Diffie-Hellman key exchange
@@ -311,7 +307,7 @@ class E2EEncryptionService extends ChangeNotifier {
       // 2. Send via secure channel (LiveKit DataChannel)
       // 3. Wait for acknowledgment
       // 4. Verify participant can decrypt
-      
+
       await Future.delayed(const Duration(milliseconds: 200));
 
       debugPrint('$_tag: ✅ Key shared with $participantId');
@@ -332,7 +328,7 @@ class E2EEncryptionService extends ChangeNotifier {
       // 2. Validate key format
       // 3. Store for this participant
       // 4. Enable decryption for their tracks
-      
+
       await Future.delayed(const Duration(milliseconds: 200));
 
       debugPrint('$_tag: ✅ Key received and processed');

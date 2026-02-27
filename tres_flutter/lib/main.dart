@@ -25,7 +25,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
     // Initialize Firebase with auto-generated options
     await Firebase.initializeApp(
@@ -39,7 +39,7 @@ void main() async {
   } catch (e) {
     debugPrint('❌ Firebase initialization error: $e');
   }
-  
+
   // Register background message handler BEFORE calling runApp
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
@@ -50,8 +50,7 @@ void main() async {
   // Don't await - let it initialize in background
   Future.microtask(() async {
     try {
-      final flutterLocalNotificationsPlugin =
-          FlutterLocalNotificationsPlugin();
+      final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
         'call_channel',
         'Calls',
@@ -60,23 +59,26 @@ void main() async {
       );
       await flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.createNotificationChannel(channel);
     } catch (e) {
       // ignore
     }
   });
-  
+
   // Print environment configuration in debug mode
   await IceServerConfig.load();
   Environment.printConfig();
-  
+
   // Validate environment configuration
   if (!Environment.validate()) {
     debugPrint('⚠️  Warning: Some environment variables are not configured');
-    debugPrint('Please update lib/config/environment.dart with your credentials');
+    debugPrint(
+      'Please update lib/config/environment.dart with your credentials',
+    );
   }
-  
+
   runApp(const TresApp());
 }
 
@@ -88,9 +90,7 @@ class TresApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
-        ChangeNotifierProvider(
-          create: (context) => LiveKitService(),
-        ),
+        ChangeNotifierProvider(create: (context) => LiveKitService()),
         ChangeNotifierProvider(create: (_) => GuestLinkService()),
         ChangeNotifierProvider(create: (_) => AudioDeviceService()),
         ChangeNotifierProvider(create: (_) => ContactService()),
@@ -117,14 +117,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
   bool _hasCachedUser = false;
   DateTime? _authNullSince;
   static const Duration _authGracePeriod = Duration(seconds: 3);
-  
+
   @override
   void initState() {
     super.initState();
     _initializeApp();
     _loadCachedUser();
   }
-  
+
   Future<void> _initializeApp() async {
     // Small delay to ensure Firebase is ready
     await Future.delayed(const Duration(milliseconds: 500));
@@ -147,7 +147,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       debugPrint('⚠️ Failed to load cached auth state: $e');
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
@@ -158,7 +158,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         ),
       );
     }
-    
+
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {

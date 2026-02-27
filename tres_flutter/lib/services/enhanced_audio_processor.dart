@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:livekit_client/livekit_client.dart';
 
 enum NoiseSuppressionLevel { off, low, medium, aggressive }
+
 enum EchoCancellationMode { off, standard, aggressive }
 
 class AudioStats {
@@ -33,21 +34,22 @@ class AudioStats {
 class EnhancedAudioProcessor extends ChangeNotifier {
   Timer? _monitoringTimer;
   StreamSubscription<AudioStats>? _audioStatsSubscription;
-  
+
   bool _isMonitoring = false;
   AudioStats _currentStats = AudioStats.empty();
-  
+
   // Audio processing settings
-  NoiseSuppressionLevel _noiseSuppressionLevel = NoiseSuppressionLevel.aggressive;
+  NoiseSuppressionLevel _noiseSuppressionLevel =
+      NoiseSuppressionLevel.aggressive;
   EchoCancellationMode _echoCancellationMode = EchoCancellationMode.aggressive;
   bool _voiceIsolationEnabled = true;
   bool _windNoiseReductionEnabled = true;
   bool _beamformingEnabled = true;
   double _targetGainLevel = -12.0; // dB
-  
+
   // Audio quality monitoring
   final List<AudioStats> _statsHistory = [];
-  
+
   AudioStats get currentStats => _currentStats;
   bool get isMonitoring => _isMonitoring;
   NoiseSuppressionLevel get noiseSuppressionLevel => _noiseSuppressionLevel;
@@ -55,39 +57,39 @@ class EnhancedAudioProcessor extends ChangeNotifier {
 
   Future<AudioCaptureOptions> configureAdvancedAudio() async {
     debugPrint('🎵 Configuring advanced audio processing');
-    
+
     final audioOptions = AudioCaptureOptions(
       // Enhanced noise suppression
       noiseSuppression: _noiseSuppressionLevel != NoiseSuppressionLevel.off,
-      
+
       // Advanced echo cancellation
       echoCancellation: _echoCancellationMode != EchoCancellationMode.off,
-      
+
       // Automatic gain control
       autoGainControl: true,
     );
-    
+
     debugPrint('   - Noise suppression: ${_noiseSuppressionLevel.name}');
     debugPrint('   - Echo cancellation: ${_echoCancellationMode.name}');
     debugPrint('   - Voice isolation: $_voiceIsolationEnabled');
     debugPrint('   - Wind noise reduction: $_windNoiseReductionEnabled');
     debugPrint('   - Beamforming: $_beamformingEnabled');
     debugPrint('   - Target gain: ${_targetGainLevel}dB');
-    
+
     return audioOptions;
   }
 
   void startMonitoring() {
     if (_isMonitoring) return;
-    
+
     _isMonitoring = true;
-    
+
     // Start periodic audio quality monitoring
     _monitoringTimer = Timer.periodic(
       const Duration(seconds: 5),
       (_) => _collectAudioStats(),
     );
-    
+
     debugPrint('🎵 Audio quality monitoring started');
   }
 
@@ -97,7 +99,7 @@ class EnhancedAudioProcessor extends ChangeNotifier {
     _audioStatsSubscription?.cancel();
     _monitoringTimer = null;
     _audioStatsSubscription = null;
-    
+
     debugPrint('🎵 Audio quality monitoring stopped');
   }
 
@@ -106,18 +108,18 @@ class EnhancedAudioProcessor extends ChangeNotifier {
       // In a real implementation, this would collect actual audio statistics
       // For now, we'll simulate realistic audio stats
       final stats = await _simulateAudioStats();
-      
+
       _currentStats = stats;
       _statsHistory.add(stats);
-      
+
       // Keep only recent history
       if (_statsHistory.length > 100) {
         _statsHistory.removeAt(0);
       }
-      
+
       // Analyze and potentially adjust audio processing
       await _analyzeAudioQuality(stats);
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('❌ Error collecting audio stats: $e');
@@ -127,7 +129,7 @@ class EnhancedAudioProcessor extends ChangeNotifier {
   Future<AudioStats> _simulateAudioStats() async {
     // Simulate realistic audio statistics
     final random = math.Random();
-    
+
     return AudioStats(
       snr: 15 + random.nextDouble() * 25, // 15-40 dB SNR
       clipping: random.nextDouble() * 0.05, // 0-5% clipping
@@ -139,31 +141,31 @@ class EnhancedAudioProcessor extends ChangeNotifier {
 
   Future<void> _analyzeAudioQuality(AudioStats stats) async {
     bool needsAdjustment = false;
-    
+
     // Check signal-to-noise ratio
     if (stats.snr < 20) {
       await _triggerNoiseReduction();
       needsAdjustment = true;
     }
-    
+
     // Check for clipping
     if (stats.clipping > 0.1) {
       await _applyClippingProtection();
       needsAdjustment = true;
     }
-    
+
     // Check dynamic range
     if (stats.dynamicRange < 30) {
       await _enhanceDynamicRange();
       needsAdjustment = true;
     }
-    
+
     // Check volume levels
     if (stats.volume < -40 || stats.volume > -6) {
       await _adjustGainControl(stats.volume);
       needsAdjustment = true;
     }
-    
+
     if (needsAdjustment) {
       debugPrint('🔧 Audio processing adjusted based on quality analysis');
     }
@@ -173,11 +175,11 @@ class EnhancedAudioProcessor extends ChangeNotifier {
     if (_noiseSuppressionLevel != NoiseSuppressionLevel.aggressive) {
       _noiseSuppressionLevel = NoiseSuppressionLevel.aggressive;
       debugPrint('🔇 Increased noise suppression to aggressive level');
-      
+
       // Enable additional noise reduction features
       _voiceIsolationEnabled = true;
       _windNoiseReductionEnabled = true;
-      
+
       notifyListeners();
     }
   }
@@ -185,8 +187,10 @@ class EnhancedAudioProcessor extends ChangeNotifier {
   Future<void> _applyClippingProtection() async {
     // Reduce gain to prevent clipping
     _targetGainLevel = math.max(-20.0, _targetGainLevel - 2.0);
-    debugPrint('📉 Applied clipping protection, reduced gain to ${_targetGainLevel}dB');
-    
+    debugPrint(
+      '📉 Applied clipping protection, reduced gain to ${_targetGainLevel}dB',
+    );
+
     notifyListeners();
   }
 
@@ -194,9 +198,9 @@ class EnhancedAudioProcessor extends ChangeNotifier {
     // Enable advanced processing to improve dynamic range
     _beamformingEnabled = true;
     _voiceIsolationEnabled = true;
-    
+
     debugPrint('📈 Enhanced dynamic range processing enabled');
-    
+
     notifyListeners();
   }
 
@@ -208,9 +212,11 @@ class EnhancedAudioProcessor extends ChangeNotifier {
     } else if (currentVolume > -6) {
       // Volume too high, decrease gain
       _targetGainLevel = math.max(-20.0, _targetGainLevel - 3.0);
-      debugPrint('🔉 Decreased gain to ${_targetGainLevel}dB (volume too high)');
+      debugPrint(
+        '🔉 Decreased gain to ${_targetGainLevel}dB (volume too high)',
+      );
     }
-    
+
     notifyListeners();
   }
 
@@ -278,39 +284,42 @@ class EnhancedAudioProcessor extends ChangeNotifier {
     try {
       if (settings.containsKey('noiseSuppressionLevel')) {
         final levelName = settings['noiseSuppressionLevel'] as String;
-        _noiseSuppressionLevel = NoiseSuppressionLevel.values
-            .firstWhere((level) => level.name == levelName);
+        _noiseSuppressionLevel = NoiseSuppressionLevel.values.firstWhere(
+          (level) => level.name == levelName,
+        );
       }
-      
+
       if (settings.containsKey('echoCancellationMode')) {
         final modeName = settings['echoCancellationMode'] as String;
-        _echoCancellationMode = EchoCancellationMode.values
-            .firstWhere((mode) => mode.name == modeName);
+        _echoCancellationMode = EchoCancellationMode.values.firstWhere(
+          (mode) => mode.name == modeName,
+        );
       }
-      
+
       if (settings.containsKey('voiceIsolationEnabled')) {
         _voiceIsolationEnabled = settings['voiceIsolationEnabled'] as bool;
       }
-      
+
       if (settings.containsKey('windNoiseReductionEnabled')) {
-        _windNoiseReductionEnabled = settings['windNoiseReductionEnabled'] as bool;
+        _windNoiseReductionEnabled =
+            settings['windNoiseReductionEnabled'] as bool;
       }
-      
+
       if (settings.containsKey('beamformingEnabled')) {
         _beamformingEnabled = settings['beamformingEnabled'] as bool;
       }
-      
+
       if (settings.containsKey('targetGainLevel')) {
         _targetGainLevel = settings['targetGainLevel'] as double;
       }
-      
+
       debugPrint('🎚️ Applied audio processing settings');
       notifyListeners();
     } catch (e) {
       debugPrint('❌ Error applying audio settings: $e');
     }
   }
-  
+
   @override
   void dispose() {
     stopMonitoring();

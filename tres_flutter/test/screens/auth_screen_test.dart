@@ -23,14 +23,15 @@ void main() {
     );
   }
 
-  testWidgets('Email field shows clear button when text is entered', (tester) async {
+  testWidgets('Email field shows clear button when text is entered', (
+    tester,
+  ) async {
     await tester.pumpWidget(createWidgetUnderTest());
 
     // Find email field
-    final emailField = find.ancestor(
-      of: find.text('Email'),
-      matching: find.byType(TextField),
-    ).first;
+    final emailField = find
+        .ancestor(of: find.text('Email'), matching: find.byType(TextField))
+        .first;
 
     expect(emailField, findsOneWidget);
 

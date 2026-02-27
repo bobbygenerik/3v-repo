@@ -14,14 +14,11 @@ void main() {
     // Use real mocks instead of trying to mock sealed classes
     mockAuth = MockFirebaseAuth(
       signedIn: true,
-      mockUser: MockUser(
-        uid: 'test-user-id',
-        email: 'test@example.com',
-      ),
+      mockUser: MockUser(uid: 'test-user-id', email: 'test@example.com'),
     );
-    
+
     fakeFirestore = FakeFirebaseFirestore();
-    
+
     // Setup test data: 15 contacts
     for (int i = 0; i < 15; i++) {
       await fakeFirestore
@@ -30,29 +27,29 @@ void main() {
           .collection('contacts')
           .doc('contact-$i')
           .set({'addedAt': DateTime.now()});
-      
+
       // Add user data for each contact
-      await fakeFirestore
-          .collection('users')
-          .doc('contact-$i')
-          .set({
+      await fakeFirestore.collection('users').doc('contact-$i').set({
         'displayName': 'Contact $i',
         'email': 'contact$i@example.com',
       });
     }
   });
 
-  test('searchContacts performs batch queries correctly (N+1 optimization)', () async {
-    contactService = ContactService(firestore: fakeFirestore, auth: mockAuth);
+  test(
+    'searchContacts performs batch queries correctly (N+1 optimization)',
+    () async {
+      contactService = ContactService(firestore: fakeFirestore, auth: mockAuth);
 
-    // This should trigger batched queries internally
-    final results = await contactService.searchContacts('Contact', limit: 20);
+      // This should trigger batched queries internally
+      final results = await contactService.searchContacts('Contact', limit: 20);
 
-    // Verify we got all 15 contacts
-    expect(results.length, 15, reason: 'Should return all 15 contacts');
-    
-    // Verify contact data is properly loaded
-    expect(results.first['name'], contains('Contact'));
-    expect(results.first['email'], contains('@example.com'));
-  });
+      // Verify we got all 15 contacts
+      expect(results.length, 15, reason: 'Should return all 15 contacts');
+
+      // Verify contact data is properly loaded
+      expect(results.first['name'], contains('Contact'));
+      expect(results.first['email'], contains('@example.com'));
+    },
+  );
 }

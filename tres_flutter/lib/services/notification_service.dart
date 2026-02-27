@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class NotificationService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   static bool _initialized = false;
-  
+
   static Future<bool> requestPermissions() async {
     try {
       debugPrint('🔔 Requesting notification permissions...');
@@ -18,25 +18,28 @@ class NotificationService {
         provisional: false,
         criticalAlert: false,
       );
-      
-      final granted = settings.authorizationStatus == AuthorizationStatus.authorized;
-      debugPrint(granted 
-        ? '✅ Notification permissions GRANTED' 
-        : '❌ Notification permissions DENIED (status: ${settings.authorizationStatus})');
-      
+
+      final granted =
+          settings.authorizationStatus == AuthorizationStatus.authorized;
+      debugPrint(
+        granted
+            ? '✅ Notification permissions GRANTED'
+            : '❌ Notification permissions DENIED (status: ${settings.authorizationStatus})',
+      );
+
       return granted;
     } catch (e) {
       debugPrint('⚠️ Permission request failed: $e');
       return false;
     }
   }
-  
+
   static Future<void> initialize() async {
     if (_initialized) return;
-    
+
     // Check current permission status first
     NotificationSettings settings = await _messaging.getNotificationSettings();
-    
+
     if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
       // Auto-request permissions for better UX
       debugPrint('📱 Requesting notification permissions...');
@@ -47,40 +50,41 @@ class NotificationService {
       _initialized = true;
       return;
     }
-    
+
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       await _setupToken();
     }
-    
+
     _initialized = true;
   }
-  
+
   static Future<bool> enableNotifications() async {
     bool granted = await requestPermissions();
-    
+
     if (granted) {
       await _setupToken();
       return true;
     }
-    
+
     return false;
   }
-  
+
   static Future<void> _setupToken() async {
     try {
       String? token;
       if (kIsWeb) {
         token = await _messaging.getToken(
-          vapidKey: 'BFK4jHQlX-hagn0gXdag3CJ5U8cD3x2sI_1GemoCGT95Gdqrpwb1SNkPOISh0zaR7jBamKsqnX9eArZfm50DgJI',
+          vapidKey:
+              'BFK4jHQlX-hagn0gXdag3CJ5U8cD3x2sI_1GemoCGT95Gdqrpwb1SNkPOISh0zaR7jBamKsqnX9eArZfm50DgJI',
         );
       } else {
         token = await _messaging.getToken();
       }
-      
+
       if (token != null) {
         debugPrint('📱 FCM Token: ${token.substring(0, 20)}...');
         await _saveTokenToFirestore(token);
-        
+
         // Also save to local storage as backup
         if (kIsWeb) {
           try {
@@ -92,7 +96,7 @@ class NotificationService {
           }
         }
       }
-      
+
       // Listen for token refresh
       _messaging.onTokenRefresh.listen((newToken) {
         debugPrint('🔄 FCM Token refreshed');
@@ -102,19 +106,16 @@ class NotificationService {
       debugPrint('⚠️ FCM token setup error: $e');
     }
   }
-  
+
   static Future<void> _saveTokenToFirestore(String token) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         // Use set with merge to create document if it doesn't exist
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .set({
-              'fcmToken': token,
-              'tokenUpdatedAt': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true));
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'fcmToken': token,
+          'tokenUpdatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
         debugPrint('✅ FCM token saved to Firestore');
       } else {
         debugPrint('⚠️ No user logged in, cannot save FCM token');
@@ -136,7 +137,7 @@ class NotificationService {
       }
     }
   }
-  
+
   static Future<bool> areNotificationsEnabled() async {
     NotificationSettings settings = await _messaging.getNotificationSettings();
     return settings.authorizationStatus == AuthorizationStatus.authorized;

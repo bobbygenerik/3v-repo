@@ -16,7 +16,8 @@ class VideoCallQualityDashboard extends StatefulWidget {
   });
 
   @override
-  State<VideoCallQualityDashboard> createState() => _VideoCallQualityDashboardState();
+  State<VideoCallQualityDashboard> createState() =>
+      _VideoCallQualityDashboardState();
 }
 
 class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
@@ -39,7 +40,10 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
     );
   }
 
-  Widget _buildCollapsedView(LiveKitService liveKitService, CallConnectionQuality quality) {
+  Widget _buildCollapsedView(
+    LiveKitService liveKitService,
+    CallConnectionQuality quality,
+  ) {
     final indicatorColors = _getIndicatorColors(quality);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -58,11 +62,7 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
           const SizedBox(width: 8),
           GestureDetector(
             onTap: widget.onToggle,
-            child: const Icon(
-              Icons.expand_more,
-              color: Colors.white,
-              size: 20,
-            ),
+            child: const Icon(Icons.expand_more, color: Colors.white, size: 20),
           ),
         ],
       ),
@@ -73,10 +73,7 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
     return Container(
       width: 8,
       height: 8,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 
@@ -123,11 +120,7 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
   Widget _buildHeader() {
     return Row(
       children: [
-        const Icon(
-          Icons.analytics,
-          color: Colors.white,
-          size: 20,
-        ),
+        const Icon(Icons.analytics, color: Colors.white, size: 20),
         const SizedBox(width: 8),
         const Text(
           'Call Quality Dashboard',
@@ -140,11 +133,7 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
         const Spacer(),
         GestureDetector(
           onTap: widget.onToggle,
-          child: const Icon(
-            Icons.expand_less,
-            color: Colors.white,
-            size: 20,
-          ),
+          child: const Icon(Icons.expand_less, color: Colors.white, size: 20),
         ),
       ],
     );
@@ -155,10 +144,10 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
     final packetLoss = stats.videoPacketLoss;
     final jitter = (stats.jitter * 1000).round();
     final availableUplinkMbps = (stats.availableOutgoingBitrate / 1000000);
-    
+
     Color qualityColor = Colors.green;
     String qualityText = 'Excellent';
-    
+
     if (rtt > 150 || packetLoss > 3.0 || jitter > 50) {
       qualityColor = Colors.red;
       qualityText = 'Poor';
@@ -169,36 +158,50 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
       qualityColor = Colors.yellow;
       qualityText = 'Good';
     }
-    
+
     return _buildSection(
       title: 'Network Quality',
       icon: Icons.wifi,
       child: Column(
         children: [
-          _buildMetricRow(
-            'Quality',
-            qualityText,
-            qualityColor,
-          ),
+          _buildMetricRow('Quality', qualityText, qualityColor),
           _buildMetricRow(
             'Latency',
             '${rtt}ms',
-            rtt > 100 ? Colors.red : rtt > 50 ? Colors.orange : Colors.green,
+            rtt > 100
+                ? Colors.red
+                : rtt > 50
+                ? Colors.orange
+                : Colors.green,
           ),
           _buildMetricRow(
             'Jitter',
             '${jitter}ms',
-            jitter > 30 ? Colors.red : jitter > 15 ? Colors.orange : Colors.green,
+            jitter > 30
+                ? Colors.red
+                : jitter > 15
+                ? Colors.orange
+                : Colors.green,
           ),
           _buildMetricRow(
             'Packet Loss',
             '${packetLoss.toStringAsFixed(1)}%',
-            packetLoss > 1.0 ? Colors.red : packetLoss > 0.5 ? Colors.orange : Colors.green,
+            packetLoss > 1.0
+                ? Colors.red
+                : packetLoss > 0.5
+                ? Colors.orange
+                : Colors.green,
           ),
           _buildMetricRow(
             'Available Uplink',
-            availableUplinkMbps > 0 ? '${availableUplinkMbps.toStringAsFixed(1)} Mbps' : 'N/A',
-            availableUplinkMbps >= 8 ? Colors.green : availableUplinkMbps >= 4 ? Colors.orange : Colors.red,
+            availableUplinkMbps > 0
+                ? '${availableUplinkMbps.toStringAsFixed(1)} Mbps'
+                : 'N/A',
+            availableUplinkMbps >= 8
+                ? Colors.green
+                : availableUplinkMbps >= 4
+                ? Colors.orange
+                : Colors.red,
           ),
         ],
       ),
@@ -207,20 +210,19 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
 
   Widget _buildVideoSection(LiveKitService liveKitService, CallStats stats) {
     final sendBitrate = (stats.videoSendBitrate / 1000000).toStringAsFixed(1);
-    final receiveBitrate = (stats.videoRecvBitrate / 1000000).toStringAsFixed(1);
+    final receiveBitrate = (stats.videoRecvBitrate / 1000000).toStringAsFixed(
+      1,
+    );
     final sendFps = stats.videoFps;
-    final receiveFps = stats.videoFps; // Use same FPS for both since model only has one
-    
+    final receiveFps =
+        stats.videoFps; // Use same FPS for both since model only has one
+
     return _buildSection(
       title: 'Video Quality',
       icon: Icons.videocam,
       child: Column(
         children: [
-          _buildMetricRow(
-            'Send Bitrate',
-            '$sendBitrate Mbps',
-            Colors.blue,
-          ),
+          _buildMetricRow('Send Bitrate', '$sendBitrate Mbps', Colors.blue),
           _buildMetricRow(
             'Receive Bitrate',
             '$receiveBitrate Mbps',
@@ -229,12 +231,20 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
           _buildMetricRow(
             'Send FPS',
             '$sendFps fps',
-            sendFps >= 25 ? Colors.green : sendFps >= 15 ? Colors.orange : Colors.red,
+            sendFps >= 25
+                ? Colors.green
+                : sendFps >= 15
+                ? Colors.orange
+                : Colors.red,
           ),
           _buildMetricRow(
             'Receive FPS',
             '$receiveFps fps',
-            receiveFps >= 25 ? Colors.green : receiveFps >= 15 ? Colors.orange : Colors.red,
+            receiveFps >= 25
+                ? Colors.green
+                : receiveFps >= 15
+                ? Colors.orange
+                : Colors.red,
           ),
           _buildMetricRow(
             'Camera',
@@ -249,7 +259,7 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
   Widget _buildAudioSection(LiveKitService liveKitService, CallStats stats) {
     final audioSendBitrate = (stats.audioSendBitrate / 1000).round();
     final audioReceiveBitrate = (stats.audioRecvBitrate / 1000).round();
-    
+
     return _buildSection(
       title: 'Audio Quality',
       icon: Icons.mic,
@@ -265,16 +275,8 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
             '$audioReceiveBitrate kbps',
             Colors.cyan,
           ),
-          _buildMetricRow(
-            'Noise Suppression',
-            'Enabled',
-            Colors.green,
-          ),
-          _buildMetricRow(
-            'Echo Cancellation',
-            'Enabled',
-            Colors.green,
-          ),
+          _buildMetricRow('Noise Suppression', 'Enabled', Colors.green),
+          _buildMetricRow('Echo Cancellation', 'Enabled', Colors.green),
           _buildMetricRow(
             'Microphone',
             liveKitService.isMicrophoneEnabled ? 'On' : 'Off',
@@ -289,25 +291,22 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
     LiveKitService liveKitService,
     CallConnectionQuality quality,
   ) {
-    final participants = liveKitService.remoteParticipants.length + 1; // +1 for local
-    final connectionState = liveKitService.isConnected ? 'Connected' : 'Disconnected';
-    final connectionColor = liveKitService.isConnected ? Colors.green : Colors.red;
-    
+    final participants =
+        liveKitService.remoteParticipants.length + 1; // +1 for local
+    final connectionState = liveKitService.isConnected
+        ? 'Connected'
+        : 'Disconnected';
+    final connectionColor = liveKitService.isConnected
+        ? Colors.green
+        : Colors.red;
+
     return _buildSection(
       title: 'Connection Info',
       icon: Icons.info_outline,
       child: Column(
         children: [
-          _buildMetricRow(
-            'Status',
-            connectionState,
-            connectionColor,
-          ),
-          _buildMetricRow(
-            'Participants',
-            '$participants',
-            Colors.blue,
-          ),
+          _buildMetricRow('Status', connectionState, connectionColor),
+          _buildMetricRow('Participants', '$participants', Colors.blue),
           _buildMetricRow(
             'Quality',
             '${quality.name}'.toUpperCase(),
@@ -337,7 +336,7 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
         return [Colors.grey, Colors.grey, Colors.grey];
     }
   }
-  
+
   Color _getQualityColor(CallConnectionQuality quality) {
     switch (quality) {
       case CallConnectionQuality.excellent:
@@ -397,10 +396,7 @@ class _VideoCallQualityDashboardState extends State<VideoCallQualityDashboard> {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white60,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: Colors.white60, fontSize: 12),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
