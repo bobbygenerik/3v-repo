@@ -23,23 +23,25 @@ void main() {
     fakeFirestore = FakeFirebaseFirestore();
     
     // Setup test data: 15 contacts
+    final futures = <Future<void>>[];
     for (int i = 0; i < 15; i++) {
-      await fakeFirestore
+      futures.add(fakeFirestore
           .collection('users')
           .doc('test-user-id')
           .collection('contacts')
           .doc('contact-$i')
-          .set({'addedAt': DateTime.now()});
+          .set({'addedAt': DateTime.now()}));
       
       // Add user data for each contact
-      await fakeFirestore
+      futures.add(fakeFirestore
           .collection('users')
           .doc('contact-$i')
           .set({
         'displayName': 'Contact $i',
         'email': 'contact$i@example.com',
-      });
+      }));
     }
+    await Future.wait(futures);
   });
 
   test('searchContacts performs batch queries correctly (N+1 optimization)', () async {
