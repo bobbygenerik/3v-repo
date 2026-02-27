@@ -124,34 +124,47 @@ void main() {
       // Seed data
       // 1. Create contacts in subcollection
       // 2. Create actual user docs for those contacts
+      final batch = fakeFirestore.batch();
       for (int i = 0; i < 15; i++) {
         final uid = 'contact-$i';
         // Add to contacts subcollection
-        await fakeFirestore
-            .collection('users')
-            .doc('user1')
-            .collection('contacts')
-            .doc(uid)
-            .set({});
+        batch.set(
+          fakeFirestore
+              .collection('users')
+              .doc('user1')
+              .collection('contacts')
+              .doc(uid),
+          <String, dynamic>{},
+        );
 
         // Add user profile
-        await fakeFirestore.collection('users').doc(uid).set({
-          'name': 'Contact $i',
-          'email': 'contact$i@example.com',
-        });
+        batch.set(
+          fakeFirestore.collection('users').doc(uid),
+          <String, dynamic>{
+            'name': 'Contact $i',
+            'email': 'contact$i@example.com',
+          },
+        );
       }
 
       // Add one more contact that doesn't match search
-      await fakeFirestore
-          .collection('users')
-          .doc('user1')
-          .collection('contacts')
-          .doc('other-guy')
-          .set({});
-      await fakeFirestore.collection('users').doc('other-guy').set({
-        'name': 'Other Guy',
-        'email': 'other@example.com',
-      });
+      batch.set(
+        fakeFirestore
+            .collection('users')
+            .doc('user1')
+            .collection('contacts')
+            .doc('other-guy'),
+        <String, dynamic>{},
+      );
+      batch.set(
+        fakeFirestore.collection('users').doc('other-guy'),
+        <String, dynamic>{
+          'name': 'Other Guy',
+          'email': 'other@example.com',
+        },
+      );
+
+      await batch.commit();
     });
 
     test('returns correct filtered contacts', () async {
