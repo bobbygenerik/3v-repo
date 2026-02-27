@@ -7,7 +7,9 @@ class AppColors {
   static const Color primaryDark = Color(0xFF2F3448); // #2F3448
 
   // Bright blue accent - matches logo
-  static const Color primaryBlue = Color(0xFF6B7FB8); // #6B7FB8 - Main brand color
+  static const Color primaryBlue = Color(
+    0xFF6B7FB8,
+  ); // #6B7FB8 - Main brand color
 
   // Dark gray background
   static const Color backgroundDark = Color(0xFF1b1c1e); // #1b1c1e
@@ -22,7 +24,9 @@ class AppColors {
   static const Color textWhite = Color(0xFFF4F4F5); // #F4F4F5
 
   // Secondary blue - lighter version of logo color
-  static const Color accentBlue = Color(0xFF7589C4); // #7589C4 - Lighter variant
+  static const Color accentBlue = Color(
+    0xFF7589C4,
+  ); // #7589C4 - Lighter variant
 
   // Gray for secondary elements
   static const Color gray = Color(0xFF7E8183); // #7E8183
@@ -34,7 +38,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      
+
       // Color scheme based on brand colors
       colorScheme: ColorScheme.dark(
         primary: AppColors.primaryBlue,
@@ -45,10 +49,10 @@ class AppTheme {
         onSurface: AppColors.textWhite,
         surfaceContainerHighest: AppColors.surfaceGray,
       ),
-      
+
       // Scaffold background
       scaffoldBackgroundColor: AppColors.backgroundDark,
-      
+
       // AppBar theme
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.primaryDark,
@@ -56,7 +60,7 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
       ),
-      
+
       // Card theme
       cardTheme: const CardThemeData(
         color: AppColors.primaryDark,
@@ -65,7 +69,7 @@ class AppTheme {
           borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
       ),
-      
+
       // Text theme
       textTheme: const TextTheme(
         displayLarge: TextStyle(color: AppColors.textWhite),
@@ -84,36 +88,32 @@ class AppTheme {
         labelMedium: TextStyle(color: AppColors.textLight),
         labelSmall: TextStyle(color: AppColors.textLight),
       ),
-      
+
       // Icon theme
-      iconTheme: const IconThemeData(
-        color: AppColors.textLight,
-      ),
-      
+      iconTheme: const IconThemeData(color: AppColors.textLight),
+
       // FloatingActionButton theme
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColors.primaryBlue,
         foregroundColor: AppColors.textWhite,
       ),
-      
+
       // ElevatedButton theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryBlue,
           foregroundColor: AppColors.textWhite,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
-      
+
       // TabBar theme
       tabBarTheme: const TabBarThemeData(
         labelColor: AppColors.primaryBlue,
         unselectedLabelColor: AppColors.textLight,
         indicatorColor: AppColors.primaryBlue,
       ),
-      
+
       // Input decoration theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

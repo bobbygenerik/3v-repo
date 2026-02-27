@@ -16,10 +16,13 @@ bool webHasSetParameters() {
 bool webHasSimulcast() {
   try {
     final ua = (html.window.navigator.userAgent ?? '').toString().toLowerCase();
-    final isSafari = ua.contains('safari') && !ua.contains('chrome') && !ua.contains('crios') && !ua.contains('android');
+    final isSafari =
+        ua.contains('safari') &&
+        !ua.contains('chrome') &&
+        !ua.contains('crios') &&
+        !ua.contains('android');
     return webHasSetParameters() && !isSafari;
   } catch (e) {
     return false;
   }
-
 }

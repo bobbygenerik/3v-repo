@@ -11,30 +11,30 @@ class NetworkQualityService extends ChangeNotifier {
   bool _isMonitoring = false;
   int _lastLatencyMs = 0;
   DateTime? _lastStatsAt;
-  
+
   NetworkQuality get currentQuality => _currentQuality;
   bool get isMonitoring => _isMonitoring;
-  
+
   /// Start monitoring network quality
   void startMonitoring() {
     if (_isMonitoring) return;
-    
+
     _isMonitoring = true;
     _qualityTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       _checkNetworkQuality();
     });
-    
+
     // Initial check
     _checkNetworkQuality();
   }
-  
+
   /// Stop monitoring
   void stopMonitoring() {
     _isMonitoring = false;
     _qualityTimer?.cancel();
     _qualityTimer = null;
   }
-  
+
   /// Check network quality by measuring latency
   Future<void> _checkNetworkQuality() async {
     final now = DateTime.now();
@@ -54,7 +54,9 @@ class NetworkQualityService extends ChangeNotifier {
       for (final endpoint in endpoints) {
         final stopwatch = Stopwatch()..start();
         try {
-          final response = await http.head(endpoint).timeout(const Duration(seconds: 5));
+          final response = await http
+              .head(endpoint)
+              .timeout(const Duration(seconds: 5));
           stopwatch.stop();
           latency = stopwatch.elapsedMilliseconds;
           statusCode = response.statusCode;
@@ -70,7 +72,7 @@ class NetworkQualityService extends ChangeNotifier {
       }
 
       _lastLatencyMs = latency;
-      
+
       NetworkQuality newQuality;
       if (statusCode == 204 || statusCode == 200) {
         if (latency < 50) {
@@ -85,7 +87,7 @@ class NetworkQualityService extends ChangeNotifier {
       } else {
         newQuality = NetworkQuality.poor;
       }
-      
+
       if (newQuality != _currentQuality) {
         _currentQuality = newQuality;
         notifyListeners();
@@ -109,10 +111,7 @@ class NetworkQualityService extends ChangeNotifier {
     final jitterMs = stats.jitter * 1000.0;
     final outgoing = stats.availableOutgoingBitrate;
 
-    if (packetLoss <= 0 &&
-        rttMs <= 0 &&
-        jitterMs <= 0 &&
-        outgoing <= 0) {
+    if (packetLoss <= 0 && rttMs <= 0 && jitterMs <= 0 && outgoing <= 0) {
       return;
     }
 
@@ -150,7 +149,7 @@ class NetworkQualityService extends ChangeNotifier {
       );
     }
   }
-  
+
   /// Get recommended video bitrate based on network quality (EXTREME QUALITY)
   int getRecommendedVideoBitrate() {
     switch (_currentQuality) {
@@ -161,7 +160,7 @@ class NetworkQualityService extends ChangeNotifier {
       case NetworkQuality.fair:
         return 12000 * 1000; // 12 Mbps (enhanced 1080p)
       case NetworkQuality.poor:
-        return 6000 * 1000;  // 6 Mbps (720p floor)
+        return 6000 * 1000; // 6 Mbps (720p floor)
       case NetworkQuality.offline:
         return 0;
     }
@@ -169,7 +168,7 @@ class NetworkQualityService extends ChangeNotifier {
 
   /// Return last measured latency in milliseconds (may be 0 if not measured)
   int getLastMeasuredLatencyMs() => _lastLatencyMs;
-  
+
   /// Get recommended audio bitrate
   int getRecommendedAudioBitrate() {
     switch (_currentQuality) {
@@ -184,13 +183,13 @@ class NetworkQualityService extends ChangeNotifier {
         return 0;
     }
   }
-  
+
   /// Should use video based on network quality
   bool shouldUseVideo() {
-    return _currentQuality != NetworkQuality.offline && 
-           _currentQuality != NetworkQuality.poor;
+    return _currentQuality != NetworkQuality.offline &&
+        _currentQuality != NetworkQuality.poor;
   }
-  
+
   /// Get current network type as string
   String getCurrentNetworkType() {
     switch (_currentQuality) {
@@ -205,7 +204,7 @@ class NetworkQualityService extends ChangeNotifier {
         return 'none';
     }
   }
-  
+
   @override
   void dispose() {
     stopMonitoring();

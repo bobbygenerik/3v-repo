@@ -19,7 +19,7 @@ class GuestLinkService extends ChangeNotifier {
   String? get error => _error;
 
   /// Generate a guest link for a room
-  /// 
+  ///
   /// Creates a time-limited token that allows guest access
   /// Returns the shareable URL or null if generation fails
   Future<String?> generateGuestLink({
@@ -33,36 +33,38 @@ class GuestLinkService extends ChangeNotifier {
 
     try {
       // Call Firebase Function to generate guest token
-      final response = await http.post(
-        Uri.parse(Environment.generateTokenEndpoint),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'roomName': roomName,
-          'participantName': guestName,
-          'expiryMinutes': expiryMinutes,
-        }),
-      ).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw Exception('Request timed out'),
-      );
+      final response = await http
+          .post(
+            Uri.parse(Environment.generateTokenEndpoint),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'roomName': roomName,
+              'participantName': guestName,
+              'expiryMinutes': expiryMinutes,
+            }),
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw Exception('Request timed out'),
+          );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         _guestToken = data['token'];
         _currentRoomName = roomName;
-        
+
         // Construct shareable URL
         // Format: https://your-app.web.app/join?room=ROOM&token=TOKEN
-        final baseUrl = Environment.functionsBaseUrl.replaceAll(
-          '/generateGuestToken',
-          '',
-        ).replaceAll(
-          RegExp(r'https://[^.]+\.cloudfunctions\.net'),
-          'https://your-firebase-project.web.app',
-        );
-        
-        _currentGuestLink = '$baseUrl/join?room=${Uri.encodeComponent(roomName)}&token=$_guestToken';
-        
+        final baseUrl = Environment.functionsBaseUrl
+            .replaceAll('/generateGuestToken', '')
+            .replaceAll(
+              RegExp(r'https://[^.]+\.cloudfunctions\.net'),
+              'https://your-firebase-project.web.app',
+            );
+
+        _currentGuestLink =
+            '$baseUrl/join?room=${Uri.encodeComponent(roomName)}&token=$_guestToken';
+
         _isGenerating = false;
         notifyListeners();
         return _currentGuestLink;
@@ -73,7 +75,7 @@ class GuestLinkService extends ChangeNotifier {
       _error = e.toString();
       _isGenerating = false;
       notifyListeners();
-      
+
       if (kDebugMode) {
         print('❌ Error generating guest link: $e');
       }
@@ -87,14 +89,12 @@ class GuestLinkService extends ChangeNotifier {
       throw Exception('No guest link available to share');
     }
 
-    final message = customMessage ?? 
-      'Join my video call!\nRoom: $_currentRoomName\n\n$_currentGuestLink';
+    final message =
+        customMessage ??
+        'Join my video call!\nRoom: $_currentRoomName\n\n$_currentGuestLink';
 
     try {
-      await Share.share(
-        message,
-        subject: 'Video Call Invitation',
-      );
+      await Share.share(message, subject: 'Video Call Invitation');
     } catch (e) {
       _error = 'Failed to share link: $e';
       notifyListeners();
@@ -141,13 +141,10 @@ class GuestLinkService extends ChangeNotifier {
       if (roomName != null && token != null) {
         final isValid = await validateGuestToken(token);
         if (isValid) {
-          return {
-            'roomName': roomName,
-            'token': token,
-          };
+          return {'roomName': roomName, 'token': token};
         }
       }
-      
+
       return null;
     } catch (e) {
       if (kDebugMode) {

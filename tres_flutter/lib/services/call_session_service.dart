@@ -7,19 +7,19 @@ import 'package:flutter/foundation.dart';
 /// Manages active call sessions and ensures proper cleanup
 class CallSessionService extends ChangeNotifier {
   CallSessionService({FirebaseFirestore? firestore, FirebaseAuth? auth})
-      : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
-  
+
   String? _currentSessionId;
   StreamSubscription<DocumentSnapshot>? _sessionSubscription;
   Timer? _heartbeatTimer;
-  
+
   String? get currentSessionId => _currentSessionId;
   bool get isInCall => _currentSessionId != null;
-  
+
   /// Start a call session
   Future<void> startSession(String roomName, List<String> participants) async {
     try {
@@ -43,14 +43,21 @@ class CallSessionService extends ChangeNotifier {
         }
 
         if (activeDoc != null) {
-          debugPrint('🔁 Joining existing call session: ${activeDoc.id} for room $roomName');
+          debugPrint(
+            '🔁 Joining existing call session: ${activeDoc.id} for room $roomName',
+          );
 
           // Ensure participants array includes current user and any passed participants
-          await _firestore.collection('call_sessions').doc(activeDoc.id).update({
-            'participants': FieldValue.arrayUnion([...participants, currentUser.uid]),
-            'participantStatus.${currentUser.uid}': 'connected',
-            'lastHeartbeat': FieldValue.serverTimestamp(),
-          });
+          await _firestore.collection('call_sessions').doc(activeDoc.id).update(
+            {
+              'participants': FieldValue.arrayUnion([
+                ...participants,
+                currentUser.uid,
+              ]),
+              'participantStatus.${currentUser.uid}': 'connected',
+              'lastHeartbeat': FieldValue.serverTimestamp(),
+            },
+          );
 
           _currentSessionId = activeDoc.id;
           _sessionSubscription = _firestore
@@ -67,7 +74,10 @@ class CallSessionService extends ChangeNotifier {
 
       // No existing session found - create a new one
       // Ensure the current user is included in the participants list
-      final createdParticipants = <String>{...participants, currentUser.uid}.toList();
+      final createdParticipants = <String>{
+        ...participants,
+        currentUser.uid,
+      }.toList();
 
       final sessionRef = await _firestore.collection('call_sessions').add({
         'roomName': roomName,
@@ -77,14 +87,16 @@ class CallSessionService extends ChangeNotifier {
         'startTime': FieldValue.serverTimestamp(),
         'lastHeartbeat': FieldValue.serverTimestamp(),
         'participantStatus': {
-          for (String uid in createdParticipants) uid: 'connected'
+          for (String uid in createdParticipants) uid: 'connected',
         },
       });
 
       _currentSessionId = sessionRef.id;
 
       // Listen for session changes
-      _sessionSubscription = sessionRef.snapshots().listen(_handleSessionUpdate);
+      _sessionSubscription = sessionRef.snapshots().listen(
+        _handleSessionUpdate,
+      );
 
       // Start heartbeat
       _startHeartbeat();
@@ -95,19 +107,22 @@ class CallSessionService extends ChangeNotifier {
       debugPrint('❌ Error starting session: $e');
     }
   }
-  
+
   /// End the call session
   Future<void> endSession() async {
     if (_currentSessionId == null) return;
-    
+
     try {
       // Mark session as ended
-      await _firestore.collection('call_sessions').doc(_currentSessionId).update({
-        'status': 'ended',
-        'endTime': FieldValue.serverTimestamp(),
-        'endedBy': _auth.currentUser?.uid,
-      });
-      
+      await _firestore
+          .collection('call_sessions')
+          .doc(_currentSessionId)
+          .update({
+            'status': 'ended',
+            'endTime': FieldValue.serverTimestamp(),
+            'endedBy': _auth.currentUser?.uid,
+          });
+
       debugPrint('📞 Call session ended: $_currentSessionId');
       _cleanup();
     } catch (e) {
@@ -115,7 +130,7 @@ class CallSessionService extends ChangeNotifier {
       _cleanup(); // Still cleanup locally even if Firestore update fails
     }
   }
-  
+
   /// Handle session updates
   void _handleSessionUpdate(DocumentSnapshot snapshot) {
     if (!snapshot.exists) {
@@ -124,14 +139,14 @@ class CallSessionService extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    
+
     final data = snapshot.data() as Map<String, dynamic>?;
     if (data == null) return;
-    
+
     final status = data['status'] as String?;
     final endedBy = data['endedBy'] as String?;
     final currentUserId = _auth.currentUser?.uid;
-    
+
     // If session ended by someone else, cleanup locally
     if (status == 'ended' && endedBy != currentUserId) {
       debugPrint('📞 Call ended by another participant: $endedBy');
@@ -140,27 +155,28 @@ class CallSessionService extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// Start heartbeat to keep session alive
   void _startHeartbeat() {
     _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _sendHeartbeat();
     });
   }
-  
+
   /// Send heartbeat
   Future<void> _sendHeartbeat() async {
     if (_currentSessionId == null) return;
-    
+
     try {
-      await _firestore.collection('call_sessions').doc(_currentSessionId).update({
-        'lastHeartbeat': FieldValue.serverTimestamp(),
-      });
+      await _firestore
+          .collection('call_sessions')
+          .doc(_currentSessionId)
+          .update({'lastHeartbeat': FieldValue.serverTimestamp()});
     } catch (e) {
       debugPrint('❌ Heartbeat failed: $e');
     }
   }
-  
+
   /// Cleanup session
   void _cleanup() {
     _heartbeatTimer?.cancel();
@@ -170,7 +186,7 @@ class CallSessionService extends ChangeNotifier {
     _currentSessionId = null;
     notifyListeners();
   }
-  
+
   @override
   void dispose() {
     endSession();

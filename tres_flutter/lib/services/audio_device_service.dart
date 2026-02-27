@@ -4,19 +4,17 @@ import 'package:flutter/services.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'dart:io' show Platform;
 
-enum AudioOutputDevice {
-  speaker,
-  earpiece,
-  bluetooth,
-  wired,
-}
+enum AudioOutputDevice { speaker, earpiece, bluetooth, wired }
 
 class AudioDeviceService extends ChangeNotifier {
   static const MethodChannel _channel = MethodChannel('tres3/audio');
 
   AudioOutputDevice _currentOutput = AudioOutputDevice.speaker;
   double _volume = 1.0;
-  List<AudioOutputDevice> _availableDevices = [AudioOutputDevice.speaker, AudioOutputDevice.earpiece];
+  List<AudioOutputDevice> _availableDevices = [
+    AudioOutputDevice.speaker,
+    AudioOutputDevice.earpiece,
+  ];
 
   AudioOutputDevice get currentOutput => _currentOutput;
   double get volume => _volume;
@@ -29,14 +27,17 @@ class AudioDeviceService extends ChangeNotifier {
 
   Future<void> _detectAvailableDevices() async {
     _availableDevices = [];
-    
+
     if (kIsWeb) {
       // Web: Only speaker available (browser controls audio routing)
       _availableDevices = [AudioOutputDevice.speaker];
     } else {
       // Mobile: Speaker and earpiece always available
-      _availableDevices = [AudioOutputDevice.speaker, AudioOutputDevice.earpiece];
-      
+      _availableDevices = [
+        AudioOutputDevice.speaker,
+        AudioOutputDevice.earpiece,
+      ];
+
       // Add Bluetooth and wired on mobile platforms
       try {
         if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
@@ -47,7 +48,7 @@ class AudioDeviceService extends ChangeNotifier {
         debugPrint('Platform-specific device detection failed: $e');
       }
     }
-    
+
     notifyListeners();
   }
 
@@ -59,7 +60,7 @@ class AudioDeviceService extends ChangeNotifier {
   Future<void> setAudioOutput(AudioOutputDevice device) async {
     try {
       _currentOutput = device;
-      
+
       // Only apply audio routing on mobile platforms
       if (!kIsWeb) {
         switch (device) {
@@ -73,7 +74,7 @@ class AudioDeviceService extends ChangeNotifier {
             break;
         }
       }
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('Failed to set audio output: $e');
@@ -90,8 +91,12 @@ class AudioDeviceService extends ChangeNotifier {
   Future<void> setSpatialAudioEnabled(bool enabled) async {
     if (kIsWeb) return; // Not supported on web via this channel
     try {
-      await _channel.invokeMethod('setSpatialAudioEnabled', {'enabled': enabled});
-      debugPrint('Spatial audio ${enabled ? "enabled" : "disabled"} (native request sent)');
+      await _channel.invokeMethod('setSpatialAudioEnabled', {
+        'enabled': enabled,
+      });
+      debugPrint(
+        'Spatial audio ${enabled ? "enabled" : "disabled"} (native request sent)',
+      );
     } catch (e) {
       debugPrint('Failed to set spatial audio: $e');
     }

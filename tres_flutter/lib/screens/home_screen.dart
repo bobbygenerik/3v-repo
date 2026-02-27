@@ -46,7 +46,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   bool _showContactsView = true;
@@ -59,17 +60,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   StreamSubscription<QuerySnapshot>? _callHistorySub;
   StreamSubscription<User?>? _authSub;
   final Map<String, Map<String, dynamic>> _userCache = {};
-  
+
   late final FirebaseFirestore _firestore;
   late final CallListenerService _callListener;
   late final CallSignalingService _signalingService;
   late final CallSessionService _sessionService;
-  
+
   // Ticker animation for search placeholder
   int _currentPlaceholderIndex = 0;
-  final List<String> _placeholders = ['Display Name', 'Email']; // Changed from 'Username'
+  final List<String> _placeholders = [
+    'Display Name',
+    'Email',
+  ]; // Changed from 'Username'
   late AnimationController _tickerController;
-  
+
   // Welcome message
   int _currentWelcomeIndex = 0;
   final List<String> _welcomeMessages = [
@@ -77,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     'Bienvenido, ',
     'Bem-vindo, ',
   ];
-  
+
   // Cascading text animation - only plays once
   late AnimationController _textAnimationController;
   List<Animation<double>> _letterAnimations = [];
@@ -88,12 +92,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   void initState() {
     super.initState();
     _firestore = widget.firestore ?? FirebaseFirestore.instance;
-    _callListener = widget.callListener ?? CallListenerService(firestore: _firestore);
-    _signalingService = widget.signalingService ?? CallSignalingService(firestore: _firestore);
-    _sessionService = widget.sessionService ?? CallSessionService(firestore: _firestore);
+    _callListener =
+        widget.callListener ?? CallListenerService(firestore: _firestore);
+    _signalingService =
+        widget.signalingService ?? CallSignalingService(firestore: _firestore);
+    _sessionService =
+        widget.sessionService ?? CallSessionService(firestore: _firestore);
 
     WidgetsBinding.instance.addObserver(this);
-    
+
     // Defer data loading until after first frame to avoid context issues
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -119,49 +126,51 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       _loadContacts();
       _loadCallHistory();
     });
-    
+
     _searchController.addListener(_filterContacts);
-    
+
     // Listen to search focus changes
     _searchFocusNode.addListener(() {
       setState(() {
         _searchHasFocus = _searchFocusNode.hasFocus;
       });
     });
-    
+
     // Start listening for incoming calls
     _callListener.startListening();
     _callListener.addListener(_handleIncomingCall);
-    
+
     // Ticker animation
     _tickerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
     _startTickerAnimation();
-    
+
     // Initialize text animation controller
     _textAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     );
-    
+
     // Defer context-dependent initialization until after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         // Pick a random welcome message for this session
-        _currentWelcomeIndex = DateTime.now().millisecond % _welcomeMessages.length;
+        _currentWelcomeIndex =
+            DateTime.now().millisecond % _welcomeMessages.length;
         final user = context.read<AuthService>().currentUser;
-        _currentWelcomeText = '${_welcomeMessages[_currentWelcomeIndex]}${user?.displayName ?? user?.email?.split('@')[0] ?? 'Guest'}';
+        _currentWelcomeText =
+            '${_welcomeMessages[_currentWelcomeIndex]}${user?.displayName ?? user?.email?.split('@')[0] ?? 'Guest'}';
         _setupLetterAnimations();
-        
+
         // Play animation once
         _textAnimationController.forward().then((_) {
           if (mounted) {
             setState(() => _hasAnimated = true);
           }
         });
-        
+
         // Request notification permissions after a short delay
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) {
@@ -171,30 +180,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       }
     });
   }
-  
+
   Future<void> _requestNotificationPermissions() async {
     try {
       // Check if already granted
-      final alreadyEnabled = await NotificationService.areNotificationsEnabled();
+      final alreadyEnabled =
+          await NotificationService.areNotificationsEnabled();
       if (alreadyEnabled) {
         debugPrint('✅ Notifications already enabled');
         return;
       }
-      
+
       // Show explanation dialog first for better UX
       if (!mounted) return;
-      
+
       final shouldRequest = await showDialog<bool>(
         context: context,
         barrierDismissible: true,
         builder: (context) => AlertDialog(
           backgroundColor: const Color(0xFF1C1C1E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Row(
             children: [
-              Icon(Icons.notifications_active, color: Color(0xFF0175C2), size: 28),
+              Icon(
+                Icons.notifications_active,
+                color: Color(0xFF0175C2),
+                size: 28,
+              ),
               SizedBox(width: 12),
-              Text('Enable Notifications', style: TextStyle(color: Colors.white, fontSize: 20)),
+              Text(
+                'Enable Notifications',
+                style: TextStyle(color: Colors.white, fontSize: 20),
+              ),
             ],
           ),
           content: const Column(
@@ -203,7 +222,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             children: [
               Text(
                 'Stay connected and never miss a call!',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               SizedBox(height: 16),
               Text(
@@ -217,20 +240,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Later', style: TextStyle(color: Colors.white54)),
+              child: const Text(
+                'Later',
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0175C2),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: const Text('Enable', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Enable',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
       );
-      
+
       if (shouldRequest == true) {
         final granted = await NotificationService.enableNotifications();
         if (granted) {
@@ -249,7 +280,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('⚠️ Notifications were not enabled. You can enable them later in Settings.'),
+                content: Text(
+                  '⚠️ Notifications were not enabled. You can enable them later in Settings.',
+                ),
                 backgroundColor: Colors.orange,
                 duration: Duration(seconds: 3),
               ),
@@ -261,13 +294,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       debugPrint('⚠️ Error requesting notification permissions: $e');
     }
   }
-  
+
   /// Handle incoming call notifications
   void _handleIncomingCall() {
     final incomingCall = _callListener.currentIncomingCall;
     if (incomingCall != null && mounted) {
       debugPrint('📞 Showing incoming call screen');
-      
+
       // Show incoming call screen
       Navigator.push(
         context,
@@ -289,7 +322,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       });
     }
   }
-  
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
@@ -298,7 +331,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       setState(() {});
     }
   }
-  
+
   void _setupLetterAnimations() {
     _letterAnimations = List.generate(_currentWelcomeText.length, (index) {
       final start = index * 0.08; // Stagger each letter fade
@@ -320,7 +353,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         setState(() {
-          _currentPlaceholderIndex = (_currentPlaceholderIndex + 1) % _placeholders.length;
+          _currentPlaceholderIndex =
+              (_currentPlaceholderIndex + 1) % _placeholders.length;
         });
         _startTickerAnimation();
       }
@@ -395,7 +429,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         if (contactsMap.containsKey(contactId)) {
           loadedContacts.add(contactsMap[contactId]!);
         } else {
-          debugPrint('⚠️ Contact $contactId exists in list but user data not found');
+          debugPrint(
+            '⚠️ Contact $contactId exists in list but user data not found',
+          );
         }
       }
       setState(() {
@@ -430,94 +466,113 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         .orderBy('timestamp', descending: true)
         .limit(50)
         .snapshots()
-        .listen((snapshot) async {
-      // 1. Collect all unique participant IDs that need fetching
-      final Set<String> participantIdsToFetch = {};
+        .listen(
+          (snapshot) async {
+            // 1. Collect all unique participant IDs that need fetching
+            final Set<String> participantIdsToFetch = {};
 
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final participants = List<String>.from(data['participants'] ?? []);
+            for (var doc in snapshot.docs) {
+              final data = doc.data();
+              final participants = List<String>.from(
+                data['participants'] ?? [],
+              );
 
-        for (final participantId in participants) {
-          if (participantId != currentUser.uid && !_userCache.containsKey(participantId)) {
-            participantIdsToFetch.add(participantId);
-          }
-        }
-      }
-
-      // 2. Fetch missing users in parallel
-      // Bolt Optimization: Fetch users in batches of 10 to avoid N+1 queries
-      if (participantIdsToFetch.isNotEmpty) {
-        final idsList = participantIdsToFetch.toList();
-        final futures = <Future<void>>[];
-
-        for (var i = 0; i < idsList.length; i += 10) {
-          final end = (i + 10 < idsList.length) ? i + 10 : idsList.length;
-          final chunk = idsList.sublist(i, end);
-
-          if (chunk.isEmpty) continue;
-
-          futures.add(() async {
-            try {
-              final chunkSnapshot = await _firestore
-                  .collection('users')
-                  .where(FieldPath.documentId, whereIn: chunk)
-                  .get();
-
-              for (var userDoc in chunkSnapshot.docs) {
-                if (userDoc.exists) {
-                  final userData = userDoc.data();
-                  _userCache[userDoc.id] = userData;
+              for (final participantId in participants) {
+                if (participantId != currentUser.uid &&
+                    !_userCache.containsKey(participantId)) {
+                  participantIdsToFetch.add(participantId);
                 }
               }
-            } catch (e) {
-              debugPrint('Error fetching user chunk: $e');
             }
-          }());
-        }
 
-        await Future.wait(futures);
-      }
+            // 2. Fetch missing users in parallel
+            // Bolt Optimization: Fetch users in batches of 10 to avoid N+1 queries
+            if (participantIdsToFetch.isNotEmpty) {
+              final idsList = participantIdsToFetch.toList();
+              final futures = <Future<void>>[];
 
-      // 3. Construct history list using cache
-      final List<Map<String, dynamic>> history = [];
+              for (var i = 0; i < idsList.length; i += 10) {
+                final end = (i + 10 < idsList.length) ? i + 10 : idsList.length;
+                final chunk = idsList.sublist(i, end);
 
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final participants = List<String>.from(data['participants'] ?? []);
+                if (chunk.isEmpty) continue;
 
-        // Resolve other participant's display name if available
-        String otherParticipantName = 'Unknown';
-        for (final participantId in participants) {
-          if (participantId != currentUser.uid) {
-            final userData = _userCache[participantId];
-            if (userData != null) {
-              otherParticipantName = userData['displayName'] ?? userData['name'] ?? userData['email']?.split('@')[0] ?? 'Unknown User';
+                futures.add(() async {
+                  try {
+                    final chunkSnapshot = await _firestore
+                        .collection('users')
+                        .where(FieldPath.documentId, whereIn: chunk)
+                        .get();
+
+                    for (var userDoc in chunkSnapshot.docs) {
+                      if (userDoc.exists) {
+                        final userData = userDoc.data();
+                        _userCache[userDoc.id] = userData;
+                      }
+                    }
+                  } catch (e) {
+                    debugPrint('Error fetching user chunk: $e');
+                  }
+                }());
+              }
+
+              await Future.wait(futures);
             }
-            break;
-          }
-        }
 
-        history.add({
-          'id': doc.id,
-          'roomName': data['roomName'] ?? 'Unknown',
-          'participantName': otherParticipantName,
-          'timestamp': (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          'duration': data['duration'] ?? _calculateDuration(data['startTime'] as Timestamp?, data['endTime'] as Timestamp?),
-          'participants': participants,
-        });
-      }
+            // 3. Construct history list using cache
+            final List<Map<String, dynamic>> history = [];
 
-      if (!mounted) return;
-      setState(() {
-        _callHistory = history;
-        _isLoadingHistory = false;
-      });
-    }, onError: (e) {
-      debugPrint('Error listening to call history snapshots: $e');
-      if (!mounted) return;
-      setState(() => _isLoadingHistory = false);
-    });
+            for (var doc in snapshot.docs) {
+              final data = doc.data();
+              final participants = List<String>.from(
+                data['participants'] ?? [],
+              );
+
+              // Resolve other participant's display name if available
+              String otherParticipantName = 'Unknown';
+              for (final participantId in participants) {
+                if (participantId != currentUser.uid) {
+                  final userData = _userCache[participantId];
+                  if (userData != null) {
+                    otherParticipantName =
+                        userData['displayName'] ??
+                        userData['name'] ??
+                        userData['email']?.split('@')[0] ??
+                        'Unknown User';
+                  }
+                  break;
+                }
+              }
+
+              history.add({
+                'id': doc.id,
+                'roomName': data['roomName'] ?? 'Unknown',
+                'participantName': otherParticipantName,
+                'timestamp':
+                    (data['timestamp'] as Timestamp?)?.toDate() ??
+                    DateTime.now(),
+                'duration':
+                    data['duration'] ??
+                    _calculateDuration(
+                      data['startTime'] as Timestamp?,
+                      data['endTime'] as Timestamp?,
+                    ),
+                'participants': participants,
+              });
+            }
+
+            if (!mounted) return;
+            setState(() {
+              _callHistory = history;
+              _isLoadingHistory = false;
+            });
+          },
+          onError: (e) {
+            debugPrint('Error listening to call history snapshots: $e');
+            if (!mounted) return;
+            setState(() => _isLoadingHistory = false);
+          },
+        );
   }
 
   int _calculateDuration(Timestamp? startTime, Timestamp? endTime) {
@@ -548,10 +603,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       _isLoadingContacts = true;
       _isLoadingHistory = true;
     });
-    await Future.wait([
-      _loadContacts(),
-      _loadCallHistory(),
-    ]);
+    await Future.wait([_loadContacts(), _loadCallHistory()]);
   }
 
   Future<bool> _confirmDeleteContact(Map<String, dynamic> contact) async {
@@ -612,9 +664,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.redAccent,
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
-                        child: const Text('Remove', style: TextStyle(color: Colors.white)),
+                        child: const Text(
+                          'Remove',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ),
                   ],
@@ -686,176 +743,235 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   Widget build(BuildContext context) {
     final authService = context.read<AuthService>();
     final user = authService.currentUser;
-    
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E), // Dark background matching screenshot
+      backgroundColor: const Color(
+        0xFF1C1C1E,
+      ), // Dark background matching screenshot
       body: ResponsiveContainer(
         maxWidth: 768,
         child: SafeArea(
           child: Column(
             children: [
-            // Header Row: Logo and Profile
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 8, 16, 0), // Very close to top (8px)
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start, // Align items at their top
-                children: [
-                  // Logo - left aligned very close to edge, lowered 8px
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8), // Lower logo by 8px
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      height: 60,
-                      fit: BoxFit.contain,
-                      semanticLabel: 'Tres Logo',
-                    ),
-                  ),
-                  // Profile button - right aligned with ring, lowered 10px
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10), // Lower profile button by 10px
-                    child: PopupMenuButton<String>(
-                    tooltip: 'Account Menu',
-                    offset: const Offset(0, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    color: const Color(0xFF2C2C2E),
-                    onSelected: (value) async {
-                      switch (value) {
-                        case 'profile':
-                          await Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
-                          // Refresh UI after returning from profile screen
-                          setState(() {});
-                          break;
-                        case 'guest_link':
-                          _showGuestLinkDialog();
-                          break;
-                        case 'settings':
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
-                          break;
-                        case 'signout':
-                          _signOut();
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'profile',
-                        child: Row(
-                          children: [
-                            Icon(Icons.person, size: 20, color: Color(0xFF6B7FB8)),
-                            SizedBox(width: 12),
-                            Text('Profile', style: TextStyle(color: Colors.white)),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'guest_link',
-                        child: Row(
-                          children: [
-                            Icon(Icons.link, size: 20, color: Color(0xFF6B7FB8)),
-                            SizedBox(width: 12),
-                            Text('Create Guest Link', style: TextStyle(color: Colors.white)),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'settings',
-                        child: Row(
-                          children: [
-                            Icon(Icons.settings, size: 20, color: Color(0xFF6B7FB8)),
-                            SizedBox(width: 12),
-                            Text('Settings', style: TextStyle(color: Colors.white)),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuDivider(),
-                      const PopupMenuItem(
-                        value: 'signout',
-                        child: Row(
-                          children: [
-                            Icon(Icons.logout, size: 20, color: Colors.red),
-                            SizedBox(width: 12),
-                            Text('Sign Out', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-                    ],
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFF6B7FB8), // Main app color ring
-                          width: 2,
-                        ),
-                      ),
-                      child: CircleAvatar(
-                        radius: 20,
-                        backgroundColor: const Color(0xFF2C2C2E),
-                        backgroundImage: (user?.photoURL?.isNotEmpty ?? false)
-                            ? CachedNetworkImageProvider(user!.photoURL!)
-                            : null,
-                        child: (user?.photoURL?.isEmpty ?? true)
-                            ? Text(
-                                _getUserInitial(user),
-                                style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
-                              )
-                            : null,
+              // Header Row: Logo and Profile
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  4,
+                  8,
+                  16,
+                  0,
+                ), // Very close to top (8px)
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start, // Align items at their top
+                  children: [
+                    // Logo - left aligned very close to edge, lowered 8px
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        top: 8,
+                      ), // Lower logo by 8px
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        height: 60,
+                        fit: BoxFit.contain,
+                        semanticLabel: 'Tres Logo',
                       ),
                     ),
-                  ),
-                ), // Close Padding for profile button
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 80),
-
-            // Welcome Message - CENTERED with fade-in animation
-            AnimatedBuilder(
-              animation: _textAnimationController,
-              builder: (context, child) {
-                return Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List.generate(_currentWelcomeText.length, (index) {
-                      return Opacity(
-                        opacity: _letterAnimations.length > index 
-                            ? _letterAnimations[index].value
-                            : (_hasAnimated ? 1.0 : 0.0),
-                        child: Text(
-                          _currentWelcomeText[index],
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.white,
+                    // Profile button - right aligned with ring, lowered 10px
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        top: 10,
+                      ), // Lower profile button by 10px
+                      child: PopupMenuButton<String>(
+                        tooltip: 'Account Menu',
+                        offset: const Offset(0, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        color: const Color(0xFF2C2C2E),
+                        onSelected: (value) async {
+                          switch (value) {
+                            case 'profile':
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ProfileScreen(),
+                                ),
+                              );
+                              // Refresh UI after returning from profile screen
+                              setState(() {});
+                              break;
+                            case 'guest_link':
+                              _showGuestLinkDialog();
+                              break;
+                            case 'settings':
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SettingsScreen(),
+                                ),
+                              );
+                              break;
+                            case 'signout':
+                              _signOut();
+                              break;
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'profile',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.person,
+                                  size: 20,
+                                  color: Color(0xFF6B7FB8),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Profile',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'guest_link',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.link,
+                                  size: 20,
+                                  color: Color(0xFF6B7FB8),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Create Guest Link',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'settings',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.settings,
+                                  size: 20,
+                                  color: Color(0xFF6B7FB8),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Settings',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuDivider(),
+                          const PopupMenuItem(
+                            value: 'signout',
+                            child: Row(
+                              children: [
+                                Icon(Icons.logout, size: 20, color: Colors.red),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Sign Out',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(
+                                0xFF6B7FB8,
+                              ), // Main app color ring
+                              width: 2,
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            radius: 20,
+                            backgroundColor: const Color(0xFF2C2C2E),
+                            backgroundImage:
+                                (user?.photoURL?.isNotEmpty ?? false)
+                                ? CachedNetworkImageProvider(user!.photoURL!)
+                                : null,
+                            child: (user?.photoURL?.isEmpty ?? true)
+                                ? Text(
+                                    _getUserInitial(user),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                : null,
                           ),
                         ),
-                      );
-                    }),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 32),
-
-            // Search Box - EXACT match to screenshot
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Container(
-                height: 54,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2C2C2E), // Charcoal gray
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _searchHasFocus 
-                        ? const Color(0xFF6B7FB8) // Blue border when focused
-                        : const Color(0xFF3A3A3C), // Gray border when not focused
-                    width: _searchHasFocus ? 2 : 1,
-                  ),
+                      ),
+                    ), // Close Padding for profile button
+                  ],
                 ),
-                child: Row(
-                  children: [
+              ),
+
+              const SizedBox(height: 80),
+
+              // Welcome Message - CENTERED with fade-in animation
+              AnimatedBuilder(
+                animation: _textAnimationController,
+                builder: (context, child) {
+                  return Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(_currentWelcomeText.length, (
+                        index,
+                      ) {
+                        return Opacity(
+                          opacity: _letterAnimations.length > index
+                              ? _letterAnimations[index].value
+                              : (_hasAnimated ? 1.0 : 0.0),
+                          child: Text(
+                            _currentWelcomeText[index],
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.white,
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 32),
+
+              // Search Box - EXACT match to screenshot
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2C2C2E), // Charcoal gray
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _searchHasFocus
+                          ? const Color(0xFF6B7FB8) // Blue border when focused
+                          : const Color(
+                              0xFF3A3A3C,
+                            ), // Gray border when not focused
+                      width: _searchHasFocus ? 2 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
                       // @ symbol
                       const Padding(
                         padding: EdgeInsets.only(left: 16, right: 8),
@@ -901,7 +1017,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                             TextField(
                               controller: _searchController,
                               focusNode: _searchFocusNode,
-                              style: const TextStyle(color: Colors.white, fontSize: 16),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
                               cursorColor: const Color(0xFF6B7FB8),
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
@@ -942,127 +1061,130 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                         onPressed: () => _showAddContactDialog(),
                         tooltip: 'Add Contact',
                         padding: const EdgeInsets.only(right: 12, left: 8),
-                        constraints: const BoxConstraints(), // Minimizes extra padding/margin
+                        constraints:
+                            const BoxConstraints(), // Minimizes extra padding/margin
                       ),
-                      ],
-                    ),
-                  ),
-                ),
-
-            const SizedBox(height: 20),            // Contacts / History buttons
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Semantics(
-                      selected: _showContactsView,
-                      label: 'Show contacts list',
-                      child: ElevatedButton(
-                        onPressed: () {
-                          VibrationService.lightImpact();
-                          setState(() => _showContactsView = true);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _showContactsView
-                              ? const Color(0xFF6B7FB8)
-                              : const Color(0xFF2C2C2E),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                              color: _showContactsView
-                                  ? const Color(0xFF6B7FB8)
-                                  : const Color(0xFF3A3A3C),
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.people, size: 18),
-                            SizedBox(width: 8),
-                            Text('Contacts', style: TextStyle(fontSize: 15)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Semantics(
-                      selected: !_showContactsView,
-                      label: 'Show call history',
-                      child: ElevatedButton(
-                        onPressed: () {
-                          VibrationService.lightImpact();
-                          setState(() => _showContactsView = false);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: !_showContactsView
-                              ? const Color(0xFF6B7FB8)
-                              : const Color(0xFF2C2C2E),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                              color: !_showContactsView
-                                  ? const Color(0xFF6B7FB8)
-                                  : const Color(0xFF3A3A3C),
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.history, size: 18),
-                            SizedBox(width: 8),
-                            Text('History', style: TextStyle(fontSize: 15)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Section Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  _showContactsView ? 'Your Contacts' : 'Call History',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF8E8E93),
+                    ],
                   ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 16),
-
-            // Content
-            Expanded(
-              child: _wrapWithRefresh(
-                _showContactsView ? _buildContactsList() : _buildHistoryList(),
+              const SizedBox(height: 20), // Contacts / History buttons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Semantics(
+                        selected: _showContactsView,
+                        label: 'Show contacts list',
+                        child: ElevatedButton(
+                          onPressed: () {
+                            VibrationService.lightImpact();
+                            setState(() => _showContactsView = true);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _showContactsView
+                                ? const Color(0xFF6B7FB8)
+                                : const Color(0xFF2C2C2E),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: _showContactsView
+                                    ? const Color(0xFF6B7FB8)
+                                    : const Color(0xFF3A3A3C),
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.people, size: 18),
+                              SizedBox(width: 8),
+                              Text('Contacts', style: TextStyle(fontSize: 15)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Semantics(
+                        selected: !_showContactsView,
+                        label: 'Show call history',
+                        child: ElevatedButton(
+                          onPressed: () {
+                            VibrationService.lightImpact();
+                            setState(() => _showContactsView = false);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: !_showContactsView
+                                ? const Color(0xFF6B7FB8)
+                                : const Color(0xFF2C2C2E),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: !_showContactsView
+                                    ? const Color(0xFF6B7FB8)
+                                    : const Color(0xFF3A3A3C),
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.history, size: 18),
+                              SizedBox(width: 8),
+                              Text('History', style: TextStyle(fontSize: 15)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 24),
+
+              // Section Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _showContactsView ? 'Your Contacts' : 'Call History',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF8E8E93),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Content
+              Expanded(
+                child: _wrapWithRefresh(
+                  _showContactsView
+                      ? _buildContactsList()
+                      : _buildHistoryList(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 
@@ -1104,11 +1226,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.people_outline, size: 64, color: Colors.white.withOpacity(0.3)),
+                Icon(
+                  Icons.people_outline,
+                  size: 64,
+                  color: Colors.white.withOpacity(0.3),
+                ),
                 const SizedBox(height: 16),
                 Text(
-                  _searchController.text.isEmpty ? 'No contacts yet' : 'No contacts found',
-                  style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.5)),
+                  _searchController.text.isEmpty
+                      ? 'No contacts yet'
+                      : 'No contacts found',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
                 ),
                 if (_searchController.text.isEmpty) ...[
                   const SizedBox(height: 24),
@@ -1135,10 +1266,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   const SizedBox(height: 12),
                   const Text(
                     'Start by adding friends to call',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF8E8E93),
-                    ),
+                    style: TextStyle(fontSize: 14, color: Color(0xFF8E8E93)),
                   ),
                 ],
               ],
@@ -1155,7 +1283,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       itemBuilder: (context, index) {
         final contact = _filteredContacts[index];
         return Dismissible(
-          key: ValueKey('contact_${contact['uid'] ?? contact['email'] ?? index}'),
+          key: ValueKey(
+            'contact_${contact['uid'] ?? contact['email'] ?? index}',
+          ),
           direction: DismissDirection.horizontal,
           dismissThresholds: const {
             DismissDirection.startToEnd: 0.2,
@@ -1175,7 +1305,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               children: [
                 Icon(Icons.delete_outline, color: Colors.white),
                 SizedBox(width: 8),
-                Text('Remove', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                Text(
+                  'Remove',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1192,7 +1328,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               children: [
                 Icon(Icons.delete_outline, color: Colors.white),
                 SizedBox(width: 8),
-                Text('Remove', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                Text(
+                  'Remove',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1209,10 +1351,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: const Color(0xFF6B7FB8),
-                  backgroundImage: contact['photoURL'] != null && contact['photoURL'].toString().isNotEmpty
+                  backgroundImage:
+                      contact['photoURL'] != null &&
+                          contact['photoURL'].toString().isNotEmpty
                       ? CachedNetworkImageProvider(contact['photoURL'])
                       : null,
-                  child: contact['photoURL'] == null || contact['photoURL'].toString().isEmpty
+                  child:
+                      contact['photoURL'] == null ||
+                          contact['photoURL'].toString().isEmpty
                       ? Text(
                           contact['name'][0].toUpperCase(),
                           style: const TextStyle(
@@ -1251,17 +1397,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 // Star icon
                 Consumer<ContactService>(
                   builder: (context, contactService, _) {
-                    final isFavorite = contactService.isFavorite(contact['uid']);
+                    final isFavorite = contactService.isFavorite(
+                      contact['uid'],
+                    );
                     return IconButton(
                       icon: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
                         transitionBuilder: (child, animation) {
-                          return ScaleTransition(scale: animation, child: child);
+                          return ScaleTransition(
+                            scale: animation,
+                            child: child,
+                          );
                         },
                         child: Icon(
                           isFavorite ? Icons.star : Icons.star_border,
                           key: ValueKey(isFavorite),
-                          color: isFavorite ? AppColors.accentBlue : const Color(0xFF8E8E93),
+                          color: isFavorite
+                              ? AppColors.accentBlue
+                              : const Color(0xFF8E8E93),
                           size: 22,
                         ),
                       ),
@@ -1269,13 +1422,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                         VibrationService.lightImpact();
                         contactService.toggleFavorite(contact['uid']);
                       },
-                      tooltip: isFavorite ? 'Remove from favorites' : 'Add to favorites',
+                      tooltip: isFavorite
+                          ? 'Remove from favorites'
+                          : 'Add to favorites',
                     );
                   },
                 ),
                 // Phone icon
                 IconButton(
-                  icon: const Icon(Icons.phone, color: Color(0xFF6B7FB8), size: 22),
+                  icon: const Icon(
+                    Icons.phone,
+                    color: Color(0xFF6B7FB8),
+                    size: 22,
+                  ),
                   onPressed: () {
                     VibrationService.mediumImpact();
                     _startCallWithContact(contact);
@@ -1312,11 +1471,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.history, size: 64, color: Colors.white.withOpacity(0.3)),
+                Icon(
+                  Icons.history,
+                  size: 64,
+                  color: Colors.white.withOpacity(0.3),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'No call history yet',
-                  style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.5)),
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
@@ -1352,10 +1518,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       itemBuilder: (context, index) {
         final call = _callHistory[index];
         final duration = call['duration'] as int;
-        final durationText = duration > 0 
+        final durationText = duration > 0
             ? '${(duration / 60).floor()}m ${duration % 60}s'
             : 'No duration';
-        
+
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
@@ -1384,18 +1550,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   children: [
                     Text(
                       call['participantName'],
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${_formatTimestamp(call['timestamp'])} • $durationText',
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF8E8E93)),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF8E8E93),
+                      ),
                     ),
                   ],
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.phone, color: Color(0xFF6B7FB8), size: 20),
+                icon: const Icon(
+                  Icons.phone,
+                  color: Color(0xFF6B7FB8),
+                  size: 20,
+                ),
                 tooltip: 'Call back',
                 onPressed: () {
                   // Find contact and call them
@@ -1432,7 +1609,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     if (timestamp == null) return 'Unknown';
     final now = DateTime.now();
     final diff = now.difference(timestamp);
-    
+
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     return '${diff.inDays}d ago';
@@ -1474,9 +1651,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         if (recipientQuery.docs.isEmpty) {
           if (mounted) {
             Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('User not found')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('User not found')));
           }
           return;
         }
@@ -1487,7 +1664,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       final roomName = 'call_${DateTime.now().millisecondsSinceEpoch}';
       final functions = FirebaseFunctions.instance;
       final callable = functions.httpsCallable('getLiveKitToken');
-      
+
       // Use constant URL to avoid waiting for Cloud Function
       const defaultWsUrl = 'wss://livekit.iptvsubz.fun';
 
@@ -1549,8 +1726,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       // Only navigate to call screen if call was accepted
       if (callAccepted == true && mounted) {
         // Start call session
-        await _sessionService.startSession(roomName, [currentUser.uid, recipientUserId]);
-        
+        await _sessionService.startSession(roomName, [
+          currentUser.uid,
+          recipientUserId,
+        ]);
+
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -1580,9 +1760,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       debugPrint('❌ Error starting call: $e');
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error starting call: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error starting call: $e')));
       }
     }
   }
@@ -1628,9 +1808,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       } catch (e) {
         debugPrint('Error generating guest link: $e');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
         }
       }
     }
@@ -1640,7 +1820,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2C2C2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Create Guest Link', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Create Guest Link',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1662,7 +1845,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 hintText: 'John Doe',
                 filled: true,
                 fillColor: const Color(0xFF1C1C1E),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
           ],
@@ -1670,12 +1855,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL', style: TextStyle(color: Color(0xFF8E8E93))),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Color(0xFF8E8E93)),
+            ),
           ),
           ElevatedButton(
             onPressed: generateLink,
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6B7FB8)),
-            child: const Text('GENERATE', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6B7FB8),
+            ),
+            child: const Text(
+              'GENERATE',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -1696,12 +1889,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('CANCEL', style: TextStyle(color: Color(0xFF8E8E93))),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Color(0xFF8E8E93)),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('SIGN OUT', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'SIGN OUT',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -1797,7 +1996,9 @@ class _AddContactDialogState extends State<_AddContactDialog> {
       if (currentUser == null) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('You must be signed in to add contacts')),
+            const SnackBar(
+              content: Text('You must be signed in to add contacts'),
+            ),
           );
         }
         setState(() => _isAdding = false);
@@ -1821,7 +2022,9 @@ class _AddContactDialogState extends State<_AddContactDialog> {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('No user found with that email. They may need to sign in first.'),
+              content: Text(
+                'No user found with that email. They may need to sign in first.',
+              ),
               duration: Duration(seconds: 3),
             ),
           );
@@ -1839,7 +2042,9 @@ class _AddContactDialogState extends State<_AddContactDialog> {
       if (contactUid == currentUser.uid) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('You cannot add yourself as a contact')),
+            const SnackBar(
+              content: Text('You cannot add yourself as a contact'),
+            ),
           );
         }
         setState(() => _isAdding = false);
@@ -1873,9 +2078,7 @@ class _AddContactDialogState extends State<_AddContactDialog> {
           .doc(currentUser.uid)
           .collection('contacts')
           .doc(contactUid)
-          .set({
-        'addedAt': FieldValue.serverTimestamp(),
-      });
+          .set({'addedAt': FieldValue.serverTimestamp()});
 
       // Add yourself to their contacts
       await widget.firestore
@@ -1883,9 +2086,7 @@ class _AddContactDialogState extends State<_AddContactDialog> {
           .doc(contactUid)
           .collection('contacts')
           .doc(currentUser.uid)
-          .set({
-        'addedAt': FieldValue.serverTimestamp(),
-      });
+          .set({'addedAt': FieldValue.serverTimestamp()});
 
       debugPrint('✅ Contact saved successfully (both ways)!');
 
@@ -1895,16 +2096,20 @@ class _AddContactDialogState extends State<_AddContactDialog> {
       if (context.mounted) {
         Navigator.pop(context); // Close dialog on success
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Added ${userData['displayName'] ?? email} to contacts!')),
+          SnackBar(
+            content: Text(
+              'Added ${userData['displayName'] ?? email} to contacts!',
+            ),
+          ),
         );
       }
     } catch (e) {
       debugPrint('Error adding contact: $e');
       if (context.mounted) {
         setState(() => _isAdding = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -1936,7 +2141,9 @@ class _AddContactDialogState extends State<_AddContactDialog> {
               hintText: 'contact@example.com',
               filled: true,
               fillColor: const Color(0xFF1C1C1E),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: const BorderSide(color: Color(0xFF3A3A3C)),
@@ -1959,11 +2166,16 @@ class _AddContactDialogState extends State<_AddContactDialog> {
       actions: [
         TextButton(
           onPressed: _isAdding ? null : () => Navigator.pop(context),
-          child: const Text('CANCEL', style: TextStyle(color: Color(0xFF8E8E93))),
+          child: const Text(
+            'CANCEL',
+            style: TextStyle(color: Color(0xFF8E8E93)),
+          ),
         ),
         ElevatedButton(
           onPressed: _isAdding ? null : _addContact,
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6B7FB8)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF6B7FB8),
+          ),
           child: _isAdding
               ? Semantics(
                   label: 'Adding contact...',
@@ -1998,35 +2210,35 @@ class _CallingDialogState extends State<_CallingDialog> {
         .doc(widget.invitationId)
         .snapshots()
         .listen((snapshot) {
-      if (!snapshot.exists || !mounted) return;
+          if (!snapshot.exists || !mounted) return;
 
-      final data = snapshot.data();
-      if (data == null) return;
+          final data = snapshot.data();
+          if (data == null) return;
 
-      final status = data['status'] as String?;
-      debugPrint('📞 Invitation status: $status');
+          final status = data['status'] as String?;
+          debugPrint('📞 Invitation status: $status');
 
-      if (status == 'accepted') {
-        // Call accepted - close dialog with true
-        Navigator.of(context, rootNavigator: false).pop(true);
-      } else if (status == 'declined') {
-        // Call declined - close dialog with false
-        Navigator.of(context, rootNavigator: false).pop(false);
-        if (mounted) {
-          // Use a post-frame callback to show snackbar after navigation completes
-          WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (status == 'accepted') {
+            // Call accepted - close dialog with true
+            Navigator.of(context, rootNavigator: false).pop(true);
+          } else if (status == 'declined') {
+            // Call declined - close dialog with false
+            Navigator.of(context, rootNavigator: false).pop(false);
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Call declined')),
-              );
+              // Use a post-frame callback to show snackbar after navigation completes
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Call declined')),
+                  );
+                }
+              });
             }
-          });
-        }
-      } else if (status == 'timeout' || status == 'cancelled') {
-        // Call timed out or cancelled - close dialog with false
-        Navigator.of(context, rootNavigator: false).pop(false);
-      }
-    });
+          } else if (status == 'timeout' || status == 'cancelled') {
+            // Call timed out or cancelled - close dialog with false
+            Navigator.of(context, rootNavigator: false).pop(false);
+          }
+        });
 
     // Auto-cancel after 60 seconds
     Future.delayed(const Duration(seconds: 60), () {
@@ -2036,9 +2248,9 @@ class _CallingDialogState extends State<_CallingDialog> {
         // Use a post-frame callback to show snackbar after navigation completes
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Call not answered')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Call not answered')));
           }
         });
       }
@@ -2080,9 +2292,14 @@ class _CallingDialogState extends State<_CallingDialog> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: const Text('CANCEL', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'CANCEL',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),

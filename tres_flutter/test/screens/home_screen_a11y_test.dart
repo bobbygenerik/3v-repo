@@ -14,9 +14,13 @@ import 'package:tres_flutter/services/contact_service.dart';
 
 // Mocks
 class MockAuthService extends Mock implements AuthService {}
+
 class MockContactService extends Mock implements ContactService {}
+
 class MockCallListenerService extends Mock implements CallListenerService {}
+
 class MockCallSignalingService extends Mock implements CallSignalingService {}
+
 class MockCallSessionService extends Mock implements CallSessionService {}
 
 void main() {
@@ -44,7 +48,9 @@ void main() {
 
     // Setup Auth Service
     when(() => mockAuthService.currentUser).thenReturn(mockUser);
-    when(() => mockAuthService.authStateChanges).thenAnswer((_) => Stream.value(mockUser));
+    when(
+      () => mockAuthService.authStateChanges,
+    ).thenAnswer((_) => Stream.value(mockUser));
     when(() => mockAuthService.addListener(any())).thenReturn(null);
     when(() => mockAuthService.removeListener(any())).thenReturn(null);
 
@@ -61,7 +67,9 @@ void main() {
     when(() => mockCallListenerService.currentIncomingCall).thenReturn(null);
   });
 
-  testWidgets('HomeScreen profile button has correct tooltip', (WidgetTester tester) async {
+  testWidgets('HomeScreen profile button has correct tooltip', (
+    WidgetTester tester,
+  ) async {
     // Populate Firestore with dummy data
     await fakeFirestore.collection('users').doc(mockUser.uid).set({
       'uid': mockUser.uid,
@@ -73,7 +81,9 @@ void main() {
       MultiProvider(
         providers: [
           ChangeNotifierProvider<AuthService>.value(value: mockAuthService),
-          ChangeNotifierProvider<ContactService>.value(value: mockContactService),
+          ChangeNotifierProvider<ContactService>.value(
+            value: mockContactService,
+          ),
         ],
         child: MaterialApp(
           home: HomeScreen(
@@ -105,7 +115,9 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
-  testWidgets('HomeScreen shows empty state buttons', (WidgetTester tester) async {
+  testWidgets('HomeScreen shows empty state buttons', (
+    WidgetTester tester,
+  ) async {
     // Populate Firestore with dummy data (but NO contacts)
     await fakeFirestore.collection('users').doc(mockUser.uid).set({
       'uid': mockUser.uid,
@@ -117,7 +129,9 @@ void main() {
       MultiProvider(
         providers: [
           ChangeNotifierProvider<AuthService>.value(value: mockAuthService),
-          ChangeNotifierProvider<ContactService>.value(value: mockContactService),
+          ChangeNotifierProvider<ContactService>.value(
+            value: mockContactService,
+          ),
         ],
         child: MaterialApp(
           home: HomeScreen(

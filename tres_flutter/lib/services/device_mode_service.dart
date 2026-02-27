@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 // Web imports are guarded
-import 'web_platform_stub.dart'
-    if (dart.library.html) 'web_platform_impl.dart';
+import 'web_platform_stub.dart' if (dart.library.html) 'web_platform_impl.dart';
 import 'dart:io' show Platform;
 
 /// Simple device / runtime mode helpers centralized for consistent checks
@@ -11,7 +10,11 @@ class DeviceModeService {
     if (!kIsWeb) return false;
     try {
       final ua = webUserAgent().toLowerCase();
-      final isSafari = ua.contains('safari') && !ua.contains('chrome') && !ua.contains('crios') && !ua.contains('fxios');
+      final isSafari =
+          ua.contains('safari') &&
+          !ua.contains('chrome') &&
+          !ua.contains('crios') &&
+          !ua.contains('fxios');
 
       var isStandalone = false;
       try {

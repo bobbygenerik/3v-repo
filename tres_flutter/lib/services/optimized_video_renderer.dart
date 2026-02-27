@@ -31,7 +31,7 @@ class _OptimizedVideoRendererState extends State<OptimizedVideoRenderer>
   late VideoTrackRenderer _renderer;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-  
+
   bool _isInitialized = false;
   bool _hasError = false;
   String? _errorMessage;
@@ -48,40 +48,35 @@ class _OptimizedVideoRendererState extends State<OptimizedVideoRenderer>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    ));
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
   }
 
   void _initializeRenderer() {
     try {
-      _renderer = VideoTrackRenderer(
-        widget.track,
-        fit: VideoViewFit.cover,
-      );
-      
+      _renderer = VideoTrackRenderer(widget.track, fit: VideoViewFit.cover);
+
       // Configure renderer optimizations
       _configureRendererOptimizations();
-      
+
       setState(() {
         _isInitialized = true;
         _hasError = false;
       });
-      
+
       _fadeController.forward();
-      
-      debugPrint('✅ Optimized video renderer initialized for track: ${widget.track.sid}');
+
+      debugPrint(
+        '✅ Optimized video renderer initialized for track: ${widget.track.sid}',
+      );
     } catch (e) {
       setState(() {
         _hasError = true;
         _errorMessage = e.toString();
       });
-      
+
       debugPrint('❌ Failed to initialize video renderer: $e');
     }
   }
@@ -91,12 +86,12 @@ class _OptimizedVideoRendererState extends State<OptimizedVideoRenderer>
     if (widget.enableHardwareAcceleration) {
       _enableHardwareAcceleration();
     }
-    
+
     // Configure frame interpolation
     if (widget.enableFrameInterpolation) {
       _enableFrameInterpolation();
     }
-    
+
     // Configure buffer size based on target quality
     _configureOptimalBufferSize();
   }
@@ -128,10 +123,11 @@ class _OptimizedVideoRendererState extends State<OptimizedVideoRenderer>
 
   void _configureOptimalBufferSize() {
     int bufferSize;
-    
+
     switch (widget.targetQuality) {
       case VideoQuality.ultra:
-        bufferSize = 8; // Larger buffer for ultra quality (increased for smoothness)
+        bufferSize =
+            8; // Larger buffer for ultra quality (increased for smoothness)
         break;
       case VideoQuality.high:
         bufferSize = 6; // Increased buffer for high quality (was 4)
@@ -143,18 +139,20 @@ class _OptimizedVideoRendererState extends State<OptimizedVideoRenderer>
         bufferSize = 3; // Increased buffer for low quality (was 2)
         break;
     }
-    
+
     // Enable frame smoothing for jitter reduction
     _enableFrameSmoothing(bufferSize);
-    
-    debugPrint('📊 Configured buffer size: $bufferSize frames for ${widget.targetQuality.name} quality');
+
+    debugPrint(
+      '📊 Configured buffer size: $bufferSize frames for ${widget.targetQuality.name} quality',
+    );
   }
-  
+
   void _enableFrameSmoothing(int bufferSize) {
     try {
       // Configure frame smoothing to reduce jitter
       debugPrint('🎬 Enabling frame smoothing with $bufferSize frame buffer');
-      
+
       // Frame smoothing configuration
       final smoothingConfig = {
         'bufferSize': bufferSize,
@@ -164,14 +162,19 @@ class _OptimizedVideoRendererState extends State<OptimizedVideoRenderer>
         'frameDropThreshold': 3, // Drop frames if buffer exceeds 3 frames
         'targetLatency': 100, // Target 100ms latency
       };
-      
+
       debugPrint('   - Buffer size: ${smoothingConfig['bufferSize']} frames');
-      debugPrint('   - Frame interpolation: ${smoothingConfig['frameInterpolation']}');
+      debugPrint(
+        '   - Frame interpolation: ${smoothingConfig['frameInterpolation']}',
+      );
       debugPrint('   - Adaptive sync: ${smoothingConfig['adaptiveSync']}');
-      debugPrint('   - Jitter reduction: ${smoothingConfig['jitterReduction']}');
-      debugPrint('   - Frame drop threshold: ${smoothingConfig['frameDropThreshold']}');
+      debugPrint(
+        '   - Jitter reduction: ${smoothingConfig['jitterReduction']}',
+      );
+      debugPrint(
+        '   - Frame drop threshold: ${smoothingConfig['frameDropThreshold']}',
+      );
       debugPrint('   - Target latency: ${smoothingConfig['targetLatency']}ms');
-      
     } catch (e) {
       debugPrint('⚠️ Frame smoothing configuration failed: $e');
     }
@@ -180,16 +183,17 @@ class _OptimizedVideoRendererState extends State<OptimizedVideoRenderer>
   @override
   void didUpdateWidget(OptimizedVideoRenderer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     // Reinitialize if track changed
     if (oldWidget.track != widget.track) {
       _disposeRenderer();
       _initializeRenderer();
     }
-    
+
     // Update configuration if settings changed
     if (oldWidget.targetQuality != widget.targetQuality ||
-        oldWidget.enableHardwareAcceleration != widget.enableHardwareAcceleration ||
+        oldWidget.enableHardwareAcceleration !=
+            widget.enableHardwareAcceleration ||
         oldWidget.enableFrameInterpolation != widget.enableFrameInterpolation) {
       _configureRendererOptimizations();
     }
@@ -236,11 +240,11 @@ class _OptimizedVideoRendererState extends State<OptimizedVideoRenderer>
     if (_hasError) {
       return _buildErrorWidget();
     }
-    
+
     if (!_isInitialized) {
       return _buildLoadingWidget();
     }
-    
+
     return FadeTransition(
       opacity: _fadeAnimation,
       child: ClipRRect(
@@ -260,25 +264,21 @@ class _OptimizedVideoRendererState extends State<OptimizedVideoRenderer>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              color: Colors.red,
-              size: 48,
-            ),
+            const Icon(Icons.error_outline, color: Colors.red, size: 48),
             const SizedBox(height: 16),
             Text(
               'Video Error',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.white,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: Colors.white),
             ),
             if (_errorMessage != null) ...[
               const SizedBox(height: 8),
               Text(
                 _errorMessage!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white70,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.white70),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -300,27 +300,28 @@ class _OptimizedVideoRendererState extends State<OptimizedVideoRenderer>
   }
 
   Widget _buildLoadingWidget() {
-    return widget.placeholder ?? Container(
-      decoration: BoxDecoration(
-        color: Colors.black87,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+    return widget.placeholder ??
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.black87,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Loading video...',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ],
             ),
-            SizedBox(height: 16),
-            Text(
-              'Loading video...',
-              style: TextStyle(color: Colors.white70),
-            ),
-          ],
-        ),
-      ),
-    );
+          ),
+        );
   }
 
   @override
@@ -336,29 +337,29 @@ class _OptimizedVideoRendererState extends State<OptimizedVideoRenderer>
 class VideoProcessingPipeline {
   static const int kOptimalBufferSize = 4;
   static const int kMaxFrameRate = 30;
-  
+
   static Future<void> optimizeVideoTrack(LocalVideoTrack track) async {
     try {
       debugPrint('🔧 Optimizing video track: ${track.sid}');
-      
+
       // Enable hardware encoding acceleration
       await _enableHardwareAcceleration(track);
-      
+
       // Configure optimal encoding parameters
       await _configureEncodingParameters(track);
-      
+
       debugPrint('✅ Video track optimization complete');
     } catch (e) {
       debugPrint('❌ Video track optimization failed: $e');
     }
   }
-  
+
   static Future<void> _enableHardwareAcceleration(LocalVideoTrack track) async {
     try {
       // This would interface with the native platform to enable hardware acceleration
       // For now, we'll use debug logging to indicate the optimization
       debugPrint('🚀 Hardware acceleration enabled for track: ${track.sid}');
-      
+
       // Platform-specific optimizations would go here
       if (kIsWeb) {
         debugPrint('   - Web: GPU-accelerated encoding');
@@ -369,11 +370,13 @@ class VideoProcessingPipeline {
       debugPrint('⚠️ Hardware acceleration not available: $e');
     }
   }
-  
-  static Future<void> _configureEncodingParameters(LocalVideoTrack track) async {
+
+  static Future<void> _configureEncodingParameters(
+    LocalVideoTrack track,
+  ) async {
     try {
       debugPrint('⚙️ Configuring encoding parameters for track: ${track.sid}');
-      
+
       // These would be actual LiveKit SDK calls in a real implementation
       final encodingConfig = {
         'gopSize': 2, // Key frame every 2 seconds
@@ -384,19 +387,18 @@ class VideoProcessingPipeline {
         'dynamicBitrate': true,
         'adaptiveBitrate': true,
       };
-      
+
       debugPrint('   - GOP size: ${encodingConfig['gopSize']}');
       debugPrint('   - Profile: ${encodingConfig['profile']}');
       debugPrint('   - Level: ${encodingConfig['level']}');
       debugPrint('   - Entropy coding: ${encodingConfig['entropyCoding']}');
       debugPrint('   - Low latency: ${encodingConfig['lowLatencyMode']}');
       debugPrint('   - Dynamic bitrate: ${encodingConfig['dynamicBitrate']}');
-      
     } catch (e) {
       debugPrint('❌ Failed to configure encoding parameters: $e');
     }
   }
-  
+
   static VideoQuality getOptimalQuality({
     required double availableBandwidth, // Mbps
     required int deviceCapability, // 1-10 scale
@@ -404,7 +406,7 @@ class VideoProcessingPipeline {
   }) {
     // Calculate quality score based on multiple factors
     double qualityScore = 0.0;
-    
+
     // Bandwidth factor (40% weight)
     if (availableBandwidth >= 15) {
       qualityScore += 40;
@@ -415,13 +417,13 @@ class VideoProcessingPipeline {
     } else {
       qualityScore += 10;
     }
-    
+
     // Device capability factor (35% weight)
     qualityScore += (deviceCapability / 10) * 35;
-    
+
     // Network stability factor (25% weight)
     qualityScore += networkStability * 25;
-    
+
     // Determine quality level
     if (qualityScore >= 85) return VideoQuality.ultra;
     if (qualityScore >= 70) return VideoQuality.high;

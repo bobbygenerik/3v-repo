@@ -37,30 +37,30 @@ class MemoryStats {
 
 class VideoCallMemoryManager extends ChangeNotifier {
   Timer? _monitoringTimer;
-  
+
   bool _isMonitoring = false;
   MemoryStats _currentStats = MemoryStats.empty();
-  
+
   // Memory management settings
   Duration _monitoringInterval = const Duration(seconds: 10);
   int _maxHistorySize = 30;
-  
+
   // Memory thresholds (percentages)
   static const double _moderatePressureThreshold = 70.0;
   static const double _highPressureThreshold = 85.0;
   static const double _criticalPressureThreshold = 95.0;
-  
+
   // Memory optimization settings
   bool _autoOptimizationEnabled = true;
   bool _aggressiveCleanupEnabled = false;
   int _cleanupThresholdMB = 500;
-  
+
   // Memory usage history
   final List<MemoryStats> _statsHistory = [];
-  
+
   // Cached objects for cleanup
   final Set<WeakReference> _cachedObjects = {};
-  
+
   MemoryStats get currentStats => _currentStats;
   bool get isMonitoring => _isMonitoring;
   List<MemoryStats> get statsHistory => List.unmodifiable(_statsHistory);
@@ -68,15 +68,15 @@ class VideoCallMemoryManager extends ChangeNotifier {
 
   void startMonitoring() {
     if (_isMonitoring) return;
-    
+
     _isMonitoring = true;
-    
+
     // Start periodic memory monitoring
     _monitoringTimer = Timer.periodic(
       _monitoringInterval,
       (_) => _collectMemoryStats(),
     );
-    
+
     debugPrint('🧠 Video call memory manager started');
   }
 
@@ -84,7 +84,7 @@ class VideoCallMemoryManager extends ChangeNotifier {
     _isMonitoring = false;
     _monitoringTimer?.cancel();
     _monitoringTimer = null;
-    
+
     debugPrint('🧠 Video call memory manager stopped');
   }
 
@@ -93,18 +93,18 @@ class VideoCallMemoryManager extends ChangeNotifier {
       // In a real implementation, this would collect actual memory statistics
       // For now, we'll simulate realistic memory stats
       final stats = await _simulateMemoryStats();
-      
+
       _currentStats = stats;
       _statsHistory.add(stats);
-      
+
       // Keep only recent history
       if (_statsHistory.length > _maxHistorySize) {
         _statsHistory.removeAt(0);
       }
-      
+
       // Analyze memory pressure and take action if needed
       await _analyzeMemoryPressure(stats);
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('❌ Error collecting memory stats: $e');
@@ -114,24 +114,24 @@ class VideoCallMemoryManager extends ChangeNotifier {
   Future<MemoryStats> _simulateMemoryStats() async {
     // Simulate realistic memory statistics for a video call app
     final random = math.Random();
-    
+
     // Base memory usage varies based on call activity
     final baseUsage = 150 + random.nextInt(200); // 150-350 MB base
     final availableMemory = 2048 + random.nextInt(2048); // 2-4 GB available
     final currentUsage = baseUsage + random.nextInt(100); // Add some variance
-    
+
     // Calculate peak usage (always >= current)
     final peakUsage = math.max(currentUsage, _currentStats.peakUsage);
-    
+
     // Calculate usage percentage
     final usagePercentage = (currentUsage / availableMemory) * 100;
-    
+
     // Determine pressure level
     final pressureLevel = _calculatePressureLevel(usagePercentage);
-    
+
     // Simulate GC count (increases over time)
     final gcCount = _currentStats.gcCount + (random.nextBool() ? 1 : 0);
-    
+
     return MemoryStats(
       currentUsage: currentUsage,
       peakUsage: peakUsage,
@@ -157,7 +157,7 @@ class VideoCallMemoryManager extends ChangeNotifier {
 
   Future<void> _analyzeMemoryPressure(MemoryStats stats) async {
     if (!_autoOptimizationEnabled) return;
-    
+
     switch (stats.pressureLevel) {
       case MemoryPressureLevel.critical:
         await _performCriticalCleanup();
@@ -175,47 +175,53 @@ class VideoCallMemoryManager extends ChangeNotifier {
   }
 
   Future<void> _performCriticalCleanup() async {
-    debugPrint('🚨 Critical memory pressure detected - performing emergency cleanup');
-    
+    debugPrint(
+      '🚨 Critical memory pressure detected - performing emergency cleanup',
+    );
+
     // Force garbage collection
     await _forceGarbageCollection();
-    
+
     // Clear all non-essential caches
     await _clearAllCaches();
-    
+
     // Reduce video quality temporarily
     await _requestVideoQualityReduction();
-    
+
     // Clear texture caches
     await _clearTextureCaches();
-    
+
     debugPrint('🧹 Critical cleanup completed');
   }
 
   Future<void> _performAggressiveCleanup() async {
-    debugPrint('⚠️ High memory pressure detected - performing aggressive cleanup');
-    
+    debugPrint(
+      '⚠️ High memory pressure detected - performing aggressive cleanup',
+    );
+
     // Force garbage collection
     await _forceGarbageCollection();
-    
+
     // Clear image caches
     await _clearImageCaches();
-    
+
     // Clear old video frames
     await _clearVideoFrameBuffers();
-    
+
     debugPrint('🧹 Aggressive cleanup completed');
   }
 
   Future<void> _performStandardCleanup() async {
-    debugPrint('📊 Moderate memory pressure detected - performing standard cleanup');
-    
+    debugPrint(
+      '📊 Moderate memory pressure detected - performing standard cleanup',
+    );
+
     // Clear expired caches
     await _clearExpiredCaches();
-    
+
     // Optimize video buffers
     await _optimizeVideoBuffers();
-    
+
     debugPrint('🧹 Standard cleanup completed');
   }
 
@@ -295,14 +301,16 @@ class VideoCallMemoryManager extends ChangeNotifier {
   void setMonitoringInterval(Duration interval) {
     if (_monitoringInterval != interval) {
       _monitoringInterval = interval;
-      
+
       // Restart monitoring with new interval if currently monitoring
       if (_isMonitoring) {
         stopMonitoring();
         startMonitoring();
       }
-      
-      debugPrint('⏱️ Memory monitoring interval changed to: ${interval.inSeconds}s');
+
+      debugPrint(
+        '⏱️ Memory monitoring interval changed to: ${interval.inSeconds}s',
+      );
     }
   }
 
@@ -313,23 +321,23 @@ class VideoCallMemoryManager extends ChangeNotifier {
 
   Future<void> optimizeForVideoCall() async {
     debugPrint('📞 Optimizing memory for video call');
-    
+
     // Pre-emptive cleanup before call starts
     await _clearExpiredCaches();
     await _optimizeVideoBuffers();
-    
+
     // Set aggressive monitoring during calls
     setMonitoringInterval(const Duration(seconds: 5));
-    
+
     debugPrint('✅ Memory optimized for video call');
   }
 
   Future<void> restoreNormalOperation() async {
     debugPrint('🔄 Restoring normal memory operation');
-    
+
     // Restore normal monitoring interval
     setMonitoringInterval(const Duration(seconds: 10));
-    
+
     debugPrint('✅ Normal memory operation restored');
   }
 
@@ -349,12 +357,13 @@ class VideoCallMemoryManager extends ChangeNotifier {
 
   double getMemoryEfficiencyScore() {
     if (_statsHistory.length < 5) return 0.5;
-    
-    final recentStats = _statsHistory.length >= 5 
+
+    final recentStats = _statsHistory.length >= 5
         ? _statsHistory.sublist(_statsHistory.length - 5)
         : _statsHistory;
-    final avgUsage = recentStats.map((s) => s.usagePercentage).reduce((a, b) => a + b) / 5;
-    
+    final avgUsage =
+        recentStats.map((s) => s.usagePercentage).reduce((a, b) => a + b) / 5;
+
     // Score based on memory usage efficiency
     if (avgUsage < 50) return 1.0;
     if (avgUsage < 70) return 0.8;

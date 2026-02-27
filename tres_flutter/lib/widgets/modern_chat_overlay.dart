@@ -38,49 +38,48 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
   @override
   void initState() {
     super.initState();
-    
+
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(1.0, 0.0), // Start off-screen right
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
-    
+
+    _slideAnimation =
+        Tween<Offset>(
+          begin: const Offset(1.0, 0.0), // Start off-screen right
+          end: Offset.zero,
+        ).animate(
+          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+        );
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
   }
 
   @override
   void didUpdateWidget(ModernChatOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     // Check for new messages
     if (widget.messages.length > oldWidget.messages.length) {
       final newMessage = widget.messages.last;
-      debugPrint('📬 Chat overlay: New message detected from ${newMessage.senderName}');
-      
+      debugPrint(
+        '📬 Chat overlay: New message detected from ${newMessage.senderName}',
+      );
+
       if (!newMessage.isLocal && _state == ChatOverlayState.hidden) {
         debugPrint('📬 Auto-showing chat preview for new message');
         _showPreviewForNewMessage(newMessage);
       }
     }
-    
+
     // Handle visibility changes from parent
     if (widget.isVisible != oldWidget.isVisible) {
       debugPrint('📬 Chat visibility changed: ${widget.isVisible}');
@@ -94,39 +93,39 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
 
   void _showPreviewForNewMessage(chat.ChatMessage message) {
     if (_state == ChatOverlayState.expanded) return; // Already expanded
-    
+
     // Vibrate for new message
     VibrationService.vibrateNewMessage();
-    
+
     setState(() {
       _state = ChatOverlayState.preview;
     });
-    
+
     _slideController.forward();
     _fadeController.forward();
-    
+
     // Auto-hide after 6 seconds
     _startAutoHideTimer();
   }
 
   void _showExpanded() {
     _cancelAutoHideTimer();
-    
+
     setState(() {
       _state = ChatOverlayState.expanded;
     });
-    
+
     _slideController.forward();
     _fadeController.forward();
   }
 
   void _hide() {
     _cancelAutoHideTimer();
-    
+
     setState(() {
       _state = ChatOverlayState.hidden;
     });
-    
+
     _slideController.reverse();
     _fadeController.reverse();
   }
@@ -174,7 +173,10 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
         ? const Size(320, 400)
         : const Size(280, 170);
     final defaultLeft = screenSize.width - panelSize.width - 16;
-    final defaultTop = (padding.top + 16).clamp(16, screenSize.height - panelSize.height - 16);
+    final defaultTop = (padding.top + 16).clamp(
+      16,
+      screenSize.height - panelSize.height - 16,
+    );
     final initialPosition = Offset(defaultLeft, defaultTop.toDouble());
     final position = _overlayPosition == null
         ? _clampPosition(initialPosition, screenSize, panelSize, padding)
@@ -196,7 +198,11 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
     );
   }
 
-  Widget _buildPreviewMode(Size screenSize, EdgeInsets padding, Size panelSize) {
+  Widget _buildPreviewMode(
+    Size screenSize,
+    EdgeInsets padding,
+    Size panelSize,
+  ) {
     // Get the most recent non-local messages
     final recentMessages = widget.messages
         .where((m) => !m.isLocal)
@@ -204,7 +210,7 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
         .reversed
         .take(2)
         .toList();
-    
+
     return GestureDetector(
       onPanUpdate: (details) {
         _updatePosition(details.delta, screenSize, padding, panelSize);
@@ -216,7 +222,9 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
         decoration: BoxDecoration(
           color: const Color(0xFF2C2C2E), // Match app's card color
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF3A3A3C)), // Match app's border color
+          border: Border.all(
+            color: const Color(0xFF3A3A3C),
+          ), // Match app's border color
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.3),
@@ -232,7 +240,11 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
             // Header
             Row(
               children: [
-                const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8), size: 18), // Use app's primary color
+                const Icon(
+                  Icons.chat_bubble,
+                  color: Color(0xFF6B7FB8),
+                  size: 18,
+                ), // Use app's primary color
                 const SizedBox(width: 8),
                 const Text(
                   'New message',
@@ -245,17 +257,19 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
                 const Spacer(),
                 Icon(
                   Icons.expand_more,
-                  color: const Color(0xFF8E8E93), // Use app's secondary text color
+                  color: const Color(
+                    0xFF8E8E93,
+                  ), // Use app's secondary text color
                   size: 18,
                 ),
               ],
             ),
-            
+
             if (recentMessages.isNotEmpty) ...[
               const SizedBox(height: 8),
               ...recentMessages.map((message) => _buildPreviewMessage(message)),
             ],
-            
+
             // Tap to expand hint
             const SizedBox(height: 8),
             const Text(
@@ -287,7 +301,9 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
             ),
             child: Center(
               child: Text(
-                message.senderName.isNotEmpty ? message.senderName[0].toUpperCase() : '?',
+                message.senderName.isNotEmpty
+                    ? message.senderName[0].toUpperCase()
+                    : '?',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 10,
@@ -297,7 +313,7 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
             ),
           ),
           const SizedBox(width: 8),
-          
+
           // Message content
           Expanded(
             child: Column(
@@ -312,7 +328,7 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
                   ),
                 ),
                 Text(
-                  message.message.length > 50 
+                  message.message.length > 50
                       ? '${message.message.substring(0, 50)}...'
                       : message.message,
                   style: const TextStyle(
@@ -328,14 +344,20 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
     );
   }
 
-  Widget _buildExpandedMode(Size screenSize, EdgeInsets padding, Size panelSize) {
+  Widget _buildExpandedMode(
+    Size screenSize,
+    EdgeInsets padding,
+    Size panelSize,
+  ) {
     return Container(
       width: 320,
       height: 400,
       decoration: BoxDecoration(
         color: const Color(0xFF1C1C1E), // Match app's background color
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF3A3A3C)), // Match app's border color
+        border: Border.all(
+          color: const Color(0xFF3A3A3C),
+        ), // Match app's border color
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.4),
@@ -368,7 +390,11 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
               },
               child: Row(
                 children: [
-                  const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8), size: 20), // Use app's primary color
+                  const Icon(
+                    Icons.chat_bubble,
+                    color: Color(0xFF6B7FB8),
+                    size: 20,
+                  ), // Use app's primary color
                   const SizedBox(width: 8),
                   const Text(
                     'Chat',
@@ -389,16 +415,23 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
                   ),
                   const SizedBox(width: 12),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Color(0xFF8E8E93), size: 20), // Use app's secondary color
+                    icon: const Icon(
+                      Icons.close,
+                      color: Color(0xFF8E8E93),
+                      size: 20,
+                    ), // Use app's secondary color
                     onPressed: _hide,
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          
+
           // Messages
           Expanded(
             child: ListView.builder(
@@ -412,7 +445,7 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
               },
             ),
           ),
-          
+
           // Input
           Container(
             padding: const EdgeInsets.all(16),
@@ -438,12 +471,20 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
-                      hintStyle: const TextStyle(color: Color(0xFF8E8E93)), // Use app's secondary text color
+                      hintStyle: const TextStyle(
+                        color: Color(0xFF8E8E93),
+                      ), // Use app's secondary text color
                       filled: true,
-                      fillColor: const Color(0xFF1C1C1E), // Match app's background color
+                      fillColor: const Color(
+                        0xFF1C1C1E,
+                      ), // Match app's background color
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12), // Match app's border radius
-                        borderSide: const BorderSide(color: Color(0xFF3A3A3C)), // Match app's border color
+                        borderRadius: BorderRadius.circular(
+                          12,
+                        ), // Match app's border radius
+                        borderSide: const BorderSide(
+                          color: Color(0xFF3A3A3C),
+                        ), // Match app's border color
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -451,7 +492,9 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF6B7FB8)), // Use app's primary color
+                        borderSide: const BorderSide(
+                          color: Color(0xFF6B7FB8),
+                        ), // Use app's primary color
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -471,7 +514,10 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
                     icon: const Icon(Icons.send, color: Colors.white, size: 18),
                     onPressed: _sendMessage,
                     padding: const EdgeInsets.all(10),
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                    constraints: const BoxConstraints(
+                      minWidth: 40,
+                      minHeight: 40,
+                    ),
                   ),
                 ),
               ],
@@ -492,9 +538,13 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
           maxWidth: MediaQuery.of(context).size.width * 0.7,
         ),
         decoration: BoxDecoration(
-          color: message.isLocal 
-              ? const Color(0xFF6B7FB8) // Use app's primary color for sent messages
-              : const Color(0xFF2C2C2E), // Use app's card color for received messages
+          color: message.isLocal
+              ? const Color(
+                  0xFF6B7FB8,
+                ) // Use app's primary color for sent messages
+              : const Color(
+                  0xFF2C2C2E,
+                ), // Use app's card color for received messages
           borderRadius: BorderRadius.circular(12), // Match app's border radius
         ),
         child: Column(
@@ -514,18 +564,17 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
             ],
             Text(
               message.message,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 14),
             ),
             const SizedBox(height: 2),
             Text(
               message.getFormattedTime(),
               style: TextStyle(
-                color: message.isLocal 
+                color: message.isLocal
                     ? Colors.white.withValues(alpha: 0.7)
-                    : const Color(0xFF8E8E93), // Use app's secondary text color for received messages
+                    : const Color(
+                        0xFF8E8E93,
+                      ), // Use app's secondary text color for received messages
                 fontSize: 11,
               ),
             ),
@@ -552,7 +601,10 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
     EdgeInsets padding,
   ) {
     final minX = 16.0;
-    final maxX = (screenSize.width - panelSize.width - 16).clamp(minX, screenSize.width);
+    final maxX = (screenSize.width - panelSize.width - 16).clamp(
+      minX,
+      screenSize.width,
+    );
     final minY = (padding.top + 16).clamp(16, screenSize.height);
     final maxY = (screenSize.height - panelSize.height - padding.bottom - 16)
         .clamp(minY, screenSize.height);

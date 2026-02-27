@@ -6,8 +6,8 @@ import 'package:flutter/foundation.dart';
 
 class ContactService extends ChangeNotifier {
   ContactService({FirebaseFirestore? firestore, FirebaseAuth? auth})
-      : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance {
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _auth = auth ?? FirebaseAuth.instance {
     _authSubscription = _auth.authStateChanges().listen(_updateSubscription);
   }
 
@@ -18,7 +18,7 @@ class ContactService extends ChangeNotifier {
   List<String> get favoriteIds => _favoriteIds;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
-      _favoritesSubscription;
+  _favoritesSubscription;
   StreamSubscription<User?>? _authSubscription;
 
   String? get _currentUserId => _auth.currentUser?.uid;
@@ -35,21 +35,24 @@ class ContactService extends ChangeNotifier {
         .collection('users')
         .doc(user.uid)
         .snapshots()
-        .listen((snapshot) {
-      if (snapshot.exists) {
-        final data = snapshot.data();
-        if (data != null && data.containsKey('favorites')) {
-          _favoriteIds = List<String>.from(data['favorites'] ?? []);
-        } else {
-          _favoriteIds = [];
-        }
-      } else {
-        _favoriteIds = [];
-      }
-      notifyListeners();
-    }, onError: (e) {
-      debugPrint('Error listening to favorites: $e');
-    });
+        .listen(
+          (snapshot) {
+            if (snapshot.exists) {
+              final data = snapshot.data();
+              if (data != null && data.containsKey('favorites')) {
+                _favoriteIds = List<String>.from(data['favorites'] ?? []);
+              } else {
+                _favoriteIds = [];
+              }
+            } else {
+              _favoriteIds = [];
+            }
+            notifyListeners();
+          },
+          onError: (e) {
+            debugPrint('Error listening to favorites: $e');
+          },
+        );
   }
 
   bool isFavorite(String userId) => _favoriteIds.contains(userId);
@@ -59,11 +62,7 @@ class ContactService extends ChangeNotifier {
     final uid = _currentUserId;
     if (uid == null) return Stream.value([]);
 
-    return _firestore
-        .collection('users')
-        .doc(uid)
-        .snapshots()
-        .map((snapshot) {
+    return _firestore.collection('users').doc(uid).snapshots().map((snapshot) {
       if (!snapshot.exists) return [];
       final data = snapshot.data();
       if (data == null || !data.containsKey('favorites')) return [];
@@ -88,7 +87,7 @@ class ContactService extends ChangeNotifier {
 
         try {
           await _firestore.collection('users').doc(user.uid).update({
-            'favorites': FieldValue.arrayRemove([userId])
+            'favorites': FieldValue.arrayRemove([userId]),
           });
         } catch (e) {
           if (!_favoriteIds.contains(userId)) {
@@ -103,7 +102,7 @@ class ContactService extends ChangeNotifier {
 
         try {
           await _firestore.collection('users').doc(user.uid).update({
-            'favorites': FieldValue.arrayUnion([userId])
+            'favorites': FieldValue.arrayUnion([userId]),
           });
         } catch (e) {
           if (_favoriteIds.contains(userId)) {
@@ -118,8 +117,10 @@ class ContactService extends ChangeNotifier {
     }
   }
 
-  Future<List<Map<String, dynamic>>> searchContacts(String query,
-      {int limit = 5}) async {
+  Future<List<Map<String, dynamic>>> searchContacts(
+    String query, {
+    int limit = 5,
+  }) async {
     final user = _auth.currentUser;
     if (user == null) return [];
 
@@ -147,10 +148,12 @@ class ContactService extends ChangeNotifier {
             : contactIds.length;
         final batchIds = contactIds.sublist(i, end);
 
-        futures.add(_firestore
-            .collection('users')
-            .where(FieldPath.documentId, whereIn: batchIds)
-            .get());
+        futures.add(
+          _firestore
+              .collection('users')
+              .where(FieldPath.documentId, whereIn: batchIds)
+              .get(),
+        );
       }
 
       final snapshots = await Future.wait(futures);
@@ -167,11 +170,14 @@ class ContactService extends ChangeNotifier {
       }
 
       final lowerQuery = query.toLowerCase();
-      return allContacts.where((c) {
-        final name = (c['name'] as String).toLowerCase();
-        final email = (c['email'] as String).toLowerCase();
-        return name.contains(lowerQuery) || email.contains(lowerQuery);
-      }).take(limit).toList();
+      return allContacts
+          .where((c) {
+            final name = (c['name'] as String).toLowerCase();
+            final email = (c['email'] as String).toLowerCase();
+            return name.contains(lowerQuery) || email.contains(lowerQuery);
+          })
+          .take(limit)
+          .toList();
     } catch (e) {
       debugPrint('Error searching contacts: $e');
       return [];

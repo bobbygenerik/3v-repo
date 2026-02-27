@@ -36,8 +36,14 @@ class _CallChatScreenState extends State<CallChatScreen> {
 
   void _initStream() {
     final instance = widget.firestore ?? FirebaseFirestore.instance;
-    final chatCollection = instance.collection('call_chats').doc(widget.callId).collection('messages');
-    _chatStream = chatCollection.orderBy('timestamp', descending: true).limit(100).snapshots();
+    final chatCollection = instance
+        .collection('call_chats')
+        .doc(widget.callId)
+        .collection('messages');
+    _chatStream = chatCollection
+        .orderBy('timestamp', descending: true)
+        .limit(100)
+        .snapshots();
   }
 
   @override
@@ -47,9 +53,11 @@ class _CallChatScreenState extends State<CallChatScreen> {
       body: StreamBuilder<QuerySnapshot>(
         stream: _chatStream,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          if (snapshot.connectionState == ConnectionState.waiting)
+            return const Center(child: CircularProgressIndicator());
           final docs = snapshot.data?.docs ?? [];
-          if (docs.isEmpty) return const Center(child: Text('No chat messages for this call'));
+          if (docs.isEmpty)
+            return const Center(child: Text('No chat messages for this call'));
           return ListView.builder(
             reverse: true,
             itemCount: docs.length,

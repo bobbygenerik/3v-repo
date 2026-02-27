@@ -23,7 +23,10 @@ void main() {
     );
 
     expect(invitationId, isNotNull);
-    final doc = await firestore.collection('call_invitations').doc(invitationId).get();
+    final doc = await firestore
+        .collection('call_invitations')
+        .doc(invitationId)
+        .get();
     final data = doc.data();
     expect(data?['status'], 'pending');
     expect(data?['recipientId'], 'recipient-1');
@@ -45,13 +48,18 @@ void main() {
       'isVideoCall': true,
       'status': 'pending',
       'timestamp': Timestamp.fromDate(DateTime.now()),
-      'expiresAt': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 1))),
+      'expiresAt': Timestamp.fromDate(
+        DateTime.now().add(const Duration(minutes: 1)),
+      ),
     });
 
     final accepted = await service.acceptInvitation(docRef.id);
     expect(accepted, isTrue);
 
-    final updated = await firestore.collection('call_invitations').doc(docRef.id).get();
+    final updated = await firestore
+        .collection('call_invitations')
+        .doc(docRef.id)
+        .get();
     expect(updated.data()?['status'], 'accepted');
   });
 }

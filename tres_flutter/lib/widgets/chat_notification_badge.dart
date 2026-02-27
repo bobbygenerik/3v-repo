@@ -24,25 +24,21 @@ class _ChatNotificationBadgeState extends State<ChatNotificationBadge>
   @override
   void initState() {
     super.initState();
-    
+
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.2,
-    ).animate(CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    ));
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void didUpdateWidget(ChatNotificationBadge oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     // Trigger pulse animation on new message
     if (widget.hasNewMessage && !oldWidget.hasNewMessage) {
       _pulseController.forward().then((_) {
@@ -68,7 +64,7 @@ class _ChatNotificationBadgeState extends State<ChatNotificationBadge>
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: widget.unreadCount > 0 
+                    color: widget.unreadCount > 0
                         ? const Color(0xFF6B7FB8) // Use app's primary color
                         : const Color(0xFF2C2C2E), // Use app's card color
                     shape: BoxShape.circle,
@@ -90,7 +86,7 @@ class _ChatNotificationBadgeState extends State<ChatNotificationBadge>
                     size: 24,
                   ),
                 ),
-                
+
                 // Unread count badge
                 if (widget.unreadCount > 0)
                   Positioned(
@@ -99,9 +95,14 @@ class _ChatNotificationBadgeState extends State<ChatNotificationBadge>
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade600, // Slightly darker red to match app style
+                        color: Colors
+                            .red
+                            .shade600, // Slightly darker red to match app style
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF1C1C1E), width: 2), // Use app's background color for border
+                        border: Border.all(
+                          color: const Color(0xFF1C1C1E),
+                          width: 2,
+                        ), // Use app's background color for border
                       ),
                       constraints: const BoxConstraints(
                         minWidth: 20,
@@ -109,7 +110,9 @@ class _ChatNotificationBadgeState extends State<ChatNotificationBadge>
                       ),
                       child: Center(
                         child: Text(
-                          widget.unreadCount > 99 ? '99+' : widget.unreadCount.toString(),
+                          widget.unreadCount > 99
+                              ? '99+'
+                              : widget.unreadCount.toString(),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 10,
@@ -120,7 +123,7 @@ class _ChatNotificationBadgeState extends State<ChatNotificationBadge>
                       ),
                     ),
                   ),
-                
+
                 // New message indicator (pulsing dot)
                 if (widget.hasNewMessage)
                   Positioned(
@@ -130,11 +133,15 @@ class _ChatNotificationBadgeState extends State<ChatNotificationBadge>
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF4CAF50), // Use a green that matches the app's color scheme
+                        color: const Color(
+                          0xFF4CAF50,
+                        ), // Use a green that matches the app's color scheme
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF4CAF50).withValues(alpha: 0.6),
+                            color: const Color(
+                              0xFF4CAF50,
+                            ).withValues(alpha: 0.6),
                             blurRadius: 4,
                             spreadRadius: 1,
                           ),

@@ -83,7 +83,8 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   EncryptionStatus get encryptionStatus => encryptionService.status;
   CallStats get currentCallStats => statsService.currentStats;
   CallConnectionQuality get connectionQuality => statsService.currentQuality;
-  List<ParticipantTile> get participantTiles => layoutManager.participants.isEmpty
+  List<ParticipantTile> get participantTiles =>
+      layoutManager.participants.isEmpty
       ? []
       : layoutManager.getTiles(containerWidth: 1920, containerHeight: 1080);
   Participant? get pinnedParticipant => layoutManager.pinnedParticipant;
@@ -114,11 +115,13 @@ class CallFeaturesCoordinator extends ChangeNotifier {
       _isBackgroundBlurEnabled = false;
       _isBeautyFilterEnabled = false;
       _isFaceAutoFramingEnabled = false;
-      
+
       // If device is low-end, disable expensive ML features regardless of saved prefs
       try {
         if (DeviceCapabilityService.capability == DeviceCapability.lowEnd) {
-          debugPrint('⚠️ Low-end device detected — disabling ML-heavy features for performance');
+          debugPrint(
+            '⚠️ Low-end device detected — disabling ML-heavy features for performance',
+          );
           if (_isBackgroundBlurEnabled) {
             _isBackgroundBlurEnabled = false;
           }
@@ -262,7 +265,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   void toggleSpatialAudio() {
     _isSpatialAudioEnabled = !_isSpatialAudioEnabled;
     notifyListeners();
-    debugPrint('Spatial audio ${_isSpatialAudioEnabled ? "enabled" : "disabled"}');
+    debugPrint(
+      'Spatial audio ${_isSpatialAudioEnabled ? "enabled" : "disabled"}',
+    );
 
     // Call native implementation if available
     _audioDeviceService?.setSpatialAudioEnabled(_isSpatialAudioEnabled);
@@ -275,7 +280,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     // MediaPipe removed - no-op
     await _persistSetting('background_blur', _isBackgroundBlurEnabled);
     notifyListeners();
-    debugPrint('Background blur ${_isBackgroundBlurEnabled ? "enabled" : "disabled"}');
+    debugPrint(
+      'Background blur ${_isBackgroundBlurEnabled ? "enabled" : "disabled"}',
+    );
   }
 
   /// Toggle beauty filter
@@ -285,7 +292,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     // MediaPipe removed - no-op
     unawaited(_persistSetting('beauty_filter', _isBeautyFilterEnabled));
     notifyListeners();
-    debugPrint('Beauty filter ${_isBeautyFilterEnabled ? "enabled" : "disabled"}');
+    debugPrint(
+      'Beauty filter ${_isBeautyFilterEnabled ? "enabled" : "disabled"}',
+    );
   }
 
   /// Toggle face auto-framing
@@ -295,7 +304,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     // MediaPipe removed - no-op
     unawaited(_persistSetting('face_auto_framing', _isFaceAutoFramingEnabled));
     notifyListeners();
-    debugPrint('Face auto-framing ${_isFaceAutoFramingEnabled ? "enabled" : "disabled"}');
+    debugPrint(
+      'Face auto-framing ${_isFaceAutoFramingEnabled ? "enabled" : "disabled"}',
+    );
   }
 
   Future<void> _persistSetting(String key, bool value) async {
@@ -316,9 +327,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   void setArFilter(String filterName) {
     _activeArFilter = filterName;
     _isArFilterEnabled = filterName != 'none';
-    
+
     // AR filters service removed - stub only
-    
+
     notifyListeners();
     debugPrint('AR filter set to: $filterName (stub)');
   }
@@ -327,7 +338,9 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   Future<void> toggleAiNoiseCancellation() async {
     _isAiNoiseCancellationEnabled = !_isAiNoiseCancellationEnabled;
     notifyListeners();
-    debugPrint('AI noise cancellation ${_isAiNoiseCancellationEnabled ? "enabled" : "disabled"}');
+    debugPrint(
+      'AI noise cancellation ${_isAiNoiseCancellationEnabled ? "enabled" : "disabled"}',
+    );
 
     if (_liveKitService != null) {
       await _liveKitService!.updateAudioCaptureOptions(
@@ -401,7 +414,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
     chatService.cleanup();
     reactionService.cleanup();
-    
+
     // ML services removed - no disposal needed
 
     // Dispose Phase 4 services
@@ -437,18 +450,18 @@ class ArFilters {
   static const String sparkles = 'sparkles';
 
   static List<String> get all => [
-        none,
-        glasses,
-        hat,
-        mask,
-        bunnyEars,
-        catEars,
-        crown,
-        monocle,
-        piratePatch,
-        santaHat,
-        sparkles,
-      ];
+    none,
+    glasses,
+    hat,
+    mask,
+    bunnyEars,
+    catEars,
+    crown,
+    monocle,
+    piratePatch,
+    santaHat,
+    sparkles,
+  ];
 
   static String getDisplayName(String filter) {
     switch (filter) {

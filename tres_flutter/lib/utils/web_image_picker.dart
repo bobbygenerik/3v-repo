@@ -3,7 +3,8 @@ import 'dart:html' as html;
 
 class WebImagePicker {
   static Future<Uint8List?> pickImage() async {
-    final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+    final html.FileUploadInputElement uploadInput =
+        html.FileUploadInputElement();
     uploadInput.accept = 'image/*';
     uploadInput.click();
 

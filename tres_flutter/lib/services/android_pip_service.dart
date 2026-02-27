@@ -4,13 +4,13 @@ import 'package:flutter/foundation.dart';
 /// Service to handle Android native Picture-in-Picture
 class AndroidPipService {
   static const MethodChannel _channel = MethodChannel('tres3/pip');
-  
+
   /// Check if PiP is available on this device
   static Future<bool> isPipAvailable() async {
     if (defaultTargetPlatform != TargetPlatform.android) {
       return false;
     }
-    
+
     try {
       final bool available = await _channel.invokeMethod('isPipAvailable');
       return available;
@@ -19,13 +19,13 @@ class AndroidPipService {
       return false;
     }
   }
-  
+
   /// Enter Picture-in-Picture mode
   static Future<bool> enterPipMode() async {
     if (defaultTargetPlatform != TargetPlatform.android) {
       return false;
     }
-    
+
     try {
       final bool entered = await _channel.invokeMethod('enterPipMode');
       return entered;
@@ -66,7 +66,7 @@ class AndroidPipService {
     if (defaultTargetPlatform != TargetPlatform.android) {
       return false;
     }
-    
+
     try {
       final bool inPip = await _channel.invokeMethod('isInPipMode');
       return inPip;

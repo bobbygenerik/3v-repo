@@ -14,8 +14,11 @@ void main() {
         'roundTripTime': (i % 50) / 1000.0,
         'jitter': 0.03,
         'nested': {
-           'more_data': List.generate(10, (j) => {'value': j, 'width': 1920, 'height': 1080, 'fps': 30}),
-        }
+          'more_data': List.generate(
+            10,
+            (j) => {'value': j, 'width': 1920, 'height': 1080, 'fps': 30},
+          ),
+        },
       };
     }
 
@@ -26,7 +29,9 @@ void main() {
     stopwatch.stop();
 
     print('Time taken for 100 iterations: ${stopwatch.elapsedMilliseconds} ms');
-    print('Average time per iteration: ${stopwatch.elapsedMilliseconds / 100} ms');
+    print(
+      'Average time per iteration: ${stopwatch.elapsedMilliseconds / 100} ms',
+    );
   });
 
   test('parseStatsObject functionality', () {
@@ -41,7 +46,7 @@ void main() {
         'height': 1080,
         'framesPerSecond': 30,
         'availableOutgoingBitrate': 1000000,
-      }
+      },
     };
 
     final result = parseStatsObject(stats);

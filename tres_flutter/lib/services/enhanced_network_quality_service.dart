@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:livekit_client/livekit_client.dart';
 
 enum NetworkQuality { unknown, poor, fair, good, excellent }
+
 enum ConnectionType { unknown, wifi, cellular, ethernet }
 
 class NetworkStats {
@@ -39,14 +40,14 @@ class NetworkStats {
 class EnhancedNetworkQualityService extends ChangeNotifier {
   Timer? _monitoringTimer;
   StreamSubscription<NetworkStats>? _networkStatsSubscription;
-  
+
   bool _isMonitoring = false;
   NetworkStats _currentStats = NetworkStats.empty();
-  
+
   // Network monitoring settings
   Duration _monitoringInterval = const Duration(seconds: 3);
   int _maxHistorySize = 50;
-  
+
   // Network quality thresholds
   static const double _excellentLatencyThreshold = 50.0; // ms
   static const double _goodLatencyThreshold = 100.0; // ms
@@ -57,25 +58,25 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
   static const double _excellentPacketLossThreshold = 0.5; // %
   static const double _goodPacketLossThreshold = 2.0; // %
   static const double _fairPacketLossThreshold = 5.0; // %
-  
+
   // Network quality history
   final List<NetworkStats> _statsHistory = [];
-  
+
   NetworkStats get currentStats => _currentStats;
   bool get isMonitoring => _isMonitoring;
   List<NetworkStats> get statsHistory => List.unmodifiable(_statsHistory);
 
   void startMonitoring() {
     if (_isMonitoring) return;
-    
+
     _isMonitoring = true;
-    
+
     // Start periodic network quality monitoring
     _monitoringTimer = Timer.periodic(
       _monitoringInterval,
       (_) => _collectNetworkStats(),
     );
-    
+
     debugPrint('📡 Enhanced network quality monitoring started');
   }
 
@@ -85,7 +86,7 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
     _networkStatsSubscription?.cancel();
     _monitoringTimer = null;
     _networkStatsSubscription = null;
-    
+
     debugPrint('📡 Enhanced network quality monitoring stopped');
   }
 
@@ -94,18 +95,18 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
       // In a real implementation, this would collect actual network statistics
       // For now, we'll simulate realistic network stats
       final stats = await _simulateNetworkStats();
-      
+
       _currentStats = stats;
       _statsHistory.add(stats);
-      
+
       // Keep only recent history
       if (_statsHistory.length > _maxHistorySize) {
         _statsHistory.removeAt(0);
       }
-      
+
       // Analyze network quality trends
       _analyzeNetworkTrends();
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('❌ Error collecting network stats: $e');
@@ -116,9 +117,9 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
     // Simulate realistic network statistics based on connection type
     final random = math.Random();
     final connectionType = _detectConnectionType();
-    
+
     double baseLatency, baseJitter, baseBandwidth, basePacketLoss;
-    
+
     switch (connectionType) {
       case ConnectionType.wifi:
         baseLatency = 20 + random.nextDouble() * 80; // 20-100ms
@@ -144,11 +145,14 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
         baseBandwidth = 5 + random.nextDouble() * 45; // 5-50 Mbps
         basePacketLoss = random.nextDouble() * 10; // 0-10%
     }
-    
+
     final quality = _calculateNetworkQuality(
-      baseLatency, baseJitter, basePacketLoss, baseBandwidth
+      baseLatency,
+      baseJitter,
+      basePacketLoss,
+      baseBandwidth,
     );
-    
+
     return NetworkStats(
       latency: baseLatency,
       jitter: baseJitter,
@@ -165,7 +169,7 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
     // For simulation, we'll randomly assign types with realistic probabilities
     final random = math.Random();
     final value = random.nextDouble();
-    
+
     if (value < 0.6) return ConnectionType.wifi;
     if (value < 0.9) return ConnectionType.cellular;
     if (value < 0.95) return ConnectionType.ethernet;
@@ -173,10 +177,13 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
   }
 
   NetworkQuality _calculateNetworkQuality(
-    double latency, double jitter, double packetLoss, double bandwidth
+    double latency,
+    double jitter,
+    double packetLoss,
+    double bandwidth,
   ) {
     int score = 0;
-    
+
     // Latency scoring (0-3 points)
     if (latency <= _excellentLatencyThreshold) {
       score += 3;
@@ -185,7 +192,7 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
     } else if (latency <= _fairLatencyThreshold) {
       score += 1;
     }
-    
+
     // Jitter scoring (0-3 points)
     if (jitter <= _excellentJitterThreshold) {
       score += 3;
@@ -194,7 +201,7 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
     } else if (jitter <= _fairJitterThreshold) {
       score += 1;
     }
-    
+
     // Packet loss scoring (0-3 points)
     if (packetLoss <= _excellentPacketLossThreshold) {
       score += 3;
@@ -203,7 +210,7 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
     } else if (packetLoss <= _fairPacketLossThreshold) {
       score += 1;
     }
-    
+
     // Bandwidth scoring (0-3 points)
     if (bandwidth >= 100) {
       score += 3;
@@ -212,7 +219,7 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
     } else if (bandwidth >= 25) {
       score += 1;
     }
-    
+
     // Convert score to quality rating
     if (score >= 10) return NetworkQuality.excellent;
     if (score >= 7) return NetworkQuality.good;
@@ -223,30 +230,43 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
 
   void _analyzeNetworkTrends() {
     if (_statsHistory.length < 5) return;
-    
-    final recentStats = _statsHistory.length >= 5 
+
+    final recentStats = _statsHistory.length >= 5
         ? _statsHistory.sublist(_statsHistory.length - 5)
         : _statsHistory;
-    final avgLatency = recentStats.map((s) => s.latency).reduce((a, b) => a + b) / recentStats.length;
-    final avgPacketLoss = recentStats.map((s) => s.packetLoss).reduce((a, b) => a + b) / recentStats.length;
-    
+    final avgLatency =
+        recentStats.map((s) => s.latency).reduce((a, b) => a + b) /
+        recentStats.length;
+    final avgPacketLoss =
+        recentStats.map((s) => s.packetLoss).reduce((a, b) => a + b) /
+        recentStats.length;
+
     // Detect degrading network conditions
     if (avgLatency > 200 || avgPacketLoss > 3) {
       debugPrint('⚠️ Network quality degradation detected');
       debugPrint('   - Average latency: ${avgLatency.toStringAsFixed(1)}ms');
-      debugPrint('   - Average packet loss: ${avgPacketLoss.toStringAsFixed(1)}%');
+      debugPrint(
+        '   - Average packet loss: ${avgPacketLoss.toStringAsFixed(1)}%',
+      );
     }
-    
+
     // Detect improving network conditions
     if (_statsHistory.length >= 10) {
-      final olderStats = _statsHistory.length >= 10 
-          ? _statsHistory.sublist(_statsHistory.length - 10, _statsHistory.length - 5)
+      final olderStats = _statsHistory.length >= 10
+          ? _statsHistory.sublist(
+              _statsHistory.length - 10,
+              _statsHistory.length - 5,
+            )
           : <NetworkStats>[];
-      final oldAvgLatency = olderStats.map((s) => s.latency).reduce((a, b) => a + b) / olderStats.length;
-      
+      final oldAvgLatency =
+          olderStats.map((s) => s.latency).reduce((a, b) => a + b) /
+          olderStats.length;
+
       if (oldAvgLatency - avgLatency > 50) {
         debugPrint('✅ Network quality improvement detected');
-        debugPrint('   - Latency improved by: ${(oldAvgLatency - avgLatency).toStringAsFixed(1)}ms');
+        debugPrint(
+          '   - Latency improved by: ${(oldAvgLatency - avgLatency).toStringAsFixed(1)}ms',
+        );
       }
     }
   }
@@ -318,14 +338,16 @@ class EnhancedNetworkQualityService extends ChangeNotifier {
   void setMonitoringInterval(Duration interval) {
     if (_monitoringInterval != interval) {
       _monitoringInterval = interval;
-      
+
       // Restart monitoring with new interval if currently monitoring
       if (_isMonitoring) {
         stopMonitoring();
         startMonitoring();
       }
-      
-      debugPrint('📡 Network monitoring interval changed to: ${interval.inSeconds}s');
+
+      debugPrint(
+        '📡 Network monitoring interval changed to: ${interval.inSeconds}s',
+      );
     }
   }
 

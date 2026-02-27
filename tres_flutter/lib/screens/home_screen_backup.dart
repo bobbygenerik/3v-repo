@@ -17,7 +17,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final CallSignalingService _signalingService = CallSignalingService();
@@ -26,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   List<Map<String, dynamic>> _filteredContacts = [];
   bool _isLoadingContacts = true;
   bool _isLoadingHistory = true;
-  
+
   // Animated search placeholder
   int _currentPlaceholderIndex = 0;
   final List<String> _placeholders = ['Email', 'Phone', 'Display Name'];
@@ -38,19 +39,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _loadContacts();
     _loadCallHistory();
     _searchController.addListener(_filterContacts);
-    
+
     // Animate placeholder
-    _placeholderController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..addListener(() {
-      if (_placeholderController.isCompleted) {
-        setState(() {
-          _currentPlaceholderIndex = (_currentPlaceholderIndex + 1) % _placeholders.length;
-        });
-        _placeholderController.forward(from: 0.0);
-      }
-    });
+    _placeholderController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 3))
+          ..addListener(() {
+            if (_placeholderController.isCompleted) {
+              setState(() {
+                _currentPlaceholderIndex =
+                    (_currentPlaceholderIndex + 1) % _placeholders.length;
+              });
+              _placeholderController.forward(from: 0.0);
+            }
+          });
     _placeholderController.forward();
   }
 
@@ -136,12 +137,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-final authService = context.read<AuthService>();
-final user = authService.currentUser;
-// Ensure _callHistory and _filteredContacts are referenced to avoid unused-field warnings.
-final _ = _callHistory;
-final unused = _filteredContacts;
-    
+    final authService = context.read<AuthService>();
+    final user = authService.currentUser;
+    // Ensure _callHistory and _filteredContacts are referenced to avoid unused-field warnings.
+    final _ = _callHistory;
+    final unused = _filteredContacts;
+
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
       appBar: AppBar(
@@ -155,22 +156,25 @@ final unused = _filteredContacts;
                 radius: 20,
                 backgroundColor: AppColors.primaryBlue,
                 child: user?.photoURL != null
-                      ? ClipOval(
-                          child: SizedBox(
-                            width: 40,
-                            height: 40,
-                            child: Avatar(
-                              url: user!.photoURL,
-                              radius: 20,
-                              initials: _getUserInitial(user),
-                              enableLogging: true,
-                            ),
+                    ? ClipOval(
+                        child: SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: Avatar(
+                            url: user!.photoURL,
+                            radius: 20,
+                            initials: _getUserInitial(user),
+                            enableLogging: true,
                           ),
-                        )
-                      : Text(
-                          _getUserInitial(user),
-                          style: const TextStyle(fontSize: 18, color: Colors.white),
                         ),
+                      )
+                    : Text(
+                        _getUserInitial(user),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
               onPressed: () {
                 Navigator.push(
@@ -191,7 +195,10 @@ final unused = _filteredContacts;
           child: Container(
             margin: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
-              border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3), width: 3),
+              border: Border.all(
+                color: AppColors.primaryBlue.withOpacity(0.3),
+                width: 3,
+              ),
               borderRadius: BorderRadius.circular(48),
             ),
             child: ClipRRect(
@@ -215,7 +222,10 @@ final unused = _filteredContacts;
                       controller: _searchController,
                       decoration: InputDecoration(
                         hintText: 'Search contacts or start a call...',
-                        prefixIcon: const Icon(Icons.alternate_email, color: AppColors.accentBlue),
+                        prefixIcon: const Icon(
+                          Icons.alternate_email,
+                          color: AppColors.accentBlue,
+                        ),
                         suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear),
@@ -230,17 +240,27 @@ final unused = _filteredContacts;
                         fillColor: AppColors.primaryDark,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppColors.primaryBlue.withOpacity(0.5)),
+                          borderSide: BorderSide(
+                            color: AppColors.primaryBlue.withOpacity(0.5),
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppColors.primaryBlue.withOpacity(0.3)),
+                          borderSide: BorderSide(
+                            color: AppColors.primaryBlue.withOpacity(0.3),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: AppColors.accentBlue, width: 2),
+                          borderSide: const BorderSide(
+                            color: AppColors.accentBlue,
+                            width: 2,
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                       ),
                       onChanged: (value) {
                         setState(() {});
@@ -252,7 +272,8 @@ final unused = _filteredContacts;
                             padding: const EdgeInsets.only(top: 12.0),
                             child: LinearProgressIndicator(
                               color: AppColors.accentBlue,
-                              backgroundColor: AppColors.primaryBlue.withOpacity(0.2),
+                              backgroundColor: AppColors.primaryBlue
+                                  .withOpacity(0.2),
                               minHeight: 4,
                             ),
                           )
@@ -265,14 +286,18 @@ final unused = _filteredContacts;
                           child: OutlinedButton.icon(
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Contacts coming soon!')),
+                                const SnackBar(
+                                  content: Text('Contacts coming soon!'),
+                                ),
                               );
                             },
                             icon: const Icon(Icons.people, size: 18),
                             label: const Text('Contacts'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.accentBlue,
-                              side: const BorderSide(color: AppColors.accentBlue),
+                              side: const BorderSide(
+                                color: AppColors.accentBlue,
+                              ),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
@@ -282,14 +307,18 @@ final unused = _filteredContacts;
                           child: OutlinedButton.icon(
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Call history coming soon!')),
+                                const SnackBar(
+                                  content: Text('Call history coming soon!'),
+                                ),
                               );
                             },
                             icon: const Icon(Icons.history, size: 18),
                             label: const Text('Call Logs'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.accentBlue,
-                              side: const BorderSide(color: AppColors.accentBlue),
+                              side: const BorderSide(
+                                color: AppColors.accentBlue,
+                              ),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
@@ -313,7 +342,11 @@ final unused = _filteredContacts;
                       ),
                       child: ElevatedButton.icon(
                         onPressed: () => _showStartCallDialog(),
-                        icon: const Icon(Icons.phone, size: 20, color: Colors.white),
+                        icon: const Icon(
+                          Icons.phone,
+                          size: 20,
+                          color: Colors.white,
+                        ),
                         label: const Text(
                           'Start Call',
                           style: TextStyle(
@@ -345,7 +378,7 @@ final unused = _filteredContacts;
 
   void _showStartCallDialog([String? recipient]) {
     final roomController = TextEditingController(text: recipient);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -404,12 +437,12 @@ final unused = _filteredContacts;
     try {
       final authService = context.read<AuthService>();
       final liveKitService = context.read<LiveKitService>();
-      
+
       // Show loading
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Starting call...')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Starting call...')));
       }
 
       // Generate room name
@@ -418,14 +451,15 @@ final unused = _filteredContacts;
       // Call Firebase Function to get LiveKit token
       final functions = FirebaseFunctions.instance;
       final callable = functions.httpsCallable('getLiveKitToken');
-      
+
       final response = await callable.call({
         'calleeId': recipientEmail,
         'roomName': roomName,
       });
 
       final token = response.data['token'] as String;
-      final wsUrl = response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
+      final wsUrl =
+          response.data['wsUrl'] as String? ?? 'wss://livekit.iptvsubz.fun';
 
       if (mounted) {
         // Navigate to call screen

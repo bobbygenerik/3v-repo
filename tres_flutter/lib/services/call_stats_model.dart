@@ -1,13 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 /// Connection quality levels
-enum CallConnectionQuality {
-  excellent,
-  good,
-  fair,
-  poor,
-  unknown,
-}
+enum CallConnectionQuality { excellent, good, fair, poor, unknown }
 
 extension CallConnectionQualityExtensions on CallConnectionQuality {
   String get label {
@@ -86,7 +80,8 @@ class CallStats {
   String get audioRecvBitrateFormatted => _formatBitrate(audioRecvBitrate);
   String get roundTripTimeFormatted => _formatLatency(roundTripTime);
   String get jitterFormatted => _formatJitter(jitter);
-  String get availableOutgoingBitrateFormatted => _formatBitrateFromBits(availableOutgoingBitrate);
+  String get availableOutgoingBitrateFormatted =>
+      _formatBitrateFromBits(availableOutgoingBitrate);
   String get videoPacketLossFormatted => _formatPacketLoss(videoPacketLoss);
   String get audioPacketLossFormatted => _formatPacketLoss(audioPacketLoss);
 

@@ -50,24 +50,20 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
   @override
   void initState() {
     super.initState();
-    
+
     // Start vibration for incoming call
     VibrationService.vibrateIncomingCall();
     _listenForCancellation();
-    
+
     // Setup pulse animation for avatar
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
-    
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    ));
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
 
     // Auto-timeout after 60 seconds
     Future.delayed(const Duration(seconds: 60), () {
@@ -83,21 +79,27 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
         .doc(widget.invitationId)
         .snapshots()
         .listen((snapshot) {
-      if (!mounted || _dismissed) return;
-      if (!snapshot.exists) return;
-      final data = snapshot.data();
-      if (data == null) return;
-      final status = data['status'] as String?;
-      if (status == null) return;
-      if (status == 'cancelled' || status == 'timeout' || status == 'declined') {
-        _dismissed = true;
-        VibrationService.stopVibration();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Call ${status == 'cancelled' ? 'cancelled' : status}')),
-        );
-        Navigator.pop(context);
-      }
-    });
+          if (!mounted || _dismissed) return;
+          if (!snapshot.exists) return;
+          final data = snapshot.data();
+          if (data == null) return;
+          final status = data['status'] as String?;
+          if (status == null) return;
+          if (status == 'cancelled' ||
+              status == 'timeout' ||
+              status == 'declined') {
+            _dismissed = true;
+            VibrationService.stopVibration();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Call ${status == 'cancelled' ? 'cancelled' : status}',
+                ),
+              ),
+            );
+            Navigator.pop(context);
+          }
+        });
   }
 
   @override
@@ -111,16 +113,18 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
 
   Future<void> _acceptCall() async {
     if (_isAccepting) return;
-    
+
     // Stop vibration when call is accepted
     VibrationService.stopVibration();
-    
+
     setState(() => _isAccepting = true);
 
     try {
       // First, validate the invitation is still valid
-      final isValid = await _signalingService.acceptInvitation(widget.invitationId);
-      
+      final isValid = await _signalingService.acceptInvitation(
+        widget.invitationId,
+      );
+
       if (!isValid) {
         debugPrint('❌ Cannot accept - invitation expired or cancelled');
         if (mounted) {
@@ -139,17 +143,21 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
       debugPrint('🎫 Generating LiveKit token for recipient');
       final functions = FirebaseFunctions.instance;
       final callable = functions.httpsCallable('getLiveKitToken');
-      
+
       // Call cloud function with a timeout to avoid hanging the UI if functions are slow
       final response = await callable
           .call({
-        'calleeId': widget.callerId, // Not actually used for token generation, just for logging
-        'roomName': widget.roomName,
-        'platform': DeviceModeService.platformLabel(),
-      })
-          .timeout(const Duration(seconds: 10), onTimeout: () {
-        throw Exception('Token request timed out');
-      });
+            'calleeId': widget
+                .callerId, // Not actually used for token generation, just for logging
+            'roomName': widget.roomName,
+            'platform': DeviceModeService.platformLabel(),
+          })
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw Exception('Token request timed out');
+            },
+          );
 
       final myToken = response.data['token'] as String;
       await IceServerConfig.updateFromTokenResponse(
@@ -164,7 +172,10 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
         try {
-          await sessionService.startSession(widget.roomName, [currentUser.uid, widget.callerId]);
+          await sessionService.startSession(widget.roomName, [
+            currentUser.uid,
+            widget.callerId,
+          ]);
         } catch (e) {
           debugPrint('❌ Failed to start session for recipient: $e');
         }
@@ -187,9 +198,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
       debugPrint('❌ Error accepting call: $e');
       if (mounted) {
         setState(() => _isAccepting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to accept call: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to accept call: $e')));
       }
     }
   }
@@ -197,11 +208,11 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
   Future<void> _declineCall() async {
     // Stop vibration when call is declined
     VibrationService.stopVibration();
-    
+
     try {
       // Mark invitation as declined in Firestore
       await _signalingService.declineInvitation(widget.invitationId);
-      
+
       if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
@@ -240,88 +251,88 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                 child: Column(
                   children: [
                     const Spacer(flex: 2),
-            
-                        // Caller Avatar with pulse animation
-            ScaleTransition(
-              scale: _pulseAnimation,
-              child: Container(
-                width: 160,
-                height: 160,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.primaryBlue.withOpacity(0.5),
-                    width: 4,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryBlue.withOpacity(0.3),
-                      blurRadius: 20,
-                      spreadRadius: 5,
-                    ),
-                  ],
-                ),
-                child: CircleAvatar(
-                  radius: 76,
-                  backgroundColor: AppColors.primaryBlue,
-                  backgroundImage: widget.callerPhotoUrl != null
-                      ? NetworkImage(widget.callerPhotoUrl!)
-                      : null,
-                  child: widget.callerPhotoUrl == null
-                      ? Text(
-                          widget.callerName.isNotEmpty
-                              ? widget.callerName[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            fontSize: 70,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+
+                    // Caller Avatar with pulse animation
+                    ScaleTransition(
+                      scale: _pulseAnimation,
+                      child: Container(
+                        width: 160,
+                        height: 160,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.primaryBlue.withOpacity(0.5),
+                            width: 4,
                           ),
-                        )
-                      : null,
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 32),
-            
-            // Caller Name
-            Text(
-              widget.callerName,
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textWhite,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            
-            const SizedBox(height: 8),
-            
-            // Call Type
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  widget.isVideoCall ? Icons.videocam : Icons.phone,
-                  color: AppColors.primaryBlue,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  widget.isVideoCall
-                      ? 'Incoming Video Call'
-                      : 'Incoming Voice Call',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    color: AppColors.textLight,
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primaryBlue.withOpacity(0.3),
+                              blurRadius: 20,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: CircleAvatar(
+                          radius: 76,
+                          backgroundColor: AppColors.primaryBlue,
+                          backgroundImage: widget.callerPhotoUrl != null
+                              ? NetworkImage(widget.callerPhotoUrl!)
+                              : null,
+                          child: widget.callerPhotoUrl == null
+                              ? Text(
+                                  widget.callerName.isNotEmpty
+                                      ? widget.callerName[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                    fontSize: 70,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Caller Name
+                    Text(
+                      widget.callerName,
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textWhite,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Call Type
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          widget.isVideoCall ? Icons.videocam : Icons.phone,
+                          color: AppColors.primaryBlue,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          widget.isVideoCall
+                              ? 'Incoming Video Call'
+                              : 'Incoming Voice Call',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: AppColors.textLight,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
                     const Spacer(flex: 3),
                   ],
                 ),
@@ -334,7 +345,11 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
             AnimatedContainer(
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeInOut,
-              transform: Matrix4.translationValues(0, _showActions ? 0 : offscreenDy, 0),
+              transform: Matrix4.translationValues(
+                0,
+                _showActions ? 0 : offscreenDy,
+                0,
+              ),
               alignment: Alignment.center,
               child: Padding(
                 padding: EdgeInsets.fromLTRB(40, 0, 40, 40 + bottomInset),
@@ -362,7 +377,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.red.shade900.withOpacity(0.5),
+                                      color: Colors.red.shade900.withOpacity(
+                                        0.5,
+                                      ),
                                       blurRadius: 12,
                                       offset: const Offset(0, 6),
                                     ),
@@ -419,10 +436,12 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                                   boxShadow: [
                                     BoxShadow(
                                       color: _isAccepting
-                                          ? Colors.grey.shade900
-                                              .withOpacity(0.5)
-                                          : Colors.green.shade900
-                                              .withOpacity(0.5),
+                                          ? Colors.grey.shade900.withOpacity(
+                                              0.5,
+                                            )
+                                          : Colors.green.shade900.withOpacity(
+                                              0.5,
+                                            ),
                                       blurRadius: 12,
                                       offset: const Offset(0, 6),
                                     ),
@@ -435,7 +454,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                                         child: CircularProgressIndicator(
                                           valueColor:
                                               AlwaysStoppedAnimation<Color>(
-                                                  Colors.white),
+                                                Colors.white,
+                                              ),
                                           strokeWidth: 3,
                                         ),
                                       )

@@ -8,15 +8,15 @@ import 'package:flutter/foundation.dart';
 /// Mirrors functionality from Android MyFirebaseMessagingService.kt
 class CallListenerService extends ChangeNotifier {
   CallListenerService({FirebaseFirestore? firestore, FirebaseAuth? auth})
-      : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
-  
+
   StreamSubscription<QuerySnapshot>? _invitationSubscription;
   Map<String, dynamic>? _currentIncomingCall;
-  
+
   Map<String, dynamic>? get currentIncomingCall => _currentIncomingCall;
   bool get hasIncomingCall => _currentIncomingCall != null;
 
@@ -28,7 +28,9 @@ class CallListenerService extends ChangeNotifier {
       return;
     }
 
-    debugPrint('👂 Starting to listen for incoming calls for ${currentUser.uid}');
+    debugPrint(
+      '👂 Starting to listen for incoming calls for ${currentUser.uid}',
+    );
 
     // Listen to call_invitations where recipientId matches current user
     // Note: Filtering for 'pending' status in memory to avoid needing composite index
@@ -69,7 +71,7 @@ class CallListenerService extends ChangeNotifier {
       final data = doc.data() as Map<String, dynamic>;
       return data['status'] == 'pending';
     }).toList();
-    
+
     if (pendingDocs.isEmpty) {
       if (_currentIncomingCall != null) {
         debugPrint('📭 No pending invitations');
@@ -77,7 +79,7 @@ class CallListenerService extends ChangeNotifier {
       }
       return;
     }
-    
+
     // Sort by timestamp manually
     if (pendingDocs.length > 1) {
       pendingDocs.sort((a, b) {
@@ -87,14 +89,13 @@ class CallListenerService extends ChangeNotifier {
         return bTime.compareTo(aTime); // Descending order
       });
     }
-    
+
     final doc = pendingDocs.first;
     final data = doc.data() as Map<String, dynamic>;
-    
+
     // Check if invitation has expired
     final expiresAt = data['expiresAt'] as Timestamp?;
-    if (expiresAt != null && 
-        expiresAt.toDate().isBefore(DateTime.now())) {
+    if (expiresAt != null && expiresAt.toDate().isBefore(DateTime.now())) {
       debugPrint('⏰ Invitation expired: ${doc.id}');
       _markAsTimeout(doc.id);
       return;
@@ -104,9 +105,11 @@ class CallListenerService extends ChangeNotifier {
     if (_currentIncomingCall?['id'] != doc.id) {
       final callerName = data['callerName'] ?? 'Unknown';
       final isVideoCall = data['isVideoCall'] ?? true;
-      
-      debugPrint('📞 Incoming ${isVideoCall ? "video" : "audio"} call from $callerName');
-      
+
+      debugPrint(
+        '📞 Incoming ${isVideoCall ? "video" : "audio"} call from $callerName',
+      );
+
       _currentIncomingCall = {
         'id': doc.id,
         'callerId': data['callerId'],
@@ -119,7 +122,7 @@ class CallListenerService extends ChangeNotifier {
         'isVideoCall': isVideoCall,
         'timestamp': data['timestamp'],
       };
-      
+
       notifyListeners();
     }
   }
@@ -127,10 +130,7 @@ class CallListenerService extends ChangeNotifier {
   /// Mark an invitation as timed out
   Future<void> _markAsTimeout(String invitationId) async {
     try {
-      await _firestore
-          .collection('call_invitations')
-          .doc(invitationId)
-          .update({
+      await _firestore.collection('call_invitations').doc(invitationId).update({
         'status': 'timeout',
         'timeoutAt': FieldValue.serverTimestamp(),
       });
