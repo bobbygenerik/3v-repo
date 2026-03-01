@@ -344,34 +344,35 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                     // Decline Button
                     Column(
                       children: [
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: _declineCall,
-                            customBorder: const CircleBorder(),
-                            splashColor: Colors.white.withOpacity(0.3),
-                            child: Semantics(
-                              button: true,
-                              label: 'Decline call',
-                              excludeSemantics: true,
-                              child: Container(
-                                width: 70,
-                                height: 70,
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade600,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.red.shade900.withOpacity(0.5),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.call_end,
-                                  size: 34,
-                                  color: Colors.white,
+                        Semantics(
+                          button: true,
+                          label: 'Decline call',
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: _declineCall,
+                              customBorder: const CircleBorder(),
+                              splashColor: Colors.white.withOpacity(0.3),
+                              child: ExcludeSemantics(
+                                child: Container(
+                                  width: 70,
+                                  height: 70,
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade600,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.red.shade900.withOpacity(0.5),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.call_end,
+                                    size: 34,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
@@ -394,58 +395,59 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                     // Accept Button
                     Column(
                       children: [
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: _isAccepting ? null : _acceptCall,
-                            customBorder: const CircleBorder(),
-                            splashColor: Colors.white.withOpacity(0.3),
-                            child: Semantics(
-                              button: true,
-                              label: _isAccepting
-                                  ? 'Connecting call...'
-                                  : 'Accept call',
-                              enabled: !_isAccepting,
-                              liveRegion: _isAccepting,
-                              excludeSemantics: true,
-                              child: Container(
-                                width: 70,
-                                height: 70,
-                                decoration: BoxDecoration(
-                                  color: _isAccepting
-                                      ? Colors.grey.shade600
-                                      : Colors.green.shade600,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _isAccepting
-                                          ? Colors.grey.shade900
-                                              .withOpacity(0.5)
-                                          : Colors.green.shade900
-                                              .withOpacity(0.5),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ],
-                                ),
-                                child: _isAccepting
-                                    ? const SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                  Colors.white),
-                                          strokeWidth: 3,
-                                        ),
-                                      )
-                                    : Icon(
-                                        widget.isVideoCall
-                                            ? Icons.videocam
-                                            : Icons.phone,
-                                        size: 34,
-                                        color: Colors.white,
+                        Semantics(
+                          button: true,
+                          label: _isAccepting
+                              ? 'Connecting call...'
+                              : 'Accept call',
+                          enabled: !_isAccepting,
+                          liveRegion: _isAccepting,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: _isAccepting ? null : _acceptCall,
+                              customBorder: const CircleBorder(),
+                              splashColor: Colors.white.withOpacity(0.3),
+                              child: ExcludeSemantics(
+                                child: Container(
+                                  width: 70,
+                                  height: 70,
+                                  decoration: BoxDecoration(
+                                    color: _isAccepting
+                                        ? Colors.grey.shade600
+                                        : Colors.green.shade600,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _isAccepting
+                                            ? Colors.grey.shade900
+                                                .withOpacity(0.5)
+                                            : Colors.green.shade900
+                                                .withOpacity(0.5),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 6),
                                       ),
+                                    ],
+                                  ),
+                                  child: _isAccepting
+                                      ? const SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                    Colors.white),
+                                            strokeWidth: 3,
+                                          ),
+                                        )
+                                      : Icon(
+                                          widget.isVideoCall
+                                              ? Icons.videocam
+                                              : Icons.phone,
+                                          size: 34,
+                                          color: Colors.white,
+                                        ),
+                                ),
                               ),
                             ),
                           ),
