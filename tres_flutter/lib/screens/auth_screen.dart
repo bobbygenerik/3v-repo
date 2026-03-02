@@ -22,11 +22,13 @@ class _AuthScreenState extends State<AuthScreen> {
   void initState() {
     super.initState();
     _emailController.addListener(_updateState);
+    _passwordController.addListener(_updateState);
   }
 
   @override
   void dispose() {
     _emailController.removeListener(_updateState);
+    _passwordController.removeListener(_updateState);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -329,7 +331,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleSignIn,
+                    onPressed: (_isLoading || _emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) ? null : _handleSignIn,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryBlue,
                       shape: RoundedRectangleBorder(
@@ -418,11 +420,15 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   void initState() {
     super.initState();
     _emailController.addListener(_updateState);
+    _passwordController.addListener(_updateState);
+    _confirmPasswordController.addListener(_updateState);
   }
 
   @override
   void dispose() {
     _emailController.removeListener(_updateState);
+    _passwordController.removeListener(_updateState);
+    _confirmPasswordController.removeListener(_updateState);
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -657,7 +663,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleCreateAccount,
+                    onPressed: (_isLoading || _emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty || _confirmPasswordController.text.trim().isEmpty) ? null : _handleCreateAccount,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryBlue,
                       shape: RoundedRectangleBorder(
