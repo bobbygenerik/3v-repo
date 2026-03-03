@@ -1637,47 +1637,62 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Create Guest Link', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Generate a link for guests to join calls without an account.',
-              style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF2C2C2E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('Create Guest Link', style: TextStyle(color: Colors.white)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Generate a link for guests to join calls without an account.',
+                  style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: nameController,
+                  style: const TextStyle(color: Colors.white),
+                  textCapitalization: TextCapitalization.words,
+                  autofillHints: const [AutofillHints.name],
+                  textInputAction: TextInputAction.done,
+                  onChanged: (text) => setState(() {}),
+                  onSubmitted: (_) => generateLink(),
+                  decoration: InputDecoration(
+                    labelText: 'Guest Name',
+                    labelStyle: const TextStyle(color: Color(0xFF8E8E93)),
+                    hintText: 'John Doe',
+                    filled: true,
+                    fillColor: const Color(0xFF1C1C1E),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    suffixIcon: nameController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, color: Color(0xFF8E8E93)),
+                            onPressed: () {
+                              nameController.clear();
+                              setState(() {});
+                            },
+                            tooltip: 'Clear name',
+                          )
+                        : null,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: nameController,
-              style: const TextStyle(color: Colors.white),
-              textCapitalization: TextCapitalization.words,
-              autofillHints: const [AutofillHints.name],
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => generateLink(),
-              decoration: InputDecoration(
-                labelText: 'Guest Name',
-                labelStyle: const TextStyle(color: Color(0xFF8E8E93)),
-                hintText: 'John Doe',
-                filled: true,
-                fillColor: const Color(0xFF1C1C1E),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('CANCEL', style: TextStyle(color: Color(0xFF8E8E93))),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL', style: TextStyle(color: Color(0xFF8E8E93))),
-          ),
-          ElevatedButton(
-            onPressed: generateLink,
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6B7FB8)),
-            child: const Text('GENERATE', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+              ElevatedButton(
+                onPressed: generateLink,
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6B7FB8)),
+                child: const Text('GENERATE', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        }
       ),
     );
   }
