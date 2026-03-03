@@ -351,6 +351,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: TextField(
                       controller: _nameController,
                       enabled: !isBusy,
+                      autofillHints: const [AutofillHints.name],
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => _saveProfile(),
                       style: TextStyle(
