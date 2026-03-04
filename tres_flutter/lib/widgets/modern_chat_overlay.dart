@@ -391,6 +391,7 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
                   IconButton(
                     icon: const Icon(Icons.close, color: Color(0xFF8E8E93), size: 20), // Use app's secondary color
                     onPressed: _hide,
+                    tooltip: 'Close chat',
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                   ),
@@ -470,6 +471,7 @@ class _ModernChatOverlayState extends State<ModernChatOverlay>
                   child: IconButton(
                     icon: const Icon(Icons.send, color: Colors.white, size: 18),
                     onPressed: _sendMessage,
+                    tooltip: 'Send message',
                     padding: const EdgeInsets.all(10),
                     constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                   ),

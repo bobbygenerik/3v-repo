@@ -141,6 +141,7 @@ class _StatsOverlayState extends State<StatsOverlay> {
               IconButton(
                 icon: const Icon(Icons.close, color: Colors.white, size: 18),
                 onPressed: () => setState(() => _isExpanded = false),
+                tooltip: 'Close stats',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
