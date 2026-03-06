@@ -1295,9 +1295,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 24),
-        children: const [
-          SizedBox(height: 120),
-          Center(child: CircularProgressIndicator(color: Color(0xFF6B7FB8))),
+        children: [
+          const SizedBox(height: 120),
+          Center(
+            child: Semantics(
+              label: 'Loading call history...',
+              child: const CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+            ),
+          ),
         ],
       );
     }
@@ -1452,8 +1457,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+        builder: (context) => Center(
+          child: Semantics(
+            label: 'Starting call...',
+            child: const CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+          ),
         ),
       );
 
@@ -2080,7 +2088,10 @@ class _CallingDialogState extends State<_CallingDialog> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+            Semantics(
+              label: 'Waiting for answer...',
+              child: const CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+            ),
             const SizedBox(height: 24),
             Text(
               'Calling ${widget.recipientEmail}...',
