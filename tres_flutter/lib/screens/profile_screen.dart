@@ -48,26 +48,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _saveProfile() async {
     setState(() => _isSaving = true);
-    
+
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
       final newName = _nameController.text.trim();
-      
+
       // 1. Update Firebase Auth (Login profile)
       await user.updateDisplayName(newName);
 
       // 2. Update Firestore (Public profile for contacts/calls)
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .set({
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'displayName': newName,
         'name': newName, // Keep both fields synced for compatibility
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully')),
@@ -75,9 +72,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating profile: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating profile: $e')));
       }
     } finally {
       if (mounted) {
@@ -92,24 +89,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (kIsWeb) {
         // On web, ImagePicker should be supported via image_picker_for_web
-        final XFile? picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+        final XFile? picked = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+        );
         if (picked == null) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No image selected')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('No image selected')));
           }
           return;
         }
         bytes = await picked.readAsBytes();
       } else {
         // Mobile platforms: use native image picker
-        final XFile? picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+        final XFile? picked = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 85,
+        );
         if (picked == null) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No image selected')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('No image selected')));
           }
           return;
         }
@@ -119,7 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Show crop dialog
       if (!mounted) return;
       final croppedBytes = await _showCropDialog(bytes!);
-      
+
       if (croppedBytes == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -146,7 +148,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         contentType: 'image/jpeg',
         customMetadata: {'uploaded-by': user.uid},
       );
-      
+
       await storageRef.putData(croppedBytes, metadata);
 
       // Get download URL
@@ -154,22 +156,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       // Update user profile in Firebase Auth
       await user.updatePhotoURL(photoURL);
-      
+
       // Update user document in Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .set({
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'photoURL': photoURL,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-      
+
       // Force reload to get updated photoURL
       await user.reload();
       final updatedUser = FirebaseAuth.instance.currentUser;
-      
+
       debugPrint('✅ Updated photoURL in Firestore: $photoURL');
-      debugPrint('✅ Current user photoURL after reload: ${updatedUser?.photoURL}');
+      debugPrint(
+        '✅ Current user photoURL after reload: ${updatedUser?.photoURL}',
+      );
 
       if (mounted) {
         setState(() {
@@ -177,7 +178,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✓ Photo updated successfully! Please go back to see changes.'),
+            content: Text(
+              '✓ Photo updated successfully! Please go back to see changes.',
+            ),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),
@@ -210,15 +213,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final isBusy = _isSaving || _isUploading;
-    
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E), // Dark background matching Android
+      backgroundColor: const Color(
+        0xFF1C1C1E,
+      ), // Dark background matching Android
       appBar: AppBar(
         backgroundColor: const Color(0xFF1C1C1E),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
+          tooltip: 'Back',
         ),
         title: const Text(
           'Profile Settings',
@@ -247,17 +253,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(0xFF6B7FB8), // App's main blue color
+                            color: const Color(
+                              0xFF6B7FB8,
+                            ), // App's main blue color
                             width: 4,
                           ),
                         ),
                         child: CircleAvatar(
                           radius: 80,
                           backgroundColor: const Color(0xFF2C2C2E),
-                          backgroundImage: user?.photoURL != null && user!.photoURL!.isNotEmpty
+                          backgroundImage:
+                              user?.photoURL != null &&
+                                  user!.photoURL!.isNotEmpty
                               ? NetworkImage(user.photoURL!)
                               : null,
-                          child: user?.photoURL == null || user!.photoURL!.isEmpty
+                          child:
+                              user?.photoURL == null || user!.photoURL!.isEmpty
                               ? Text(
                                   (user?.displayName?.isNotEmpty == true
                                       ? user!.displayName![0].toUpperCase()
@@ -317,10 +328,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // "Tap to change profile picture" text
               const Text(
                 'Tap to change profile picture',
-                style: TextStyle(
-                  color: Color(0xFF8E8E93),
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14),
               ),
 
               const SizedBox(height: 48),
@@ -333,10 +341,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: EdgeInsets.only(left: 8, bottom: 8),
                     child: Text(
                       'Display Name',
-                      style: TextStyle(
-                        color: Color(0xFF8E8E93),
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14),
                     ),
                   ),
                   Container(
@@ -365,13 +370,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           vertical: 16,
                         ),
                         hintText: 'Enter your name',
-                        hintStyle: const TextStyle(
-                          color: Color(0xFF8E8E93),
-                        ),
+                        hintStyle: const TextStyle(color: Color(0xFF8E8E93)),
                         suffixIcon: _nameController.text.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.clear,
-                                    color: Color(0xFF8E8E93)),
+                                icon: const Icon(
+                                  Icons.clear,
+                                  color: Color(0xFF8E8E93),
+                                ),
                                 onPressed: () => _nameController.clear(),
                                 tooltip: 'Clear name',
                               )
@@ -393,11 +398,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6B7FB8),
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor: const Color(0xFF6B7FB8).withOpacity(0.5),
+                    disabledBackgroundColor: const Color(
+                      0xFF6B7FB8,
+                    ).withOpacity(0.5),
                     disabledForegroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28), // Very rounded like Android
+                      borderRadius: BorderRadius.circular(
+                        28,
+                      ), // Very rounded like Android
                     ),
                   ),
                   child: _isSaving
@@ -510,7 +519,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             style: TextStyle(color: Colors.white, fontSize: 14),
                           ),
                           subtitle: Text(
-                            user?.metadata.creationTime?.toString().split(' ')[0] ?? 'Unknown',
+                            user?.metadata.creationTime?.toString().split(
+                                  ' ',
+                                )[0] ??
+                                'Unknown',
                             style: const TextStyle(
                               color: Color(0xFF8E8E93),
                               fontSize: 12,
@@ -596,10 +608,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           title: const Text(
                             'Delete Account',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontSize: 14,
-                            ),
+                            style: TextStyle(color: Colors.red, fontSize: 14),
                           ),
                           trailing: const Icon(
                             Icons.chevron_right,
@@ -652,10 +661,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               );
             },
-            child: const Text(
-              'DELETE',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const Text('DELETE', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -687,16 +693,16 @@ class _ImageCropDialogState extends State<_ImageCropDialog> {
 
   Offset _clampOffset(Offset offset, double scale, double cropSize) {
     if (_image == null) return offset;
-    
+
     // Calculate the scaled image dimensions
     final scaledWidth = cropSize * scale;
     final scaledHeight = cropSize * scale;
-    
+
     // Calculate max offset (how far we can drag)
     // The image can be dragged until its edge reaches the crop area edge
     final maxOffsetX = (scaledWidth - cropSize) / 2;
     final maxOffsetY = (scaledHeight - cropSize) / 2;
-    
+
     return Offset(
       offset.dx.clamp(-maxOffsetX, maxOffsetX),
       offset.dy.clamp(-maxOffsetY, maxOffsetY),
@@ -724,11 +730,11 @@ class _ImageCropDialogState extends State<_ImageCropDialog> {
     // Calculate the source rectangle (what part of the image to crop)
     final imageWidth = _image!.width.toDouble();
     final imageHeight = _image!.height.toDouble();
-    
+
     // Convert crop offset to image coordinates
     final scaleX = imageWidth / cropSize;
     final scaleY = imageHeight / cropSize;
-    
+
     final srcLeft = (-_cropOffset.dx / _scale) * scaleX;
     final srcTop = (-_cropOffset.dy / _scale) * scaleY;
     final srcSize = cropSize / _scale * scaleX;
@@ -748,7 +754,7 @@ class _ImageCropDialogState extends State<_ImageCropDialog> {
     final picture = recorder.endRecording();
     final img = await picture.toImage(cropSize.toInt(), cropSize.toInt());
     final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-    
+
     return byteData!.buffer.asUint8List();
   }
 
@@ -780,24 +786,26 @@ class _ImageCropDialogState extends State<_ImageCropDialog> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Crop area
                 if (_isLoading)
                   SizedBox(
-                    height: MediaQuery.of(context).size.width > 400 
-                      ? 400 
-                      : MediaQuery.of(context).size.width - 64,
+                    height: MediaQuery.of(context).size.width > 400
+                        ? 400
+                        : MediaQuery.of(context).size.width - 64,
                     child: const Center(
-                      child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF6B7FB8),
+                      ),
                     ),
                   )
                 else
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      final cropSize = MediaQuery.of(context).size.width > 400 
-                        ? 400.0 
-                        : MediaQuery.of(context).size.width - 64;
-                      
+                      final cropSize = MediaQuery.of(context).size.width > 400
+                          ? 400.0
+                          : MediaQuery.of(context).size.width - 64;
+
                       return ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
@@ -808,7 +816,11 @@ class _ImageCropDialogState extends State<_ImageCropDialog> {
                             onPanUpdate: (details) {
                               setState(() {
                                 final newOffset = _cropOffset + details.delta;
-                                _cropOffset = _clampOffset(newOffset, _scale, cropSize);
+                                _cropOffset = _clampOffset(
+                                  newOffset,
+                                  _scale,
+                                  cropSize,
+                                );
                               });
                             },
                             child: Stack(
@@ -828,7 +840,7 @@ class _ImageCropDialogState extends State<_ImageCropDialog> {
                                       ),
                                     ),
                                   ),
-                                
+
                                 // Circular crop guide
                                 Container(
                                   width: cropSize * 0.75,
@@ -848,13 +860,17 @@ class _ImageCropDialogState extends State<_ImageCropDialog> {
                       );
                     },
                   ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Zoom slider
                 Row(
                   children: [
-                    const Icon(Icons.zoom_out, color: Color(0xFF8E8E93), size: 20),
+                    const Icon(
+                      Icons.zoom_out,
+                      color: Color(0xFF8E8E93),
+                      size: 20,
+                    ),
                     Expanded(
                       child: Slider(
                         value: _scale,
@@ -865,20 +881,29 @@ class _ImageCropDialogState extends State<_ImageCropDialog> {
                           setState(() {
                             _scale = value;
                             // Re-clamp offset when scale changes
-                            final cropSize = MediaQuery.of(context).size.width > 400 
-                              ? 400.0 
-                              : MediaQuery.of(context).size.width - 64;
-                            _cropOffset = _clampOffset(_cropOffset, _scale, cropSize);
+                            final cropSize =
+                                MediaQuery.of(context).size.width > 400
+                                ? 400.0
+                                : MediaQuery.of(context).size.width - 64;
+                            _cropOffset = _clampOffset(
+                              _cropOffset,
+                              _scale,
+                              cropSize,
+                            );
                           });
                         },
                       ),
                     ),
-                    const Icon(Icons.zoom_in, color: Color(0xFF8E8E93), size: 20),
+                    const Icon(
+                      Icons.zoom_in,
+                      color: Color(0xFF8E8E93),
+                      size: 20,
+                    ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Action buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
