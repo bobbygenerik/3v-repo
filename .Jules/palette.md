@@ -53,3 +53,7 @@
 ## 2026-03-10 - Modal Async Feedback
 **Learning:** Dialogs that close immediately on submission ("fire and forget") can confuse users if errors occur silently or via disconnected snackbars. Keeping the dialog open with a loading state provides better feedback and error recovery context.
 **Action:** Implement `StatefulBuilder` within dialogs to manage local `isLoading` state, only closing the dialog on success.
+
+## YYYY-MM-DD - Add semantic labels to loading indicators
+**Learning:** In Flutter, standalone visual loading indicators (like `CircularProgressIndicator`) used in dialogs or empty states aren't automatically announced by screen readers. They need to be explicitly wrapped in a `Semantics` widget with a descriptive `label` property (e.g., 'Loading...', 'Starting call...').
+**Action:** Always verify if a `CircularProgressIndicator` provides enough context on its own. If it replaces text or is a standalone state indicator, wrap it in a `Semantics` widget.
