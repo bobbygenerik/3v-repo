@@ -104,6 +104,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             width: 300,
             height: 300,
             fit: BoxFit.contain,
+            semanticLabel: 'Tres Logo',
           ),
         ),
       ),

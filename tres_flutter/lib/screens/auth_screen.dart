@@ -217,6 +217,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   'assets/images/logo.png',
                   height: 150,
                   fit: BoxFit.contain,
+                  semanticLabel: 'Tres Logo',
                 ),
               ),
               
@@ -334,6 +335,9 @@ class _AuthScreenState extends State<AuthScreen> {
                     onPressed: (_isLoading || _emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) ? null : _handleSignIn,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.primaryBlue.withOpacity(0.5),
+                      disabledForegroundColor: Colors.white.withOpacity(0.5),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(28),
                       ),
@@ -506,6 +510,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   'assets/images/logo.png',
                   height: 150,
                   fit: BoxFit.contain,
+                  semanticLabel: 'Tres Logo',
                 ),
               ),
               
@@ -666,6 +671,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     onPressed: (_isLoading || _emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty || _confirmPasswordController.text.trim().isEmpty) ? null : _handleCreateAccount,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.primaryBlue.withOpacity(0.5),
+                      disabledForegroundColor: Colors.white.withOpacity(0.5),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(28),
                       ),
