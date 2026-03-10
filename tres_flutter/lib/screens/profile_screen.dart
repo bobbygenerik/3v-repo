@@ -290,10 +290,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: Colors.black.withOpacity(0.5),
                             shape: BoxShape.circle,
                           ),
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 3,
+                          child: Center(
+                            child: Semantics(
+                              label: 'Uploading profile picture...',
+                              child: const CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 3,
+                              ),
                             ),
                           ),
                         ),
