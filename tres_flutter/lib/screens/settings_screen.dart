@@ -18,29 +18,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Notifications
   bool _notificationsEnabled = true;
   bool _minimalNotifications = false;
-  
+
   // Voice Isolation
   bool _voiceIsolation = true;
-  
+
   // Video Settings
   bool _autoBoost60fps = false;
   double _portraitBlurIntensity = 70.0;
   bool _beautyFilter = true;
   bool _backgroundBlur = false;
   bool _faceAutoFraming = false;
-  
+
   // Audio Processing
   bool _noiseSuppression = true;
   bool _echoCancellation = true;
   bool _spatialAudio = false;
-  
+
   // AI Features
-  
+
   // UI & Interaction
   String _defaultGridLayout = 'auto';
   bool _picureInPicture = true;
   bool _reactionAnimations = true;
-  
+
   // Developer
   bool _developerMode = false;
   bool _callHealthOverlay = false;
@@ -59,37 +59,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         setState(() {
           // Notifications
-          _notificationsEnabled = _prefs.getBool('notifications_enabled') ?? true;
-          _minimalNotifications = _prefs.getBool('minimal_notifications') ?? false;
-          
+          _notificationsEnabled =
+              _prefs.getBool('notifications_enabled') ?? true;
+          _minimalNotifications =
+              _prefs.getBool('minimal_notifications') ?? false;
+
           // Voice Isolation
           _voiceIsolation = _prefs.getBool('voice_isolation') ?? true;
-          
+
           // Video Settings
           _autoBoost60fps = _prefs.getBool('auto_boost_60fps') ?? false;
-          _portraitBlurIntensity = _prefs.getDouble('portrait_blur_intensity') ?? 70.0;
+          _portraitBlurIntensity =
+              _prefs.getDouble('portrait_blur_intensity') ?? 70.0;
           _beautyFilter = _prefs.getBool('beauty_filter') ?? true;
           _backgroundBlur = _prefs.getBool('background_blur') ?? false;
           _faceAutoFraming = _prefs.getBool('face_auto_framing') ?? false;
-          
+
           // Audio Processing
           _noiseSuppression = _prefs.getBool('noise_suppression') ?? true;
           _echoCancellation = _prefs.getBool('echo_cancellation') ?? true;
           _spatialAudio = _prefs.getBool('spatial_audio') ?? false;
-          
+
           // AI Features
-          
+
           // UI & Interaction
-          _defaultGridLayout = _prefs.getString('default_grid_layout') ?? 'auto';
+          _defaultGridLayout =
+              _prefs.getString('default_grid_layout') ?? 'auto';
           _picureInPicture = _prefs.getBool('picture_in_picture') ?? true;
           _reactionAnimations = _prefs.getBool('reaction_animations') ?? true;
-          
+
           // Developer
           _developerMode = _prefs.getBool('developer_mode') ?? false;
           _callHealthOverlay = _prefs.getBool('call_health_overlay') ?? false;
           _callQuality = _prefs.getString('call_quality') ?? 'auto';
-          _videoCodec = _prefs.getString('video_codec') ?? 'H.264 (VP9 if available)';
-          
+          _videoCodec =
+              _prefs.getString('video_codec') ?? 'H.264 (VP9 if available)';
+
           _isLoading = false;
         });
       }
@@ -118,7 +123,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text('Settings')),
-        body: const Center(child: CircularProgressIndicator(color: AppColors.accentBlue)),
+        body: Center(
+          child: Semantics(
+            label: 'Loading settings...',
+            child: const CircularProgressIndicator(color: AppColors.accentBlue),
+          ),
+        ),
       );
     }
 
@@ -157,7 +167,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('⚠️ Notification permission denied. Check device settings.'),
+                        content: Text(
+                          '⚠️ Notification permission denied. Check device settings.',
+                        ),
                         backgroundColor: Colors.orange,
                         duration: Duration(seconds: 4),
                       ),
@@ -179,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _saveSetting('minimal_notifications', value);
             },
           ),
-          
+
           // Voice Isolation
           const Divider(height: 32, color: Colors.transparent),
           _buildSwitchTile(
@@ -191,19 +203,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _saveSetting('voice_isolation', value);
             },
           ),
-          
+
           // Video Processing
           _buildSectionHeader('Video Processing'),
           _buildSwitchTile(
             title: 'Auto boost to 60 fps',
-            subtitle: 'Use Ultra framerate (60 fps, thermals are OK) on capable devices',
+            subtitle:
+                'Use Ultra framerate (60 fps, thermals are OK) on capable devices',
             value: _autoBoost60fps,
             onChanged: (value) {
               setState(() => _autoBoost60fps = value);
               _saveSetting('auto_boost_60fps', value);
             },
           ),
-          
+
           // Portrait Blur Intensity Slider
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -237,7 +250,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       width: 40,
                       child: Text(
                         '${_portraitBlurIntensity.round()}',
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ],
@@ -245,7 +261,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          
+
           _buildSwitchTile(
             title: 'Beauty Filter (Auto-enable)',
             subtitle: 'Smooth skin and enhance appearance on call start',
@@ -273,7 +289,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _saveSetting('face_auto_framing', value);
             },
           ),
-          
+
           // Audio Processing
           _buildSectionHeader('Audio Processing'),
           _buildSwitchTile(
@@ -303,15 +319,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _saveSetting('spatial_audio', value);
             },
           ),
-          
+
           // AI Features
           _buildSectionHeader('AI Features'),
-          
+
           // UI & Interaction
           _buildSectionHeader('UI & Interaction'),
           ListTile(
-            title: const Text('Default Grid Layout', style: TextStyle(color: Colors.white)),
-            subtitle: Text(_defaultGridLayout.toUpperCase(), style: const TextStyle(color: Colors.white70)),
+            title: const Text(
+              'Default Grid Layout',
+              style: TextStyle(color: Colors.white),
+            ),
+            subtitle: Text(
+              _defaultGridLayout.toUpperCase(),
+              style: const TextStyle(color: Colors.white70),
+            ),
             trailing: const Icon(Icons.chevron_right, color: Colors.white70),
             onTap: () => _showGridLayoutDialog(),
           ),
@@ -333,7 +355,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _saveSetting('reaction_animations', value);
             },
           ),
-          
+
           // Developer
           _buildSectionHeader('Developer'),
           _buildSwitchTile(
@@ -355,20 +377,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           ListTile(
-            title: const Text('Call Quality', style: TextStyle(color: Colors.white)),
-            subtitle: Text(_callQuality.toUpperCase(), style: const TextStyle(color: Colors.white70)),
+            title: const Text(
+              'Call Quality',
+              style: TextStyle(color: Colors.white),
+            ),
+            subtitle: Text(
+              _callQuality.toUpperCase(),
+              style: const TextStyle(color: Colors.white70),
+            ),
             trailing: const Icon(Icons.chevron_right, color: Colors.white70),
             onTap: () => _showCallQualityDialog(),
           ),
           ListTile(
-            title: const Text('Video Codec (Priority Order)', style: TextStyle(color: Colors.white)),
-            subtitle: Text(_videoCodec, style: const TextStyle(color: Colors.white70)),
+            title: const Text(
+              'Video Codec (Priority Order)',
+              style: TextStyle(color: Colors.white),
+            ),
+            subtitle: Text(
+              _videoCodec,
+              style: const TextStyle(color: Colors.white70),
+            ),
             trailing: const Icon(Icons.chevron_right, color: Colors.white70),
             onTap: () => _showVideoCodecDialog(),
           ),
           ListTile(
-            title: const Text('Diagnostics', style: TextStyle(color: Colors.white)),
-            subtitle: const Text('View system diagnostics', style: TextStyle(color: Colors.white70)),
+            title: const Text(
+              'Diagnostics',
+              style: TextStyle(color: Colors.white),
+            ),
+            subtitle: const Text(
+              'View system diagnostics',
+              style: TextStyle(color: Colors.white70),
+            ),
             trailing: const Icon(Icons.chevron_right, color: Colors.white70),
             onTap: () {
               Navigator.push(
@@ -379,34 +419,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Refresh Push Notification Token
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: ElevatedButton(
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Push notification token refreshed')),
+                  const SnackBar(
+                    content: Text('Push notification token refreshed'),
+                  ),
                 );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryBlue,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: const Text('Refresh Push Notification Token', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Refresh Push Notification Token',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Version info
           Center(
             child: Text(
               'Version 1.4.callHome',
-              style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withOpacity(0.5),
+              ),
             ),
           ),
           const SizedBox(height: 32),
@@ -438,7 +488,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     return SwitchListTile(
       title: Text(title, style: const TextStyle(color: Colors.white)),
-      subtitle: Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(color: Colors.white70, fontSize: 12),
+      ),
       value: value,
       activeThumbColor: AppColors.primaryBlue,
       onChanged: onChanged,
@@ -450,7 +503,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.primaryDark,
-        title: const Text('Default Grid Layout', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Default Grid Layout',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -462,7 +518,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
         ],
       ),
@@ -474,7 +533,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.primaryDark,
-        title: const Text('Select video quality', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Select video quality',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -487,7 +549,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
         ],
       ),
@@ -511,18 +576,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRadioOption(String value, String title, String subtitle, {bool isQuality = false}) {
+  Widget _buildRadioOption(
+    String value,
+    String title,
+    String subtitle, {
+    bool isQuality = false,
+  }) {
     final currentValue = isQuality ? _callQuality : _defaultGridLayout;
     return RadioListTile<String>(
       title: Text(title, style: const TextStyle(color: Colors.white)),
-      subtitle: subtitle.isNotEmpty ? Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)) : null,
+      subtitle: subtitle.isNotEmpty
+          ? Text(
+              subtitle,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            )
+          : null,
       value: value,
       groupValue: currentValue,
       activeColor: AppColors.primaryBlue,
