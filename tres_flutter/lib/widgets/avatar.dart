@@ -56,7 +56,10 @@ class Avatar extends StatelessWidget {
               child: SizedBox(
                 width: radius,
                 height: radius,
-                child: const CircularProgressIndicator(strokeWidth: 2),
+                child: Semantics(
+                  label: 'Loading profile picture...',
+                  child: const CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
             ),
           ),
