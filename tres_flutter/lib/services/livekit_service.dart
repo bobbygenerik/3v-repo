@@ -521,7 +521,13 @@ class LiveKitService extends ChangeNotifier {
 
   Future<void> _maybeAdjustCaptureQualityForStats(CallStats stats) async {
     if (_room == null || _localVideoTrack == null) return;
-    if (_isSafariPwa) return;
+
+    // Safari PWA ignores DegradationPreference, so we enforce resolution
+    // maintenance manually by watching the actual sent dimensions.
+    if (_isSafariPwa) {
+      await _maybeCorrectSafariResolution(stats);
+      return;
+    }
 
     _recordSendBitrate(stats.videoSendBitrate);
     _recordAvailableOutgoingBitrate(stats.availableOutgoingBitrate);
@@ -556,6 +562,85 @@ class LiveKitService extends ChangeNotifier {
     final preset = _selectPresetForTier(targetTier);
     await _recreateAndPublishVideoTrack(preset);
     debugPrint('🎯 Quality tier switched to ${targetTier.name}');
+  }
+
+  // Safari PWA resolution-correction state
+  DateTime? _safariResolutionDropStart;
+  DateTime? _safariRestorationStart;
+
+  /// Safari PWA ignores [DegradationPreference.maintainResolution], so the
+  /// browser freely drops resolution under congestion. This method detects
+  /// that and fights back by reducing framerate instead — the same tradeoff
+  /// [DegradationPreference.maintainResolution] enforces on other browsers.
+  Future<void> _maybeCorrectSafariResolution(CallStats stats) async {
+    if (_currentCapturePreset == null) return;
+
+    final targetW = _currentCapturePreset!.dimensions.width;
+    final targetH = _currentCapturePreset!.dimensions.height;
+
+    // Parse the actual sent resolution reported by the stats loop (e.g. "1280x720").
+    final parts = stats.videoResolution.split('x');
+    if (parts.length != 2) return;
+    final actualW = int.tryParse(parts[0].trim()) ?? 0;
+    if (actualW <= 0) return;
+
+    final now = DateTime.now();
+    // Allow up to 15% deviation before treating it as a resolution drop.
+    final resolutionDropped = actualW < (targetW * 0.85).round();
+
+    if (resolutionDropped) {
+      _safariRestorationStart = null;
+      _safariResolutionDropStart ??= now;
+
+      // Wait 8 s of sustained drop before acting — avoids reacting to brief dips.
+      if (now.difference(_safariResolutionDropStart!) < const Duration(seconds: 8)) return;
+
+      final currentFps = _currentCapturePreset!.encoding?.maxFramerate ?? 30;
+      // Already at minimum framerate floor — nothing more to trade.
+      if (currentFps <= 10) return;
+
+      final reducedFps = (currentFps * 0.5).round().clamp(10, 30);
+      final correctedPreset = VideoParameters(
+        dimensions: VideoDimensions(targetW, targetH),
+        encoding: VideoEncoding(
+          maxBitrate: _currentCapturePreset!.encoding?.maxBitrate ?? 1_800_000,
+          maxFramerate: reducedFps,
+        ),
+      );
+      await _recreateAndPublishVideoTrack(correctedPreset);
+      _safariResolutionDropStart = null;
+      debugPrint('🍎 Safari resolution correction: held ${targetW}x$targetH at $reducedFps fps');
+
+    } else {
+      _safariResolutionDropStart = null;
+
+      // Conditions have recovered — attempt to restore full framerate.
+      final currentFps = _currentCapturePreset!.encoding?.maxFramerate ?? 30;
+      if (currentFps >= 30) return; // Already at target, nothing to do.
+
+      final packetLoss = stats.videoPacketLoss;
+      final rttMs = stats.roundTripTime * 1000.0;
+      final conditionsGood = packetLoss < 1.0 && rttMs < 120.0;
+
+      if (conditionsGood) {
+        _safariRestorationStart ??= now;
+        // Require 15 s of good conditions before restoring framerate.
+        if (now.difference(_safariRestorationStart!) < const Duration(seconds: 15)) return;
+
+        final restoredPreset = VideoParameters(
+          dimensions: VideoDimensions(targetW, targetH),
+          encoding: VideoEncoding(
+            maxBitrate: _currentCapturePreset!.encoding?.maxBitrate ?? 1_800_000,
+            maxFramerate: 30,
+          ),
+        );
+        await _recreateAndPublishVideoTrack(restoredPreset);
+        _safariRestorationStart = null;
+        debugPrint('🍎 Safari framerate restored to 30fps at ${targetW}x$targetH');
+      } else {
+        _safariRestorationStart = null;
+      }
+    }
   }
 
   // Upgrade gate state (Android-only)
@@ -908,6 +993,9 @@ class LiveKitService extends ChangeNotifier {
       _qualityUpshiftStart = null;
       _recentSendBitrates.clear();
       _recentAvailableOutgoingBitrates.clear();
+      // Reset Safari resolution-correction state.
+      _safariResolutionDropStart = null;
+      _safariRestorationStart = null;
       
       debugPrint('✅ LiveKit disconnected successfully');
       notifyListeners();
