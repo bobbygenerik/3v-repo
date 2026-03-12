@@ -70,6 +70,7 @@ dependencies:
   flutter_local_notifications: ^20.0.0
   vibration: ^3.1.5
   dart_webrtc: ^1.7.0
+  flutter_webrtc: ^1.2.0
   record: ^6.1.2
   path_provider: ^2.1.5
 

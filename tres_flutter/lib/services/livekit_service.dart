@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart' show RTCVideoRenderer;
 import 'package:livekit_client/livekit_client.dart';
 import 'network_quality_service.dart';
 import 'device_capability_service.dart';
@@ -9,6 +10,7 @@ import 'call_stats_service.dart';
 import '../config/environment.dart';
 import 'feature_flags.dart';
 import 'ice_server_config.dart';
+import 'p2p_call_service.dart';
 // MediaPipe removed: no mediapipe_settings import
 import 'web_pip_helper.dart';
 import 'web_pip_bridge_stub.dart'
@@ -119,6 +121,21 @@ class LiveKitService extends ChangeNotifier {
   String? _lastToken;
   String? _lastRoomName;
   
+  // P2P mode — set when a 1:1 call uses dart_webrtc directly instead of LiveKit SFU.
+  P2PCallService? _p2pService;
+
+  /// True when the current call is a direct peer-to-peer connection (no SFU).
+  bool get isP2PMode => _p2pService != null;
+
+  /// Local video renderer for P2P calls (null in SFU mode).
+  RTCVideoRenderer? get p2pLocalRenderer => _p2pService?.localRenderer;
+
+  /// Remote video renderer for P2P calls (null in SFU mode).
+  RTCVideoRenderer? get p2pRemoteRenderer => _p2pService?.remoteRenderer;
+
+  /// Whether the remote P2P peer has a video stream yet.
+  bool get p2pRemoteHasVideo => _p2pService?.hasRemoteVideo ?? false;
+
   Room? get room => _room;
   LocalVideoTrack? get localVideoTrack => _localVideoTrack;
   LocalAudioTrack? get localAudioTrack => _localAudioTrack;
@@ -132,11 +149,18 @@ class LiveKitService extends ChangeNotifier {
     return error;
   }
   String get currentVideoCodec => _currentVideoCodec;
-  bool get isReconnecting => _isReconnecting;
-  
-  bool get isConnected => _room?.connectionState == ConnectionState.connected;
-  bool get isMicrophoneEnabled => _localAudioTrack?.muted == false;
-  bool get isCameraEnabled => _localVideoTrack?.muted == false;
+  bool get isReconnecting =>
+      isP2PMode ? (_p2pService?.isReconnecting ?? false) : _isReconnecting;
+
+  bool get isConnected => isP2PMode
+      ? (_p2pService?.isConnected ?? false)
+      : _room?.connectionState == ConnectionState.connected;
+  bool get isMicrophoneEnabled => isP2PMode
+      ? !(_p2pService?.isMicMuted ?? false)
+      : _localAudioTrack?.muted == false;
+  bool get isCameraEnabled => isP2PMode
+      ? !(_p2pService?.isCameraOff ?? false)
+      : _localVideoTrack?.muted == false;
   
   List<Participant> get remoteParticipants => 
       _room?.remoteParticipants.values.toList() ?? [];
@@ -250,14 +274,17 @@ class LiveKitService extends ChangeNotifier {
   String _getPreferredCodec() {
     switch (_currentCallType) {
       case CallType.androidAndroid:
-        // Android ↔ Android: AV1 (if supported), H.264 High Profile, VP9 fallback
+        // Android ↔ Android: AV1 (if supported), H.264 High Profile fallback
         if (_supportsAV1()) return 'av1';
         return 'h264';
-        
+
       case CallType.androidIOSPWA:
       case CallType.iosPWAIOSPWA:
+        // iOS Safari has hardware H.265 (HEVC) decode — same codec as FaceTime.
+        // H.265 delivers equal quality at ~40% lower bitrate than H.264.
+        return 'h265';
+
       case CallType.mixedUnknown:
-        // Default Cross-Platform: H.264 High Profile, VP9, VP8
         return 'h264';
     }
   }
@@ -287,10 +314,11 @@ class LiveKitService extends ChangeNotifier {
     );
   }
 
-  /// Get conservative encoding for Safari PWA
+  /// Get encoding for Safari PWA.
+  /// Raised from 1.8 Mbps to 2.5 Mbps because we now use H.265 (HEVC) which
+  /// achieves the same perceptual quality at ~40% lower bitrate than H.264.
   VideoEncoding _getSafariPwaEncoding() {
-    // Hard cap to 720p @ 30fps with conservative bitrate
-    return const VideoEncoding(maxBitrate: 1800000, maxFramerate: 30);
+    return const VideoEncoding(maxBitrate: 2_500_000, maxFramerate: 30);
   }
 
   /// Check AV1 support
@@ -786,12 +814,44 @@ class LiveKitService extends ChangeNotifier {
     }
   }
   
-  /// Connect to LiveKit room with FaceTime-quality tuning
+  /// Connect to a call.
+  ///
+  /// For 1:1 calls pass [isP2P]=true with [remoteUserId] and [isInitiator].
+  /// The caller passes [isInitiator]=true; the callee passes false.
+  /// In P2P mode [url] and [token] are unused — ICE servers come from
+  /// [IceServerConfig] (populated by the [getIceServers] Cloud Function).
   Future<bool> connect({
     required String url,
     required String token,
     required String roomName,
+    bool isP2P = false,
+    String? remoteUserId,
+    bool isInitiator = true,
   }) async {
+    // ── P2P path ────────────────────────────────────────────────────────────
+    if (isP2P) {
+      assert(remoteUserId != null, 'remoteUserId is required for P2P calls');
+      _p2pService = P2PCallService();
+      _p2pService!.addListener(notifyListeners);
+
+      final success = isInitiator
+          ? await _p2pService!.connectAsInitiator(
+              roomId: roomName,
+              remoteUserId: remoteUserId!,
+            )
+          : await _p2pService!.connectAsReceiver(
+              roomId: roomName,
+              initiatorUserId: remoteUserId!,
+            );
+
+      if (!success) {
+        _p2pService!.removeListener(notifyListeners);
+        await _p2pService!.disconnect();
+        _p2pService = null;
+      }
+      notifyListeners();
+      return success;
+    }
     _manualDisconnect = false;
     _abortConnect = false;
     _cancelReconnectTimer();
@@ -956,6 +1016,15 @@ class LiveKitService extends ChangeNotifier {
   
   /// Disconnect from room and cleanup
   Future<void> disconnect() async {
+    // ── P2P path ────────────────────────────────────────────────────────────
+    if (isP2PMode) {
+      _p2pService!.removeListener(notifyListeners);
+      await _p2pService!.disconnect();
+      _p2pService = null;
+      notifyListeners();
+      return;
+    }
+
     try {
       debugPrint('🔌 Disconnecting from LiveKit...');
       _manualDisconnect = true;
@@ -1281,6 +1350,10 @@ class LiveKitService extends ChangeNotifier {
   
   /// Toggle microphone state
   Future<void> toggleMicrophone() async {
+    if (isP2PMode) {
+      await _p2pService!.toggleMicrophone();
+      return;
+    }
     if (isMicrophoneEnabled) {
       await disableMicrophone();
     } else {
@@ -1346,6 +1419,10 @@ class LiveKitService extends ChangeNotifier {
   
   /// Toggle camera state
   Future<void> toggleCamera() async {
+    if (isP2PMode) {
+      await _p2pService!.toggleCamera();
+      return;
+    }
     if (isCameraEnabled) {
       await disableCamera();
     } else {
@@ -1355,6 +1432,10 @@ class LiveKitService extends ChangeNotifier {
   
   /// Switch between front and back camera with camera control enhancements
   Future<void> switchCamera() async {
+    if (isP2PMode) {
+      await _p2pService!.switchCamera();
+      return;
+    }
     try {
       final track = _localVideoTrack;
       if (track == null) {

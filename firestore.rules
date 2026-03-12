@@ -183,6 +183,22 @@ service cloud.firestore {
       // Public read is NOT allowed. Guests must use the Cloud Function to join.
     }
     
+    // P2P call signaling — SDP offer/answer and trickle-ICE candidates
+    match /p2p_calls/{roomId} {
+      // Either participant (initiator or remote) can create and update the doc
+      allow create: if isSignedIn();
+      allow read, update: if isSignedIn() && (
+        resource.data.initiatorId == request.auth.uid ||
+        resource.data.remoteId == request.auth.uid
+      );
+
+      // ICE candidate buckets — each participant writes only their own bucket
+      match /{bucketId}/{candidateId} {
+        allow create: if isSignedIn() && bucketId == ('ice_' + request.auth.uid);
+        allow read: if isSignedIn();
+      }
+    }
+
     // Call invitations - for incoming call notifications
     match /call_invitations/{invitationId} {
       // Authenticated users can create call invitations

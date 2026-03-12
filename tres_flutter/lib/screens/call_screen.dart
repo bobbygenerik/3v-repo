@@ -35,22 +35,34 @@ import '../widgets/video_call_quality_dashboard.dart';
 import '../widgets/modern_chat_overlay.dart';
 import '../widgets/chat_notification_badge.dart';
 import '../widgets/audio_controls_panel.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart' show RTCVideoView, RTCVideoViewObjectFit;
 import '../services/audio_device_service.dart';
 
 class CallScreen extends StatefulWidget {
   final String roomName;
+  /// LiveKit SFU token — unused in P2P mode.
   final String token;
+  /// LiveKit WebSocket URL — unused in P2P mode.
   final String livekitUrl;
   final CallSessionService? sessionService;
   final CallSignalingService signalingService;
-  
+  /// When true, calls use a direct P2P WebRTC connection instead of the SFU.
+  final bool isP2PCall;
+  /// Remote user's UID — required when [isP2PCall] is true.
+  final String? remoteUserId;
+  /// Whether this device is the call initiator (caller=true, callee=false).
+  final bool isInitiator;
+
   const CallScreen({
     super.key,
     required this.roomName,
-    required this.token,
-    required this.livekitUrl,
+    this.token = '',
+    this.livekitUrl = '',
     this.sessionService,
     required this.signalingService,
+    this.isP2PCall = false,
+    this.remoteUserId,
+    this.isInitiator = true,
   });
 
   @override
@@ -895,6 +907,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       url: widget.livekitUrl,
       token: widget.token,
       roomName: widget.roomName,
+      isP2P: widget.isP2PCall,
+      remoteUserId: widget.remoteUserId,
+      isInitiator: widget.isInitiator,
     );
 
     if (!mounted || _isCallEnding) {
@@ -1293,10 +1308,14 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
 
   Widget _buildAndroidPipLayout(LiveKitService livekit) {
     final localParticipant = livekit.localParticipant;
+    final showLocalPip = livekit.isP2PMode
+        ? livekit.p2pLocalRenderer != null
+        : localParticipant != null;
+
     return Stack(
       children: [
         _buildMainParticipantView(livekit, fit: VideoViewFit.contain),
-        if (localParticipant != null)
+        if (showLocalPip)
           Positioned(
             right: 12,
             bottom: 12,
@@ -1305,12 +1324,19 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               height: 160,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: ParticipantVideo(
-                  key: const ValueKey('android-pip-local'),
-                  participant: localParticipant,
-                  isLocal: true,
-                  fit: VideoViewFit.cover,
-                ),
+                child: livekit.isP2PMode
+                    ? RTCVideoView(
+                        livekit.p2pLocalRenderer!,
+                        key: const ValueKey('android-pip-p2p-local'),
+                        mirror: true,
+                        objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                      )
+                    : ParticipantVideo(
+                        key: const ValueKey('android-pip-local'),
+                        participant: localParticipant!,
+                        isLocal: true,
+                        fit: VideoViewFit.cover,
+                      ),
               ),
             ),
           ),
@@ -1483,8 +1509,43 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     LiveKitService livekit, {
     VideoViewFit fit = VideoViewFit.cover,
   }) {
+    // ── P2P mode: render via dart_webrtc RTCVideoRenderer ───────────────────
+    if (livekit.isP2PMode) {
+      if (_pipSwapped && livekit.p2pLocalRenderer != null) {
+        return RepaintBoundary(
+          child: RTCVideoView(
+            livekit.p2pLocalRenderer!,
+            key: const ValueKey('p2p-local-swapped'),
+            mirror: true,
+            objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+          ),
+        );
+      }
+      if (!livekit.p2pRemoteHasVideo) {
+        return const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.person, size: 64, color: Colors.white54),
+              SizedBox(height: 16),
+              Text('Connecting...', style: TextStyle(color: Colors.white70)),
+            ],
+          ),
+        );
+      }
+      return RepaintBoundary(
+        child: RTCVideoView(
+          livekit.p2pRemoteRenderer!,
+          key: const ValueKey('p2p-remote-main'),
+          mirror: false,
+          objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+        ),
+      );
+    }
+
+    // ── LiveKit SFU mode ─────────────────────────────────────────────────────
     final remoteParticipants = livekit.remoteParticipants;
-    
+
     // If PIP is swapped, show local participant in main view
     if (_pipSwapped && livekit.localParticipant != null) {
       return RepaintBoundary(
@@ -1496,7 +1557,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         ),
       );
     }
-    
+
     if (remoteParticipants.isEmpty) {
       return const Center(
         child: Column(
@@ -1777,17 +1838,34 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           child: Stack(
             children: [
               // Show appropriate participant based on swap state
-              if (_pipSwapped && livekit.remoteParticipants.isNotEmpty)
-                ParticipantVideo(
-                  key: const ValueKey('pip-remote-swapped'),
-                  participant: livekit.remoteParticipants.first,
-                )
-              else
-                ParticipantVideo(
-                  key: const ValueKey('pip-local-normal'),
-                  participant: localParticipant,
-                  isLocal: true,
-                ),
+              if (livekit.isP2PMode) ...[
+                if (_pipSwapped && livekit.p2pRemoteHasVideo)
+                  RTCVideoView(
+                    livekit.p2pRemoteRenderer!,
+                    key: const ValueKey('p2p-pip-remote'),
+                    mirror: false,
+                    objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                  )
+                else if (livekit.p2pLocalRenderer != null)
+                  RTCVideoView(
+                    livekit.p2pLocalRenderer!,
+                    key: const ValueKey('p2p-pip-local'),
+                    mirror: true,
+                    objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                  ),
+              ] else ...[
+                if (_pipSwapped && livekit.remoteParticipants.isNotEmpty)
+                  ParticipantVideo(
+                    key: const ValueKey('pip-remote-swapped'),
+                    participant: livekit.remoteParticipants.first,
+                  )
+                else
+                  ParticipantVideo(
+                    key: const ValueKey('pip-local-normal'),
+                    participant: localParticipant,
+                    isLocal: true,
+                  ),
+              ],
               // Label at bottom
               Positioned(
                 bottom: 0,

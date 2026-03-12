@@ -310,10 +310,11 @@ class _HomeScreenState extends State<HomeScreen>
             callerName: incomingCall['callerName'],
             callerId: incomingCall['callerId'],
             roomName: incomingCall['roomName'],
-            token: incomingCall['token'],
-            livekitUrl: incomingCall['livekitUrl'],
-            isVideoCall: incomingCall['isVideoCall'],
+            token: incomingCall['token'] ?? '',
+            livekitUrl: incomingCall['livekitUrl'] ?? '',
+            isVideoCall: incomingCall['isVideoCall'] ?? true,
             callerPhotoUrl: incomingCall['callerPhotoUrl'],
+            isP2PCall: incomingCall['isP2PCall'] ?? false,
           ),
         ),
       ).then((_) {
@@ -1692,42 +1693,35 @@ class _HomeScreenState extends State<HomeScreen>
 
       final roomName = 'call_${DateTime.now().millisecondsSinceEpoch}';
       final functions = FirebaseFunctions.instance;
-      final callable = functions.httpsCallable('getLiveKitToken');
 
-      // Use constant URL to avoid waiting for Cloud Function
-      const defaultWsUrl = 'wss://livekit.iptvsubz.fun';
+      debugPrint('🚀 Starting P2P call setup (ICE servers + Invitation in parallel)');
 
-      debugPrint('🚀 Starting parallel initialization (Token + Invitation)');
-
-      // 2. Run Token Generation and Invitation in Parallel
+      // For 1:1 calls we use direct P2P — no LiveKit SFU token needed.
+      // We still fetch ICE servers so TURN works through NAT, and send the
+      // call invitation so the recipient gets a push notification.
       final results = await Future.wait([
-        // Task A: Get Token from Cloud Function
-        callable.call({
-          'calleeId': recipientEmail,
-          'roomName': roomName,
-          'platform': DeviceModeService.platformLabel(),
-        }),
-        // Task B: Send Invitation via Firestore
+        // Task A: Get ICE server config (no SFU token generated)
+        functions.httpsCallable('getIceServers').call({}),
+        // Task B: Send P2P invitation via Firestore + FCM
         _signalingService.sendCallInvitation(
           recipientUserId: recipientUserId,
           roomName: roomName,
-          token: '', // Recipient generates their own
-          livekitUrl: defaultWsUrl,
+          token: '',
+          livekitUrl: '',
           isVideoCall: true,
+          isP2PCall: true,
         ),
       ]);
 
-      final callerResponse = results[0] as HttpsCallableResult;
+      final iceResponse = results[0] as HttpsCallableResult;
       final invitationId = results[1] as String?;
 
-      final callerToken = callerResponse.data['token'] as String;
+      // Cache ICE servers so P2PCallService can use TURN.
       await IceServerConfig.updateFromTokenResponse(
-        Map<String, dynamic>.from(callerResponse.data as Map),
+        Map<String, dynamic>.from(iceResponse.data as Map),
       );
-      // We can use the returned URL if we want, but we already used the default for the invite
-      // final wsUrl = callerResponse.data['wsUrl'] as String? ?? defaultWsUrl;
 
-      debugPrint('✅ Parallel initialization complete');
+      debugPrint('✅ P2P call setup complete');
 
       if (invitationId == null) {
         if (mounted) Navigator.pop(context);
@@ -1765,10 +1759,11 @@ class _HomeScreenState extends State<HomeScreen>
           MaterialPageRoute(
             builder: (context) => CallScreen(
               roomName: roomName,
-              token: callerToken,
-              livekitUrl: defaultWsUrl,
               sessionService: _sessionService,
               signalingService: _signalingService,
+              isP2PCall: true,
+              remoteUserId: recipientUserId,
+              isInitiator: true,
             ),
           ),
         ).then((_) {

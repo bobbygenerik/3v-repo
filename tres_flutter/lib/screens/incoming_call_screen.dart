@@ -20,6 +20,8 @@ class IncomingCallScreen extends StatefulWidget {
   final String livekitUrl;
   final bool isVideoCall;
   final String? callerPhotoUrl;
+  /// When true the call uses a direct P2P connection — no SFU token needed.
+  final bool isP2PCall;
 
   const IncomingCallScreen({
     super.key,
@@ -27,10 +29,11 @@ class IncomingCallScreen extends StatefulWidget {
     required this.callerName,
     required this.callerId,
     required this.roomName,
-    required this.token,
-    required this.livekitUrl,
+    this.token = '',
+    this.livekitUrl = '',
     this.isVideoCall = true,
     this.callerPhotoUrl,
+    this.isP2PCall = false,
   });
 
   @override
@@ -111,16 +114,11 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
 
   Future<void> _acceptCall() async {
     if (_isAccepting) return;
-    
-    // Stop vibration when call is accepted
     VibrationService.stopVibration();
-    
     setState(() => _isAccepting = true);
 
     try {
-      // First, validate the invitation is still valid
       final isValid = await _signalingService.acceptInvitation(widget.invitationId);
-      
       if (!isValid) {
         debugPrint('❌ Cannot accept - invitation expired or cancelled');
         if (mounted) {
@@ -135,54 +133,87 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
         return;
       }
 
-      // Generate our own LiveKit token for this room
-      debugPrint('🎫 Generating LiveKit token for recipient');
       final functions = FirebaseFunctions.instance;
-      final callable = functions.httpsCallable('getLiveKitToken');
-      
-      // Call cloud function with a timeout to avoid hanging the UI if functions are slow
-      final response = await callable
-          .call({
-        'calleeId': widget.callerId, // Not actually used for token generation, just for logging
-        'roomName': widget.roomName,
-        'platform': DeviceModeService.platformLabel(),
-      })
-          .timeout(const Duration(seconds: 10), onTimeout: () {
-        throw Exception('Token request timed out');
-      });
-
-      final myToken = response.data['token'] as String;
-      await IceServerConfig.updateFromTokenResponse(
-        Map<String, dynamic>.from(response.data as Map),
-      );
-      debugPrint('✅ Got recipient token');
-
-      if (!mounted) return;
-
-      // Start a call session for the recipient so the session is recorded
       final sessionService = CallSessionService();
       final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser != null) {
-        try {
-          await sessionService.startSession(widget.roomName, [currentUser.uid, widget.callerId]);
-        } catch (e) {
-          debugPrint('❌ Failed to start session for recipient: $e');
-        }
-      }
 
-      // Navigate to call screen with OUR token (not the caller's token)
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => CallScreen(
-            roomName: widget.roomName,
-            token: myToken, // Use our own generated token
-            livekitUrl: widget.livekitUrl,
-            signalingService: _signalingService,
-            sessionService: sessionService,
+      if (widget.isP2PCall) {
+        // ── P2P path: fetch ICE servers, no LiveKit token needed ─────────────
+        debugPrint('🔗 Accepting P2P call — fetching ICE servers');
+        final iceResponse = await functions
+            .httpsCallable('getIceServers')
+            .call({})
+            .timeout(const Duration(seconds: 10), onTimeout: () {
+          throw Exception('ICE server request timed out');
+        });
+        await IceServerConfig.updateFromTokenResponse(
+          Map<String, dynamic>.from(iceResponse.data as Map),
+        );
+
+        if (currentUser != null) {
+          try {
+            await sessionService.startSession(
+                widget.roomName, [currentUser.uid, widget.callerId]);
+          } catch (e) {
+            debugPrint('❌ Failed to start session: $e');
+          }
+        }
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CallScreen(
+              roomName: widget.roomName,
+              signalingService: _signalingService,
+              sessionService: sessionService,
+              isP2PCall: true,
+              remoteUserId: widget.callerId,
+              isInitiator: false, // callee
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        // ── LiveKit SFU path (group calls) ───────────────────────────────────
+        debugPrint('🎫 Generating LiveKit token for recipient');
+        final response = await functions
+            .httpsCallable('getLiveKitToken')
+            .call({
+          'calleeId': widget.callerId,
+          'roomName': widget.roomName,
+          'platform': DeviceModeService.platformLabel(),
+        }).timeout(const Duration(seconds: 10), onTimeout: () {
+          throw Exception('Token request timed out');
+        });
+
+        final myToken = response.data['token'] as String;
+        await IceServerConfig.updateFromTokenResponse(
+          Map<String, dynamic>.from(response.data as Map),
+        );
+
+        if (currentUser != null) {
+          try {
+            await sessionService.startSession(
+                widget.roomName, [currentUser.uid, widget.callerId]);
+          } catch (e) {
+            debugPrint('❌ Failed to start session: $e');
+          }
+        }
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CallScreen(
+              roomName: widget.roomName,
+              token: myToken,
+              livekitUrl: widget.livekitUrl,
+              signalingService: _signalingService,
+              sessionService: sessionService,
+            ),
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('❌ Error accepting call: $e');
       if (mounted) {

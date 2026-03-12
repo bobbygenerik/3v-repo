@@ -22,6 +22,7 @@ class CallSignalingService {
     required String token,
     required String livekitUrl,
     bool isVideoCall = true,
+    bool isP2PCall = false,
   }) async {
     try {
       final currentUser = _auth.currentUser;
@@ -120,6 +121,7 @@ class CallSignalingService {
         'token': token,
         'livekitUrl': livekitUrl,
         'isVideoCall': isVideoCall,
+        'isP2PCall': isP2PCall,
         'status': 'pending', // pending, accepted, declined, cancelled, timeout
         'timestamp': FieldValue.serverTimestamp(),
         'expiresAt': Timestamp.fromDate(

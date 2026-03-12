@@ -808,6 +808,21 @@ exports.retryFailedNotifications = retryFailedNotifications;
 exports.cleanupOldNotifications = cleanupOldNotifications;
 
 /**
+ * Cloud Function: Return ICE server configuration for P2P calls.
+ * Lightweight — no LiveKit token is generated. Any authenticated user can call this.
+ */
+exports.getIceServers = functions.https.onCall(async (requestOrData, context) => {
+  const request = normalizeCallableRequest(requestOrData, context);
+  if (!request.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
+  }
+  const iceServersJson = LIVEKIT_ICE_SERVERS_JSON && LIVEKIT_ICE_SERVERS_JSON.trim().length > 0
+    ? LIVEKIT_ICE_SERVERS_JSON
+    : buildDefaultIceServersJson();
+  return { iceServersJson };
+});
+
+/**
  * Cloud Function: Translate audio via VPS
  */
 exports.translateAudio = functions.https.onCall(async (requestOrData, context) => {
