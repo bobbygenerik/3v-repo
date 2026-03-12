@@ -19,7 +19,7 @@ const LIVEKIT_HTTP_URL = process.env.LIVEKIT_HTTP_URL || 'https://livekit.iptvsu
 const LIVEKIT_ICE_SERVERS_JSON = process.env.LIVEKIT_ICE_SERVERS_JSON || '';
 const TURN_HOST = process.env.TURN_HOST || 'livekit.iptvsubz.fun';
 const TURN_USERNAME = process.env.TURN_USERNAME || 'tres-turn';
-const TURN_PASSWORD = process.env.TURN_PASSWORD || 'uOed6dZmbnWEtCiEI4/dhSLn';
+const TURN_PASSWORD = process.env.TURN_PASSWORD || '';
 const WEB_URL = process.env.WEB_URL || 'https://tres3.web.app';
 const STALE_SESSION_MINUTES = Number(process.env.CALL_SESSION_STALE_MINUTES || 2);
 
@@ -815,14 +815,22 @@ exports.translateAudio = functions.https.onCall(async (requestOrData, context) =
   if (!request.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
   
   const {audioUrl, srcLang, tgtLang} = request.data;
+
+  const translationUrl = process.env.VPS_TRANSLATION_URL;
+  if (!translationUrl) {
+    throw new functions.https.HttpsError(
+      'failed-precondition',
+      'Translation service is not configured. Set VPS_TRANSLATION_URL in environment.'
+    );
+  }
+
   const axios = require('axios');
-  
-  const response = await axios.post(process.env.VPS_TRANSLATION_URL || 'http://YOUR_VPS_IP:5000/translate', {
+  const response = await axios.post(translationUrl, {
     audioUrl,
     srcLang: srcLang || 'eng_Latn',
     tgtLang: tgtLang || 'spa_Latn'
   });
-  
+
   return {translatedAudioUrl: response.data.audioUrl, text: response.data.text};
 });
 
@@ -870,15 +878,15 @@ exports.startRecording = functions.https.onCall(async (requestOrData, context) =
       filepath: `recordings/${fileName}`,
     });
 
-    const request = new RoomCompositeEgressRequest({
+    const egressRequest = new RoomCompositeEgressRequest({
       roomName,
       layout: 'grid',
       output: fileOutput,
     });
 
     console.log('Starting room composite egress...');
-    const egress = await egressClient.startRoomCompositeEgress(request);
-    
+    const egress = await egressClient.startRoomCompositeEgress(egressRequest);
+
     console.log('✅ Recording started, egress ID:', egress.egressId);
 
     // Save metadata to Firestore
@@ -932,6 +940,20 @@ exports.stopRecording = functions.https.onCall(async (requestOrData, context) =>
     );
   }
 
+  // Verify caller owns the recording
+  const recordingQuery = await admin.firestore()
+    .collection('recordings')
+    .where('egressId', '==', egressId)
+    .limit(1)
+    .get();
+
+  if (recordingQuery.empty) {
+    throw new functions.https.HttpsError('not-found', 'Recording not found');
+  }
+  if (recordingQuery.docs[0].data().userId !== request.auth.uid) {
+    throw new functions.https.HttpsError('permission-denied', 'You do not own this recording');
+  }
+
   try {
     const apiKey = LIVEKIT_API_KEY;
     const apiSecret = LIVEKIT_API_SECRET;
@@ -949,19 +971,11 @@ exports.stopRecording = functions.https.onCall(async (requestOrData, context) =>
     
     console.log('✅ Recording stopped, egress ID:', egress.egressId);
 
-    // Update Firestore metadata
-    const recordingQuery = await admin.firestore()
-      .collection('recordings')
-      .where('egressId', '==', egressId)
-      .limit(1)
-      .get();
-
-    if (!recordingQuery.empty) {
-      await recordingQuery.docs[0].ref.update({
-        status: 'stopped',
-        stoppedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    }
+    // Update Firestore metadata (reuse the doc already fetched for ownership check)
+    await recordingQuery.docs[0].ref.update({
+      status: 'stopped',
+      stoppedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
 
     return {
       success: true,

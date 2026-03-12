@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class NotificationService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   static bool _initialized = false;
+  static StreamSubscription<String>? _tokenRefreshSubscription;
   
   static Future<bool> requestPermissions() async {
     try {
@@ -56,13 +58,15 @@ class NotificationService {
   }
   
   static Future<bool> enableNotifications() async {
-    bool granted = await requestPermissions();
-    
+    final bool granted = await requestPermissions();
+
     if (granted) {
       await _setupToken();
+      // Allow re-initialization if permissions were granted after first run
+      _initialized = true;
       return true;
     }
-    
+
     return false;
   }
   
@@ -93,8 +97,8 @@ class NotificationService {
         }
       }
       
-      // Listen for token refresh
-      _messaging.onTokenRefresh.listen((newToken) {
+      // Listen for token refresh — only subscribe once to avoid duplicate listeners
+      _tokenRefreshSubscription ??= _messaging.onTokenRefresh.listen((newToken) {
         debugPrint('🔄 FCM Token refreshed');
         _saveTokenToFirestore(newToken);
       });

@@ -70,6 +70,7 @@ class ReactionService extends ChangeNotifier {
 
   Room? _room;
   EventsListener<RoomEvent>? _roomListener;
+  bool _disposed = false;
 
   final List<Reaction> _activeReactions = [];
   List<Reaction> get activeReactions => List.unmodifiable(_activeReactions);
@@ -168,6 +169,7 @@ class ReactionService extends ChangeNotifier {
       final delayMs = i * 20; // Reduced to 20ms delay for faster appearance
       
       Future.delayed(Duration(milliseconds: delayMs), () {
+        if (_disposed) return;
         if (_activeReactions.length < _maxConcurrentReactions) {
           _activeReactions.add(reaction);
           notifyListeners();
@@ -176,6 +178,7 @@ class ReactionService extends ChangeNotifier {
           Future.delayed(
             Duration(milliseconds: _animationDurationMs),
             () {
+              if (_disposed) return;
               _activeReactions.remove(reaction);
               notifyListeners();
             },
@@ -197,6 +200,7 @@ class ReactionService extends ChangeNotifier {
 
   /// Clean up resources
   void cleanup() {
+    _disposed = true;
     _roomListener?.dispose();
     _roomListener = null;
     _room = null;

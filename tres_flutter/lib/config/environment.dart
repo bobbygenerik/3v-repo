@@ -65,10 +65,11 @@ class Environment {
   static const int maxMessageLength = 500;
   static const int maxChatHistory = 100;
   
-  // Development Mode
+  // Development Mode — defaults to false so production builds are safe by default.
+  // Pass --dart-define=DEVELOPMENT=true for local development.
   static const bool isDevelopment = bool.fromEnvironment(
     'DEVELOPMENT',
-    defaultValue: true,
+    defaultValue: false,
   );
   
   // Debug Logging

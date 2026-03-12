@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 /// Encryption status enum
@@ -179,20 +181,9 @@ class E2EEncryptionService extends ChangeNotifier {
   /// - Appropriate key length (256-bit for AES-256)
   /// - Key derivation function (PBKDF2, Argon2)
   String _generateEncryptionKey() {
-    // In production: Use proper cryptographic key generation
-    // Example with crypto package:
-    // 
-    // import 'package:crypto/crypto.dart';
-    // import 'dart:math';
-    // 
-    // final random = Random.secure();
-    // final values = List<int>.generate(32, (_) => random.nextInt(256));
-    // return base64.encode(values);
-
-    // For demo, generate random string
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final random = timestamp.toString().hashCode;
-    return 'key_${random.toRadixString(16).padLeft(32, '0')}';
+    final random = Random.secure();
+    final bytes = List<int>.generate(32, (_) => random.nextInt(256));
+    return base64Url.encode(bytes);
   }
 
   /// Rotate encryption key

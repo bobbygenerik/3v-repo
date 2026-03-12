@@ -55,54 +55,54 @@ service cloud.firestore {
     
     // Sessions collection - video call sessions
     match /sessions/{sessionId} {
-      // Anyone authenticated can create a session
+      // Helper: check if caller is a participant in this session
+      function isSessionParticipant() {
+        return isSignedIn() &&
+          exists(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid));
+      }
+
+      // Anyone authenticated can create a session (they will add themselves as participant)
       allow create: if isSignedIn();
-      
-      // Session participants can read and update
-      allow read, update: if isSignedIn();
-      
-      // Session creator or participants can delete
-      allow delete: if isSignedIn();
-      
+
+      // Only participants can read or update session data
+      allow read, update: if isSessionParticipant();
+
+      // Only participants can delete the session
+      allow delete: if isSessionParticipant();
+
       // Participants subcollection
       match /participants/{participantId} {
-        // Participants can join (create their participant doc)
+        // Participants can join (create their own participant doc)
         allow create: if isOwner(participantId);
-        
-        // Anyone in session can read participants
-        allow read: if isSignedIn();
-        
+
+        // Only session participants can read the participant list
+        allow read: if isSessionParticipant();
+
         // Participants can update their own status
         allow update: if isOwner(participantId);
-        
-        // Participants can leave (delete their participant doc)
+
+        // Participants can leave (delete their own participant doc)
         allow delete: if isOwner(participantId);
       }
-      
+
       // Signals subcollection - WebRTC signaling (SDP, ICE candidates)
       match /signals/{signalId} {
-        // Anyone authenticated can create signals
-        allow create: if isSignedIn();
-        
-        // Session participants can read signals
-        allow read: if isSignedIn();
-        
-        // Allow update for signal acknowledgment
-        allow update: if isSignedIn();
-        
-        // Allow deletion for cleanup
-        allow delete: if isSignedIn();
+        // Session participants can create and read signals
+        allow create, read: if isSessionParticipant();
+
+        // Only the signal creator can update or delete it
+        allow update, delete: if isSignedIn() &&
+          resource.data.senderId == request.auth.uid;
       }
-      
+
       // Encryption keys subcollection - E2E encryption key exchange
       match /encryption_keys/{keyUserId} {
         // Users can ONLY write their own encryption keys
         allow create, update: if isOwner(keyUserId);
-        
+
         // Session participants can read encryption keys to establish secure connection
-        allow read: if isSignedIn() && 
-          exists(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid));
-        
+        allow read: if isSessionParticipant();
+
         // Users can delete their own keys on call end
         allow delete: if isOwner(keyUserId);
       }
@@ -110,10 +110,14 @@ service cloud.firestore {
     
     // Call logs/history
     match /call_logs/{callId} {
-      // Users can only read/write their own call logs
-      allow read, write: if isSignedIn() && 
-        (resource.data.userId == request.auth.uid || 
-         request.resource.data.userId == request.auth.uid);
+      // Users can read their own call logs
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      // Users can create/update their own call logs
+      allow create, update: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+
+      // Users can delete their own call logs (resource.data is valid on delete)
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
     
     // Calls collection - for call history

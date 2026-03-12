@@ -168,8 +168,6 @@ class LiveKitService extends ChangeNotifier {
     // Use simulcast ladder flag (3-layer) but gate by runtime capability probe on web
     var webSimulcastOk = true;
     if (kIsWeb) {
-      // ensure device capability detection runs the web probe
-      DeviceCapabilityService.detectCapability();
       webSimulcastOk = DeviceCapabilityService.webSupportsSimulcast();
     }
     _isSimulcastEnabled = FeatureFlags.enableSimulcastLadder && !_isSafariPwa && webSimulcastOk;

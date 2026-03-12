@@ -17,6 +17,11 @@ class ContactService extends ChangeNotifier {
   List<String> _favoriteIds = [];
   List<String> get favoriteIds => _favoriteIds;
 
+  // Broadcast controller so getFavoritesStream() reuses the existing
+  // Firestore listener instead of creating a second one.
+  final StreamController<List<String>> _favoritesStreamController =
+      StreamController<List<String>>.broadcast();
+
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
       _favoritesSubscription;
   StreamSubscription<User?>? _authSubscription;
@@ -27,6 +32,7 @@ class ContactService extends ChangeNotifier {
     _favoritesSubscription?.cancel();
     if (user == null) {
       _favoriteIds = [];
+      _favoritesStreamController.add([]);
       notifyListeners();
       return;
     }
@@ -46,6 +52,7 @@ class ContactService extends ChangeNotifier {
       } else {
         _favoriteIds = [];
       }
+      _favoritesStreamController.add(List<String>.from(_favoriteIds));
       notifyListeners();
     }, onError: (e) {
       debugPrint('Error listening to favorites: $e');
@@ -54,26 +61,11 @@ class ContactService extends ChangeNotifier {
 
   bool isFavorite(String userId) => _favoriteIds.contains(userId);
 
-  /// Returns a stream of favorite user IDs for the current user.
+  /// Returns a stream of favorite user IDs backed by the existing Firestore
+  /// subscription — no extra listener is created.
   Stream<List<String>> getFavoritesStream() {
-    final uid = _currentUserId;
-    if (uid == null) return Stream.value([]);
-
-    return _firestore
-        .collection('users')
-        .doc(uid)
-        .snapshots()
-        .map((snapshot) {
-      if (!snapshot.exists) return [];
-      final data = snapshot.data();
-      if (data == null || !data.containsKey('favorites')) return [];
-
-      final favorites = data['favorites'];
-      if (favorites is List) {
-        return favorites.map((e) => e.toString()).toList();
-      }
-      return [];
-    });
+    if (_currentUserId == null) return Stream.value([]);
+    return _favoritesStreamController.stream;
   }
 
   Future<void> toggleFavorite(String userId) async {
@@ -182,6 +174,7 @@ class ContactService extends ChangeNotifier {
   void dispose() {
     _favoritesSubscription?.cancel();
     _authSubscription?.cancel();
+    _favoritesStreamController.close();
     super.dispose();
   }
 }
