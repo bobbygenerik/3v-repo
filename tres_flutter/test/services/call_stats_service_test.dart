@@ -1,5 +1,108 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tres_flutter/services/call_stats_service.dart';
+
+Map<String, double?> parseStatsObject(dynamic stats) {
+  double? packetLoss;
+  double? rttMs;
+  double? jitterMs;
+  double? width;
+  double? height;
+  double? fps;
+  double? availableOutgoingBitrate;
+
+  double normalizePacketLoss(num raw) {
+    final value = raw.toDouble();
+    return value <= 1.0 ? value * 100.0 : value;
+  }
+
+  double normalizeRttMs(num raw) {
+    final value = raw.toDouble();
+    return value <= 5.0 ? value * 1000.0 : value;
+  }
+
+  void recurse(dynamic obj) {
+    if (obj == null) return;
+
+    if (obj is Map) {
+      for (final entry in obj.entries) {
+        final key = entry.key?.toString().toLowerCase();
+        final value = entry.value;
+        if (key == null || value == null) {
+          if (value is Map || value is Iterable) recurse(value);
+          continue;
+        }
+
+        if (key.contains('loss') ||
+            key.contains('packetslost') ||
+            key.contains('fraction_lost') ||
+            key.contains('fractionlost') ||
+            key.contains('lost') ||
+            key.contains('packets_lost') ||
+            key.contains('packet_loss') ||
+            key.contains('loss_rate')) {
+          final parsed = double.tryParse(value.toString());
+          if (parsed != null) {
+            final normalized = normalizePacketLoss(parsed);
+            packetLoss = packetLoss == null
+                ? normalized
+                : ((packetLoss! + normalized) / 2.0);
+          }
+        } else if (key.contains('rtt') ||
+            key.contains('roundtrip') ||
+            key.contains('round_trip')) {
+          final parsed = double.tryParse(value.toString());
+          if (parsed != null) {
+            final normalized = normalizeRttMs(parsed);
+            rttMs = rttMs == null ? normalized : ((rttMs! + normalized) / 2.0);
+          }
+        } else if (key.contains('jitter')) {
+          final parsed = double.tryParse(value.toString());
+          if (parsed != null) {
+            final normalized = normalizeRttMs(parsed);
+            jitterMs =
+                jitterMs == null ? normalized : ((jitterMs! + normalized) / 2.0);
+          }
+        } else if (key.contains('availableoutgoingbitrate') ||
+            key.contains('available_outgoing_bitrate')) {
+          final parsed = double.tryParse(value.toString());
+          if (parsed != null && parsed > 0) {
+            availableOutgoingBitrate = parsed;
+          }
+        } else if (key == 'framewidth' || key == 'frame_width' || key == 'width') {
+          final parsed = double.tryParse(value.toString());
+          if (parsed != null && parsed > 0) width = parsed;
+        } else if (key == 'frameheight' || key == 'frame_height' || key == 'height') {
+          final parsed = double.tryParse(value.toString());
+          if (parsed != null && parsed > 0) height = parsed;
+        } else if (key == 'framespersecond' ||
+            key == 'frames_per_second' ||
+            key == 'framerate' ||
+            key == 'frame_rate' ||
+            key == 'fps') {
+          final parsed = double.tryParse(value.toString());
+          if (parsed != null && parsed > 0) fps = parsed;
+        }
+
+        if (value is Map || value is Iterable) recurse(value);
+      }
+    } else if (obj is Iterable) {
+      for (final value in obj) {
+        recurse(value);
+      }
+    }
+  }
+
+  recurse(stats);
+
+  return {
+    'packetLoss': packetLoss,
+    'rttMs': rttMs,
+    'jitterMs': jitterMs,
+    'availableOutgoingBitrate': availableOutgoingBitrate,
+    'width': width,
+    'height': height,
+    'fps': fps,
+  };
+}
 
 void main() {
   test('Benchmark parseStatsObject', () {

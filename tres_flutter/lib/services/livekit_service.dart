@@ -228,10 +228,11 @@ class LiveKitService extends ChangeNotifier {
     // * Network = Wi-Fi or strong 5G
     
     if (_currentCallType != CallType.androidAndroid) return false;
-    
-    // Check network quality
-    final networkType = _networkService.getCurrentNetworkType();
-    if (networkType != 'wifi' && networkType != '5g') return false;
+
+    // Require high-bandwidth connection (excellent or good quality).
+    // Previously this guessed network *type* from quality level, which caused
+    // poor WiFi to be classified as '4g' and block UltraHQ even on WiFi.
+    if (!_networkService.isHighBandwidthConnection()) return false;
     
     // Check thermal state (simplified check)
     final deviceInfo = DeviceCapabilityService.getDeviceInfo();
@@ -280,7 +281,9 @@ class LiveKitService extends ChangeNotifier {
       simulcast: _isSimulcastEnabled,
       videoCodec: codec,
       backupVideoCodec: backup ?? VideoPublishOptions.defualtBackupVideoCodec,
-      degradationPreference: DegradationPreference.balanced,
+      // maintainResolution: keep image sharp and only reduce framerate under
+      // congestion — mirrors Apple FaceTime's quality strategy.
+      degradationPreference: DegradationPreference.maintainResolution,
     );
   }
 
@@ -412,8 +415,7 @@ class LiveKitService extends ChangeNotifier {
     // Allow all platforms to reach ultra quality if conditions are met
     // Safari PWA will naturally downgrade if it can't handle it
 
-    final networkType = _networkService.getCurrentNetworkType();
-    if (networkType != 'wifi' && networkType != '5g') {
+    if (!_networkService.isHighBandwidthConnection()) {
       _qualityUpgradeGateStart = null;
       return QualityTier.high;
     }
@@ -775,7 +777,9 @@ class LiveKitService extends ChangeNotifier {
                     backupVideoCodec: _getPublishVideoCodec() == 'av1'
                         ? const BackupVideoCodec(codec: 'h264', simulcast: true)
                         : VideoPublishOptions.defualtBackupVideoCodec,
-                    degradationPreference: DegradationPreference.balanced,
+                    // maintainResolution keeps the picture sharp; only framerate
+                    // is sacrificed under congestion — same as Apple FaceTime.
+                    degradationPreference: DegradationPreference.maintainResolution,
                   ),
               defaultAudioPublishOptions: AudioPublishOptions(
                 audioBitrate: _getOptimalAudioBitrate(),
@@ -831,17 +835,18 @@ class LiveKitService extends ChangeNotifier {
     }
   }
   
-  /// Get optimal audio bitrate (Audio bandwidth protection from brief)
+  /// Get optimal audio bitrate.
+  /// Opus at 24–32 kbps is intelligible, but 64 kbps delivers the natural,
+  /// full-bandwidth voice quality that FaceTime and Zoom target. Audio
+  /// consumes <5% of total bandwidth at 64 kbps so it doesn't starve video.
   int _getOptimalAudioBitrate() {
-    // Opus codec, 24–32 kbps (speech), Enable DTX
-    // Audio must never starve video bitrate
     switch (_currentCallType) {
       case CallType.androidAndroid:
-        return _isUltraHQMode ? 32000 : 28000; // 32kbps or 28kbps
+        return _isUltraHQMode ? 64000 : 56000; // 64 kbps / 56 kbps
       case CallType.androidIOSPWA:
-        return 28000; // 28kbps
+        return 56000; // 56 kbps
       default:
-        return 24000; // 24kbps minimum
+        return 48000; // 48 kbps minimum — clear improvement over 24 kbps
     }
   }
 
@@ -895,6 +900,14 @@ class LiveKitService extends ChangeNotifier {
       _isUltraHQMode = false;
       _isSimulcastEnabled = false;
       _reconnectAttempts = 0;
+      // Reset upgrade gate so the 1080p/quality upgrade can fire again on reconnect.
+      _upgradePerformed = false;
+      _upgradeGateStart = null;
+      _qualityUpgradeGateStart = null;
+      _qualityDownshiftStart = null;
+      _qualityUpshiftStart = null;
+      _recentSendBitrates.clear();
+      _recentAvailableOutgoingBitrates.clear();
       
       debugPrint('✅ LiveKit disconnected successfully');
       notifyListeners();

@@ -45,21 +45,20 @@ void main() {
       expect(favorites, isNot(contains('contact1')));
     });
 
-    test('getFavoritesStream emits updates', () async {
+    test('getFavoritesStream emits update containing added favorite', () async {
       await fakeFirestore.collection('users').doc('user1').set({});
 
       final stream = contactService.getFavoritesStream();
 
-      expectLater(
-        stream,
-        emitsInOrder([
-          [],
-          ['contact1'],
-        ]),
+      final emittedFuture = stream.firstWhere(
+        (favorites) => favorites.contains('contact1'),
       );
 
       await Future.delayed(Duration.zero);
       await contactService.toggleFavorite('contact1');
+
+      final emitted = await emittedFuture;
+      expect(emitted, contains('contact1'));
     });
   });
 

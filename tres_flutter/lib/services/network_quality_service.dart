@@ -170,16 +170,19 @@ class NetworkQualityService extends ChangeNotifier {
   /// Return last measured latency in milliseconds (may be 0 if not measured)
   int getLastMeasuredLatencyMs() => _lastLatencyMs;
   
-  /// Get recommended audio bitrate
+  /// Get recommended audio bitrate.
+  /// Opus at 64 kbps gives FaceTime-quality voice. Even at 48 kbps (poor
+  /// network) the improvement over 32 kbps is clearly audible.
   int getRecommendedAudioBitrate() {
     switch (_currentQuality) {
       case NetworkQuality.excellent:
+        return 64 * 1000; // 64 kbps — full HD voice
       case NetworkQuality.good:
         return 64 * 1000; // 64 kbps
       case NetworkQuality.fair:
         return 48 * 1000; // 48 kbps
       case NetworkQuality.poor:
-        return 32 * 1000; // 32 kbps
+        return 40 * 1000; // 40 kbps — still clear speech
       case NetworkQuality.offline:
         return 0;
     }
@@ -191,16 +194,29 @@ class NetworkQualityService extends ChangeNotifier {
            _currentQuality != NetworkQuality.poor;
   }
   
-  /// Get current network type as string
+  /// Returns whether the current connection has enough bandwidth headroom for
+  /// ultra-high-quality video (equivalent to being on WiFi or strong 5G).
+  /// This replaces the old getCurrentNetworkType() quality→type guess, which
+  /// was wrong: poor WiFi was classified as '4g', blocking UltraHQ on WiFi.
+  bool isHighBandwidthConnection() {
+    return _currentQuality == NetworkQuality.excellent ||
+        _currentQuality == NetworkQuality.good;
+  }
+
+  /// Get current network type as string.
+  /// NOTE: This maps quality level to a bandwidth category, not a physical
+  /// interface type (WiFi vs cellular). Use isHighBandwidthConnection() for
+  /// bandwidth gates and add connectivity_plus if the physical type is needed.
   String getCurrentNetworkType() {
     switch (_currentQuality) {
       case NetworkQuality.excellent:
+        return 'wifi';
       case NetworkQuality.good:
-        return 'wifi'; // Assume excellent/good quality is WiFi
+        return 'wifi';
       case NetworkQuality.fair:
-        return '5g'; // Fair quality might be 5G
+        return '5g';
       case NetworkQuality.poor:
-        return '4g'; // Poor quality likely 4G
+        return '4g';
       case NetworkQuality.offline:
         return 'none';
     }

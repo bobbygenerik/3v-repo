@@ -56,7 +56,11 @@ class AdaptiveStreamingManager extends ChangeNotifier {
   bool _isActive = false;
   StreamingStats _currentStats = StreamingStats.empty();
   StreamingProfile _currentProfile = StreamingProfile.adaptive;
-  
+
+  // Stored so we can call removeListener with the same callback reference.
+  EnhancedNetworkQualityService? _networkService;
+  VoidCallback? _networkListenerCallback;
+
   // Adaptation settings
   Duration _adaptationInterval = const Duration(seconds: 5);
   double _adaptationSensitivity = 0.7; // 0-1, higher = more aggressive
@@ -116,20 +120,22 @@ class AdaptiveStreamingManager extends ChangeNotifier {
 
   void startAdaptiveStreaming(EnhancedNetworkQualityService networkService) {
     if (_isActive) return;
-    
+
     _isActive = true;
-    
-    // Listen to network quality changes
-    networkService.addListener(() {
+    _networkService = networkService;
+
+    // Store the callback so we can remove it in stopAdaptiveStreaming.
+    _networkListenerCallback = () {
       _handleNetworkQualityChange(networkService.currentStats);
-    });
-    
-    // Start periodic adaptation evaluation
+    };
+    networkService.addListener(_networkListenerCallback!);
+
+    // Start periodic adaptation evaluation.
     _adaptationTimer = Timer.periodic(
       _adaptationInterval,
       (_) => _evaluateAdaptation(networkService.currentStats),
     );
-    
+
     debugPrint('🎬 Adaptive streaming manager started');
   }
 
@@ -139,7 +145,14 @@ class AdaptiveStreamingManager extends ChangeNotifier {
     _networkStatsSubscription?.cancel();
     _adaptationTimer = null;
     _networkStatsSubscription = null;
-    
+
+    // Remove the listener to prevent a dangling reference on the network service.
+    if (_networkListenerCallback != null) {
+      _networkService?.removeListener(_networkListenerCallback!);
+      _networkListenerCallback = null;
+    }
+    _networkService = null;
+
     debugPrint('🎬 Adaptive streaming manager stopped');
   }
 
