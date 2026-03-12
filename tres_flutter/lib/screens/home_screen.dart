@@ -1268,6 +1268,27 @@ class _HomeScreenState extends State<HomeScreen>
                     'Start by adding friends to call',
                     style: TextStyle(fontSize: 14, color: Color(0xFF8E8E93)),
                   ),
+                ] else ...[
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: 200,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        VibrationService.lightImpact();
+                        _searchController.clear();
+                      },
+                      icon: const Icon(Icons.clear, size: 20),
+                      label: const Text('Clear Search'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF6B7FB8),
+                        side: const BorderSide(color: Color(0xFF6B7FB8)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ],
             ),
