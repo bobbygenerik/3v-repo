@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ============================================================================
 # LiveKit Self-Hosted Server Deployment Script
-# For Contabo VPS 10 (3 vCPU, 8GB RAM, Ubuntu 22.04/24.04)
+# For OVHcloud VPS 10 (3 vCPU, 8GB RAM, Ubuntu 22.04/24.04)
 # ============================================================================
 #
 # This script installs and configures:

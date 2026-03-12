@@ -10,7 +10,7 @@ class Environment {
   static const String appVersion = '1.0.0';
   
   // LiveKit Configuration
-  // Self-hosted on Contabo VPS (Saves $8,040/year!)
+  // Self-hosted on OVHcloud VPS (Saves $8,040/year!)
   static const String liveKitUrl = String.fromEnvironment(
     'LIVEKIT_URL',
     defaultValue: 'wss://livekit.iptvsubz.fun',

@@ -1,11 +1,11 @@
 # Self-Hosted LiveKit Server Setup Guide
 
 ## 🎯 Goal
-Deploy LiveKit server on your Contabo VPS to save **$8,040/year** vs LiveKit Cloud!
+Deploy LiveKit server on your OVHcloud VPS to save **$8,040/year** vs LiveKit Cloud!
 
 ## 📋 Prerequisites
 
-✅ **Contabo VPS 10** (31.220.97.48)
+✅ **OVHcloud VPS 10** (31.220.97.48)
 - 3 vCPU, 8 GB RAM, 32 TB bandwidth
 - Ubuntu 22.04 or 24.04
 - SSH root access
@@ -316,12 +316,12 @@ vnstat -m  # Monthly
 | Solution | Monthly Cost | Annual Cost |
 |----------|--------------|-------------|
 | **LiveKit Cloud** (20 users, 4h/day) | $670 | $8,040 |
-| **Self-Hosted** (Contabo VPS) | $7 | $84 |
+| **Self-Hosted** (OVHcloud VPS) | $7 | $84 |
 | **Your Savings** | $663/mo | **$7,956/year** 🎉 |
 
 ## 🎯 Capacity Limits
 
-Your Contabo VPS can handle:
+Your OVHcloud VPS can handle:
 - ✅ **20-30 concurrent users** (spread throughout the day)
 - ✅ **~8 concurrent HD video calls** (200 Mbit/s port limit)
 - ✅ **Unlimited total minutes/month**
