@@ -1014,14 +1014,17 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           await _endCallAndNavigateBack();
           return false;
         },
-        child: const Scaffold(
+        child: Scaffold(
           body: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Connecting to call...'),
+                Semantics(
+                  label: 'Connecting to call...',
+                  child: const CircularProgressIndicator(),
+                ),
+                const SizedBox(height: 16),
+                const Text('Connecting to call...'),
               ],
             ),
           ),
@@ -2250,8 +2253,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             showDialog(
               context: context,
               barrierDismissible: false,
-              builder: (context) => const Center(
-                child: CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+              builder: (context) => Center(
+                child: Semantics(
+                  label: 'Loading user details...',
+                  child: const CircularProgressIndicator(color: Color(0xFF6B7FB8)),
+                ),
               ),
             );
 
@@ -2386,15 +2392,18 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                   onChanged: updateContacts,
                 ),
                 if (isLoading)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 16),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
                     child: Center(
                       child: SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Color(0xFF6B7FB8),
+                        child: Semantics(
+                          label: 'Searching for user...',
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF6B7FB8),
+                          ),
                         ),
                       ),
                     ),
