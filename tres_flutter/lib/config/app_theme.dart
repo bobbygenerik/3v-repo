@@ -3,29 +3,21 @@ import 'package:flutter/material.dart';
 /// Custom color scheme matching the Android app's AppColors.kt
 /// Based on the Très³ logo and brand identity
 class AppColors {
-  // Primary dark blue from nightfall
-  static const Color primaryDark = Color(0xFF2F3448); // #2F3448
-
-  // Bright blue accent - matches logo
-  static const Color primaryBlue = Color(0xFF6B7FB8); // #6B7FB8 - Main brand color
-
-  // Dark gray background
+  // Sitch/Modern Color Palette
+  static const Color backgroundBlack = Color(0xFF1C1C1E); // #1C1C1E
+  static const Color surfaceDark = Color(0xFF2C2C2E);     // #2C2C2E
+  static const Color primaryBlue = Color(0xFF6B7FB8);     // #6B7FB8 - Main brand color
+  static const Color bgGradientStart = Color(0xFF1C1C1E); // #1C1C1E
+  static const Color bgGradientMid = Color(0xFF283556);   // #283556
+  
+  // Legacy/Other colors
   static const Color backgroundDark = Color(0xFF1b1c1e); // #1b1c1e
-
-  // Medium gray
-  static const Color surfaceGray = Color(0xFF515664); // #515664
-
-  // Light gray text
-  static const Color textLight = Color(0xFFA0A2A6); // #A0A2A6
-
-  // Near white
-  static const Color textWhite = Color(0xFFF4F4F5); // #F4F4F5
-
-  // Secondary blue - lighter version of logo color
-  static const Color accentBlue = Color(0xFF7589C4); // #7589C4 - Lighter variant
-
-  // Gray for secondary elements
-  static const Color gray = Color(0xFF7E8183); // #7E8183
+  static const Color primaryDark = Color(0xFF2F3448);    // #2F3448
+  static const Color surfaceGray = Color(0xFF515664);    // #515664
+  static const Color textLight = Color(0xFFA0A2A6);      // #A0A2A6
+  static const Color textWhite = Color(0xFFF4F4F5);      // #F4F4F5
+  static const Color accentBlue = Color(0xFF7589C4);     // #7589C4
+  static const Color gray = Color(0xFF7E8183);           // #7E8183
 }
 
 /// Custom theme matching the Android app design
@@ -39,7 +31,7 @@ class AppTheme {
       colorScheme: ColorScheme.dark(
         primary: AppColors.primaryBlue,
         secondary: AppColors.accentBlue,
-        surface: AppColors.primaryDark,
+        surface: AppColors.surfaceDark,
         onPrimary: AppColors.textWhite,
         onSecondary: AppColors.textWhite,
         onSurface: AppColors.textWhite,
@@ -47,7 +39,7 @@ class AppTheme {
       ),
       
       // Scaffold background
-      scaffoldBackgroundColor: AppColors.backgroundDark,
+      scaffoldBackgroundColor: AppColors.backgroundBlack,
       
       // AppBar theme
       appBarTheme: AppBarTheme(
@@ -59,10 +51,11 @@ class AppTheme {
       
       // Card theme
       cardTheme: const CardThemeData(
-        color: AppColors.primaryDark,
-        elevation: 2,
+        color: AppColors.surfaceDark,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+          side: BorderSide(color: Colors.white12),
         ),
       ),
       
@@ -100,9 +93,15 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryBlue,
-          foregroundColor: AppColors.textWhite,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          textStyle: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+          ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
       ),
@@ -117,21 +116,24 @@ class AppTheme {
       // Input decoration theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.primaryDark,
+        fillColor: AppColors.surfaceDark,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: AppColors.surfaceGray),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.white12),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: AppColors.surfaceGray),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.white12),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: AppColors.primaryBlue, width: 2),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.primaryBlue, width: 2),
         ),
-        labelStyle: TextStyle(color: AppColors.textLight),
-        hintStyle: TextStyle(color: AppColors.gray),
+        labelStyle: const TextStyle(color: Colors.white70),
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+        prefixIconColor: Colors.white70,
+        suffixIconColor: Colors.white70,
       ),
     );
   }

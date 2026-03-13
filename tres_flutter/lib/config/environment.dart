@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 /// with your actual project credentials.
 class Environment {
   // App Configuration
-  static const String appName = 'Tres';
+  static const String appName = 'Tres3';
   static const String appVersion = '1.0.0';
   
   // LiveKit Configuration

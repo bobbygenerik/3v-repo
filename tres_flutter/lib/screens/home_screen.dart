@@ -747,13 +747,24 @@ class _HomeScreenState extends State<HomeScreen>
     final user = authService.currentUser;
 
     return Scaffold(
-      backgroundColor: const Color(
-        0xFF1C1C1E,
-      ), // Dark background matching screenshot
-      body: ResponsiveContainer(
-        maxWidth: 768,
-        child: SafeArea(
-          child: Column(
+      extendBodyBehindAppBar: true,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.bgGradientStart,
+              AppColors.bgGradientMid,
+              AppColors.backgroundBlack,
+            ],
+            stops: [0.0, 0.5, 1.0],
+          ),
+        ),
+        child: ResponsiveContainer(
+          maxWidth: 768,
+          child: SafeArea(
+            child: Column(
             children: [
               // Header Row: Logo and Profile
               Padding(
@@ -774,7 +785,7 @@ class _HomeScreenState extends State<HomeScreen>
                         top: 8,
                       ), // Lower logo by 8px
                       child: Image.asset(
-                        'assets/images/logo.png',
+                        'assets/images/logo_white_bg.png',
                         height: 60,
                         fit: BoxFit.contain,
                         semanticLabel: 'Tres Logo',
@@ -922,90 +933,12 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
 
-              // Hero Section: "Connect Securely" (Stitch Design)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF6B7FB8),
-                        Color(0xFF15171D),
-                        Color(0xFF15171D),
-                      ],
-                      stops: [0.0, 0.4, 1.0],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      // Abstract SVG Wave pattern (using CustomPaint for Flutter)
-                      Positioned.fill(
-                        child: CustomPaint(
-                          painter: _WavePainter(),
-                        ),
-                      ),
-                      
-                      // Content
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF6B7FB8).withOpacity(0.2),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFF6B7FB8).withOpacity(0.3),
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.videocam,
-                                color: Color(0xFF6B7FB8),
-                                size: 36,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Connect Securely',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFFF4F4F5),
-                                letterSpacing: -0.5,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'High-definition peer-to-peer communication with military-grade encryption.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF94A3B8), // slate-400
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              // Welcome Section - Cascading text
+              _buildWelcomeSection(),
+
+              const SizedBox(height: 24),
 
               const SizedBox(height: 24),
 
@@ -1019,7 +952,7 @@ class _HomeScreenState extends State<HomeScreen>
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w400,
-                      color: Color(0xFF8E8E93),
+                      color: AppColors.textLight,
                     ),
                   ),
                 ),
@@ -1039,8 +972,9 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _wrapWithRefresh(Widget child) {
     final refreshable = RefreshIndicator(
@@ -1057,6 +991,40 @@ class _HomeScreenState extends State<HomeScreen>
     return ScrollConfiguration(
       behavior: const _WebRefreshScrollBehavior(),
       child: refreshable,
+    );
+  }
+
+  Widget _buildWelcomeSection() {
+    if (_currentWelcomeText.isEmpty || _letterAnimations.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Wrap(
+        children: List.generate(_currentWelcomeText.length, (index) {
+          return AnimatedBuilder(
+            animation: _letterAnimations[index],
+            builder: (context, child) {
+              return Opacity(
+                opacity: _letterAnimations[index].value,
+                child: Transform.translate(
+                  offset: Offset(0, 10 * (1 - _letterAnimations[index].value)),
+                  child: Text(
+                    _currentWelcomeText[index],
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        }),
+      ),
     );
   }
 
@@ -1217,8 +1185,9 @@ class _HomeScreenState extends State<HomeScreen>
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFF2C2C2E),
+              color: AppColors.surfaceDark.withOpacity(0.7),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Row(
               children: [
@@ -1263,7 +1232,7 @@ class _HomeScreenState extends State<HomeScreen>
                         contact['email'],
                         style: const TextStyle(
                           fontSize: 14,
-                          color: Color(0xFF8E8E93),
+                          color: AppColors.textLight,
                         ),
                       ),
                     ],

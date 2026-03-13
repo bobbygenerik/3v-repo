@@ -383,9 +383,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
               ),
             ),
 
-            // Call Actions — include extra bottom padding to avoid system UI
-            // Use an AnimatedContainer with a vertical transform (pixels) so
-            // the action row always translates straight down (no horizontal shift)
+            // Call Actions
             AnimatedContainer(
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeInOut,
@@ -393,25 +391,12 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
               alignment: Alignment.center,
               child: Padding(
                 padding: EdgeInsets.fromLTRB(40, 0, 40, 40 + bottomInset),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(40), // pill shape
-                  child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(40),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center, // Center buttons
                   children: [
                     // Decline Button
                     Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Semantics(
                           button: true,
@@ -422,47 +407,46 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                               onTap: _declineCall,
                               customBorder: const CircleBorder(),
                               splashColor: Colors.white.withOpacity(0.3),
-                              child: ExcludeSemantics(
-                                child: Container(
-                                  width: 70,
-                                  height: 70,
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.shade600,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.red.shade900.withOpacity(0.5),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.call_end,
-                                    size: 34,
-                                    color: Colors.white,
-                                  ),
+                              child: Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade600,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.call_end,
+                                  size: 32,
+                                  color: Colors.white,
                                 ),
                               ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 12),
-                        const ExcludeSemantics(
-                          child: Text(
-                            'Decline',
-                            style: TextStyle(
-                              color: AppColors.textLight,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        const Text(
+                          'Decline',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
+                    
+                    const SizedBox(width: 48), // Close proximity as requested
 
                     // Accept Button
                     Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Semantics(
                           button: true,
@@ -470,74 +454,62 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                               ? 'Connecting call...'
                               : 'Accept call',
                           enabled: !_isAccepting,
-                          liveRegion: _isAccepting,
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
                               onTap: _isAccepting ? null : _acceptCall,
                               customBorder: const CircleBorder(),
                               splashColor: Colors.white.withOpacity(0.3),
-                              child: ExcludeSemantics(
-                                child: Container(
-                                  width: 70,
-                                  height: 70,
-                                  decoration: BoxDecoration(
-                                    color: _isAccepting
-                                        ? Colors.grey.shade600
-                                        : Colors.green.shade600,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _isAccepting
-                                            ? Colors.grey.shade900
-                                                .withOpacity(0.5)
-                                            : Colors.green.shade900
-                                                .withOpacity(0.5),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ],
-                                  ),
-                                  child: _isAccepting
-                                      ? const SizedBox(
-                                          width: 24,
-                                          height: 24,
+                              child: Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  color: _isAccepting
+                                      ? Colors.grey.shade700
+                                      : Colors.green.shade600,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: _isAccepting
+                                    ? const Center(
+                                        child: SizedBox(
+                                          width: 28,
+                                          height: 28,
                                           child: CircularProgressIndicator(
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                    Colors.white),
+                                            color: Colors.white,
                                             strokeWidth: 3,
                                           ),
-                                        )
-                                      : Icon(
-                                          widget.isVideoCall
-                                              ? Icons.videocam
-                                              : Icons.phone,
-                                          size: 34,
-                                          color: Colors.white,
                                         ),
-                                ),
+                                      )
+                                    : Icon(
+                                        widget.isVideoCall
+                                            ? Icons.videocam
+                                            : Icons.phone,
+                                        size: 32,
+                                        color: Colors.white,
+                                      ),
                               ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 12),
-                        ExcludeSemantics(
-                          child: Text(
-                            _isAccepting ? 'Connecting...' : 'Accept',
-                            style: const TextStyle(
-                              color: AppColors.textLight,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        Text(
+                          _isAccepting ? 'Connecting...' : 'Accept',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
                   ],
-                ),
-                    ),
-                  ),
                 ),
               ),
             ),

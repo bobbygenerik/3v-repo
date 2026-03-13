@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
@@ -196,206 +197,151 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Colors.transparent, // Let the gradient show through
       resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: 32,
-            right: 32,
-            top: 32,
-            bottom: 32 + (kIsWeb ? 0 : MediaQuery.of(context).viewInsets.bottom),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.bgGradientStart,
+              AppColors.bgGradientMid,
+              AppColors.bgGradientStart,
+            ],
+            stops: [0.0, 0.5, 1.0],
           ),
-          child: AutofillGroup(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 20),
-                // Logo
-              Center(
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  height: 150,
-                  fit: BoxFit.contain,
-                  semanticLabel: 'Tres Logo',
-                ),
-              ),
-              
-              const SizedBox(height: 48),
-              
-              // "Sign in to continue" text
-              const Center(
-                child: Text(
-                  'Sign in to continue',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: 32),
-              
-              // Email or Phone field
-              Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2C2C2E), // surface-dark
-                    borderRadius: BorderRadius.circular(16), // rounded-xl
-                    border: Border.all(
-                      color: Colors.white12,
-                      width: 1,
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 40,
+              bottom: 40 + (kIsWeb ? 0 : MediaQuery.of(context).viewInsets.bottom),
+            ),
+            child: AutofillGroup(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Logo
+                  Center(
+                    child: Image.asset(
+                      'assets/images/logo_white_bg.png',
+                      height: 120,
+                      fit: BoxFit.contain,
+                      semanticLabel: 'Tres3 Logo',
                     ),
                   ),
-                  child: TextField(
-                    key: const ValueKey('email_field'),
-                    controller: _emailController,
-                    autofillHints: const [AutofillHints.email],
-                    textInputAction: TextInputAction.next,
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                    decoration: InputDecoration(
-                      hintText: 'Email',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.only(left: 20, right: 16),
-                        child: Icon(
-                          Icons.person,
-                          color: Colors.white.withOpacity(0.7),
-                        ),
-                      ),
-                      suffixIcon: _emailController.text.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(
-                                Icons.clear,
-                                color: Colors.white.withOpacity(0.7),
-                              ),
-                              onPressed: () => _emailController.clear(),
-                              tooltip: 'Clear email',
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Password field
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2C2C2E), // surface-dark
-                    borderRadius: BorderRadius.circular(16), // rounded-xl
-                    border: Border.all(
-                      color: Colors.white12,
-                      width: 1,
-                    ),
-                  ),
-                  child: TextField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    autofillHints: const [AutofillHints.password],
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _handleSignIn(),
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                    decoration: InputDecoration(
-                      hintText: 'Password',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.only(left: 20, right: 16),
-                        child: Icon(
-                          Icons.lock,
-                          color: Colors.white.withOpacity(0.7),
-                        ),
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                          color: Colors.white.withOpacity(0.7),
-                        ),
-                        tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                        onPressed: () {
-                          setState(() => _obscurePassword = !_obscurePassword);
-                        },
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 32),
-                
-                // Sign In button
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: (_isLoading || _emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) ? null : _handleSignIn,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.primaryBlue.withOpacity(0.5),
-                      disabledForegroundColor: Colors.white.withOpacity(0.5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16), // rounded-xl
-                      ),
-                      elevation: 0,
-                    ),
-                    child: _isLoading
-                        ? Semantics(
-                            label: 'Signing in...',
-                            child: const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            ),
-                          )
-                        : const Text(
-                            'Sign In',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white,
-                            ),
+                  
+                  const SizedBox(height: 40),
+                  
+                  // Main glass card
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Container(
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(32),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 1,
                           ),
-                  ),
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // Create Account button
-                TextButton(
-                  onPressed: _navigateToCreateAccount,
-                  child: const Text(
-                    'Create Account',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w400,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Sign in to continue',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 32),
+                            
+                            // Email field in card style
+                            TextField(
+                              key: const ValueKey('email_field'),
+                              controller: _emailController,
+                              autofillHints: const [AutofillHints.email],
+                              textInputAction: TextInputAction.next,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                hintText: 'Email',
+                                prefixIcon: Icon(Icons.person_outline),
+                              ),
+                              keyboardType: TextInputType.emailAddress,
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // Password field in card style
+                            TextField(
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              autofillHints: const [AutofillHints.password],
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) => _handleSignIn(),
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: 'Password',
+                                prefixIcon: const Icon(Icons.lock_outline),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                  ),
+                                  onPressed: () {
+                                    setState(() => _obscurePassword = !_obscurePassword);
+                                  },
+                                ),
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 32),
+                            
+                            // Sign In button
+                            ElevatedButton(
+                              onPressed: (_isLoading || _emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) ? null : _handleSignIn,
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text('Sign In'),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
                 
-                const SizedBox(height: 16),
-                
-                // Forgot Password button
-                TextButton(
-                  onPressed: _showForgotPasswordDialog,
-                  child: const Text(
-                    'Forgot Password?',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w400,
-                    ),
+                  const SizedBox(height: 32),
+                  
+                  // Text Buttons
+                  TextButton(
+                    onPressed: _navigateToCreateAccount,
+                    child: const Text('Create Account'),
                   ),
-                ),
-              ],
+                  TextButton(
+                    onPressed: _showForgotPasswordDialog,
+                    child: const Text('Forgot Password?'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -489,219 +435,170 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Colors.transparent, // Let the gradient show through
       resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: 32,
-            right: 32,
-            top: 32,
-            bottom: 32 + MediaQuery.of(context).viewInsets.bottom,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.bgGradientStart,
+              AppColors.bgGradientMid,
+              AppColors.bgGradientStart,
+            ],
+            stops: [0.0, 0.5, 1.0],
           ),
-          child: AutofillGroup(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 20),
-                // Logo
-              Center(
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  height: 150,
-                  fit: BoxFit.contain,
-                  semanticLabel: 'Tres Logo',
-                ),
-              ),
-              
-              const SizedBox(height: 48),
-              
-              const Center(
-                child: Text(
-                  'Create Account',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: 32),
-              
-              // Email field
-              Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2C2C2E), // surface-dark
-                    borderRadius: BorderRadius.circular(16), // rounded-xl
-                    border: Border.all(
-                      color: Colors.white12,
-                      width: 1,
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 40,
+              bottom: 40 + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: AutofillGroup(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Logo
+                  Center(
+                    child: Image.asset(
+                      'assets/images/logo_white_bg.png',
+                      height: 120,
+                      fit: BoxFit.contain,
+                      semanticLabel: 'Tres3 Logo',
                     ),
                   ),
-                  child: TextField(
-                    key: const ValueKey('signup_email_field'),
-                    controller: _emailController,
-                    autofillHints: const [AutofillHints.email],
-                    textInputAction: TextInputAction.next,
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                    decoration: InputDecoration(
-                      hintText: 'Email',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.only(left: 20, right: 16),
-                        child: Icon(
-                          Icons.email,
-                          color: Colors.white.withOpacity(0.7),
-                        ),
-                      ),
-                      suffixIcon: _emailController.text.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(
-                                Icons.clear,
-                                color: Colors.white.withOpacity(0.7),
-                              ),
-                              onPressed: () => _emailController.clear(),
-                              tooltip: 'Clear email',
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Password field
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2C2C2E), // surface-dark
-                    borderRadius: BorderRadius.circular(16), // rounded-xl
-                    border: Border.all(
-                      color: Colors.white12,
-                      width: 1,
-                    ),
-                  ),
-                  child: TextField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    autofillHints: const [AutofillHints.newPassword],
-                    textInputAction: TextInputAction.next,
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                    decoration: InputDecoration(
-                      hintText: 'Password',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.only(left: 20, right: 16),
-                        child: Icon(
-                          Icons.lock,
-                          color: Colors.white.withOpacity(0.7),
-                        ),
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                          color: Colors.white.withOpacity(0.7),
-                        ),
-                        tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                        onPressed: () {
-                          setState(() => _obscurePassword = !_obscurePassword);
-                        },
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Confirm Password field
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2C2C2E), // surface-dark
-                    borderRadius: BorderRadius.circular(16), // rounded-xl
-                    border: Border.all(
-                      color: Colors.white12,
-                      width: 1,
-                    ),
-                  ),
-                  child: TextField(
-                    controller: _confirmPasswordController,
-                    obscureText: _obscureConfirmPassword,
-                    autofillHints: const [AutofillHints.newPassword],
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _handleCreateAccount(),
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                    decoration: InputDecoration(
-                      hintText: 'Confirm Password',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.only(left: 20, right: 16),
-                        child: Icon(
-                          Icons.lock,
-                          color: Colors.white.withOpacity(0.7),
-                        ),
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                          color: Colors.white.withOpacity(0.7),
-                        ),
-                        tooltip: _obscureConfirmPassword ? 'Show password' : 'Hide password',
-                        onPressed: () {
-                          setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
-                        },
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 32),
-                
-                // Create Account button
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: (_isLoading || _emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty || _confirmPasswordController.text.trim().isEmpty) ? null : _handleCreateAccount,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.primaryBlue.withOpacity(0.5),
-                      disabledForegroundColor: Colors.white.withOpacity(0.5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16), // rounded-xl
-                      ),
-                      elevation: 0,
-                    ),
-                    child: _isLoading
-                        ? Semantics(
-                            label: 'Creating account...',
-                            child: const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            ),
-                          )
-                        : const Text(
-                            'Sign Up',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white,
-                            ),
+                  
+                  const SizedBox(height: 40),
+                  
+                  // Main glass card
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Container(
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(32),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 1,
                           ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Create Account',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 32),
+                            
+                            // Email field
+                            TextField(
+                              key: const ValueKey('signup_email_field'),
+                              controller: _emailController,
+                              autofillHints: const [AutofillHints.email],
+                              textInputAction: TextInputAction.next,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                hintText: 'Email',
+                                prefixIcon: Icon(Icons.email),
+                              ),
+                              keyboardType: TextInputType.emailAddress,
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // Password field
+                            TextField(
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              autofillHints: const [AutofillHints.newPassword],
+                              textInputAction: TextInputAction.next,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: 'Password',
+                                prefixIcon: const Icon(Icons.lock),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                  ),
+                                  onPressed: () {
+                                    setState(() => _obscurePassword = !_obscurePassword);
+                                  },
+                                ),
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // Confirm Password field
+                            TextField(
+                              controller: _confirmPasswordController,
+                              obscureText: _obscureConfirmPassword,
+                              autofillHints: const [AutofillHints.newPassword],
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) => _handleCreateAccount(),
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: 'Confirm Password',
+                                prefixIcon: const Icon(Icons.lock),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                                  ),
+                                  onPressed: () {
+                                    setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                                  },
+                                ),
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 32),
+                            
+                            // Create Account button
+                            ElevatedButton(
+                              onPressed: (_isLoading || _emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty || _confirmPasswordController.text.trim().isEmpty) ? null : _handleCreateAccount,
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text('Sign Up'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Back button
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Already have an account? Sign In'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

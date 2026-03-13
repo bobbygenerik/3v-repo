@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
+import '../config/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -1107,8 +1108,21 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       child: ChangeNotifierProvider<CallFeaturesCoordinator>.value(
         value: _coordinator,
         child: Scaffold(
-          backgroundColor: Colors.black,
-          body: GestureDetector(
+          extendBodyBehindAppBar: true,
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.bgGradientStart,
+                  AppColors.bgGradientMid,
+                  AppColors.backgroundBlack,
+                ],
+                stops: [0.0, 0.5, 1.0],
+              ),
+            ),
+            child: GestureDetector(
             behavior: HitTestBehavior.translucent,
             onTap: _toggleControls,
             onHorizontalDragStart: (details) {
@@ -1310,8 +1324,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildAndroidPipLayout(LiveKitService livekit) {
     final localParticipant = livekit.localParticipant;
@@ -1787,7 +1802,13 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   Widget _buildLocalVideoPreview(LiveKitService livekit) {
     final localParticipant = livekit.localParticipant;
     
-    if (localParticipant == null) {
+    // If NOT in P2P mode and no local participant, hide
+    if (!livekit.isP2PMode && localParticipant == null) {
+      return const SizedBox.shrink();
+    }
+    
+    // If IN P2P mode but no renderer, hide
+    if (livekit.isP2PMode && livekit.p2pLocalRenderer == null) {
       return const SizedBox.shrink();
     }
 
@@ -1905,7 +1926,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                 else
                   ParticipantVideo(
                     key: const ValueKey('pip-local-normal'),
-                    participant: localParticipant,
+                    participant: localParticipant!,
                     isLocal: true,
                   ),
               ],
@@ -2068,7 +2089,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF515664).withOpacity(0.6),
+                  color: AppColors.surfaceDark.withOpacity(0.7),
                   borderRadius: BorderRadius.circular(50),
                   border: Border.all(color: Colors.white.withOpacity(0.2)),
                   boxShadow: [

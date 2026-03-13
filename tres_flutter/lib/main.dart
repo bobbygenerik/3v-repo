@@ -96,7 +96,7 @@ class TresApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ContactService()),
       ],
       child: MaterialApp(
-        title: 'Três3',
+        title: 'Tres3',
         theme: AppTheme.darkTheme,
         home: const AuthWrapper(),
         debugShowCheckedModeBanner: false,

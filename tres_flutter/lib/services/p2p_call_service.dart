@@ -88,7 +88,7 @@ class P2PCallService extends ChangeNotifier {
       return await _waitForAnswer();
     } catch (e) {
       _errorMessage = 'P2P connection failed: $e';
-      debugPrint('❌ P2PCallService initiator error: $e');
+      debugPrint('❌ P2P: initiator error: $e');
       notifyListeners();
       return false;
     }
@@ -231,11 +231,29 @@ class P2PCallService extends ChangeNotifier {
     };
 
     // Incoming remote track → show in remoteRenderer.
-    _pc!.onTrack = (event) {
-      if (event.streams.isNotEmpty) {
-        _remoteStream = event.streams.first;
-        remoteRenderer.srcObject = _remoteStream;
+    _pc!.onTrack = (event) async {
+      debugPrint('📹 P2P: onTrack event: kind=${event.track.kind}, id=${event.track.id}');
+      if (event.track.kind == 'video') {
+        debugPrint('📹 P2P: Received remote video track: ${event.track.id}');
+        if (event.streams.isNotEmpty) {
+          _remoteStream = event.streams.first;
+          debugPrint('📹 P2P: Using stream from event: ${_remoteStream!.id}');
+        } else {
+          debugPrint('📹 P2P: No stream in event, creating new MediaStream for track');
+          _remoteStream ??= await createLocalMediaStream('remote');
+          _remoteStream!.addTrack(event.track);
+        }
+        
+        if (_remoteStream != null) {
+          remoteRenderer.srcObject = _remoteStream;
+          debugPrint('📹 P2P: remoteRenderer.srcObject set to ${_remoteStream!.id}');
+        }
         notifyListeners();
+      } else if (event.track.kind == 'audio') {
+        debugPrint('🔊 P2P: Received remote audio track: ${event.track.id}');
+        if (event.streams.isNotEmpty) {
+          _remoteStream ??= event.streams.first;
+        }
       }
     };
 

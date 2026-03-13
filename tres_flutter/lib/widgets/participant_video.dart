@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
 import '../services/user_lookup_service.dart';
+import '../config/app_theme.dart';
 
 class ParticipantVideo extends StatefulWidget {
   final Participant participant;
@@ -241,14 +242,14 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
               : widget.participant.identity);
 
     return Container(
-      color: Colors.grey[900],
+      color: AppColors.backgroundBlack,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircleAvatar(
               radius: 40,
-              backgroundColor: Colors.grey[700],
+              backgroundColor: AppColors.primaryBlue.withOpacity(0.2),
               backgroundImage: _photoUrl.isNotEmpty
                   ? NetworkImage(_photoUrl)
                   : null,
@@ -267,7 +268,7 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
             const Text(
               'Camera Off',
               style: TextStyle(
-                color: Colors.white54,
+                color: AppColors.textLight,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
