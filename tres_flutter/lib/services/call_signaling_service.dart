@@ -329,6 +329,7 @@ class CallSignalingService {
             final sessionSnapshot = await _firestore
                 .collection('call_sessions')
                 .where('roomName', isEqualTo: roomName)
+                .where('participants', arrayContains: currentUser.uid)
                 .limit(1)
                 .get();
             if (sessionSnapshot.docs.isNotEmpty) {

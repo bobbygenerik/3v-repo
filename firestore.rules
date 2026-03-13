@@ -187,7 +187,14 @@ service cloud.firestore {
     match /p2p_calls/{roomId} {
       // Either participant (initiator or remote) can create and update the doc
       allow create: if isSignedIn();
-      allow read, update: if isSignedIn() && (
+      // Allow reading a non-existent doc (callee listens before caller writes).
+      // Once created, only the two participants may read.
+      allow read: if isSignedIn() && (
+        !exists(/databases/$(database)/documents/p2p_calls/$(roomId)) ||
+        resource.data.initiatorId == request.auth.uid ||
+        resource.data.remoteId == request.auth.uid
+      );
+      allow update: if isSignedIn() && (
         resource.data.initiatorId == request.auth.uid ||
         resource.data.remoteId == request.auth.uid
       );
@@ -199,20 +206,24 @@ service cloud.firestore {
       }
     }
 
+    // Active call rooms - used by signalingService.endCall() to broadcast hangup
+    match /activeCallRooms/{roomId} {
+      allow read, write: if isSignedIn();
+    }
+
     // Call invitations - for incoming call notifications
     match /call_invitations/{invitationId} {
       // Authenticated users can create call invitations
       allow create: if isSignedIn();
       
-      // Recipients can read invitations sent to them
-      allow read: if isSignedIn() && 
-        (resource.data.recipientId == request.auth.uid || 
-         resource.data.callerId == request.auth.uid);
+      // Recipients and callers can read invitations (split so Firestore can
+      // statically verify each branch for collection queries).
+      allow read: if isSignedIn() && resource.data.recipientId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.callerId == request.auth.uid;
       
       // Both caller and recipient can update invitation status
-      allow update: if isSignedIn() && 
-        (resource.data.recipientId == request.auth.uid || 
-         resource.data.callerId == request.auth.uid);
+      allow update: if isSignedIn() && resource.data.recipientId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.callerId == request.auth.uid;
       
       // Only creator can delete
       allow delete: if isSignedIn() && 

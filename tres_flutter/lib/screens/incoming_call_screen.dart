@@ -10,6 +10,7 @@ import '../services/device_mode_service.dart';
 import '../services/vibration_service.dart';
 import '../services/ice_server_config.dart';
 import 'call_screen.dart';
+import 'dart:ui' as ui;
 
 class IncomingCallScreen extends StatefulWidget {
   final String invitationId;
@@ -169,6 +170,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
               sessionService: sessionService,
               isP2PCall: true,
               remoteUserId: widget.callerId,
+              remoteUserName: widget.callerName,
               isInitiator: false, // callee
             ),
           ),
@@ -257,9 +259,31 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     // Pixel distance to move the action row offscreen; includes bottom inset
     final double offscreenDy = 220.0 + bottomInset;
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
-      body: SafeArea(
-        child: Column(
+      body: Stack(
+        children: [
+          // Blurred background
+          Container(
+            color: const Color(0xFF1C1C1E),
+          ),
+          if (widget.callerPhotoUrl != null)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.4,
+                child: Image.network(
+                  widget.callerPhotoUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                ),
+              ),
+            ),
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+              child: Container(color: Colors.black.withOpacity(0.4)),
+            ),
+          ),
+          SafeArea(
+            child: Column(
           children: [
             // Upper area: tappable to toggle action visibility
             Expanded(
@@ -369,7 +393,21 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
               alignment: Alignment.center,
               child: Padding(
                 padding: EdgeInsets.fromLTRB(40, 0, 40, 40 + bottomInset),
-                child: Row(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(40), // pill shape
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(40),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     // Decline Button
@@ -498,12 +536,17 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                     ),
                   ],
                 ),
+                    ),
+                  ),
+                ),
               ),
             ),
 
             const SizedBox(height: 32),
           ],
         ),
+      ),
+      ],
       ),
     );
   }

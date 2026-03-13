@@ -2,8 +2,7 @@ import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:web/web.dart' as web;
-// ignore: implementation_imports
-import 'package:dart_webrtc/src/media_stream_track_impl.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart' show MediaStreamTrack;
 
 /// Bridge to access LiveKit's underlying web video elements for PiP
 class WebPipBridge {
@@ -17,16 +16,18 @@ class WebPipBridge {
       // Get the flutter_webrtc MediaStreamTrack
       final webrtcTrack = track.mediaStreamTrack;
       
-      // Cast to MediaStreamTrackWeb to access the jsTrack
-      if (webrtcTrack is MediaStreamTrackWeb) {
-        // Create a new web MediaStream and add the track
+      // Use dynamic access to get the jsTrack from the web implementation
+      // ignore: avoid_dynamic_calls
+      final dynamic webTrack = webrtcTrack;
+      try {
+        final jsTrack = webTrack.jsTrack;
         final mediaStream = web.MediaStream();
-        mediaStream.addTrack(webrtcTrack.jsTrack);
+        mediaStream.addTrack(jsTrack as web.MediaStreamTrack);
         
         debugPrint('✅ Successfully extracted MediaStream from VideoTrack');
         return mediaStream;
-      } else {
-        debugPrint('⚠️ MediaStreamTrack is not MediaStreamTrackWeb');
+      } catch (_) {
+        debugPrint('⚠️ MediaStreamTrack does not expose jsTrack (non-web platform)');
         return null;
       }
     } catch (e) {

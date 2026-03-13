@@ -350,7 +350,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     decoration: BoxDecoration(
                       color: const Color(0xFF2C2C2E),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16), // rounded-xl
                       border: Border.all(
                         color: const Color(0xFF3A3A3C),
                         width: 1,
@@ -455,10 +455,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     backgroundColor: const Color(0xFF2C2C2E),
                     collapsedBackgroundColor: const Color(0xFF2C2C2E),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16), // rounded-xl
                     ),
                     collapsedShape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16), // rounded-xl
                     ),
                     children: [
                       // Email/Phone info
@@ -599,8 +599,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         decoration: const BoxDecoration(
                           color: Color(0xFF2C2C2E),
                           borderRadius: BorderRadius.only(
-                            bottomLeft: Radius.circular(12),
-                            bottomRight: Radius.circular(12),
+                            bottomLeft: Radius.circular(16), // rounded-xl
+                            bottomRight: Radius.circular(16), // rounded-xl
                           ),
                         ),
                         child: ListTile(
@@ -637,7 +637,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2C2C2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), // rounded-xl
         title: const Text(
           'Delete Account',
           style: TextStyle(color: Colors.white),

@@ -117,6 +117,7 @@ class CallListenerService extends ChangeNotifier {
         'token': data['token'],
         'livekitUrl': data['livekitUrl'],
         'isVideoCall': isVideoCall,
+        'isP2PCall': data['isP2PCall'] ?? false,
         'timestamp': data['timestamp'],
       };
       

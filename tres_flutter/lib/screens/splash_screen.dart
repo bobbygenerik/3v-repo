@@ -81,31 +81,49 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final gradientDecoration = const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF1C1C1E),
+          Color(0xFF283556), // Richer dark blue
+          Color(0xFF1C1C1E),
+        ],
+      ),
+    );
+
     // If user is signed in, show loading indicator while navigating
     if (FirebaseAuth.instance.currentUser != null) {
-      return Scaffold(
-        backgroundColor: AppColors.backgroundDark,
-        body: Center(
-          child: Semantics(
-            label: 'Checking authentication...',
-            child: const CircularProgressIndicator(color: AppColors.accentBlue),
+      return Container(
+        decoration: gradientDecoration,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(
+            child: Semantics(
+              label: 'Checking authentication...',
+              child: const CircularProgressIndicator(color: AppColors.accentBlue),
+            ),
           ),
         ),
       );
     }
 
     // Show splash animation for non-signed-in users
-    return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Image.asset(
-            'assets/images/logo.png',
-            width: 300,
-            height: 300,
-            fit: BoxFit.contain,
-            semanticLabel: 'Tres Logo',
+    return Container(
+      decoration: gradientDecoration,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Image.asset(
+              'assets/images/logo.png',
+              width: 300,
+              height: 300,
+              fit: BoxFit.contain,
+              semanticLabel: 'Tres Logo',
+            ),
           ),
         ),
       ),

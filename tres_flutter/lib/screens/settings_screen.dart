@@ -24,10 +24,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Video Settings
   bool _autoBoost60fps = false;
-  double _portraitBlurIntensity = 70.0;
-  bool _beautyFilter = true;
-  bool _backgroundBlur = false;
-  bool _faceAutoFraming = false;
 
   // Audio Processing
   bool _noiseSuppression = true;
@@ -69,11 +65,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // Video Settings
           _autoBoost60fps = _prefs.getBool('auto_boost_60fps') ?? false;
-          _portraitBlurIntensity =
-              _prefs.getDouble('portrait_blur_intensity') ?? 70.0;
-          _beautyFilter = _prefs.getBool('beauty_filter') ?? true;
-          _backgroundBlur = _prefs.getBool('background_blur') ?? false;
-          _faceAutoFraming = _prefs.getBool('face_auto_framing') ?? false;
 
           // Audio Processing
           _noiseSuppression = _prefs.getBool('noise_suppression') ?? true;
@@ -142,283 +133,219 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           // Notifications
           _buildSectionHeader('Notifications'),
-          _buildSwitchTile(
-            title: 'Notifications',
-            subtitle: 'Receive call notifications',
-            value: _notificationsEnabled,
-            onChanged: (value) async {
-              if (value) {
-                // Request system permissions
-                final granted = await NotificationService.enableNotifications();
-                if (granted) {
-                  setState(() => _notificationsEnabled = true);
-                  _saveSetting('notifications_enabled', true);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('✅ Notifications enabled'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+          _buildCardContainer([
+            _buildSwitchTile(
+              title: 'Notifications',
+              subtitle: 'Receive call notifications',
+              value: _notificationsEnabled,
+              onChanged: (value) async {
+                if (value) {
+                  // Request system permissions
+                  final granted = await NotificationService.enableNotifications();
+                  if (granted) {
+                    setState(() => _notificationsEnabled = true);
+                    _saveSetting('notifications_enabled', true);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('✅ Notifications enabled'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  } else {
+                    setState(() => _notificationsEnabled = false);
+                    _saveSetting('notifications_enabled', false);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            '⚠️ Notification permission denied. Check device settings.',
+                          ),
+                          backgroundColor: Colors.orange,
+                          duration: Duration(seconds: 4),
+                        ),
+                      );
+                    }
                   }
                 } else {
                   setState(() => _notificationsEnabled = false);
                   _saveSetting('notifications_enabled', false);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          '⚠️ Notification permission denied. Check device settings.',
-                        ),
-                        backgroundColor: Colors.orange,
-                        duration: Duration(seconds: 4),
-                      ),
-                    );
-                  }
                 }
-              } else {
-                setState(() => _notificationsEnabled = false);
-                _saveSetting('notifications_enabled', false);
-              }
-            },
-          ),
-          _buildSwitchTile(
-            title: 'Minimal Notifications',
-            subtitle: 'Show once per contact (no spam while on screen)',
-            value: _minimalNotifications,
-            onChanged: (value) {
-              setState(() => _minimalNotifications = value);
-              _saveSetting('minimal_notifications', value);
-            },
-          ),
+              },
+            ),
+            _buildSwitchTile(
+              title: 'Minimal Notifications',
+              subtitle: 'Show once per contact (no spam while on screen)',
+              value: _minimalNotifications,
+              onChanged: (value) {
+                setState(() => _minimalNotifications = value);
+                _saveSetting('minimal_notifications', value);
+              },
+            ),
+          ]),
 
           // Voice Isolation
           const Divider(height: 32, color: Colors.transparent),
-          _buildSwitchTile(
-            title: 'Voice Isolation',
-            subtitle: 'Reduce background noise (NS/AEC on)',
-            value: _voiceIsolation,
-            onChanged: (value) {
-              setState(() => _voiceIsolation = value);
-              _saveSetting('voice_isolation', value);
-            },
-          ),
+          _buildCardContainer([
+            _buildSwitchTile(
+              title: 'Voice Isolation',
+              subtitle: 'Reduce background noise (NS/AEC on)',
+              value: _voiceIsolation,
+              onChanged: (value) {
+                setState(() => _voiceIsolation = value);
+                _saveSetting('voice_isolation', value);
+              },
+            ),
+          ]),
 
           // Video Processing
           _buildSectionHeader('Video Processing'),
-          _buildSwitchTile(
-            title: 'Auto boost to 60 fps',
-            subtitle:
-                'Use Ultra framerate (60 fps, thermals are OK) on capable devices',
-            value: _autoBoost60fps,
-            onChanged: (value) {
-              setState(() => _autoBoost60fps = value);
-              _saveSetting('auto_boost_60fps', value);
-            },
-          ),
-
-          // Portrait Blur Intensity Slider
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Portrait Blur Intensity',
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Slider(
-                        value: _portraitBlurIntensity,
-                        min: 0,
-                        max: 100,
-                        divisions: 100,
-                        activeColor: AppColors.primaryBlue,
-                        inactiveColor: AppColors.primaryDark,
-                        onChanged: (value) {
-                          setState(() => _portraitBlurIntensity = value);
-                        },
-                        onChangeEnd: (value) {
-                          _saveSetting('portrait_blur_intensity', value);
-                        },
-                      ),
-                    ),
-                    SizedBox(
-                      width: 40,
-                      child: Text(
-                        '${_portraitBlurIntensity.round()}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+          _buildCardContainer([
+            _buildSwitchTile(
+              title: 'Auto boost to 60 fps',
+              subtitle:
+                  'Use Ultra framerate (60 fps, thermals are OK) on capable devices',
+              value: _autoBoost60fps,
+              onChanged: (value) {
+                setState(() => _autoBoost60fps = value);
+                _saveSetting('auto_boost_60fps', value);
+              },
             ),
-          ),
-
-          _buildSwitchTile(
-            title: 'Beauty Filter (Auto-enable)',
-            subtitle: 'Smooth skin and enhance appearance on call start',
-            value: _beautyFilter,
-            onChanged: (value) {
-              setState(() => _beautyFilter = value);
-              _saveSetting('beauty_filter', value);
-            },
-          ),
-          _buildSwitchTile(
-            title: 'Background Blur (Auto-enable)',
-            subtitle: 'Blur background instead of replacing it',
-            value: _backgroundBlur,
-            onChanged: (value) {
-              setState(() => _backgroundBlur = value);
-              _saveSetting('background_blur', value);
-            },
-          ),
-          _buildSwitchTile(
-            title: 'Face Auto-Framing (Auto-enable)',
-            subtitle: 'Automatically center and track your face',
-            value: _faceAutoFraming,
-            onChanged: (value) {
-              setState(() => _faceAutoFraming = value);
-              _saveSetting('face_auto_framing', value);
-            },
-          ),
+          ]),
 
           // Audio Processing
           _buildSectionHeader('Audio Processing'),
-          _buildSwitchTile(
-            title: 'Noise Suppression',
-            subtitle: 'Remove background noise (keyboard, dog barking, etc.)',
-            value: _noiseSuppression,
-            onChanged: (value) {
-              setState(() => _noiseSuppression = value);
-              _saveSetting('noise_suppression', value);
-            },
-          ),
-          _buildSwitchTile(
-            title: 'Echo Cancellation',
-            subtitle: 'Prevent audio feedback and echo',
-            value: _echoCancellation,
-            onChanged: (value) {
-              setState(() => _echoCancellation = value);
-              _saveSetting('echo_cancellation', value);
-            },
-          ),
-          _buildSwitchTile(
-            title: 'Spatial Audio (Auto-enable)',
-            subtitle: '3D audio positioning (experimental)',
-            value: _spatialAudio,
-            onChanged: (value) {
-              setState(() => _spatialAudio = value);
-              _saveSetting('spatial_audio', value);
-            },
-          ),
-
-          // AI Features
-          _buildSectionHeader('AI Features'),
+          _buildCardContainer([
+            _buildSwitchTile(
+              title: 'Noise Suppression',
+              subtitle: 'Remove background noise (keyboard, dog barking, etc.)',
+              value: _noiseSuppression,
+              onChanged: (value) {
+                setState(() => _noiseSuppression = value);
+                _saveSetting('noise_suppression', value);
+              },
+            ),
+            _buildSwitchTile(
+              title: 'Echo Cancellation',
+              subtitle: 'Prevent audio feedback and echo',
+              value: _echoCancellation,
+              onChanged: (value) {
+                setState(() => _echoCancellation = value);
+                _saveSetting('echo_cancellation', value);
+              },
+            ),
+            _buildSwitchTile(
+              title: 'Spatial Audio (Auto-enable)',
+              subtitle: '3D audio positioning (experimental)',
+              value: _spatialAudio,
+              onChanged: (value) {
+                setState(() => _spatialAudio = value);
+                _saveSetting('spatial_audio', value);
+              },
+            ),
+          ]),
 
           // UI & Interaction
           _buildSectionHeader('UI & Interaction'),
-          ListTile(
-            title: const Text(
-              'Default Grid Layout',
-              style: TextStyle(color: Colors.white),
+          _buildCardContainer([
+            ListTile(
+              title: const Text(
+                'Default Grid Layout',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: Text(
+                _defaultGridLayout.toUpperCase(),
+                style: const TextStyle(color: Colors.white70),
+              ),
+              trailing: const Icon(Icons.chevron_right, color: Colors.white70),
+              onTap: () => _showGridLayoutDialog(),
             ),
-            subtitle: Text(
-              _defaultGridLayout.toUpperCase(),
-              style: const TextStyle(color: Colors.white70),
+            _buildSwitchTile(
+              title: 'Enable Picture-in-Picture',
+              subtitle: 'Allow PiP mode when minimizing calls',
+              value: _picureInPicture,
+              onChanged: (value) {
+                setState(() => _picureInPicture = value);
+                _saveSetting('picture_in_picture', value);
+              },
             ),
-            trailing: const Icon(Icons.chevron_right, color: Colors.white70),
-            onTap: () => _showGridLayoutDialog(),
-          ),
-          _buildSwitchTile(
-            title: 'Enable Picture-in-Picture',
-            subtitle: 'Allow PiP mode when minimizing calls',
-            value: _picureInPicture,
-            onChanged: (value) {
-              setState(() => _picureInPicture = value);
-              _saveSetting('picture_in_picture', value);
-            },
-          ),
-          _buildSwitchTile(
-            title: 'Reaction Animations',
-            subtitle: 'Show animated reactions (👍 👎 😄)',
-            value: _reactionAnimations,
-            onChanged: (value) {
-              setState(() => _reactionAnimations = value);
-              _saveSetting('reaction_animations', value);
-            },
-          ),
+            _buildSwitchTile(
+              title: 'Reaction Animations',
+              subtitle: 'Show animated reactions (👍 👎 😄)',
+              value: _reactionAnimations,
+              onChanged: (value) {
+                setState(() => _reactionAnimations = value);
+                _saveSetting('reaction_animations', value);
+              },
+            ),
+          ]),
 
           // Developer
           _buildSectionHeader('Developer'),
-          _buildSwitchTile(
-            title: 'Developer Mode',
-            subtitle: 'Enable advanced options and logs',
-            value: _developerMode,
-            onChanged: (value) {
-              setState(() => _developerMode = value);
-              _saveSetting('developer_mode', value);
-            },
-          ),
-          _buildSwitchTile(
-            title: 'Call Health Overlay',
-            subtitle: 'Show call quality, codec, info/audio stats',
-            value: _callHealthOverlay,
-            onChanged: (value) {
-              setState(() => _callHealthOverlay = value);
-              _saveSetting('call_health_overlay', value);
-            },
-          ),
-          ListTile(
-            title: const Text(
-              'Call Quality',
-              style: TextStyle(color: Colors.white),
+          _buildCardContainer([
+            _buildSwitchTile(
+              title: 'Developer Mode',
+              subtitle: 'Enable advanced options and logs',
+              value: _developerMode,
+              onChanged: (value) {
+                setState(() => _developerMode = value);
+                _saveSetting('developer_mode', value);
+              },
             ),
-            subtitle: Text(
-              _callQuality.toUpperCase(),
-              style: const TextStyle(color: Colors.white70),
+            _buildSwitchTile(
+              title: 'Call Health Overlay',
+              subtitle: 'Show call quality, codec, info/audio stats',
+              value: _callHealthOverlay,
+              onChanged: (value) {
+                setState(() => _callHealthOverlay = value);
+                _saveSetting('call_health_overlay', value);
+              },
             ),
-            trailing: const Icon(Icons.chevron_right, color: Colors.white70),
-            onTap: () => _showCallQualityDialog(),
-          ),
-          ListTile(
-            title: const Text(
-              'Video Codec (Priority Order)',
-              style: TextStyle(color: Colors.white),
+            ListTile(
+              title: const Text(
+                'Call Quality',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: Text(
+                _callQuality.toUpperCase(),
+                style: const TextStyle(color: Colors.white70),
+              ),
+              trailing: const Icon(Icons.chevron_right, color: Colors.white70),
+              onTap: () => _showCallQualityDialog(),
             ),
-            subtitle: Text(
-              _videoCodec,
-              style: const TextStyle(color: Colors.white70),
+            ListTile(
+              title: const Text(
+                'Video Codec (Priority Order)',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: Text(
+                _videoCodec,
+                style: const TextStyle(color: Colors.white70),
+              ),
+              trailing: const Icon(Icons.chevron_right, color: Colors.white70),
+              onTap: () => _showVideoCodecDialog(),
             ),
-            trailing: const Icon(Icons.chevron_right, color: Colors.white70),
-            onTap: () => _showVideoCodecDialog(),
-          ),
-          ListTile(
-            title: const Text(
-              'Diagnostics',
-              style: TextStyle(color: Colors.white),
+            ListTile(
+              title: const Text(
+                'Diagnostics',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: const Text(
+                'View system diagnostics',
+                style: TextStyle(color: Colors.white70),
+              ),
+              trailing: const Icon(Icons.chevron_right, color: Colors.white70),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DiagnosticsScreen(),
+                  ),
+                );
+              },
             ),
-            subtitle: const Text(
-              'View system diagnostics',
-              style: TextStyle(color: Colors.white70),
-            ),
-            trailing: const Icon(Icons.chevron_right, color: Colors.white70),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const DiagnosticsScreen(),
-                ),
-              );
-            },
-          ),
+          ]),
 
           const SizedBox(height: 24),
 
@@ -476,6 +403,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: AppColors.primaryBlue,
           letterSpacing: 1.2,
         ),
+      ),
+    );
+  }
+
+  Widget _buildCardContainer(List<Widget> children) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: const Color(0xFF2C2C2E), // surface-dark
+        borderRadius: BorderRadius.circular(16), // rounded-xl
+      ),
+      child: Column(
+        children: children,
       ),
     );
   }

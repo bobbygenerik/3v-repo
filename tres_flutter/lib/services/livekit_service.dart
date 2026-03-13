@@ -831,6 +831,14 @@ class LiveKitService extends ChangeNotifier {
     // ── P2P path ────────────────────────────────────────────────────────────
     if (isP2P) {
       assert(remoteUserId != null, 'remoteUserId is required for P2P calls');
+      // Cancel any pending SFU reconnect loop — it must not interfere with P2P.
+      _cancelReconnectTimer();
+      _manualDisconnect = false;
+      _abortConnect = false;
+      _lastUrl = null;
+      _lastToken = null;
+      _lastRoomName = null;
+      _reconnectAttempts = 0;
       _p2pService = P2PCallService();
       _p2pService!.addListener(notifyListeners);
 
@@ -927,7 +935,7 @@ class LiveKitService extends ChangeNotifier {
                     degradationPreference: DegradationPreference.maintainResolution,
                   ),
               defaultAudioPublishOptions: AudioPublishOptions(
-                audioBitrate: _getOptimalAudioBitrate(),
+                encoding: AudioEncoding(maxBitrate: _getOptimalAudioBitrate()),
                 dtx: true,
                 red: true,
               ),
@@ -1321,7 +1329,7 @@ class LiveKitService extends ChangeNotifier {
         await _room!.localParticipant?.publishAudioTrack(
           _localAudioTrack!,
           publishOptions: AudioPublishOptions(
-            audioBitrate: _getOptimalAudioBitrate(),
+            encoding: AudioEncoding(maxBitrate: _getOptimalAudioBitrate()),
             dtx: true,
             red: true,
           ),
@@ -1384,7 +1392,7 @@ class LiveKitService extends ChangeNotifier {
         await localParticipant.publishAudioTrack(
           _localAudioTrack!,
           publishOptions: AudioPublishOptions(
-            audioBitrate: _getOptimalAudioBitrate(),
+            encoding: AudioEncoding(maxBitrate: _getOptimalAudioBitrate()),
             dtx: true,
             red: true,
           ),
@@ -1750,7 +1758,9 @@ class LiveKitService extends ChangeNotifier {
       case DisconnectReason.serverShutdown:
         return false;
       default:
-        return _lastUrl != null && _lastToken != null && _lastRoomName != null;
+        return _lastUrl != null && _lastUrl!.isNotEmpty &&
+            _lastToken != null && _lastToken!.isNotEmpty &&
+            _lastRoomName != null && _lastRoomName!.isNotEmpty;
     }
   }
 

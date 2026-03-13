@@ -4,8 +4,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:dart_webrtc/dart_webrtc.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart' show RTCVideoRenderer, Helper;
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import 'ice_server_config.dart';
 
@@ -193,7 +192,7 @@ class P2PCallService extends ChangeNotifier {
     await remoteRenderer.initialize();
     await _captureLocalMedia();
     await _buildPeerConnection();
-    _addLocalTracksToPC();
+    await _addLocalTracksToPC();
   }
 
   Future<void> _captureLocalMedia() async {
@@ -262,10 +261,33 @@ class P2PCallService extends ChangeNotifier {
     };
   }
 
-  void _addLocalTracksToPC() {
-    _localStream?.getTracks().forEach((track) {
-      _pc!.addTrack(track, _localStream!);
-    });
+  Future<void> _addLocalTracksToPC() async {
+    final tracks = _localStream?.getTracks() ?? [];
+    for (final track in tracks) {
+      if (track.kind == 'video') {
+        // Use addTransceiver for video so we can bake in a 2 Mbps encoding
+        // constraint before the SDP offer is created — no post-negotiation
+        // setParameters call needed.
+        try {
+          await _pc!.addTransceiver(
+            track: track,
+            kind: RTCRtpMediaType.RTCRtpMediaTypeVideo,
+            init: RTCRtpTransceiverInit(
+              direction: TransceiverDirection.SendRecv,
+              sendEncodings: [
+                RTCRtpEncoding(maxBitrate: 2000000, maxFramerate: 30),
+              ],
+            ),
+          );
+        } catch (e) {
+          // Fall back to plain addTrack if transceiver API fails.
+          debugPrint('⚠️ addTransceiver failed, falling back: $e');
+          await _pc!.addTrack(track, _localStream!);
+        }
+      } else {
+        await _pc!.addTrack(track, _localStream!);
+      }
+    }
   }
 
   /// Listen for ICE candidates sent by the remote peer.
@@ -320,12 +342,14 @@ class P2PCallService extends ChangeNotifier {
   /// Callee: wait for an offer to appear, then create and publish an answer.
   Future<bool> _waitForOfferAndAnswer({Duration timeout = const Duration(seconds: 30)}) async {
     final completer = Completer<bool>();
+    bool answering = false; // guard against re-entrant snapshot callbacks
     _signalingDocSub = _signalingDoc.snapshots().listen((snap) async {
-      if (!snap.exists || completer.isCompleted) return;
+      if (!snap.exists || completer.isCompleted || answering) return;
       final d = snap.data() as Map<String, dynamic>;
 
       final offer = d['offer'] as Map<String, dynamic>?;
       if (offer == null) return;
+      answering = true; // prevent duplicate answer attempts
       try {
         await _pc!.setRemoteDescription(
           RTCSessionDescription(offer['sdp'] as String, offer['type'] as String),
@@ -336,10 +360,11 @@ class P2PCallService extends ChangeNotifier {
           'answer': {'type': answer.type, 'sdp': answer.sdp},
           'status': 'answered',
         });
-        completer.complete(true);
+        if (!completer.isCompleted) completer.complete(true);
       } catch (e) {
         debugPrint('❌ Error creating P2P answer: $e');
-        completer.complete(false);
+        if (!completer.isCompleted) completer.complete(false);
+        answering = false; // allow retry on transient error
       }
     });
 
@@ -347,11 +372,23 @@ class P2PCallService extends ChangeNotifier {
   }
 
   /// Parse ICE servers from the cached config, falling back to Google STUN.
+  /// TURN entries with empty credentials are stripped — they cause the native
+  /// Android RTCPeerConnection to be created with a null handle.
   List<Map<String, dynamic>> _parseIceServers() {
     final json = IceServerConfig.iceServersJson.trim();
     if (json.isNotEmpty) {
       try {
-        return (jsonDecode(json) as List).cast<Map<String, dynamic>>();
+        final all = (jsonDecode(json) as List).cast<Map<String, dynamic>>();
+        final valid = all.where((entry) {
+          final urls = entry['urls'];
+          final isTurn = urls is String
+              ? urls.contains('turn:')
+              : (urls as List?)?.any((u) => u.toString().contains('turn:')) ?? false;
+          if (!isTurn) return true;
+          final cred = (entry['credential'] ?? '').toString().trim();
+          return cred.isNotEmpty;
+        }).toList();
+        if (valid.isNotEmpty) return valid;
       } catch (_) {}
     }
     // Fallback: Google's public STUN servers (works for non-NAT scenarios).

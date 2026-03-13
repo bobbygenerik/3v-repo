@@ -240,10 +240,10 @@ class _AuthScreenState extends State<AuthScreen> {
               // Email or Phone field
               Container(
                   decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0xFF2C2C2E), // surface-dark
+                    borderRadius: BorderRadius.circular(16), // rounded-xl
                     border: Border.all(
-                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      color: Colors.white12,
                       width: 1,
                     ),
                   ),
@@ -285,10 +285,10 @@ class _AuthScreenState extends State<AuthScreen> {
                 // Password field
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0xFF2C2C2E), // surface-dark
+                    borderRadius: BorderRadius.circular(16), // rounded-xl
                     border: Border.all(
-                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      color: Colors.white12,
                       width: 1,
                     ),
                   ),
@@ -339,7 +339,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       disabledBackgroundColor: AppColors.primaryBlue.withOpacity(0.5),
                       disabledForegroundColor: Colors.white.withOpacity(0.5),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
+                        borderRadius: BorderRadius.circular(16), // rounded-xl
                       ),
                       elevation: 0,
                     ),
@@ -532,10 +532,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
               // Email field
               Container(
                   decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0xFF2C2C2E), // surface-dark
+                    borderRadius: BorderRadius.circular(16), // rounded-xl
                     border: Border.all(
-                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      color: Colors.white12,
                       width: 1,
                     ),
                   ),
@@ -577,10 +577,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                 // Password field
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0xFF2C2C2E), // surface-dark
+                    borderRadius: BorderRadius.circular(16), // rounded-xl
                     border: Border.all(
-                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      color: Colors.white12,
                       width: 1,
                     ),
                   ),
@@ -621,10 +621,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                 // Confirm Password field
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0xFF2C2C2E), // surface-dark
+                    borderRadius: BorderRadius.circular(16), // rounded-xl
                     border: Border.all(
-                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      color: Colors.white12,
                       width: 1,
                     ),
                   ),
@@ -675,7 +675,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                       disabledBackgroundColor: AppColors.primaryBlue.withOpacity(0.5),
                       disabledForegroundColor: Colors.white.withOpacity(0.5),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
+                        borderRadius: BorderRadius.circular(16), // rounded-xl
                       ),
                       elevation: 0,
                     ),

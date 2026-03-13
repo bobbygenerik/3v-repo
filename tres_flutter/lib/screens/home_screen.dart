@@ -57,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool _isLoadingContacts = true;
   bool _isLoadingHistory = true;
   bool _searchHasFocus = false;
+  bool _showMissedCallsOnly = false; // Added for Call History tabs
   StreamSubscription<QuerySnapshot>? _callHistorySub;
   StreamSubscription<User?>? _authSub;
   final Map<String, Map<String, dynamic>> _userCache = {};
@@ -921,236 +922,88 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
 
-              const SizedBox(height: 80),
+              const SizedBox(height: 24),
 
-              // Welcome Message - CENTERED with fade-in animation
-              AnimatedBuilder(
-                animation: _textAnimationController,
-                builder: (context, child) {
-                  return Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(_currentWelcomeText.length, (
-                        index,
-                      ) {
-                        return Opacity(
-                          opacity: _letterAnimations.length > index
-                              ? _letterAnimations[index].value
-                              : (_hasAnimated ? 1.0 : 0.0),
-                          child: Text(
-                            _currentWelcomeText[index],
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w400,
-                              color: Colors.white,
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 32),
-
-              // Search Box - EXACT match to screenshot
+              // Hero Section: "Connect Securely" (Stitch Design)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Container(
-                  height: 54,
+                  width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2C2C2E), // Charcoal gray
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _searchHasFocus
-                          ? const Color(0xFF6B7FB8) // Blue border when focused
-                          : const Color(
-                              0xFF3A3A3C,
-                            ), // Gray border when not focused
-                      width: _searchHasFocus ? 2 : 1,
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF6B7FB8),
+                        Color(0xFF15171D),
+                        Color(0xFF15171D),
+                      ],
+                      stops: [0.0, 0.4, 1.0],
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: Row(
+                  child: Stack(
                     children: [
-                      // @ symbol
-                      const Padding(
-                        padding: EdgeInsets.only(left: 16, right: 8),
-                        child: Text(
-                          '@',
-                          style: TextStyle(
-                            fontSize: 20,
-                            color: Color(0xFF8E8E93), // Gray color
-                            fontWeight: FontWeight.w500,
-                          ),
+                      // Abstract SVG Wave pattern (using CustomPaint for Flutter)
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _WavePainter(),
                         ),
                       ),
-                      // Search text field with placeholder
-                      Expanded(
-                        child: Stack(
+                      
+                      // Content
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // Placeholder text
-                            if (_searchController.text.isEmpty)
-                              Positioned.fill(
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Row(
-                                    children: [
-                                      const Text(
-                                        'Search ',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      Text(
-                                        _placeholders[_currentPlaceholderIndex],
-                                        style: const TextStyle(
-                                          color: Color(0xFF8E8E93),
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6B7FB8).withOpacity(0.2),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF6B7FB8).withOpacity(0.3),
                                 ),
                               ),
-                            // Actual text field (always present, transparent when empty)
-                            TextField(
-                              controller: _searchController,
-                              focusNode: _searchFocusNode,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
+                              child: const Icon(
+                                Icons.videocam,
+                                color: Color(0xFF6B7FB8),
+                                size: 36,
                               ),
-                              cursorColor: const Color(0xFF6B7FB8),
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                                fillColor: Colors.transparent,
-                                filled: false,
-                                // Accessible label (hidden visually but read by screen readers)
-                                hintText: 'Search contacts',
-                                hintStyle: TextStyle(color: Colors.transparent),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Connect Securely',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFF4F4F5),
+                                letterSpacing: -0.5,
                               ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'High-definition peer-to-peer communication with military-grade encryption.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF94A3B8), // slate-400
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
                       ),
-                      // Clear button
-                      if (_searchController.text.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(
-                            Icons.close,
-                            color: Color(0xFF8E8E93),
-                            size: 20,
-                          ),
-                          onPressed: () => _searchController.clear(),
-                          tooltip: 'Clear search',
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          constraints: const BoxConstraints(),
-                        ),
-                      // Add person icon - opens add contact dialog
-                      IconButton(
-                        icon: const Icon(
-                          Icons.person_add,
-                          color: Color(0xFF6B7FB8),
-                          size: 24,
-                        ),
-                        onPressed: () => _showAddContactDialog(),
-                        tooltip: 'Add Contact',
-                        padding: const EdgeInsets.only(right: 12, left: 8),
-                        constraints:
-                            const BoxConstraints(), // Minimizes extra padding/margin
-                      ),
                     ],
                   ),
-                ),
-              ),
-
-              const SizedBox(height: 20), // Contacts / History buttons
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Semantics(
-                        selected: _showContactsView,
-                        label: 'Show contacts list',
-                        child: ElevatedButton(
-                          onPressed: () {
-                            VibrationService.lightImpact();
-                            setState(() => _showContactsView = true);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _showContactsView
-                                ? const Color(0xFF6B7FB8)
-                                : const Color(0xFF2C2C2E),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: _showContactsView
-                                    ? const Color(0xFF6B7FB8)
-                                    : const Color(0xFF3A3A3C),
-                                width: 1,
-                              ),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(Icons.people, size: 18),
-                              SizedBox(width: 8),
-                              Text('Contacts', style: TextStyle(fontSize: 15)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Semantics(
-                        selected: !_showContactsView,
-                        label: 'Show call history',
-                        child: ElevatedButton(
-                          onPressed: () {
-                            VibrationService.lightImpact();
-                            setState(() => _showContactsView = false);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: !_showContactsView
-                                ? const Color(0xFF6B7FB8)
-                                : const Color(0xFF2C2C2E),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: !_showContactsView
-                                    ? const Color(0xFF6B7FB8)
-                                    : const Color(0xFF3A3A3C),
-                                width: 1,
-                              ),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(Icons.history, size: 18),
-                              SizedBox(width: 8),
-                              Text('History', style: TextStyle(fontSize: 15)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
 
@@ -1488,11 +1341,73 @@ class _HomeScreenState extends State<HomeScreen>
       );
     }
 
-    if (_callHistory.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        children: [
+    final displayedHistory = _showMissedCallsOnly
+        ? _callHistory.where((call) => (call['duration'] as int) == 0).toList()
+        : _callHistory;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Tab Filters: All / Missed
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2C2C2E), // bg-surface
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildHistoryTab('All', !_showMissedCallsOnly, () {
+                  setState(() => _showMissedCallsOnly = false);
+                }),
+                _buildHistoryTab('Missed', _showMissedCallsOnly, () {
+                  setState(() => _showMissedCallsOnly = true);
+                }),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        
+        // List Content
+        Expanded(
+          child: displayedHistory.isEmpty
+              ? _buildEmptyHistoryState()
+              : _buildHistoryListView(displayedHistory),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHistoryTab(String text, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF3A3A3C) : Colors.transparent, // bg-surface-light
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isSelected ? Colors.white : const Color(0xFF8E8E93),
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyHistoryState() {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      children: [
           const SizedBox(height: 120),
           Center(
             child: Column(
@@ -1536,14 +1451,15 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       );
-    }
+  }
 
+  Widget _buildHistoryListView(List<Map<String, dynamic>> displayedHistory) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: _callHistory.length,
+      itemCount: displayedHistory.length,
       itemBuilder: (context, index) {
-        final call = _callHistory[index];
+        final call = displayedHistory[index];
         final duration = call['duration'] as int;
         final durationText = duration > 0
             ? '${(duration / 60).floor()}m ${duration % 60}s'
@@ -1553,21 +1469,23 @@ class _HomeScreenState extends State<HomeScreen>
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF2C2C2E),
-            borderRadius: BorderRadius.circular(12),
+            color: const Color(0xFF2F3448).withOpacity(0.5), // Surface-dark
+            borderRadius: BorderRadius.circular(16), // rounded-xl
+            border: Border.all(color: const Color(0xFF334155).withOpacity(0.5)),
           ),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: const Color(0xFF6B7FB8),
-                child: Text(
-                  _getInitials(call['participantName']),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+              // Icon block
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6B7FB8).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.call,
+                  color: Color(0xFF6B7FB8),
                 ),
               ),
               const SizedBox(width: 16),
@@ -1579,26 +1497,46 @@ class _HomeScreenState extends State<HomeScreen>
                       call['participantName'],
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      '${_formatTimestamp(call['timestamp'])} • $durationText',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF8E8E93),
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          durationText,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF94A3B8), // slate-400
+                          ),
+                        ),
+                        Container(
+                          width: 4,
+                          height: 4,
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF94A3B8),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        Text(
+                          _formatTimestamp(call['timestamp']),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
               IconButton(
                 icon: const Icon(
-                  Icons.phone,
+                  Icons.bolt, // Matching "quick-rejoin" bolt
                   color: Color(0xFF6B7FB8),
-                  size: 20,
+                  size: 24,
                 ),
                 tooltip: 'Call back ${call['participantName']}',
                 onPressed: () {
@@ -1615,6 +1553,12 @@ class _HomeScreenState extends State<HomeScreen>
                     }
                   }
                 },
+                style: IconButton.styleFrom(
+                  hoverColor: const Color(0xFF6B7FB8).withOpacity(0.1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
             ],
           ),
@@ -1645,10 +1589,11 @@ class _HomeScreenState extends State<HomeScreen>
   void _startCallWithContact(Map<String, dynamic> contact) async {
     final email = contact['email'] as String;
     final uid = contact['uid'] as String?;
-    await _startCall(email, recipientUid: uid);
+    final name = contact['name'] as String?;
+    await _startCall(email, recipientUid: uid, recipientName: name);
   }
 
-  Future<void> _startCall(String recipientEmail, {String? recipientUid}) async {
+  Future<void> _startCall(String recipientEmail, {String? recipientUid, String? recipientName}) async {
     try {
       final currentUser = context.read<AuthService>().currentUser;
       if (currentUser == null) return;
@@ -1763,6 +1708,7 @@ class _HomeScreenState extends State<HomeScreen>
               signalingService: _signalingService,
               isP2PCall: true,
               remoteUserId: recipientUserId,
+              remoteUserName: recipientName ?? recipientEmail,
               isInitiator: true,
             ),
           ),
@@ -2353,4 +2299,36 @@ class _CallingDialogState extends State<_CallingDialog> {
       ),
     );
   }
+}
+
+/// Decorative wave painter for the Hero card gradient background.
+class _WavePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.06)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    final path1 = Path()
+      ..moveTo(0, size.height * 0.6)
+      ..cubicTo(
+        size.width * 0.25, size.height * 0.4,
+        size.width * 0.75, size.height * 0.8,
+        size.width, size.height * 0.5,
+      );
+    canvas.drawPath(path1, paint);
+
+    final path2 = Path()
+      ..moveTo(0, size.height * 0.75)
+      ..cubicTo(
+        size.width * 0.3, size.height * 0.55,
+        size.width * 0.7, size.height * 0.95,
+        size.width, size.height * 0.65,
+      );
+    canvas.drawPath(path2, paint..color = Colors.white.withOpacity(0.04));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

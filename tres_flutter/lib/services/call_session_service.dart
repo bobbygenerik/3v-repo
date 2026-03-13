@@ -25,10 +25,13 @@ class CallSessionService extends ChangeNotifier {
     try {
       final currentUser = _auth.currentUser;
       if (currentUser == null) return;
-      // First, check if a session already exists for this room (join if present)
+      // First, check if a session already exists for this room (join if present).
+      // Must include arrayContains constraint so Firestore security rules can
+      // verify the caller is a participant without rejecting the query.
       final existingQuery = await _firestore
           .collection('call_sessions')
           .where('roomName', isEqualTo: roomName)
+          .where('participants', arrayContains: currentUser.uid)
           .limit(5)
           .get();
 

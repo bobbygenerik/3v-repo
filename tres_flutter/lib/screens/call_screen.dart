@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -50,6 +51,8 @@ class CallScreen extends StatefulWidget {
   final bool isP2PCall;
   /// Remote user's UID — required when [isP2PCall] is true.
   final String? remoteUserId;
+  /// Display name of the remote user shown at the top of the call screen.
+  final String? remoteUserName;
   /// Whether this device is the call initiator (caller=true, callee=false).
   final bool isInitiator;
 
@@ -62,6 +65,7 @@ class CallScreen extends StatefulWidget {
     required this.signalingService,
     this.isP2PCall = false,
     this.remoteUserId,
+    this.remoteUserName,
     this.isInitiator = true,
   });
 
@@ -1449,12 +1453,17 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   }
   
   Widget _buildRoomInfo(CallFeaturesCoordinator coordinator) {
-    // Get remote participant name or use room name
     final livekit = context.read<LiveKitService>();
-    final remoteParticipants = livekit.remoteParticipants;
-    final callerName = remoteParticipants.isNotEmpty
-        ? _displayNameForParticipant(remoteParticipants.first)
-        : widget.roomName;
+    final String callerName;
+    if (livekit.isP2PMode) {
+      // P2P: no LiveKit participants list — use the name passed at construction.
+      callerName = widget.remoteUserName ?? widget.remoteUserId ?? 'Caller';
+    } else {
+      final remoteParticipants = livekit.remoteParticipants;
+      callerName = remoteParticipants.isNotEmpty
+          ? _displayNameForParticipant(remoteParticipants.first)
+          : widget.roomName;
+    }
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1525,6 +1534,37 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         );
       }
       if (!livekit.p2pRemoteHasVideo) {
+        // Show local self-view while waiting for remote video.
+        if (livekit.p2pLocalRenderer != null) {
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              RepaintBoundary(
+                child: RTCVideoView(
+                  livekit.p2pLocalRenderer!,
+                  key: const ValueKey('p2p-local-connecting'),
+                  mirror: true,
+                  objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                ),
+              ),
+              const Positioned(
+                top: 16,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Text(
+                    'Connecting...',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      shadows: [Shadow(color: Colors.black, blurRadius: 4)],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
         return const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1931,12 +1971,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   }
 
   Widget _buildCallControls(LiveKitService livekit, CallFeaturesCoordinator coordinator) {
-    // Calculate responsive button sizes based on screen width
+    // Calculate responsive button sizes based on screen width.
+    // Pill must fit: 4 × buttonSize + 3 gaps + divider(1+margins) + endCallSize
+    // within screenWidth × 0.9 − 24px (horizontal padding).
     final screenWidth = MediaQuery.of(context).size.width;
-    final buttonSize = screenWidth < 360 ? 45.0 : 50.0;
-    final centerButtonSize = screenWidth < 360 ? 56.0 : 64.0;
-    final horizontalPadding = screenWidth < 360 ? 12.0 : 16.0;
-    final buttonSpacing = screenWidth < 400 ? 4.0 : 8.0;
+    final buttonSize = screenWidth < 400 ? 44.0 : 50.0;
+    final centerButtonSize = screenWidth < 400 ? 52.0 : 60.0;
+    final horizontalPadding = screenWidth < 360 ? 8.0 : 12.0;
+    final buttonSpacing = screenWidth < 400 ? 2.0 : 6.0;
+    final dividerMargin = screenWidth < 400 ? 8.0 : 14.0;
     
     // Button order: More (leftmost), Mic, END CALL (center), Camera, Flip
     final buttons = [
@@ -1945,7 +1988,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         index: 0,
         icon: Icons.more_vert,
         onPressed: () => _showMoreMenu(livekit, coordinator),
-        backgroundColor: Colors.white.withOpacity(0.2),
+        backgroundColor: Colors.transparent,
         size: buttonSize,
         spacing: buttonSpacing,
         tooltip: 'More options',
@@ -1960,9 +2003,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             _showToggleFeedback(livekit.isMicrophoneEnabled ? 'Microphone unmuted' : 'Microphone muted');
           }
         },
-        backgroundColor: livekit.isMicrophoneEnabled
-            ? Colors.white.withOpacity(0.2)
-            : Colors.red.shade600,
+        backgroundColor: Colors.transparent,
         size: buttonSize,
         spacing: buttonSpacing,
         tooltip: livekit.isMicrophoneEnabled
@@ -1997,9 +2038,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             _showToggleFeedback(livekit.isCameraEnabled ? 'Camera on' : 'Camera off');
           }
         },
-        backgroundColor: livekit.isCameraEnabled
-            ? Colors.white.withOpacity(0.2)
-            : Colors.red.shade600,
+        backgroundColor: Colors.transparent,
         size: buttonSize,
         spacing: buttonSpacing,
         tooltip: livekit.isCameraEnabled ? 'Turn camera off' : 'Turn camera on',
@@ -2009,18 +2048,69 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         index: 4,
         icon: Icons.cameraswitch,
         onPressed: livekit.switchCamera,
-        backgroundColor: Colors.white.withOpacity(0.2),
+        backgroundColor: Colors.transparent,
         size: buttonSize,
         spacing: buttonSpacing,
         tooltip: 'Switch camera',
       ),
     ];
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: buttons,
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 32.0),
+        child: SizedBox(
+          width: screenWidth * 0.9,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(50),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF515664).withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(50),
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Secondary Controls Group
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        buttons[1], // Mic
+                        buttons[3], // Camera
+                        buttons[0], // More
+                        buttons[4], // Flip
+                      ],
+                    ),
+                    // Divider + End Call
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 32,
+                          width: 1,
+                          color: Colors.white.withOpacity(0.2),
+                          margin: EdgeInsets.symmetric(horizontal: dividerMargin),
+                        ),
+                        buttons[2], // End Call
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
