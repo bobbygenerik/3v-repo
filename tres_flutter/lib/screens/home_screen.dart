@@ -886,33 +886,37 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
                           ),
                         ],
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(
-                                0xFF6B7FB8,
-                              ), // Main app color ring
-                              width: 2,
+                        child: Semantics(
+                          button: true,
+                          label: 'Account Menu',
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(
+                                  0xFF6B7FB8,
+                                ), // Main app color ring
+                                width: 2,
+                              ),
                             ),
-                          ),
-                          child: CircleAvatar(
-                            radius: 20,
-                            backgroundColor: const Color(0xFF2C2C2E),
-                            backgroundImage:
-                                (user?.photoURL?.isNotEmpty ?? false)
-                                ? CachedNetworkImageProvider(user!.photoURL!)
-                                : null,
-                            child: (user?.photoURL?.isEmpty ?? true)
-                                ? Text(
-                                    _getUserInitial(user),
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  )
-                                : null,
+                            child: CircleAvatar(
+                              radius: 20,
+                              backgroundColor: const Color(0xFF2C2C2E),
+                              backgroundImage:
+                                  (user?.photoURL?.isNotEmpty ?? false)
+                                  ? CachedNetworkImageProvider(user!.photoURL!)
+                                  : null,
+                              child: (user?.photoURL?.isEmpty ?? true)
+                                  ? Text(
+                                      _getUserInitial(user),
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
+                            ),
                           ),
                         ),
                       ),

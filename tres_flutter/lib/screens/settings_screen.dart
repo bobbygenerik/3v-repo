@@ -231,19 +231,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: Slider(
-                        value: _portraitBlurIntensity,
-                        min: 0,
-                        max: 100,
-                        divisions: 100,
-                        activeColor: AppColors.primaryBlue,
-                        inactiveColor: AppColors.primaryDark,
-                        onChanged: (value) {
-                          setState(() => _portraitBlurIntensity = value);
-                        },
-                        onChangeEnd: (value) {
-                          _saveSetting('portrait_blur_intensity', value);
-                        },
+                      child: Semantics(
+                        label: 'Portrait Blur Intensity',
+                        value: '${_portraitBlurIntensity.round()}%',
+                        child: Slider(
+                          value: _portraitBlurIntensity,
+                          min: 0,
+                          max: 100,
+                          divisions: 100,
+                          activeColor: AppColors.primaryBlue,
+                          inactiveColor: AppColors.primaryDark,
+                          onChanged: (value) {
+                            setState(() => _portraitBlurIntensity = value);
+                          },
+                          onChangeEnd: (value) {
+                            _saveSetting('portrait_blur_intensity', value);
+                          },
+                        ),
                       ),
                     ),
                     SizedBox(
@@ -451,11 +455,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // Version info
           Center(
-            child: Text(
-              'Version 1.4.callHome',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withOpacity(0.5),
+            child: Semantics(
+              label: 'App Version 1.4.callHome',
+              child: Text(
+                'Version 1.4.callHome',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withOpacity(0.5),
+                ),
               ),
             ),
           ),
