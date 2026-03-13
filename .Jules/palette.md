@@ -57,3 +57,6 @@
 ## YYYY-MM-DD - Add semantic labels to loading indicators
 **Learning:** In Flutter, standalone visual loading indicators (like `CircularProgressIndicator`) used in dialogs or empty states aren't automatically announced by screen readers. They need to be explicitly wrapped in a `Semantics` widget with a descriptive `label` property (e.g., 'Loading...', 'Starting call...').
 **Action:** Always verify if a `CircularProgressIndicator` provides enough context on its own. If it replaces text or is a standalone state indicator, wrap it in a `Semantics` widget.
+## 2026-03-12 - Add semantic labels to loading indicators
+**Learning:** In Flutter, standalone visual loading indicators (like `CircularProgressIndicator`) used in dialogs or empty states aren't automatically announced by screen readers. They need to be explicitly wrapped in a `Semantics` widget with a descriptive `label` property (e.g., 'Loading...', 'Starting call...').
+**Action:** Always verify if a `CircularProgressIndicator` provides enough context on its own. If it replaces text or is a standalone state indicator, wrap it in a `Semantics` widget.
