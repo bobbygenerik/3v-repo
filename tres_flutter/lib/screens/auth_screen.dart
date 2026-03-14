@@ -142,7 +142,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppColors.primaryBlue.withOpacity(0.5)),
+                      borderSide: BorderSide(color: AppColors.primaryBlue.withValues(alpha: 0.5)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -246,10 +246,10 @@ class _AuthScreenState extends State<AuthScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(32),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
+                          color: Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(32),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             width: 1,
                           ),
                         ),
@@ -276,9 +276,16 @@ class _AuthScreenState extends State<AuthScreen> {
                               autofillHints: const [AutofillHints.email],
                               textInputAction: TextInputAction.next,
                               style: const TextStyle(color: Colors.white),
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 hintText: 'Email',
-                                prefixIcon: Icon(Icons.person_outline),
+                                prefixIcon: const Icon(Icons.person_outline),
+                                suffixIcon: _emailController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear),
+                                        tooltip: 'Clear email',
+                                        onPressed: _emailController.clear,
+                                      )
+                                    : null,
                               ),
                               keyboardType: TextInputType.emailAddress,
                             ),
@@ -484,10 +491,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(32),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
+                          color: Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(32),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             width: 1,
                           ),
                         ),

@@ -27,6 +27,7 @@ import 'profile_screen.dart';
 import 'settings_screen.dart';
 import 'call_screen.dart';
 import 'incoming_call_screen.dart';
+import 'outgoing_calling_screen.dart';
 import 'dart:ui' as ui;
 
 class HomeScreen extends StatefulWidget {
@@ -765,7 +766,7 @@ class _HomeScreenState extends State<HomeScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.02),
+                      color: Colors.white.withValues(alpha: 0.02),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -783,7 +784,6 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                         // Profile Button
                         PopupMenuButton<String>(
-                          tooltip: 'Account Menu',
                           offset: const Offset(0, 50),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -884,33 +884,36 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
                           ),
                         ],
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(
-                                0xFF6B7FB8,
-                              ), // Main app color ring
-                              width: 2,
+                        child: Tooltip(
+                          message: 'Account Menu',
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(
+                                  0xFF6B7FB8,
+                                ), // Main app color ring
+                                width: 2,
+                              ),
                             ),
-                          ),
-                          child: CircleAvatar(
-                            radius: 20,
-                            backgroundColor: const Color(0xFF2C2C2E),
-                            backgroundImage:
-                                (user?.photoURL?.isNotEmpty ?? false)
-                                ? CachedNetworkImageProvider(user!.photoURL!)
-                                : null,
-                            child: (user?.photoURL?.isEmpty ?? true)
-                                ? Text(
-                                    _getUserInitial(user),
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  )
-                                : null,
+                            child: CircleAvatar(
+                              radius: 20,
+                              backgroundColor: const Color(0xFF2C2C2E),
+                              backgroundImage:
+                                  (user?.photoURL?.isNotEmpty ?? false)
+                                  ? CachedNetworkImageProvider(user!.photoURL!)
+                                  : null,
+                              child: (user?.photoURL?.isEmpty ?? true)
+                                  ? Text(
+                                      _getUserInitial(user),
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
+                            ),
                           ),
                         ),
                       ),
@@ -1047,7 +1050,7 @@ class _HomeScreenState extends State<HomeScreen>
         child: Container(
           height: 56,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(28),
             border: Border.all(color: Colors.white10),
           ),
@@ -1058,8 +1061,8 @@ class _HomeScreenState extends State<HomeScreen>
             style: const TextStyle(color: Colors.white, fontSize: 16),
             decoration: InputDecoration(
               hintText: 'Display Name',
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
-              prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.4)),
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+              prefixIcon: Icon(Icons.search, color: Colors.white.withValues(alpha: 0.4)),
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
@@ -1095,7 +1098,7 @@ class _HomeScreenState extends State<HomeScreen>
                 Icon(
                   Icons.people_outline,
                   size: 64,
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withValues(alpha: 0.3),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -1104,28 +1107,31 @@ class _HomeScreenState extends State<HomeScreen>
                       : 'No contacts found',
                   style: TextStyle(
                     fontSize: 18,
-                    color: Colors.white.withOpacity(0.5),
+                    color: Colors.white.withValues(alpha: 0.5),
                   ),
                 ),
                 if (_searchController.text.isEmpty) ...[
                   const SizedBox(height: 24),
                   SizedBox(
                     width: 200,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        VibrationService.lightImpact();
-                        _showAddContactDialog();
-                      },
-                      icon: const Icon(Icons.person_add, size: 20),
-                      label: const Text('Add Contact'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6B7FB8),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
+                    child: Tooltip(
+                      message: 'Add Contact',
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          VibrationService.lightImpact();
+                          _showAddContactDialog();
+                        },
+                        icon: const Icon(Icons.person_add, size: 20),
+                        label: const Text('Add Contact'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6B7FB8),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          elevation: 0,
                         ),
-                        elevation: 0,
                       ),
                     ),
                   ),
@@ -1229,9 +1235,9 @@ class _HomeScreenState extends State<HomeScreen>
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: AppColors.surfaceDark.withOpacity(0.7),
+              color: AppColors.surfaceDark.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Row(
               children: [
@@ -1409,14 +1415,14 @@ class _HomeScreenState extends State<HomeScreen>
                 Icon(
                   Icons.history,
                   size: 64,
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withValues(alpha: 0.3),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'No call history yet',
                   style: TextStyle(
                     fontSize: 18,
-                    color: Colors.white.withOpacity(0.5),
+                    color: Colors.white.withValues(alpha: 0.5),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -1462,9 +1468,9 @@ class _HomeScreenState extends State<HomeScreen>
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF2F3448).withOpacity(0.5), // Surface-dark
+            color: const Color(0xFF2F3448).withValues(alpha: 0.5), // Surface-dark
             borderRadius: BorderRadius.circular(16), // rounded-xl
-            border: Border.all(color: const Color(0xFF334155).withOpacity(0.5)),
+            border: Border.all(color: const Color(0xFF334155).withValues(alpha: 0.5)),
           ),
           child: Row(
             children: [
@@ -1473,7 +1479,7 @@ class _HomeScreenState extends State<HomeScreen>
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6B7FB8).withOpacity(0.2),
+                  color: const Color(0xFF6B7FB8).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -1547,7 +1553,7 @@ class _HomeScreenState extends State<HomeScreen>
                   }
                 },
                 style: IconButton.styleFrom(
-                  hoverColor: const Color(0xFF6B7FB8).withOpacity(0.1),
+                  hoverColor: const Color(0xFF6B7FB8).withValues(alpha: 0.1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -1673,14 +1679,15 @@ class _HomeScreenState extends State<HomeScreen>
 
       if (mounted) Navigator.pop(context);
 
-      // Show calling dialog and wait for response
-      bool? callAccepted = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => _CallingDialog(
-          invitationId: invitationId,
-          recipientEmail: recipientEmail,
-          signalingService: _signalingService,
+      // Show full-screen calling page and wait for response
+      bool? callAccepted = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OutgoingCallingScreen(
+            invitationId: invitationId,
+            recipientEmail: recipientEmail,
+            signalingService: _signalingService,
+          ),
         ),
       );
 
@@ -1904,22 +1911,6 @@ class _WebRefreshScrollBehavior extends MaterialScrollBehavior {
     PointerDeviceKind.mouse,
     PointerDeviceKind.trackpad,
   };
-}
-
-/// Dialog shown while waiting for recipient to accept/decline call
-class _CallingDialog extends StatefulWidget {
-  final String invitationId;
-  final String recipientEmail;
-  final CallSignalingService signalingService;
-
-  const _CallingDialog({
-    required this.invitationId,
-    required this.recipientEmail,
-    required this.signalingService,
-  });
-
-  @override
-  State<_CallingDialog> createState() => _CallingDialogState();
 }
 
 class _AddContactDialog extends StatefulWidget {
@@ -2178,128 +2169,12 @@ class _AddContactDialogState extends State<_AddContactDialog> {
   }
 }
 
-class _CallingDialogState extends State<_CallingDialog> {
-  late StreamSubscription<DocumentSnapshot> _invitationSubscription;
-
-  @override
-  void initState() {
-    super.initState();
-    _listenToInvitationStatus();
-  }
-
-  void _listenToInvitationStatus() {
-    _invitationSubscription = FirebaseFirestore.instance
-        .collection('call_invitations')
-        .doc(widget.invitationId)
-        .snapshots()
-        .listen((snapshot) {
-          if (!snapshot.exists || !mounted) return;
-
-          final data = snapshot.data();
-          if (data == null) return;
-
-          final status = data['status'] as String?;
-          debugPrint('📞 Invitation status: $status');
-
-          if (status == 'accepted') {
-            // Call accepted - close dialog with true
-            Navigator.of(context, rootNavigator: false).pop(true);
-          } else if (status == 'declined') {
-            // Call declined - close dialog with false
-            Navigator.of(context, rootNavigator: false).pop(false);
-            if (mounted) {
-              // Use a post-frame callback to show snackbar after navigation completes
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Call declined')),
-                  );
-                }
-              });
-            }
-          } else if (status == 'timeout' || status == 'cancelled') {
-            // Call timed out or cancelled - close dialog with false
-            Navigator.of(context, rootNavigator: false).pop(false);
-          }
-        });
-
-    // Auto-cancel after 60 seconds
-    Future.delayed(const Duration(seconds: 60), () {
-      if (mounted) {
-        widget.signalingService.cancelInvitation(widget.invitationId);
-        Navigator.of(context, rootNavigator: false).pop(false);
-        // Use a post-frame callback to show snackbar after navigation completes
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Call not answered')));
-          }
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _invitationSubscription.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        // Cancel invitation if user tries to go back
-        widget.signalingService.cancelInvitation(widget.invitationId);
-        return true;
-      },
-      child: AlertDialog(
-        backgroundColor: const Color(0xFF2C2C2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Semantics(
-              label: 'Waiting for answer...',
-              child: const CircularProgressIndicator(color: Color(0xFF6B7FB8)),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Calling ${widget.recipientEmail}...',
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                widget.signalingService.cancelInvitation(widget.invitationId);
-                Navigator.of(context, rootNavigator: false).pop(false);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'CANCEL',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Decorative wave painter for the Hero card gradient background.
 class _WavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.06)
+      ..color = Colors.white.withValues(alpha: 0.06)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
@@ -2319,7 +2194,7 @@ class _WavePainter extends CustomPainter {
         size.width * 0.7, size.height * 0.95,
         size.width, size.height * 0.65,
       );
-    canvas.drawPath(path2, paint..color = Colors.white.withOpacity(0.04));
+    canvas.drawPath(path2, paint..color = Colors.white.withValues(alpha: 0.04));
   }
 
   @override

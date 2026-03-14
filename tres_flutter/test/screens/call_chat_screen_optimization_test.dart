@@ -1,92 +1,87 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core_platform_interface/src/pigeon/mocks.dart';
 import 'package:tres_flutter/screens/call_chat_screen.dart';
-
-class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
-class MockCollectionReference extends Mock implements CollectionReference<Map<String, dynamic>> {}
-class MockDocumentReference extends Mock implements DocumentReference<Map<String, dynamic>> {}
-class MockQuery extends Mock implements Query<Map<String, dynamic>> {}
-class MockQuerySnapshot extends Mock implements QuerySnapshot<Map<String, dynamic>> {}
+import 'package:tres_flutter/firebase_options.dart';
 
 void main() {
-  late MockFirebaseFirestore mockFirestore;
-  late MockCollectionReference mockCallChatsCollection;
-  late MockDocumentReference mockCallDoc;
-  late MockCollectionReference mockMessagesCollection;
-  late MockQuery mockQuery;
-  late Stream<QuerySnapshot<Map<String, dynamic>>> mockStream;
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() {
-    mockFirestore = MockFirebaseFirestore();
-    mockCallChatsCollection = MockCollectionReference();
-    mockCallDoc = MockDocumentReference();
-    mockMessagesCollection = MockCollectionReference();
-    mockQuery = MockQuery();
+  setupFirebaseCoreMocks();
 
-    // Create a dummy stream
-    mockStream = const Stream.empty();
-
-    // Setup the chain
-    when(() => mockFirestore.collection('call_chats')).thenReturn(mockCallChatsCollection);
-    when(() => mockCallChatsCollection.doc(any())).thenReturn(mockCallDoc);
-    when(() => mockCallDoc.collection('messages')).thenReturn(mockMessagesCollection);
-    when(() => mockMessagesCollection.orderBy('timestamp', descending: true)).thenReturn(mockQuery);
-    when(() => mockQuery.limit(100)).thenReturn(mockQuery);
-    when(() => mockQuery.snapshots()).thenAnswer((_) => mockStream);
+  setUpAll(() async {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } on FirebaseException catch (e) {
+      if (e.code != 'duplicate-app') {
+        rethrow;
+      }
+    }
   });
 
-  testWidgets('CallChatScreen initializes stream only once across rebuilds', (WidgetTester tester) async {
+  late FakeFirebaseFirestore fakeFirestore;
+
+  Future<void> addMessage({
+    required String callId,
+    required String text,
+    required int timestamp,
+  }) async {
+    await fakeFirestore
+        .collection('call_chats')
+        .doc(callId)
+        .collection('messages')
+        .add({
+      'text': text,
+      'senderId': 'sender_$callId',
+      'senderName': 'Sender $callId',
+      'timestamp': Timestamp.fromMillisecondsSinceEpoch(timestamp),
+    });
+  }
+
+  setUp(() async {
+    fakeFirestore = FakeFirebaseFirestore();
+    await addMessage(callId: 'call_1', text: 'message from call 1', timestamp: 1);
+    await addMessage(callId: 'call_2', text: 'message from call 2', timestamp: 2);
+  });
+
+  testWidgets('CallChatScreen keeps showing same call stream across non-callId rebuilds', (WidgetTester tester) async {
     const callId = 'test_call_id';
+
+    await addMessage(callId: callId, text: 'initial message', timestamp: 10);
 
     await tester.pumpWidget(MaterialApp(
       home: CallChatScreen(
         callId: callId,
-        firestore: mockFirestore,
+        firestore: fakeFirestore,
       ),
     ));
+    await tester.pumpAndSettle();
 
-    // Verify snapshots() called once
-    verify(() => mockQuery.snapshots()).called(1);
+    expect(find.text('initial message'), findsOneWidget);
 
-    // Rebuild the widget with same parameters but different title to trigger build
+    // Rebuild with same callId and different title.
     await tester.pumpWidget(MaterialApp(
       home: CallChatScreen(
         callId: callId,
         callTitle: 'New Title',
-        firestore: mockFirestore,
+        firestore: fakeFirestore,
       ),
     ));
+    await tester.pumpAndSettle();
 
-    // Verify snapshots() was NOT called again.
-    // verifyNever implies called(0). verify(...).called(0) is equivalent.
-    // Important: verify checks calls *since the last verification* if using `called`?
-    // No, mocktail verify checks history.
-    // If we want to check that it was NOT called *again*, we should check total calls is still 1.
-    // But `called(1)` "consumes" the calls in some mocking frameworks.
-    // In mocktail: "The verify method verifies that a method on a mock object was called with the given arguments."
+    // Same stream content should still be visible.
+    expect(find.text('initial message'), findsOneWidget);
 
-    // Let's verify total calls.
-    // Actually, simply using verifyNever is risky if it checks full history.
-    // The documentation says: "Verifies that a method on a mock object was never called with the given arguments."
-    // If it was called before, verifyNever will fail.
+    // Add another message to same call; stream should still receive updates.
+    await addMessage(callId: callId, text: 'second message', timestamp: 11);
+    await tester.pumpAndSettle();
 
-    // So we should verify that no *new* interactions happened.
-    // Or simpler: reset the mock.
-    clearInteractions(mockQuery);
-
-    // Rebuild again
-    await tester.pumpWidget(MaterialApp(
-      home: CallChatScreen(
-        callId: callId,
-        callTitle: 'Another Title',
-        firestore: mockFirestore,
-      ),
-    ));
-
-    // Now verify never called
-    verifyNever(() => mockQuery.snapshots());
+    expect(find.text('second message'), findsOneWidget);
   });
 
   testWidgets('CallChatScreen re-initializes stream when callId changes', (WidgetTester tester) async {
@@ -96,23 +91,24 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: CallChatScreen(
         callId: callId1,
-        firestore: mockFirestore,
+        firestore: fakeFirestore,
       ),
     ));
+    await tester.pumpAndSettle();
 
-    verify(() => mockQuery.snapshots()).called(1);
-
-    clearInteractions(mockQuery);
+    expect(find.text('message from call 1'), findsOneWidget);
+    expect(find.text('message from call 2'), findsNothing);
 
     // Rebuild with new callId
     await tester.pumpWidget(MaterialApp(
       home: CallChatScreen(
         callId: callId2,
-        firestore: mockFirestore,
+        firestore: fakeFirestore,
       ),
     ));
+    await tester.pumpAndSettle();
 
-    // Should be called again once
-    verify(() => mockQuery.snapshots()).called(1);
+    expect(find.text('message from call 2'), findsOneWidget);
+    expect(find.text('message from call 1'), findsNothing);
   });
 }

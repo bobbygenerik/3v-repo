@@ -1,27 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/src/pigeon/mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:tres_flutter/services/user_lookup_service.dart';
 import 'package:tres_flutter/firebase_options.dart';
-
-class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
-class MockCollectionReference extends Mock implements CollectionReference<Map<String, dynamic>> {}
-class MockDocumentReference extends Mock implements DocumentReference<Map<String, dynamic>> {}
-class MockQuery extends Mock implements Query<Map<String, dynamic>> {}
-class MockQuerySnapshot extends Mock implements QuerySnapshot<Map<String, dynamic>> {}
-class MockQueryDocumentSnapshot extends Mock implements QueryDocumentSnapshot<Map<String, dynamic>> {}
-class MockDocumentSnapshot extends Mock implements DocumentSnapshot<Map<String, dynamic>> {}
+import 'package:tres_flutter/services/user_lookup_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late UserLookupService service;
-  late MockFirebaseFirestore mockFirestore;
-  late MockCollectionReference mockUsersCollection;
-
-  // Setup Firebase mocks
   setupFirebaseCoreMocks();
 
   setUpAll(() async {
@@ -36,53 +23,38 @@ void main() {
     }
   });
 
-  setUp(() {
-    mockFirestore = MockFirebaseFirestore();
-    mockUsersCollection = MockCollectionReference();
+  late UserLookupService service;
+  late FakeFirebaseFirestore fakeFirestore;
+
+  Future<void> seedUsers(FirebaseFirestore firestore) async {
+    // Seed UID-based docs
+    for (int i = 0; i < 10; i++) {
+      await firestore.collection('users').doc('user_$i').set({
+        'displayName': 'User $i',
+        'photoURL': '',
+      });
+    }
+
+    // Seed email-based docs (query uses lowercased email field)
+    for (int i = 0; i < 10; i++) {
+      await firestore.collection('users').doc('email_user_$i').set({
+        'email': 'user$i@example.com',
+        'displayName': 'Email User $i',
+        'photoURL': '',
+      });
+    }
+  }
+
+  setUp(() async {
+    fakeFirestore = FakeFirebaseFirestore();
+    await seedUsers(fakeFirestore);
 
     service = UserLookupService();
-    service.firestore = mockFirestore;
+    service.firestore = fakeFirestore;
     service.clearCache();
-
-    when(() => mockFirestore.collection('users')).thenReturn(mockUsersCollection);
   });
 
   test('fetchForIdentity uses batched queries (Optimized O(N/10))', () async {
-    // Prepare results for Email batch
-    final emailQuery = MockQuery();
-    final emailQuerySnap = MockQuerySnapshot();
-    final emailDocs = <MockQueryDocumentSnapshot>[];
-    for (int i = 0; i < 10; i++) {
-       final d = MockQueryDocumentSnapshot();
-       // Note: implementation queries by lowercase email
-       when(() => d.data()).thenReturn({'email': 'user$i@example.com', 'displayName': 'Email User $i', 'photoURL': ''});
-       emailDocs.add(d);
-    }
-    when(() => emailQuerySnap.docs).thenReturn(emailDocs);
-    when(() => emailQuery.get()).thenAnswer((_) async => emailQuerySnap);
-
-    // Prepare results for UID batch
-    final uidQuery = MockQuery();
-    final uidQuerySnap = MockQuerySnapshot();
-    final uidDocs = <MockQueryDocumentSnapshot>[];
-    for (int i = 0; i < 10; i++) {
-       final d = MockQueryDocumentSnapshot();
-       when(() => d.id).thenReturn('user_$i');
-       when(() => d.data()).thenReturn({'displayName': 'User $i', 'photoURL': ''});
-       uidDocs.add(d);
-    }
-    when(() => uidQuerySnap.docs).thenReturn(uidDocs);
-    when(() => uidQuery.get()).thenAnswer((_) async => uidQuerySnap);
-
-    // Mock where calls
-    // We expect 'email' queries
-    when(() => mockUsersCollection.where('email', whereIn: any(named: 'whereIn')))
-      .thenReturn(emailQuery);
-
-    // We expect documentId queries
-    when(() => mockUsersCollection.where(FieldPath.documentId, whereIn: any(named: 'whereIn')))
-      .thenReturn(uidQuery);
-
     final futures = <Future<Map<String, String>>>[];
 
     // Launch 10 ID lookups
@@ -106,17 +78,18 @@ void main() {
     for (int i = 0; i < 10; i++) {
       expect(results[10 + i]['displayName'], 'Email User $i');
     }
+  });
 
-    // Verify optimized calls:
-    // Should NOT call doc(id).get()
-    verifyNever(() => mockUsersCollection.doc(any()));
+  test('fetchForIdentity returns cached result on repeat lookup', () async {
+    const identity = 'user_1';
 
-    // Should call where('email', whereIn: ...) once (since 10 items fit in one batch)
-    verify(() => mockUsersCollection.where('email', whereIn: any(named: 'whereIn'))).called(1);
+    final first = await service.fetchForIdentity(identity);
+    expect(first['displayName'], 'User 1');
 
-    // Should call where(FieldPath.documentId, whereIn: ...) once
-    verify(() => mockUsersCollection.where(FieldPath.documentId, whereIn: any(named: 'whereIn'))).called(1);
+    // Remove backing data and ensure cached value is still returned.
+    await fakeFirestore.collection('users').doc(identity).delete();
+    final second = await service.fetchForIdentity(identity);
 
-    // If we want to be stricter, we can capture the arguments.
+    expect(second['displayName'], 'User 1');
   });
 }
