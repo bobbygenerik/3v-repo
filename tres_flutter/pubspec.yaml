@@ -113,7 +113,9 @@ flutter:
   assets:
     - assets/images/
     - assets/emoji/twemoji/
-    # MediaPipe assets removed for Safari PWA stability and to avoid runtime processing
+    # LiteRT model files (downloaded via scripts/download_models.sh, not committed to repo)
+    # Declared here so flutter build packages them from android/app/src/main/assets/models/
+    # If models are absent the app still runs; each feature gracefully disables itself.
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

@@ -13,6 +13,7 @@ import 'grid_layout_manager.dart';
 import 'feature_flags.dart';
 import 'audio_device_service.dart';
 import 'livekit_service.dart';
+import 'litert_service.dart';
 
 export 'grid_layout_manager.dart' show LayoutMode;
 
@@ -31,10 +32,13 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   // Audio Device Service (injected)
   AudioDeviceService? _audioDeviceService;
 
-  // MediaPipe removed - no settings stored here
+  // LiteRT on-device ML service
+  final LiteRTService liteRTService = LiteRTService();
 
   Room? _room;
   LiveKitService? _liveKitService;
+  bool _liteRTVideoTrackRegistered = false;
+  final Map<String, int> _remoteTextureIds = {};
 
   // Feature states
   bool _isChatOpen = false;
@@ -55,7 +59,7 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   bool get isEncrypted => _isEncrypted;
   bool get isScreenSharing => _isScreenSharing;
   bool get isSpatialAudioEnabled => _isSpatialAudioEnabled;
-  bool get isBackgroundBlurEnabled => _isBackgroundBlurEnabled;
+  bool get isBackgroundBlurEnabled => liteRTService.backgroundBlurEnabled;
   bool get isBeautyFilterEnabled => _isBeautyFilterEnabled;
   bool get isArFilterEnabled => _isArFilterEnabled;
   bool get isAiNoiseCancellationEnabled => _isAiNoiseCancellationEnabled;
@@ -73,8 +77,12 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   List<Reaction> get activeReactions => reactionService.activeReactions;
   int get unreadMessageCount => chatService.getUnreadCount();
 
-  // ML Services status (stubs)
-  bool get isBlurProcessing => false;
+  // LiteRT ML feature accessors (delegate to LiteRTService)
+  bool get isBlurProcessing => liteRTService.backgroundBlurEnabled;
+  bool get isLowLightEnabled => liteRTService.lowLightEnabled;
+  bool get isSharpeningEnabled => liteRTService.sharpeningEnabled;
+  bool get liteRTGpuDelegate => liteRTService.gpuDelegate;
+  // Legacy stubs retained for interface compatibility
   bool get isBeautyProcessing => false;
   bool get isArProcessing => false;
   double get beautyIntensity => 0.0;
@@ -102,6 +110,16 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     _liveKitService = liveKitService;
 
     _audioDeviceService = audioDeviceService;
+
+    // Initialize LiteRT on-device ML
+    if (FeatureFlags.enableLiteRT) {
+      try {
+        await liteRTService.initialize();
+        debugPrint('✅ LiteRT service initialized (GPU: ${liteRTService.gpuDelegate})');
+      } catch (e) {
+        debugPrint('⚠️ LiteRT initialization failed: $e');
+      }
+    }
 
     // Initialize services
     chatService.initialize(room);
@@ -160,6 +178,10 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     reactionService.addListener(_onReactionChanged);
     // ML service listeners removed
     encryptionService.addListener(_onEncryptionChanged);
+    // Watch for local video track creation so we can attach the LiteRT processor
+    _liveKitService?.addListener(_onLiveKitChanged);
+    _liveKitService?.onRemoteVideoTrackSubscribed = _onRemoteVideoTrackSubscribed;
+    _liveKitService?.onRemoteVideoTrackUnsubscribed = _onRemoteVideoTrackUnsubscribed;
     // No-op: screen share listeners removed
     // Stats overlay handles its own updates directly from statsService
     // No need to propagate through coordinator to avoid unnecessary rebuilds
@@ -167,6 +189,56 @@ class CallFeaturesCoordinator extends ChangeNotifier {
 
     debugPrint('✅ CallFeaturesCoordinator initialized');
   }
+
+  /// Called when LiveKitService changes state — used to detect when the local
+  /// video track is first created so we can attach the LiteRT processor.
+  void _onLiveKitChanged() {
+    if (!kIsWeb && FeatureFlags.enableLiteRT && !_liteRTVideoTrackRegistered) {
+      final trackId = _liveKitService?.localVideoTrack?.mediaStreamTrack.id;
+      if (trackId != null && trackId.isNotEmpty) {
+        _liteRTVideoTrackRegistered = true;
+        liteRTService.registerVideoTrack(trackId).catchError((e) {
+          debugPrint('⚠️ LiteRT registerVideoTrack failed: $e');
+          _liteRTVideoTrackRegistered = false; // allow retry on next change
+        });
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Explicitly register the LiteRT video processor for the given track ID.
+  /// Use this for the P2P path where LiveKitService is not involved.
+  Future<void> registerLiteRTVideoTrack(String trackId) async {
+    if (kIsWeb || !FeatureFlags.enableLiteRT) return;
+    _liteRTVideoTrackRegistered = true;
+    await liteRTService.registerVideoTrack(trackId);
+  }
+
+  Future<void> _onRemoteVideoTrackSubscribed(
+    String trackId,
+    RemoteParticipant participant,
+  ) async {
+    if (kIsWeb || !FeatureFlags.enableLiteRT) return;
+    final platform = participant.attributes['platform'];
+    if (platform == 'flutter') return;
+
+    final textureId = await liteRTService.attachRemoteProcessing(trackId);
+    if (textureId != null) {
+      _remoteTextureIds[trackId] = textureId;
+      notifyListeners();
+    }
+  }
+
+  void _onRemoteVideoTrackUnsubscribed(String trackId) {
+    if (_remoteTextureIds.containsKey(trackId)) {
+      unawaited(liteRTService.detachRemoteProcessing(trackId));
+      _remoteTextureIds.remove(trackId);
+      notifyListeners();
+    }
+  }
+
+  /// Texture id for remote track rendering when remote LiteRT is attached.
+  int? remoteTextureId(String trackId) => _remoteTextureIds[trackId];
 
   /// ML services callback
   void _onMlServiceChanged() {
@@ -272,17 +344,42 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   Future<void> toggleBackgroundBlur() async {
     if (!Environment.enableMLFeatures) return;
     _isBackgroundBlurEnabled = !_isBackgroundBlurEnabled;
-    // MediaPipe removed - no-op
+    await liteRTService.setBackgroundBlur(_isBackgroundBlurEnabled);
     await _persistSetting('background_blur', _isBackgroundBlurEnabled);
     notifyListeners();
     debugPrint('Background blur ${_isBackgroundBlurEnabled ? "enabled" : "disabled"}');
+  }
+
+  /// Set blur radius (1–50 px)
+  Future<void> setBackgroundBlurRadius(double radius) async {
+    await liteRTService.setBlurRadius(radius);
+    notifyListeners();
+  }
+
+  /// Toggle low-light video enhancement
+  Future<void> toggleLowLightEnhancement() async {
+    if (!Environment.enableMLFeatures) return;
+    final newVal = !liteRTService.lowLightEnabled;
+    await liteRTService.setLowLightEnhancement(newVal);
+    await _persistSetting('low_light_enhancement', newVal);
+    notifyListeners();
+    debugPrint('Low-light enhancement ${newVal ? "enabled" : "disabled"}');
+  }
+
+  /// Toggle video sharpening
+  Future<void> toggleSharpening() async {
+    if (!Environment.enableMLFeatures) return;
+    final newVal = !liteRTService.sharpeningEnabled;
+    await liteRTService.setSharpening(newVal);
+    await _persistSetting('sharpening', newVal);
+    notifyListeners();
+    debugPrint('Sharpening ${newVal ? "enabled" : "disabled"}');
   }
 
   /// Toggle beauty filter
   void toggleBeautyFilter() {
     if (!Environment.enableMLFeatures) return;
     _isBeautyFilterEnabled = !_isBeautyFilterEnabled;
-    // MediaPipe removed - no-op
     unawaited(_persistSetting('beauty_filter', _isBeautyFilterEnabled));
     notifyListeners();
     debugPrint('Beauty filter ${_isBeautyFilterEnabled ? "enabled" : "disabled"}');
@@ -292,7 +389,6 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   void toggleFaceAutoFraming() {
     if (!Environment.enableMLFeatures) return;
     _isFaceAutoFramingEnabled = !_isFaceAutoFramingEnabled;
-    // MediaPipe removed - no-op
     unawaited(_persistSetting('face_auto_framing', _isFaceAutoFramingEnabled));
     notifyListeners();
     debugPrint('Face auto-framing ${_isFaceAutoFramingEnabled ? "enabled" : "disabled"}');
@@ -323,12 +419,13 @@ class CallFeaturesCoordinator extends ChangeNotifier {
     debugPrint('AR filter set to: $filterName (stub)');
   }
 
-  /// Toggle AI noise cancellation
+  /// Toggle AI noise cancellation (WebRTC built-in + LiteRT hardware suppressor)
   Future<void> toggleAiNoiseCancellation() async {
     _isAiNoiseCancellationEnabled = !_isAiNoiseCancellationEnabled;
     notifyListeners();
     debugPrint('AI noise cancellation ${_isAiNoiseCancellationEnabled ? "enabled" : "disabled"}');
 
+    // WebRTC-layer NS/EC/AGC
     if (_liveKitService != null) {
       await _liveKitService!.updateAudioCaptureOptions(
         AudioCaptureOptions(
@@ -337,6 +434,11 @@ class CallFeaturesCoordinator extends ChangeNotifier {
           autoGainControl: true,
         ),
       );
+    }
+
+    // Platform-level LiteRT hardware noise suppressor
+    if (FeatureFlags.enableLiteRT) {
+      await liteRTService.setNoiseSuppression(_isAiNoiseCancellationEnabled);
     }
   }
 
@@ -392,17 +494,26 @@ class CallFeaturesCoordinator extends ChangeNotifier {
   Future<void> cleanup() async {
     debugPrint('🧹 CallFeaturesCoordinator cleaning up...');
 
+    for (final trackId in _remoteTextureIds.keys.toList()) {
+      unawaited(liteRTService.detachRemoteProcessing(trackId));
+    }
+    _remoteTextureIds.clear();
+    _liveKitService?.onRemoteVideoTrackSubscribed = null;
+    _liveKitService?.onRemoteVideoTrackUnsubscribed = null;
+
     chatService.removeListener(_onChatChanged);
     reactionService.removeListener(_onReactionChanged);
     // ML service listeners removed
     encryptionService.removeListener(_onEncryptionChanged);
+    _liveKitService?.removeListener(_onLiveKitChanged);
     // Stats listener removed to prevent unnecessary rebuilds
     layoutManager.removeListener(_onLayoutChanged);
 
     chatService.cleanup();
     reactionService.cleanup();
     
-    // ML services removed - no disposal needed
+    // LiteRT ML services
+    await liteRTService.disposeProcessors();
 
     // Dispose Phase 4 services
     encryptionService.dispose();

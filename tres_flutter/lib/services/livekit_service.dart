@@ -124,6 +124,13 @@ class LiveKitService extends ChangeNotifier {
   // P2P mode — set when a 1:1 call uses dart_webrtc directly instead of LiveKit SFU.
   P2PCallService? _p2pService;
 
+  /// Called when a remote video track is subscribed.
+  void Function(String trackId, RemoteParticipant participant)?
+      onRemoteVideoTrackSubscribed;
+
+  /// Called when a remote video track is unsubscribed.
+  void Function(String trackId)? onRemoteVideoTrackUnsubscribed;
+
   /// True when the current call is a direct peer-to-peer connection (no SFU).
   bool get isP2PMode => _p2pService != null;
 
@@ -968,6 +975,11 @@ class LiveKitService extends ChangeNotifier {
         return false;
       }
 
+      // Tag local participant as Flutter/native sender for remote-side gating.
+      unawaited(
+        _room!.localParticipant?.setAttributes({'platform': 'flutter'}),
+      );
+
       await Future.wait([
         enableCamera(),
         enableMicrophone(),
@@ -1548,8 +1560,22 @@ class LiveKitService extends ChangeNotifier {
           await videoTrack.start();
           // Remote tracks cannot be unmuted locally - sender controls mute state
           debugPrint('   📹 Remote video track started');
+
+          final trackId = event.track.mediaStreamTrack.id;
+          if (trackId != null && trackId.isNotEmpty) {
+            onRemoteVideoTrackSubscribed?.call(trackId, event.participant);
+          }
         }
         
+        notifyListeners();
+      })
+      ..on<TrackUnsubscribedEvent>((event) {
+        if (event.track.kind == TrackType.VIDEO) {
+          final trackId = event.track.mediaStreamTrack.id;
+          if (trackId != null && trackId.isNotEmpty) {
+            onRemoteVideoTrackUnsubscribed?.call(trackId);
+          }
+        }
         notifyListeners();
       })
       ..on<TrackUnpublishedEvent>((event) {

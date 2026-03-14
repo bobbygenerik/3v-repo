@@ -3,14 +3,15 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../services/audio_device_service.dart';
 import '../services/livekit_service.dart';
+import '../services/call_features_coordinator.dart';
 
 class AudioControlsPanel extends StatelessWidget {
   const AudioControlsPanel({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<AudioDeviceService, LiveKitService>(
-      builder: (context, audioService, livekit, child) {
+    return Consumer3<AudioDeviceService, LiveKitService, CallFeaturesCoordinator>(
+      builder: (context, audioService, livekit, coordinator, child) {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -97,6 +98,26 @@ class AudioControlsPanel extends StatelessWidget {
                 ],
               ),
               
+              // Noise suppression (LiteRT hardware + WebRTC AI) — Android only
+              if (!kIsWeb) ...[
+                const Divider(color: Color(0xFF2C2C2E)),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.noise_aware, color: Color(0xFF6B7FB8)),
+                  title: const Text('Noise Suppression',
+                      style: TextStyle(color: Colors.white, fontSize: 14)),
+                  subtitle: Text(
+                    coordinator.liteRTService.hasHardwareNoiseSuppressor
+                        ? 'Hardware DSP active'
+                        : 'WebRTC AI active',
+                    style: const TextStyle(color: Color(0xFF8E8E93), fontSize: 12),
+                  ),
+                  value: coordinator.isAiNoiseCancellationEnabled,
+                  activeColor: const Color(0xFF6B7FB8),
+                  onChanged: (_) => coordinator.toggleAiNoiseCancellation(),
+                ),
+              ],
+
               if (kIsWeb) ...[
                 const SizedBox(height: 8),
                 Container(

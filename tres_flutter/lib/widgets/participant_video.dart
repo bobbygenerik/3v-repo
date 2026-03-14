@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'package:provider/provider.dart';
 import '../services/user_lookup_service.dart';
+import '../services/call_features_coordinator.dart';
 import '../config/app_theme.dart';
 
 class ParticipantVideo extends StatefulWidget {
@@ -191,10 +193,30 @@ class _ParticipantVideoState extends State<ParticipantVideo> {
   Widget build(BuildContext context) {
     final videoMuted = _videoTrack?.muted ?? true;
     final audioMuted = _audioTrack?.muted ?? true;
+    final coordinator = Provider.of<CallFeaturesCoordinator?>(
+      context,
+      listen: true,
+    );
+    final trackId = widget.isLocal ? null : _videoTrack?.mediaStreamTrack.id;
+    final remoteTextureId = trackId == null || trackId.isEmpty
+        ? null
+        : coordinator?.remoteTextureId(trackId);
 
     Widget content;
     if (_videoTrack == null || videoMuted) {
       content = _buildNoVideoPlaceholder();
+    } else if (!widget.isLocal && remoteTextureId != null) {
+      content = RepaintBoundary(
+        child: FittedBox(
+          fit: widget.fit == VideoViewFit.cover ? BoxFit.cover : BoxFit.contain,
+          clipBehavior: Clip.hardEdge,
+          child: SizedBox(
+            width: 1280,
+            height: 720,
+            child: Texture(textureId: remoteTextureId),
+          ),
+        ),
+      );
     } else {
       content = RepaintBoundary(
         child: VideoTrackRenderer(_videoTrack!, fit: widget.fit),

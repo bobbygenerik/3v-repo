@@ -287,7 +287,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           width: 160,
                           height: 160,
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.5),
+                            color: Colors.black.withValues(alpha: 0.5),
                             shape: BoxShape.circle,
                           ),
                           child: Center(
@@ -403,7 +403,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: const Color(
                       0xFF6B7FB8,
-                    ).withOpacity(0.5),
+                    ).withValues(alpha: 0.5),
                     disabledForegroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -851,7 +851,7 @@ class _ImageCropDialogState extends State<_ImageCropDialog> {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: Colors.white.withOpacity(0.8),
+                                      color: Colors.white.withValues(alpha: 0.8),
                                       width: 3,
                                     ),
                                   ),

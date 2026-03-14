@@ -3,6 +3,10 @@ class FeatureFlags {
   // Disable experimental MediaPipe processing by default for stability.
   static const bool enableMediaPipe = false;
 
+  // LiteRT on-device ML (background blur, low-light, noise suppression, etc.)
+  // Enabled: native processors are loaded; individual features still toggled by user.
+  static const bool enableLiteRT = true;
+
   // Disable screen-share feature by default (inert stub kept).
   static const bool enableScreenShare = false;
 

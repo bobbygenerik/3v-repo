@@ -4,7 +4,6 @@ import '../config/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' as ui;
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -33,14 +32,16 @@ import '../services/contact_service.dart';
 import '../services/vibration_service.dart';
 import '../services/call_stats_service.dart';
 import '../services/ice_server_config.dart';
+import '../controllers/call_ui_state_controller.dart';
 // MediaPipe removed: settings and processing removed
 import '../config/environment.dart';
 import '../widgets/participant_video.dart';
 import '../widgets/call_waiting_banner.dart';
 import '../widgets/video_call_quality_dashboard.dart';
 import '../widgets/modern_chat_overlay.dart';
-import '../widgets/chat_notification_badge.dart';
+import '../widgets/call_controls_bar.dart';
 import '../widgets/audio_controls_panel.dart';
+import '../widgets/call_overlay_layer.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' show RTCVideoView, RTCVideoViewObjectFit;
 import '../services/audio_device_service.dart';
 
@@ -89,20 +90,18 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   final AudioRecorder _audioRecorder = AudioRecorder();
   late CallFeaturesCoordinator _coordinator;
   LiveKitService? _livekit;
-  final TextEditingController _chatController = TextEditingController();
   final CallListenerService _callListener = CallListenerService();
+  late final CallUiStateController _uiState;
   
   // Call timer
   Duration _callDuration = Duration.zero;
   
   // Control animations
-  bool _controlsVisible = true;
   late AnimationController _controlsAnimationController;
   late List<Animation<Offset>> _buttonSlideAnimations;
   Timer? _controlsHideTimer;
   
   // Reaction panel animation
-  bool _reactionsVisible = false;
   late AnimationController _reactionsAnimationController;
   late Animation<Offset> _reactionsSlideAnimation;
   
@@ -137,9 +136,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   bool _callEndedSnackbarShown = false;
   
   // Modern chat state
-  bool _chatOverlayVisible = false;
-  int _unreadMessageCount = 0;
-  bool _hasNewMessage = false;
   String? _lastMessageId;
   DateTime? _lastNetworkWarning;
   bool _wasReconnecting = false;
@@ -150,6 +146,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   @override
   void initState() {
     super.initState();
+    _uiState = CallUiStateController();
+    _uiState.addListener(_onUiStateChanged);
     _coordinator = CallFeaturesCoordinator();
     _connectToRoom();
     _loadPipPreference();
@@ -197,9 +195,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       vsync: this,
     );
     
-    // Create staggered animations for 5 buttons
-    // LEFT to RIGHT for both rise and fall (0, 1, 2, 3, 4)
-    _buttonSlideAnimations = List.generate(5, (index) {
+    // Create staggered animations for 6 buttons
+    // LEFT to RIGHT for both rise and fall (0, 1, 2, 3, 4, 5)
+    _buttonSlideAnimations = List.generate(6, (index) {
       final start = index * 0.15; // Left button starts first (0.0, 0.15, 0.3, 0.45, 0.6)
       final end = start + 0.4; // Each animation duration
       return Tween<Offset>(
@@ -735,11 +733,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   void _startControlsHideTimer() {
     _controlsHideTimer?.cancel();
     _controlsHideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && _controlsVisible) {
-        setState(() {
-          _controlsVisible = false;
-          _controlsAnimationController.reverse();
-        });
+      if (mounted && _uiState.controlsVisible) {
+        _uiState.setControlsVisible(false);
+        _controlsAnimationController.reverse();
       }
     });
   }
@@ -805,7 +801,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                   child: Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF4CAF50).withOpacity(0.2),
+                      color: const Color(0xFF4CAF50).withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -854,7 +850,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Row(
@@ -917,8 +913,24 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         }
       });
       _coordinator.statsService.startCollecting();
+
+      // Apply LiteRT default call-quality profile (video effects on, audio via WebRTC).
+      // Low-light and sharpening are on by default; background blur stays opt-in.
+      // Audio NoiseSuppressor hardware attachment requires the WebRTC AudioRecord session
+      // ID — see LiteRTAudioProcessor.attach(). For now WebRTC's built-in NS handles it.
+      if (!kIsWeb) {
+        unawaited(
+          _coordinator.liteRTService.applyCallProfile(
+            blur: false,       // user opt-in via More → AI Enhancements
+            lowLight: true,
+            sharpening: true,
+            noiseSuppression: true,
+            loudnessGainMb: 150,
+          ),
+        );
+      }
     }
-    
+
     if (mounted) {
       setState(() => _isConnecting = false);
     }
@@ -1032,7 +1044,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.2),
+                    color: Colors.red.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -1093,22 +1105,20 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             onHorizontalDragStart: (details) {
               // Track if drag started from left edge
               if (details.globalPosition.dx < 50) {
-                setState(() {
-                  _reactionsVisible = true;
-                  _reactionsAnimationController.forward();
-                });
+                _uiState.setReactionsVisible(true);
+                _reactionsAnimationController.forward();
               }
             },
             onHorizontalDragEnd: (details) {
               // Swipe right from left edge to show reactions
               if (details.primaryVelocity != null && details.primaryVelocity! > 500) {
-                if (!_reactionsVisible) {
+                if (!_uiState.reactionsVisible) {
                   _toggleReactions();
                 }
               }
               // Swipe left to hide reactions
               else if (details.primaryVelocity != null && details.primaryVelocity! < -500) {
-                if (_reactionsVisible) {
+                if (_uiState.reactionsVisible) {
                   _toggleReactions();
                 }
               }
@@ -1153,132 +1163,104 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                         child: _buildRoomInfo(coordinator),
                       ),
 
-                      if (livekit.isReconnecting)
-                        Positioned(
-                          top: 16,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.7),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.white.withOpacity(0.2)),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.sync, color: Colors.white, size: 16),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Reconnecting...',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-
-                      // Call-waiting banner (shows when receiving a call while in call)
-                      if (_callListener.hasIncomingCall)
-                        Positioned(
-                          top: 80,
-                          left: 16,
-                          right: 16,
-                          child: CallWaitingBanner(
-                            callerName: _callListener.currentIncomingCall!['callerName'],
-                            callerPhotoUrl: _callListener.currentIncomingCall!['callerPhotoUrl'],
-                            isVideoCall: _callListener.currentIncomingCall!['isVideoCall'],
-                            onAccept: _acceptWaitingCall,
-                            onDecline: _declineWaitingCall,
-                          ),
-                        ),
+                      CallOverlayLayer(
+                        isReconnecting: livekit.isReconnecting,
+                        hasIncomingCall: _callListener.hasIncomingCall,
+                        callWaitingBanner: _callListener.hasIncomingCall
+                            ? CallWaitingBanner(
+                                callerName: _callListener.currentIncomingCall!['callerName'],
+                                callerPhotoUrl: _callListener.currentIncomingCall!['callerPhotoUrl'],
+                                isVideoCall: _callListener.currentIncomingCall!['isVideoCall'],
+                                onAccept: _acceptWaitingCall,
+                                onDecline: _declineWaitingCall,
+                              )
+                            : null,
+                        qualityDashboardVisible: _qualityDashboardVisible,
+                        qualityDashboard: _qualityDashboardVisible
+                            ? VideoCallQualityDashboard(
+                                isExpanded: true,
+                                statsService: _coordinator.statsService,
+                                onToggle: () {
+                                  setState(() {
+                                    _qualityDashboardVisible = false;
+                                  });
+                                },
+                              )
+                            : null,
+                        translationVisible:
+                            _translationActive && _translatedText.isNotEmpty,
+                        translationBottom:
+                          _uiState.chatOverlayVisible ? 24 : (_uiState.controlsVisible ? 126 : 24),
+                        translatedText: _translatedText,
+                        onCloseTranslation: _stopTranslation,
+                      ),
 
                       // Call controls (bottom) - always rendered, visibility controlled by animation
                       AnimatedPositioned(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeOut,
-                        bottom: _controlsVisible ? 0 : -120,
+                        bottom: _uiState.controlsVisible ? 0 : -120,
                         left: 0,
                         right: 0,
                         child: SafeArea(
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 16),
-                            child: _buildCallControls(livekit, coordinator),
+                            child: RepaintBoundary(
+                              child: CallControlsBar(
+                                buttonSlideAnimations: _buttonSlideAnimations,
+                                chatOverlayVisible: _uiState.chatOverlayVisible,
+                                unreadMessageCount: _uiState.unreadMessageCount,
+                                hasNewMessage: _uiState.hasNewMessage,
+                                isMicrophoneEnabled: livekit.isMicrophoneEnabled,
+                                isCameraEnabled: livekit.isCameraEnabled,
+                                onToggleChat: () {
+                                  _setChatOverlayExpanded(!_uiState.chatOverlayVisible);
+                                },
+                                onShowMore: () => _showMoreMenu(livekit, coordinator),
+                                onToggleMicrophone: () async {
+                                  await livekit.toggleMicrophone();
+                                  if (mounted) {
+                                    _showToggleFeedback(
+                                      livekit.isMicrophoneEnabled
+                                          ? 'Microphone unmuted'
+                                          : 'Microphone muted',
+                                    );
+                                  }
+                                },
+                                onToggleCamera: () async {
+                                  await livekit.toggleCamera();
+                                  if (mounted) {
+                                    _showToggleFeedback(
+                                      livekit.isCameraEnabled ? 'Camera on' : 'Camera off',
+                                    );
+                                  }
+                                },
+                                onSwitchCamera: livekit.switchCamera,
+                                onEndCall: () async {
+                                  if (!mounted) return;
+                                  VibrationService.vibrateCallEnd();
+                                  await _endCallAndNavigateBack();
+                                },
+                              ),
+                            ),
                           ),
                         ),
                       ),
 
-                      // Quality Dashboard (positioned to avoid overlap)
-                      if (_qualityDashboardVisible)
-                        Positioned(
-                          top: 100,
-                          right: 16,
-                          child: VideoCallQualityDashboard(
-                            isExpanded: true,
-                            statsService: _coordinator.statsService,
-                            onToggle: () {
-                              setState(() {
-                                _qualityDashboardVisible = false;
-                              });
-                            },
-                          ),
-                        ),
 
-                      // Translation overlay
-                      if (_translationActive && _translatedText.isNotEmpty)
-                        Positioned(
-                          bottom: 100,
-                          left: 16,
-                          right: 16,
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.8),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    _translatedText,
-                                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.white, size: 20),
-                                  onPressed: _stopTranslation,
-                                  tooltip: 'Close translation',
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
 
                       // Modern Chat Overlay
                       ModernChatOverlay(
                         messages: coordinator.chatMessages,
                         onSendMessage: (message) {
                           coordinator.sendChatMessage(message);
-                          setState(() {
-                            _hasNewMessage = false;
-                          });
+                          _uiState.markSentMessage();
                         },
-                        isVisible: _chatOverlayVisible,
-                        onToggleExpanded: () {
-                          setState(() {
-                            _chatOverlayVisible = !_chatOverlayVisible;
-                            if (_chatOverlayVisible) {
-                              _unreadMessageCount = 0;
-                              _hasNewMessage = false;
-                            }
-                          });
+                        isExpanded: _uiState.chatOverlayVisible,
+                        unreadCount: _uiState.unreadMessageCount,
+                        hasNewMessage: _uiState.hasNewMessage,
+                        onExpandedChanged: (isExpanded) {
+                          _setChatOverlayExpanded(isExpanded);
                         },
                       ),
                     ],
@@ -1332,31 +1314,38 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
   }
   
   void _toggleControls() {
-    setState(() {
-      _controlsVisible = !_controlsVisible;
-      if (_controlsVisible) {
-        _controlsAnimationController.forward();
-        _startControlsHideTimer();
-      } else {
-        _controlsAnimationController.reverse();
-        _controlsHideTimer?.cancel();
-      }
-    });
+    _uiState.toggleControlsVisible();
+    if (_uiState.controlsVisible) {
+      _controlsAnimationController.forward();
+      _startControlsHideTimer();
+    } else {
+      _controlsAnimationController.reverse();
+      _controlsHideTimer?.cancel();
+    }
+  }
+
+  void _setChatOverlayExpanded(bool isExpanded) {
+    _uiState.setChatOverlayExpanded(isExpanded);
+    if (_uiState.chatOverlayVisible) {
+      _controlsAnimationController.reverse();
+      _controlsHideTimer?.cancel();
+    } else {
+      _controlsAnimationController.forward();
+      _startControlsHideTimer();
+    }
   }
   
   void _toggleReactions() {
-    setState(() {
-      _reactionsVisible = !_reactionsVisible;
-      if (_reactionsVisible) {
-        _reactionsAnimationController.forward();
-      } else {
-        _reactionsAnimationController.reverse();
-      }
-    });
+    _uiState.toggleReactionsVisible();
+    if (_uiState.reactionsVisible) {
+      _reactionsAnimationController.forward();
+    } else {
+      _reactionsAnimationController.reverse();
+    }
   }
   
   Widget _buildReactionsPanel(CallFeaturesCoordinator coordinator) {
-    if (!_reactionsVisible) return const SizedBox.shrink();
+    if (!_uiState.reactionsVisible) return const SizedBox.shrink();
     
     return Positioned(
       left: 16,
@@ -1370,10 +1359,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(30),
               border: Border.all(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
                 width: 1,
               ),
             ),
@@ -1734,8 +1723,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                   boxShadow: [
                     BoxShadow(
                       color: _highlightedParticipants.contains(pipKey)
-                          ? const Color(0xFF4CAF50).withOpacity(0.6)
-                          : Colors.black.withOpacity(0.5),
+                          ? const Color(0xFF4CAF50).withValues(alpha: 0.6)
+                          : Colors.black.withValues(alpha: 0.5),
                       blurRadius: _highlightedParticipants.contains(pipKey) ? 20 : 10,
                       offset: const Offset(0, 4),
                       spreadRadius: _highlightedParticipants.contains(pipKey) ? 2 : 0,
@@ -1856,7 +1845,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
             borderRadius: BorderRadius.circular(20), // Rounder corners
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -1906,7 +1895,7 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                       colors: [
-                        Colors.black.withOpacity(0.8),
+                        Colors.black.withValues(alpha: 0.8),
                         Colors.transparent,
                       ],
                     ),
@@ -1951,243 +1940,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     );
   }
 
-  Widget _buildCallControls(LiveKitService livekit, CallFeaturesCoordinator coordinator) {
-    // Calculate responsive button sizes based on screen width.
-    // Pill must fit: 4 × buttonSize + 3 gaps + divider(1+margins) + endCallSize
-    // within screenWidth × 0.9 − 24px (horizontal padding).
-    final screenWidth = MediaQuery.of(context).size.width;
-    final buttonSize = screenWidth < 400 ? 44.0 : 50.0;
-    final centerButtonSize = screenWidth < 400 ? 52.0 : 60.0;
-    final horizontalPadding = screenWidth < 360 ? 8.0 : 12.0;
-    final buttonSpacing = screenWidth < 400 ? 2.0 : 6.0;
-    final dividerMargin = screenWidth < 400 ? 8.0 : 14.0;
-    
-    // Button order: More (leftmost), Mic, END CALL (center), Camera, Flip
-    final buttons = [
-      // 0: More / Extra (moved to left)
-      _buildAnimatedButton(
-        index: 0,
-        icon: Icons.more_vert,
-        onPressed: () => _showMoreMenu(livekit, coordinator),
-        backgroundColor: Colors.transparent,
-        size: buttonSize,
-        spacing: buttonSpacing,
-        tooltip: 'More options',
-      ),
-      // 1: Mic (left of center)
-      _buildAnimatedButton(
-        index: 1,
-        icon: livekit.isMicrophoneEnabled ? Icons.mic : Icons.mic_off,
-        onPressed: () async {
-          await livekit.toggleMicrophone();
-          if (mounted) {
-            _showToggleFeedback(livekit.isMicrophoneEnabled ? 'Microphone unmuted' : 'Microphone muted');
-          }
-        },
-        backgroundColor: Colors.transparent,
-        size: buttonSize,
-        spacing: buttonSpacing,
-        tooltip: livekit.isMicrophoneEnabled
-            ? 'Mute microphone'
-            : 'Unmute microphone',
-      ),
-      // 2: END CALL (center - larger)
-      _buildAnimatedButton(
-        index: 2,
-        icon: Icons.call_end,
-        onPressed: () async {
-          if (!mounted) return;
-          
-          // Vibrate when call is ended
-          VibrationService.vibrateCallEnd();
-          
-          // End call using the centralized method
-          await _endCallAndNavigateBack();
-        },
-        backgroundColor: Colors.red.shade600,
-        size: centerButtonSize, // Larger center button
-        spacing: buttonSpacing,
-        tooltip: 'End call',
-      ),
-      // 3: Camera (right of center)
-      _buildAnimatedButton(
-        index: 3,
-        icon: livekit.isCameraEnabled ? Icons.videocam : Icons.videocam_off,
-        onPressed: () async {
-          await livekit.toggleCamera();
-          if (mounted) {
-            _showToggleFeedback(livekit.isCameraEnabled ? 'Camera on' : 'Camera off');
-          }
-        },
-        backgroundColor: Colors.transparent,
-        size: buttonSize,
-        spacing: buttonSpacing,
-        tooltip: livekit.isCameraEnabled ? 'Turn camera off' : 'Turn camera on',
-      ),
-      // 4: Flip camera (rightmost)
-      _buildAnimatedButton(
-        index: 4,
-        icon: Icons.cameraswitch,
-        onPressed: livekit.switchCamera,
-        backgroundColor: Colors.transparent,
-        size: buttonSize,
-        spacing: buttonSpacing,
-        tooltip: 'Switch camera',
-      ),
-    ];
-
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 40.0),
-        child: SizedBox(
-          width: screenWidth * 0.9,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(40),
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.2), // More transparent
-                  borderRadius: BorderRadius.circular(40),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.08), // Even subtler border
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Secondary Controls Group
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        buttons[1], // Mic
-                        buttons[3], // Camera
-                        buttons[0], // More
-                        buttons[4], // Flip
-                      ],
-                    ),
-                    // Vertical Separator
-                    Container(
-                      height: 28,
-                      width: 1,
-                      color: Colors.white.withOpacity(0.12),
-                      margin: EdgeInsets.symmetric(horizontal: dividerMargin),
-                    ),
-                    // End Call
-                    buttons[2],
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildAnimatedButton({
-    required int index,
-    required IconData icon,
-    required VoidCallback onPressed,
-    required Color backgroundColor,
-    required double size,
-    required double spacing,
-    required String tooltip,
-    String? badge,
-  }) {
-    return SlideTransition(
-      position: _buttonSlideAnimations[index],
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: spacing),
-        child: Tooltip(
-          message: tooltip,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: onPressed,
-                  customBorder: const CircleBorder(),
-                  splashColor: Colors.white.withOpacity(0.3),
-                  highlightColor: Colors.white.withOpacity(0.1),
-                  child: Container(
-                    width: size,
-                    height: size,
-                    decoration: BoxDecoration(
-                      color: backgroundColor == Colors.transparent 
-                          ? Colors.white.withOpacity(0.08) 
-                          : null,
-                      gradient: backgroundColor != Colors.transparent 
-                          ? LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.red.shade400,
-                                Colors.red.shade700,
-                              ],
-                            )
-                          : null,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.12),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      icon,
-                      color: Colors.white,
-                      size: size * 0.45,
-                    ),
-                  ),
-                ),
-              ),
-            if (badge != null)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade600,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.black, width: 2),
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 20,
-                    minHeight: 20,
-                  ),
-                  child: Center(
-                    child: Text(
-                      badge,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-      ),
-    );
-  }
-  
-
-  
   // More menu
   void _showMoreMenu(LiveKitService livekit, CallFeaturesCoordinator coordinator) {
     final parentContext = context;
@@ -2230,43 +1982,97 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                         _showAddPersonDialog();
                       },
                     ),
-                    ListTile(
-                      leading: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          const Icon(Icons.chat_bubble, color: Color(0xFF6B7FB8)),
-                          if (_unreadMessageCount > 0)
-                            Positioned(
-                              right: -4,
-                              top: -4,
-                              child: Container(
-                                width: 12,
-                                height: 12,
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      title: Text(
-                        _unreadMessageCount > 0 ? 'Chat ($_unreadMessageCount)' : 'Chat',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      onTap: () {
-                        setState(() {
-                          _chatOverlayVisible = !_chatOverlayVisible;
-                          if (_chatOverlayVisible) {
-                            _unreadMessageCount = 0;
-                            _hasNewMessage = false;
-                          }
-                        });
-                        Navigator.pop(context);
-                      },
-                    ),
 
-                    // ML features removed for Safari PWA stability
+                    // ── AI Enhancements (LiteRT on-device ML) ──────────────
+                    if (!kIsWeb) ...[
+                      const Divider(color: Color(0xFF2C2C2E)),
+                      _buildMoreSectionLabel('AI Enhancements'),
+
+                      // Background blur
+                      if (coordinator.liteRTService.hasBackgroundBlur) ...[
+                        SwitchListTile(
+                          secondary: const Icon(Icons.blur_on, color: Color(0xFF6B7FB8)),
+                          title: const Text('Background Blur',
+                              style: TextStyle(color: Colors.white)),
+                          subtitle: const Text('Blur your surroundings',
+                              style: TextStyle(color: Color(0xFF8E8E93))),
+                          value: coordinator.isBackgroundBlurEnabled,
+                          activeColor: const Color(0xFF6B7FB8),
+                          onChanged: (_) => coordinator.toggleBackgroundBlur(),
+                        ),
+                        if (coordinator.isBackgroundBlurEnabled)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.blur_circular,
+                                    color: Color(0xFF8E8E93), size: 18),
+                                Expanded(
+                                  child: Slider(
+                                    value: coordinator.liteRTService.blurRadius
+                                        .clamp(1.0, 50.0),
+                                    min: 1,
+                                    max: 50,
+                                    divisions: 49,
+                                    activeColor: const Color(0xFF6B7FB8),
+                                    inactiveColor: Colors.white24,
+                                    onChanged: (v) =>
+                                        coordinator.setBackgroundBlurRadius(v),
+                                  ),
+                                ),
+                                Text(
+                                  '${coordinator.liteRTService.blurRadius.round()}px',
+                                  style: const TextStyle(
+                                      color: Color(0xFF8E8E93), fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+
+                      // Low-light enhancement (gamma fallback always available)
+                      SwitchListTile(
+                        secondary: const Icon(Icons.brightness_auto,
+                            color: Color(0xFF6B7FB8)),
+                        title: const Text('Low-Light Enhancement',
+                            style: TextStyle(color: Colors.white)),
+                        subtitle: const Text('Improve dark video automatically',
+                            style: TextStyle(color: Color(0xFF8E8E93))),
+                        value: coordinator.isLowLightEnabled,
+                        activeColor: const Color(0xFF6B7FB8),
+                        onChanged: (_) => coordinator.toggleLowLightEnhancement(),
+                      ),
+
+                      // Video sharpening
+                      SwitchListTile(
+                        secondary: const Icon(Icons.auto_fix_high,
+                            color: Color(0xFF6B7FB8)),
+                        title: const Text('Video Sharpening',
+                            style: TextStyle(color: Colors.white)),
+                        subtitle: const Text('Crisp edges and fine detail',
+                            style: TextStyle(color: Color(0xFF8E8E93))),
+                        value: coordinator.isSharpeningEnabled,
+                        activeColor: const Color(0xFF6B7FB8),
+                        onChanged: (_) => coordinator.toggleSharpening(),
+                      ),
+
+                      // AI noise cancellation (WebRTC + LiteRT hardware suppressor)
+                      SwitchListTile(
+                        secondary: const Icon(Icons.noise_aware,
+                            color: Color(0xFF6B7FB8)),
+                        title: const Text('Noise Suppression',
+                            style: TextStyle(color: Colors.white)),
+                        subtitle: Text(
+                          coordinator.liteRTService.hasHardwareNoiseSuppressor
+                              ? 'Hardware DSP + AI processing'
+                              : 'WebRTC AI processing',
+                          style: const TextStyle(color: Color(0xFF8E8E93)),
+                        ),
+                        value: coordinator.isAiNoiseCancellationEnabled,
+                        activeColor: const Color(0xFF6B7FB8),
+                        onChanged: (_) => coordinator.toggleAiNoiseCancellation(),
+                      ),
+                    ],
 
                     const Divider(color: Color(0xFF2C2C2E)),
                     _buildMoreSectionLabel('Call Tools'),
@@ -2642,17 +2448,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       
       // Check if this is a new message from someone else
       if (!lastMessage.isLocal && lastMessage.id != _lastMessageId) {
-        setState(() {
-          _lastMessageId = lastMessage.id;
-          _hasNewMessage = true;
-          
-          // Only increment unread count if chat overlay is not visible
-          if (!_chatOverlayVisible) {
-            _unreadMessageCount++;
-            // Auto-show chat overlay for new messages
-            _chatOverlayVisible = true;
-          }
-        });
+        _lastMessageId = lastMessage.id;
+        _uiState.registerRemoteMessage(chatOpen: _uiState.chatOverlayVisible);
         
         // Vibrate for new message
         VibrationService.vibrateNewMessage();
@@ -2790,6 +2587,12 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       builder: (context) => const AudioControlsPanel(),
     );
   }
+
+  void _onUiStateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
   
 
   
@@ -2799,6 +2602,8 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     _translationTimer?.cancel();
     _audioRecorder.dispose();
     _remoteEmptyTimer?.cancel();
+    _uiState.removeListener(_onUiStateChanged);
+    _uiState.dispose();
     WidgetsBinding.instance.removeObserver(this);
     widget.sessionService?.removeListener(_handleSessionEnd);
     _callListener.removeListener(_handleIncomingCallWhileInCall);
@@ -2823,7 +2628,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     _coordinator.cleanup();
     
     // Dispose controllers
-    _chatController.dispose();
     _controlsAnimationController.dispose();
     _reactionsAnimationController.dispose();
     _setAndroidCallActive(false);

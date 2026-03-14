@@ -24,7 +24,19 @@
 -keep class com.google.android.play.core.** { *; }
 -dontwarn com.google.android.play.core.**
 
-# MediaPipe / AutoValue shaded annotations (release-only warnings)
+# LiteRT (on-device ML — formerly TensorFlow Lite)
+-keep class com.google.ai.edge.litert.** { *; }
+-keep class org.tensorflow.lite.** { *; }
+-dontwarn com.google.ai.edge.litert.**
+
+# LiteRT GPU delegate native bindings
+-keep class com.google.ai.edge.litert.gpu.** { *; }
+-dontwarn com.google.ai.edge.litert.gpu.**
+
+# LiteRT support library (TensorImage, ImageProcessor, etc.)
+-keep class com.google.ai.edge.litert.support.** { *; }
+
+# Suppress stale AutoValue/javax warnings from LiteRT transitive deps
 -dontwarn javax.lang.model.SourceVersion
 -dontwarn javax.lang.model.element.Element
 -dontwarn javax.lang.model.element.ElementKind

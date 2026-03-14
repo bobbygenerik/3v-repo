@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'ui_tokens.dart';
+
 /// Custom color scheme matching the Android app's AppColors.kt
 /// Based on the Très³ logo and brand identity
 class AppColors {
@@ -54,7 +56,7 @@ class AppTheme {
         color: AppColors.surfaceDark,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
+          borderRadius: UiRadius.lg,
           side: BorderSide(color: Colors.white12),
         ),
       ),
@@ -95,13 +97,16 @@ class AppTheme {
           backgroundColor: AppColors.primaryBlue,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          padding: const EdgeInsets.symmetric(
+            vertical: UiSpacing.md,
+            horizontal: UiSpacing.xl,
+          ),
           textStyle: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w500,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: UiRadius.lg,
           ),
         ),
       ),
@@ -117,21 +122,24 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceDark,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: UiSpacing.lg,
+          vertical: 18,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: UiRadius.lg,
           borderSide: const BorderSide(color: Colors.white12),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: UiRadius.lg,
           borderSide: const BorderSide(color: Colors.white12),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: UiRadius.lg,
           borderSide: const BorderSide(color: AppColors.primaryBlue, width: 2),
         ),
         labelStyle: const TextStyle(color: Colors.white70),
-        hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
         prefixIconColor: Colors.white70,
         suffixIconColor: Colors.white70,
       ),
@@ -146,7 +154,7 @@ class AppTheme {
         ),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: UiRadius.md,
         ),
         elevation: 4,
       ),

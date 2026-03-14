@@ -382,7 +382,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'Version 1.4.callHome',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withValues(alpha: 0.5),
               ),
             ),
           ),

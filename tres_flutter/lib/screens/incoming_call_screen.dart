@@ -279,7 +279,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
           Positioned.fill(
             child: BackdropFilter(
               filter: ui.ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-              child: Container(color: Colors.black.withOpacity(0.4)),
+              child: Container(color: Colors.black.withValues(alpha: 0.4)),
             ),
           ),
           SafeArea(
@@ -305,12 +305,12 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: AppColors.primaryBlue.withOpacity(0.5),
+                    color: AppColors.primaryBlue.withValues(alpha: 0.5),
                     width: 4,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primaryBlue.withOpacity(0.3),
+                      color: AppColors.primaryBlue.withValues(alpha: 0.3),
                       blurRadius: 20,
                       spreadRadius: 5,
                     ),
@@ -406,7 +406,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                             child: InkWell(
                               onTap: _declineCall,
                               customBorder: const CircleBorder(),
-                              splashColor: Colors.white.withOpacity(0.3),
+                              splashColor: Colors.white.withValues(alpha: 0.3),
                               child: Container(
                                 width: 72,
                                 height: 72,
@@ -415,7 +415,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.3),
+                                      color: Colors.black.withValues(alpha: 0.3),
                                       blurRadius: 12,
                                       offset: const Offset(0, 4),
                                     ),
@@ -459,7 +459,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                             child: InkWell(
                               onTap: _isAccepting ? null : _acceptCall,
                               customBorder: const CircleBorder(),
-                              splashColor: Colors.white.withOpacity(0.3),
+                              splashColor: Colors.white.withValues(alpha: 0.3),
                               child: Container(
                                 width: 72,
                                 height: 72,
@@ -470,7 +470,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.3),
+                                      color: Colors.black.withValues(alpha: 0.3),
                                       blurRadius: 12,
                                       offset: const Offset(0, 4),
                                     ),

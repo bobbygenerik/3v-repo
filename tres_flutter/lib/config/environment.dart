@@ -45,7 +45,8 @@ class Environment {
   );
   
   // Feature Flags
-  static const bool enableMLFeatures = false;
+  // LiteRT on-device ML replaces the removed MediaPipe integration.
+  static const bool enableMLFeatures = true;
   static const bool enableE2EEncryption = true;
   static const bool enableCloudRecording = false;
   static const bool enableScreenShare = false;

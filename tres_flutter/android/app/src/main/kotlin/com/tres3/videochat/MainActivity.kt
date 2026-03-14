@@ -103,7 +103,8 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        // MediaPipe bridge removed for Safari PWA stability; no native registration.
+        // LiteRT on-device ML channel (background blur, low light, noise suppression, etc.)
+        LiteRTChannel(this, flutterEngine.dartExecutor.binaryMessenger, flutterEngine.renderer)
     }
     
     override fun onNewIntent(intent: Intent) {
