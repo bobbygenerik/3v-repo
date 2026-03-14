@@ -29,6 +29,7 @@ vps-workflow/*.onnx.json
 
 # Misc
 captures/
+uploads/
 *.log
 .DS_Store
 Thumbs.db
