@@ -349,10 +349,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2C2C2E),
-                      borderRadius: BorderRadius.circular(16), // rounded-xl
+                      color: const Color(0xFF1F2128),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: const Color(0xFF3A3A3C),
+                        color: Colors.white10,
                         width: 1,
                       ),
                     ),
@@ -450,20 +450,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    iconColor: const Color(0xFF6B7FB8),
-                    collapsedIconColor: const Color(0xFF8E8E93),
-                    backgroundColor: const Color(0xFF2C2C2E),
-                    collapsedBackgroundColor: const Color(0xFF2C2C2E),
+                    backgroundColor: const Color(0xFF1F2128),
+                    collapsedBackgroundColor: const Color(0xFF1F2128),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16), // rounded-xl
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(color: Colors.white10),
                     ),
                     collapsedShape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16), // rounded-xl
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(color: Colors.white10),
                     ),
                     children: [
                       // Email/Phone info
                       Container(
-                        color: const Color(0xFF2C2C2E),
+                        color: Colors.transparent,
                         child: ListTile(
                           leading: Icon(
                             user?.email != null ? Icons.email : Icons.phone,

@@ -233,42 +233,48 @@ class P2PCallService extends ChangeNotifier {
     // Incoming remote track → show in remoteRenderer.
     _pc!.onTrack = (event) async {
       debugPrint('📹 P2P: onTrack event: kind=${event.track.kind}, id=${event.track.id}');
+      
+      // Ensure we have a stream to hold the track
+      if (event.streams.isNotEmpty) {
+        _remoteStream = event.streams.first;
+      } else {
+        _remoteStream ??= await createLocalMediaStream('remote');
+        await _remoteStream!.addTrack(event.track);
+      }
+
       if (event.track.kind == 'video') {
-        debugPrint('📹 P2P: Received remote video track: ${event.track.id}');
-        if (event.streams.isNotEmpty) {
-          _remoteStream = event.streams.first;
-          debugPrint('📹 P2P: Using stream from event: ${_remoteStream!.id}');
-        } else {
-          debugPrint('📹 P2P: No stream in event, creating new MediaStream for track');
-          _remoteStream ??= await createLocalMediaStream('remote');
-          _remoteStream!.addTrack(event.track);
-        }
-        
-        if (_remoteStream != null) {
-          remoteRenderer.srcObject = _remoteStream;
-          debugPrint('📹 P2P: remoteRenderer.srcObject set to ${_remoteStream!.id}');
-        }
-        notifyListeners();
+        debugPrint('📹 P2P: Setting remote video track to renderer: ${event.track.id}');
+        // Re-assign srcObject to ensure the renderer picks up the new track
+        remoteRenderer.srcObject = _remoteStream;
       } else if (event.track.kind == 'audio') {
         debugPrint('🔊 P2P: Received remote audio track: ${event.track.id}');
-        if (event.streams.isNotEmpty) {
-          _remoteStream ??= event.streams.first;
-        }
       }
+      
+      // Always notify when a track arrives to ensure UI reacts.
+      notifyListeners();
     };
 
     _pc!.onConnectionState = (state) {
-      debugPrint('🔗 P2P state: $state');
+      debugPrint('🔗 P2P Connection State: ${state.toString()}');
       switch (state) {
         case RTCPeerConnectionState.RTCPeerConnectionStateConnected:
+          debugPrint('✅ P2P: Fully Connected!');
           _isConnected = true;
           _isReconnecting = false;
           break;
+        case RTCPeerConnectionState.RTCPeerConnectionStateConnecting:
+          debugPrint('⏳ P2P: Connecting...');
+          break;
         case RTCPeerConnectionState.RTCPeerConnectionStateDisconnected:
+          debugPrint('⚠️ P2P: Disconnected');
+          _isReconnecting = true;
+          break;
         case RTCPeerConnectionState.RTCPeerConnectionStateFailed:
+          debugPrint('❌ P2P: Failed');
           _isReconnecting = true;
           break;
         case RTCPeerConnectionState.RTCPeerConnectionStateClosed:
+          debugPrint('🔌 P2P: Closed');
           _isConnected = false;
           _isReconnecting = false;
           break;
@@ -332,15 +338,13 @@ class P2PCallService extends ChangeNotifier {
   /// Initiator: wait up to 30 s for the callee to write an answer.
   Future<bool> _waitForAnswer({Duration timeout = const Duration(seconds: 30)}) async {
     final completer = Completer<bool>();
+    
+    // Start persistent monitor for "ended" etc.
+    _startStatusMonitor();
+
     _signalingDocSub = _signalingDoc.snapshots().listen((snap) async {
       if (!snap.exists || completer.isCompleted) return;
       final d = snap.data() as Map<String, dynamic>;
-
-      // Detect remote hang-up.
-      if (d['status'] == 'ended') {
-        completer.complete(false);
-        return;
-      }
 
       final answer = d['answer'] as Map<String, dynamic>?;
       if (answer == null) return;
@@ -350,6 +354,7 @@ class P2PCallService extends ChangeNotifier {
         );
         completer.complete(true);
       } catch (e) {
+        debugPrint('❌ P2P: error setting remote description: $e');
         completer.complete(false);
       }
     });
@@ -361,6 +366,10 @@ class P2PCallService extends ChangeNotifier {
   Future<bool> _waitForOfferAndAnswer({Duration timeout = const Duration(seconds: 30)}) async {
     final completer = Completer<bool>();
     bool answering = false; // guard against re-entrant snapshot callbacks
+    
+    // Start persistent monitor for "ended" etc.
+    _startStatusMonitor();
+
     _signalingDocSub = _signalingDoc.snapshots().listen((snap) async {
       if (!snap.exists || completer.isCompleted || answering) return;
       final d = snap.data() as Map<String, dynamic>;
@@ -387,6 +396,19 @@ class P2PCallService extends ChangeNotifier {
     });
 
     return Future.any([completer.future, Future.delayed(timeout, () => false)]);
+  }
+
+  /// Persistent monitor for call status changes (e.g. remote hang-up)
+  void _startStatusMonitor() {
+    _signalingDoc.snapshots().listen((snap) {
+      if (!snap.exists || _disposed) return;
+      final d = snap.data() as Map<String, dynamic>;
+      
+      if (d['status'] == 'ended') {
+        debugPrint('📞 P2P: Remote hang-up detected via signaling status');
+        disconnect();
+      }
+    });
   }
 
   /// Parse ICE servers from the cached config, falling back to Google STUN.

@@ -27,6 +27,7 @@ import 'profile_screen.dart';
 import 'settings_screen.dart';
 import 'call_screen.dart';
 import 'incoming_call_screen.dart';
+import 'dart:ui' as ui;
 
 class HomeScreen extends StatefulWidget {
   final FirebaseFirestore? firestore;
@@ -750,87 +751,72 @@ class _HomeScreenState extends State<HomeScreen>
       extendBodyBehindAppBar: true,
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.bgGradientStart,
-              AppColors.bgGradientMid,
-              AppColors.backgroundBlack,
-            ],
-            stops: [0.0, 0.5, 1.0],
-          ),
+          color: AppColors.backgroundBlack,
         ),
         child: ResponsiveContainer(
           maxWidth: 768,
           child: SafeArea(
             child: Column(
             children: [
-              // Header Row: Logo and Profile
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  4,
-                  8,
-                  16,
-                  0,
-                ), // Very close to top (8px)
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start, // Align items at their top
-                  children: [
-                    // Logo - left aligned very close to edge, lowered 8px
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        top: 8,
-                      ), // Lower logo by 8px
-                      child: Image.asset(
-                        'assets/images/logo_white_bg.png',
-                        height: 60,
-                        fit: BoxFit.contain,
-                        semanticLabel: 'Tres Logo',
-                      ),
+              // Header: Glassmorphic sticky header
+              ClipRect(
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.02),
                     ),
-                    // Profile button - right aligned with ring, lowered 10px
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        top: 10,
-                      ), // Lower profile button by 10px
-                      child: PopupMenuButton<String>(
-                        tooltip: 'Account Menu',
-                        offset: const Offset(0, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Logo - matching Sitch size
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2), // Subtle offset for visual alignment
+                          child: Image.asset(
+                            'assets/images/logo_white_bg.png',
+                            height: 32, // Slightly smaller for better balance
+                            fit: BoxFit.contain,
+                            semanticLabel: 'Tres Logo',
+                          ),
                         ),
-                        color: const Color(0xFF2C2C2E),
-                        onSelected: (value) async {
-                          switch (value) {
-                            case 'profile':
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ProfileScreen(),
-                                ),
-                              );
-                              // Refresh UI after returning from profile screen
-                              setState(() {});
-                              break;
-                            case 'guest_link':
-                              _showGuestLinkDialog();
-                              break;
-                            case 'settings':
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const SettingsScreen(),
-                                ),
-                              );
-                              break;
-                            case 'signout':
-                              _signOut();
-                              break;
-                          }
-                        },
+                        // Profile Button
+                        PopupMenuButton<String>(
+                          tooltip: 'Account Menu',
+                          offset: const Offset(0, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          color: const Color(0xFF1F2128),
+                          onSelected: (value) async {
+                            switch (value) {
+                              case 'profile':
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const ProfileScreen(),
+                                  ),
+                                );
+                                // Refresh UI after returning from profile screen
+                                setState(() {});
+                                break;
+                              case 'guest_link':
+                                _showGuestLinkDialog();
+                                break;
+                              case 'settings':
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const SettingsScreen(),
+                                  ),
+                                );
+                                break;
+                              case 'signout':
+                                _signOut();
+                                break;
+                            }
+                          },
                         itemBuilder: (context) => [
                           const PopupMenuItem(
                             value: 'profile',
@@ -928,53 +914,76 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                       ),
-                    ), // Close Padding for profile button
-                  ],
+                    ],
+                  ),
                 ),
               ),
-
-              const SizedBox(height: 12),
+            ),
 
               // Welcome Section - Cascading text
               _buildWelcomeSection(),
 
-              const SizedBox(height: 24),
+              // Search Bar
+              _buildSearchBar(),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
 
-              // Section Header
+              // Tab Selector
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _showContactsView ? 'Your Contacts' : 'Call History',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w400,
-                      color: AppColors.textLight,
-                    ),
-                  ),
+                child: Row(
+                  children: [
+                    _buildTabSelector('Your Contacts', _showContactsView, () {
+                      setState(() => _showContactsView = true);
+                    }),
+                    const SizedBox(width: 8),
+                    _buildTabSelector('Call History', !_showContactsView, () {
+                      setState(() => _showContactsView = false);
+                    }),
+                  ],
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              // Content
               Expanded(
-                child: _wrapWithRefresh(
-                  _showContactsView
-                      ? _buildContactsList()
-                      : _buildHistoryList(),
-                ),
+                child: _showContactsView ? _buildContactsList() : _buildHistoryList(),
               ),
             ],
           ),
         ),
       ),
     ),
+    floatingActionButton: FloatingActionButton(
+      onPressed: () => _showAddContactDialog(),
+      backgroundColor: const Color(0xFF6B7FB8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: const Icon(Icons.add, color: Colors.white),
+    ),
   );
 }
+
+  Widget _buildTabSelector(String title, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF6B7FB8) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: isSelected ? null : Border.all(color: Colors.white10),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white60,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _wrapWithRefresh(Widget child) {
     final refreshable = RefreshIndicator(
@@ -995,35 +1004,70 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildWelcomeSection() {
-    if (_currentWelcomeText.isEmpty || _letterAnimations.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Wrap(
-        children: List.generate(_currentWelcomeText.length, (index) {
-          return AnimatedBuilder(
-            animation: _letterAnimations[index],
-            builder: (context, child) {
-              return Opacity(
-                opacity: _letterAnimations[index].value,
-                child: Transform.translate(
-                  offset: Offset(0, 10 * (1 - _letterAnimations[index].value)),
-                  child: Text(
-                    _currentWelcomeText[index],
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
-                    ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            children: List.generate(_currentWelcomeText.length, (index) {
+              return FadeTransition(
+                opacity: _letterAnimations[index],
+                child: Text(
+                  _currentWelcomeText[index],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               );
-            },
-          );
-        }),
+            }),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Your connection is secured.',
+            style: TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Container(
+          height: 56,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: TextField(
+            controller: _searchController,
+            focusNode: _searchFocusNode,
+            textAlignVertical: TextAlignVertical.center,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            decoration: InputDecoration(
+              hintText: 'Display Name',
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+              prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.4)),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              filled: false, // Ensure no default background is drawn
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0), // Adjust for vertical centering
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1223,7 +1267,7 @@ class _HomeScreenState extends State<HomeScreen>
                         contact['name'],
                         style: const TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
@@ -1232,58 +1276,38 @@ class _HomeScreenState extends State<HomeScreen>
                         contact['email'],
                         style: const TextStyle(
                           fontSize: 14,
-                          color: AppColors.textLight,
+                          color: Color(0xFF94A3B8),
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Star icon
-                Consumer<ContactService>(
-                  builder: (context, contactService, _) {
-                    final isFavorite = contactService.isFavorite(
-                      contact['uid'],
-                    );
-                    return IconButton(
-                      icon: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        transitionBuilder: (child, animation) {
-                          return ScaleTransition(
-                            scale: animation,
-                            child: child,
-                          );
-                        },
-                        child: Icon(
-                          isFavorite ? Icons.star : Icons.star_border,
-                          key: ValueKey(isFavorite),
-                          color: isFavorite
-                              ? AppColors.accentBlue
-                              : const Color(0xFF8E8E93),
-                          size: 22,
-                        ),
-                      ),
-                      onPressed: () {
-                        VibrationService.lightImpact();
-                        contactService.toggleFavorite(contact['uid']);
+                // Action Icons
+                Row(
+                  children: [
+                    // Star icon
+                    Consumer<ContactService>(
+                      builder: (context, contactService, _) {
+                        final isFavorite = contactService.isFavorite(contact['uid']);
+                        return IconButton(
+                          icon: Icon(
+                            isFavorite ? Icons.star : Icons.star_border,
+                            color: isFavorite ? Colors.amber : Colors.white60,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            VibrationService.lightImpact();
+                            contactService.toggleFavorite(contact['uid']);
+                          },
+                        );
                       },
-                      tooltip: isFavorite
-                          ? 'Remove ${contact['name']} from favorites'
-                          : 'Add ${contact['name']} to favorites',
-                    );
-                  },
-                ),
-                // Phone icon
-                IconButton(
-                  icon: const Icon(
-                    Icons.phone,
-                    color: Color(0xFF6B7FB8),
-                    size: 22,
-                  ),
-                  onPressed: () {
-                    VibrationService.mediumImpact();
-                    _startCallWithContact(contact);
-                  },
-                  tooltip: 'Call ${contact['name']}',
+                    ),
+                    // Call icon
+                    IconButton(
+                      icon: const Icon(Icons.call, color: Color(0xFF6B7FB8), size: 20),
+                      onPressed: () => _startCallWithContact(contact),
+                    ),
+                  ],
                 ),
               ],
             ),

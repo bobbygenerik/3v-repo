@@ -1,15 +1,19 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui';
 import '../config/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:ui' as ui;
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:livekit_client/livekit_client.dart';
 import '../services/translation_service.dart';
 import '../services/livekit_service.dart';
@@ -361,28 +365,17 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     final mediaPipeError = FeatureFlags.enableMediaPipe ? livekit.consumeMediaPipeError() : null;
     if (mediaPipeError != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.error_outline, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
+              Icon(Icons.error_outline, color: Colors.white, size: 20),
+              SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  mediaPipeError,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                child: Text('Error in MediaPipe processing'),
               ),
             ],
           ),
-          duration: const Duration(seconds: 3),
-          backgroundColor: const Color(0xFFB24A4A),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: Color(0xFFB24A4A), // Keep red for error
         ),
       );
     }
@@ -404,20 +397,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                   livekit.isReconnecting
                       ? 'Reconnecting... call will resume automatically'
                       : 'Reconnected',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
                 ),
               ),
             ],
           ),
           duration: const Duration(seconds: 2),
-          backgroundColor: const Color(0xFF6B7FB8),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       if (!livekit.isReconnecting) {
@@ -531,26 +515,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           _callEndedSnackbarShown = true; // Prevent duplicate snackbars
 
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
+            const SnackBar(
+              content: Row(
                 children: [
                   Icon(Icons.call_end, color: Colors.white, size: 20),
                   SizedBox(width: 8),
-                  Text(
-                    'Call ended',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  Text('Call ended'),
                 ],
               ),
-              duration: const Duration(seconds: 1),
-              backgroundColor: const Color(0xFF6B7FB8),
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              duration: Duration(seconds: 1),
             ),
           );
 
@@ -964,19 +937,11 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
               Expanded(
                 child: Text(
                   livekit.errorMessage ?? 'Failed to connect',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
                 ),
               ),
             ],
           ),
-          backgroundColor: const Color(0xFFE53E3E),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: const Color(0xFFE53E3E), // Keep red for error
         ),
       );
     }
@@ -1339,10 +1304,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         _buildMainParticipantView(livekit, fit: VideoViewFit.contain),
         if (showLocalPip)
           Positioned(
-            right: 12,
-            bottom: 12,
+            right: 16,
+            bottom: 120, // Move above control bar
             child: SizedBox(
-              width: 120,
+              width: 110,
               height: 160,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
@@ -1398,24 +1363,21 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       top: MediaQuery.of(context).size.height * 0.3,
       child: SlideTransition(
         position: _reactionsSlideAnimation,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.8),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.3),
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.5),
-                blurRadius: 15,
-                offset: const Offset(0, 5),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
+                width: 1,
               ),
-            ],
-          ),
-          child: Column(
+            ),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: ReactionType.values.map((type) {
               final label = _getReactionLabel(type);
@@ -1447,8 +1409,10 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
           ),
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   String _getReactionLabel(ReactionType type) {
     switch (type) {
@@ -1504,9 +1468,9 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
         Text(
           _formatDuration(_callDuration),
           style: const TextStyle(
-            color: Colors.white70,
+            color: AppColors.primaryBlue,
             fontSize: 14,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.bold,
             shadows: [
               Shadow(
                 color: Colors.black,
@@ -1983,10 +1947,6 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
       SnackBar(
         content: Text(message),
         duration: const Duration(milliseconds: 1500),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF2C2C2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
       ),
     );
   }
@@ -2079,26 +2039,21 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
     return Align(
       alignment: Alignment.bottomCenter,
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 32.0),
+        padding: const EdgeInsets.only(bottom: 40.0),
         child: SizedBox(
           width: screenWidth * 0.9,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(50),
+            borderRadius: BorderRadius.circular(40),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceDark.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(50),
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
+                  color: Colors.black.withOpacity(0.2), // More transparent
+                  borderRadius: BorderRadius.circular(40),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.08), // Even subtler border
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2113,19 +2068,15 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                         buttons[4], // Flip
                       ],
                     ),
-                    // Divider + End Call
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          height: 32,
-                          width: 1,
-                          color: Colors.white.withOpacity(0.2),
-                          margin: EdgeInsets.symmetric(horizontal: dividerMargin),
-                        ),
-                        buttons[2], // End Call
-                      ],
+                    // Vertical Separator
+                    Container(
+                      height: 28,
+                      width: 1,
+                      color: Colors.white.withOpacity(0.12),
+                      margin: EdgeInsets.symmetric(horizontal: dividerMargin),
                     ),
+                    // End Call
+                    buttons[2],
                   ],
                 ),
               ),
@@ -2166,20 +2117,36 @@ class _CallScreenState extends State<CallScreen> with TickerProviderStateMixin, 
                     width: size,
                     height: size,
                     decoration: BoxDecoration(
-                      color: backgroundColor,
+                      color: backgroundColor == Colors.transparent 
+                          ? Colors.white.withOpacity(0.08) 
+                          : null,
+                      gradient: backgroundColor != Colors.transparent 
+                          ? LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.red.shade400,
+                                Colors.red.shade700,
+                              ],
+                            )
+                          : null,
                       shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.12),
+                        width: 1,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
+                          color: Colors.black.withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
                         ),
                       ],
                     ),
                     child: Icon(
                       icon,
                       color: Colors.white,
-                      size: size * 0.5,
+                      size: size * 0.45,
                     ),
                   ),
                 ),

@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 /// Based on the Très³ logo and brand identity
 class AppColors {
   // Sitch/Modern Color Palette
-  static const Color backgroundBlack = Color(0xFF1C1C1E); // #1C1C1E
-  static const Color surfaceDark = Color(0xFF2C2C2E);     // #2C2C2E
-  static const Color primaryBlue = Color(0xFF6B7FB8);     // #6B7FB8 - Main brand color
-  static const Color bgGradientStart = Color(0xFF1C1C1E); // #1C1C1E
-  static const Color bgGradientMid = Color(0xFF283556);   // #283556
+  static const Color backgroundBlack = Color(0xFF15171D); // #15171D
+  static const Color surfaceDark = Color(0xFF1F2128);     // #1F2128
+  static const Color primaryBlue = Color(0xFF6B7FB8);     // #6B7FB8
+  static const Color bgGradientStart = Color(0xFF15171D); // #15171D
+  static const Color bgGradientMid = Color(0xFF1F2128);   // #1F2128
   
   // Legacy/Other colors
   static const Color backgroundDark = Color(0xFF1b1c1e); // #1b1c1e
@@ -134,6 +134,21 @@ class AppTheme {
         hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
         prefixIconColor: Colors.white70,
         suffixIconColor: Colors.white70,
+      ),
+      
+      // SnackBar theme
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: const Color(0xFF6B7FB8),
+        contentTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 4,
       ),
     );
   }
